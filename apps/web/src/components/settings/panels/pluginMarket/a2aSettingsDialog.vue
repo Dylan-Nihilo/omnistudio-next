@@ -24,10 +24,10 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
 import workspacePicker from "@/pages/home/workspacePicker.vue";
-import { modelChoices } from "@/stores/settings";
+import { usePlatformModelsStore } from "@/stores/platformModels";
 
 type A2aSettings = { enabled: boolean; directory: string; token?: string; url: string; providerId?: string; modelId?: string; thinkingLevel?: string };
 const emit = defineEmits<{ saved: []; closed: [] }>();
@@ -43,9 +43,12 @@ const loaded = ref(false);
 const saving = ref(false);
 const error = ref("");
 const headers = { "x-toonflow-workspace": "1" };
+const platformModels = usePlatformModelsStore();
+const modelChoices = computed(() => platformModels.modelChoices);
 const controller = new AbortController();
 onBeforeUnmount(() => controller.abort());
 onMounted(async () => {
+  void platformModels.load();
   try { await load(); }
   catch (cause) { error.value = errorMessage(cause); }
   finally { loading.value = false; }

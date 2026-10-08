@@ -1,7 +1,8 @@
 import axios from "axios";
 import { watch } from "vue";
 import router from "@/router";
-import { customProviders, privacySettings, settings } from "@/stores/settings";
+import { privacySettings, settings } from "@/stores/settings";
+import { platformMediaModels, platformTextModels } from "@/lib/platformModels";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 type UsageEvent = "onboarding.complete" | "onboarding.skip" | "workspace.canvas" | "workspace.document";
@@ -115,7 +116,6 @@ export function registerAnonymousData() {
     const ua = navigator.userAgent;
     const browser =
       ua.match(/Edg(?:A|iOS)?\/\d+/)?.[0] ?? ua.match(/(?:Firefox|FxiOS|Chrome|CriOS)\/\d+/)?.[0] ?? ua.match(/Version\/\d+/)?.[0] ?? "other";
-    const mediaConfigs = settings.value.mediaProviderConfigs;
     // ACT: 同一会话发送累计值，接收端按 sessionId + sequence 去重/取差值，不能把每次上报直接相加。
     const data = {
       schemaVersion: 2,
@@ -133,9 +133,9 @@ export function registerAnonymousData() {
       usage: {
         projectCount: workspace.projectList.length,
         projectOpen: workspace.project !== null,
-        languageProviderCount: customProviders.value.length,
-        languageModelCount: customProviders.value.reduce((total, provider) => total + provider.models.length, 0),
-        mediaConfigCount: mediaConfigs && typeof mediaConfigs === "object" && !Array.isArray(mediaConfigs) ? Object.keys(mediaConfigs).length : 0,
+        languageProviderCount: new Set(platformTextModels.value.map(model => model.providerId)).size,
+        languageModelCount: platformTextModels.value.length,
+        mediaConfigCount: new Set(platformMediaModels.value.map(model => model.providerId)).size,
       },
       canvas: canvas ? { nodeCount: canvas.nodes.length, edgeCount: canvas.edgeCount, types } : undefined,
       events,

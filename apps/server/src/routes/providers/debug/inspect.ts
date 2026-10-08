@@ -1,8 +1,8 @@
 import { Router } from "express";
-import u from "@/utils";
 import { validateFields } from "@/lib/middleware";
-import { success } from "@/lib/responseFormat";
+import { error } from "@/lib/responseFormat";
+import { z } from "zod";
 
-export default Router().post("/", validateFields({ source: u.providerDebug.providerDebugSchema.source }), async (req, res) => {
-  res.json(success(await u.providerDebug.inspectProviderSource(req.body.source)));
+export default Router().post("/", validateFields({ source: z.string().min(1) }), async (_req, res) => {
+  res.status(403).json(error("平台供应商不支持客户端调试或上传", null, 403));
 });

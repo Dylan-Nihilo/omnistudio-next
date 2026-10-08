@@ -7,7 +7,6 @@
         <uiAlert v-if="requestError" :title="requestError" tone="error" />
         <div class="developerRow"><div class="toolDescription"><h3>首次使用引导</h3><p>当前{{ hello.completed ? '已完成' : '未完成' }}。重置后打开引导页，保留已配置的模型。</p></div><uiButton variant="secondary" :icon="IconRefresh" :loading="resettingHello" :disabled="importingStorage || writingStorage" @click="resetHello">重置并打开引导页</uiButton></div>
         <div class="developerRow"><div class="toolDescription"><h3>更新说明</h3><p>打开当前版本的更新说明弹窗。</p></div><uiButton variant="secondary" :icon="IconFileText" :loading="openingUpdateBox" @click="openUpdateBox">查看更新说明</uiButton></div>
-        <div class="developerRow"><div class="toolDescription"><h3>供应商开发工具</h3><p>授权读取本地供应商文件，调试生成接口与媒体结果。</p></div><uiButton variant="secondary" :icon="IconCode" @click="providerDebugVisible = true">开发供应商</uiButton></div>
         <div class="developerRow"><div class="toolDescription"><h3>Agent 系统提示词</h3><p>编辑 Agent 的基础指令，保存后下一条消息生效。</p></div><uiButton variant="secondary" :icon="IconEdit" @click="systemPromptVisible = true">编辑提示词</uiButton></div>
       </section>
       <section class="updateSourceSection" aria-label="自定义更新源">
@@ -34,7 +33,7 @@
         </div>
       </section>
     </div>
-    <providerDebugDialog v-if="providerDebugVisible" v-model="providerDebugVisible" /><systemPromptDialog v-if="systemPromptVisible" v-model="systemPromptVisible" /><updateBox v-if="updateBoxVisible" v-model="updateBoxVisible" :version="updateBoxBuild.version" :buildCode="updateBoxBuild.hash" />
+    <systemPromptDialog v-if="systemPromptVisible" v-model="systemPromptVisible" /><updateBox v-if="updateBoxVisible" v-model="updateBoxVisible" :version="updateBoxBuild.version" :buildCode="updateBoxBuild.hash" />
     <div v-if="developerLocked" class="developerConfirm"><icon-code :size="28" aria-hidden="true" /><h3>确认进入开发者选项</h3><p>此功能仅供开发调试，普通用户请勿开启。安装未知节点或修改、清除缓存可能导致程序异常或数据丢失。请确认你了解相关风险后继续，系统将记住你的选择。</p><uiButton @click="confirmDeveloper">确认并继续</uiButton></div>
   </div>
 </template>
@@ -58,8 +57,6 @@ const developerStore = useDeveloperStore();
 const hello = useHelloStore();
 const router = useRouter();
 const resettingHello = ref(false);
-const providerDebugDialog = defineAsyncComponent(() => import("./providerDebugDialog.vue"));
-const providerDebugVisible = ref(false);
 const systemPromptDialog = defineAsyncComponent(() => import("./systemPromptDialog.vue"));
 const systemPromptVisible = ref(false);
 const updateBox = defineAsyncComponent(() => import("@/components/updateBox.vue"));

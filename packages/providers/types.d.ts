@@ -175,7 +175,7 @@ interface ProviderDefinition<TRules extends readonly ProviderFormRule[] = readon
   /**
    * 媒体模型列表 GET 地址，使用配置的 apiKey 作为 Bearer 凭据，返回 { data: 模型数组 }。
    * 模型须含 id，type 可由 URL 的 type 参数或同名已有模型补全。
-   * 提供此字段后可手动获取；仅 TF-Router 在有 key 的程序启动时自动更新。
+   * 平台可使用此字段同步供应商模型目录。
    */
   modelsUrl?: string;
   protocol?: "openai-completions" | "openai-responses" | "anthropic-messages";

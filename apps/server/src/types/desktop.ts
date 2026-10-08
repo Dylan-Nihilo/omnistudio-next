@@ -1,4 +1,4 @@
-export type PluginInstallType = "node" | "tool" | "skill" | "provider" | "agent";
+export type PluginInstallType = "node" | "tool" | "skill" | "agent";
 export type PluginInstallRequest = { type: PluginInstallType; url: string; fileName: string };
 
 export type updateSnapshot = {

@@ -6,7 +6,6 @@ import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import type { PluginInstallType } from "@/types/desktop";
 import conf from "@/utils/conf";
 import { parseTool, toolsDirectory } from "@/utils/plugins/tools";
-import { addMediaProvider } from "@/utils/media/provider";
 import { isSafeSegment } from "@/utils/skills/files";
 import { isWithin, lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
 
@@ -395,17 +394,17 @@ export async function installRemotePlugin(type: PluginInstallType, url: string, 
     try { fileName = decodeURIComponent(address.pathname.split("/").at(-1) ?? ""); }
     catch { return invalid("下载地址中的文件名编码无效，请重新生成下载链接"); }
   }
-  const patterns = { node: /^[a-z][a-zA-Z0-9]*\.umd\.js$/, tool: /^[a-z][a-zA-Z0-9]*\.tool\.js$/, skill: /\.(md|zip|tar|tar\.gz|tgz)$/i, provider: /^[a-z][a-zA-Z0-9]*\.ts$/, agent: /^[a-z][a-zA-Z0-9]*\.agent\.zip$/ };
-  const examples = { node: "audioNode.umd.js", tool: "exampleTool.tool.js", skill: "example.zip、SKILL.md、example.tar、example.tar.gz 或 example.tgz", provider: "exampleProvider.ts", agent: "exampleTeam.agent.zip" };
-  if (!Object.hasOwn(patterns, type)) invalid("不支持此插件类型，可选值为 node、tool、skill、provider、agent");
+  const patterns = { node: /^[a-z][a-zA-Z0-9]*\.umd\.js$/, tool: /^[a-z][a-zA-Z0-9]*\.tool\.js$/, skill: /\.(md|zip|tar|tar\.gz|tgz)$/i, agent: /^[a-z][a-zA-Z0-9]*\.agent\.zip$/ };
+  const examples = { node: "audioNode.umd.js", tool: "exampleTool.tool.js", skill: "example.zip、SKILL.md、example.tar、example.tar.gz 或 example.tgz", agent: "exampleTeam.agent.zip" };
+  if (!Object.hasOwn(patterns, type)) invalid("不支持此插件类型，可选值为 node、tool、skill、agent");
   if (!fileName) invalid(`下载地址缺少文件名，请使用指向文件的地址，例如 ${examples[type]}`);
   if (fileName.length > 128 || /[\\/]/.test(fileName)) invalid("插件文件名无效，不能包含目录路径或超过 128 字符");
   if (!patterns[type].test(fileName)) invalid(`下载文件名“${fileName.slice(0, 128)}”不符合 ${type} 类型规范，文件名示例：${examples[type]}；改名后请重新生成下载链接`);
-  const bytes = await download(url, type === "provider" ? 2 * 1024 * 1024 : maxBytes, { node: "节点", tool: "工具", skill: "技能", provider: "供应商", agent: "团队" }[type]);
+  const bytes = await download(url, maxBytes, { node: "节点", tool: "工具", skill: "技能", agent: "团队" }[type]);
   if (type === "agent") return (await import("@/utils/teams/install")).installTeam(fileName, bytes, force);
   if (type === "skill") return installSkill(fileName, bytes, force);
   const source = decodeText(bytes);
   if (type === "node") return installNode(fileName, source, force);
   if (type === "tool") return installTool(fileName, source, force);
-  return { name: (await addMediaProvider(source)).id };
+  throw new Error("供应商由平台统一管理，不能通过插件安装");
 }

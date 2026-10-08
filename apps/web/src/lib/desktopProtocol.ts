@@ -1,7 +1,6 @@
 import feedback from "@/lib/uiFeedback";
 import axios from "axios";
 import { h } from "vue";
-import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
 import type { PluginInstallRequest, PluginInstallType } from "@toonflow/server/desktop";
 
 declare global {
@@ -52,7 +51,6 @@ export function registerDesktopProtocol() {
       });
       if (data?.code !== 200) throw new Error(typeof data?.message === "string" && data.message.trim() ? data.message : "安装接口返回了无效响应，请重启或更新 Toonflow 后重试");
       if (typeof data.data?.name !== "string" || !data.data.name.trim()) throw new Error("安装接口未返回有效的插件名称，请先检查插件列表，再重试");
-      if (request.type === "provider") invalidateNodeModels("media");
       window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type: request.type, name: data.data.name } }));
       feedback.message({ tone: "success", message: `${labels[request.type]}已安装` });
     } catch (error) {

@@ -1,7 +1,6 @@
 import { onScopeDispose, shallowRef, watch, type WatchSource } from "vue";
 import { useRouter } from "vue-router";
 import type { NodeToolInfo } from "@toonflow/tools-scaffold/runtime";
-import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
 import { saveSettings, settings } from "@/stores/settings";
 import { useWorkspaceStore } from "@/stores/workspace";
 
@@ -97,7 +96,7 @@ export function useMcpControl() {
           else if (request.name === "updateSettings") {
             const patch = request.args.patch;
             if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("设置 patch 必须是对象");
-            if (Object.hasOwn(patch, "mcp") || Object.hasOwn(patch, "stores")) throw new Error("MCP 不允许修改连接配置或持久化 Store");
+            if (Object.hasOwn(patch, "mcp") || Object.hasOwn(patch, "stores") || Object.hasOwn(patch, "customProviders") || Object.hasOwn(patch, "mediaProviderConfigs")) throw new Error("MCP 不允许修改连接、模型供应商或持久化 Store");
             JSON.stringify(patch, (_key, value) => {
               if (value === "[REDACTED]") throw new Error("不能将脱敏占位符保存为设置，请填写实际值");
               return value;
@@ -105,19 +104,8 @@ export function useMcpControl() {
             await saveSettings(() => { callSignal.throwIfAborted(); return patch as Record<string, unknown>; });
             result = readSettings();
           } else if (request.name === "refreshResources") {
-            const { type, name, removedProviderId } = request.args;
-            if (type !== "node" && type !== "tool" && type !== "skill" && type !== "provider") throw new Error("未知资源类型");
-            if (type === "provider") {
-              if (typeof removedProviderId === "string" && removedProviderId) await saveSettings(current => {
-                callSignal.throwIfAborted();
-                const configs = current.mediaProviderConfigs;
-                if (!configs || typeof configs !== "object" || Array.isArray(configs) || !Object.hasOwn(configs, removedProviderId)) return;
-                const next = { ...configs } as Record<string, unknown>;
-                delete next[removedProviderId];
-                return { mediaProviderConfigs: next };
-              });
-              invalidateNodeModels("media");
-            }
+            const { type, name } = request.args;
+            if (type !== "node" && type !== "tool" && type !== "skill") throw new Error("未知资源类型");
             window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type, name: typeof name === "string" ? name : "" } }));
             result = { refreshed: true };
           } else if (request.name === "openProject") {

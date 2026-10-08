@@ -2,15 +2,10 @@
   <div class="about">
     <header class="brand"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="brandInfo"><h3>OmniStudio</h3><div class="brandMeta"><span>v{{ currentVersion }}</span><uiTag v-if="snapshot?.channel">{{ snapshot.channel }}</uiTag></div></div></header>
     <section class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
-    <section class="resourceLinks" aria-label="项目与平台">
+    <section class="resourceLinks" aria-label="项目">
       <a class="resourceLink" :href="repositoryUrl" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库：HBAI-Ltd/Toonflow-app"><icon-brand-github :size="22" aria-hidden="true" /><span>GitHub 仓库</span><icon-external-link class="externalIcon" :size="16" aria-hidden="true" /></a>
-      <a class="resourceLink" href="https://api.toonflow.net/" target="_blank" rel="noopener noreferrer"><icon-world :size="22" aria-hidden="true" /><span>官方中转平台 TF-Router</span><icon-external-link class="externalIcon" :size="16" aria-hidden="true" /></a>
     </section>
     <section class="communitySection" aria-label="微信交流群"><header class="sectionHeader"><h3><icon-brand-wechat :size="20" aria-hidden="true" />微信交流群</h3><uiPopover title="微信扫码加入交流群" :width="236" placement="top"><template #reference="{ triggerAttrs }"><uiButton variant="secondary" size="small" :icon="IconQrcode" v-bind="triggerAttrs">展示二维码</uiButton></template><q-r-code :value="communityUrl" :size="168" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" aria-label="Toonflow 交流群二维码" /><p class="tips">Toonflow 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。</p></uiPopover></header></section>
-    <section class="sponsorPanel" aria-label="赞助商">
-      <header class="sectionHeader"><h3><icon-gift :size="20" aria-hidden="true" />赞助商<span class="sponsorHint">排名不分先后</span></h3><uiPopover title="微信扫码洽谈商务合作" :width="236" placement="top"><template #reference="{ triggerAttrs }"><uiButton variant="ghost" size="small" v-bind="triggerAttrs">成为赞助商</uiButton></template><q-r-code value="https://work.weixin.qq.com/u/vc0f54596c5837d05a?v=5.0.8.70675" :size="168" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" aria-label="Toonflow 商务合作二维码" /></uiPopover></header>
-      <div v-if="sponsors.length" class="sponsorGrid" @keydown.esc="closeSponsor"><uiPopover v-for="sponsor in sponsors" :key="sponsor.id" role="dialog" placement="top-start" :title="sponsor.name" :width="360" :visible="activeSponsorId === sponsor.id" :hideAfter="0" @update:visible="value => setSponsorVisible(sponsor.id, value)"><template #reference="{ triggerAttrs }"><button class="sponsorEntry" type="button" v-bind="triggerAttrs" :aria-label="`查看 ${sponsor.name} 详情`"><span v-if="sponsor.logoUrl" class="sponsorLogo"><img :src="sponsor.logoUrl" :alt="`${sponsor.name} logo`" /></span><span class="sponsorName">{{ sponsor.name }}</span></button></template><messageMarkdown v-if="activeSponsorId === sponsor.id && sponsor.readme.trim()" class="sponsorReadme" :content="sponsor.readme" @keydown.esc="closeSponsor" /></uiPopover></div>
-    </section>
     <uiDialog v-model="resultVisible" title="版本更新" :width="520">
       <div class="updateResult" aria-live="polite" :aria-busy="working"><div class="resultHeader"><span class="resultIcon" :class="{ warning: !!updateError, success: !working && !updateError && !snapshot?.updateAvailable }"><icon-refresh v-if="working" class="loadingIcon" :size="24" aria-hidden="true" /><icon-alert-circle v-else-if="updateError" :size="24" aria-hidden="true" /><icon-arrow-up-circle v-else-if="snapshot?.updateAvailable" :size="24" aria-hidden="true" /><icon-circle-check v-else :size="24" aria-hidden="true" /></span><div class="resultCopy"><h3>{{ resultTitle }}</h3><p>{{ resultMessage }}</p></div></div>
         <div v-if="!checking && !updateError && snapshot?.updateAvailable" class="releaseInfo"><div class="versionComparison"><div class="versionItem"><span>当前版本</span><strong>v{{ currentVersion }}</strong></div><icon-arrow-right :size="18" aria-hidden="true" /><div class="versionItem latestVersion"><span>最新版本</span><strong>v{{ snapshot.latestVersion }}</strong></div></div><div v-if="snapshot.channel || snapshot.latestHash" class="releaseMeta"><uiTag v-if="snapshot.channel">{{ snapshot.channel }}</uiTag><code v-if="snapshot.latestHash" :title="snapshot.latestHash">{{ snapshot.latestHash }}</code></div></div>
@@ -21,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
 import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@toonflow/ui";
 import { QRCode } from "tdesign-vue-next";
@@ -33,13 +28,10 @@ import {
   IconArrowUpCircle,
   IconCircleCheck,
   IconArrowRight,
-  IconGift,
-  IconWorld,
   IconBrandWechat,
   IconQrcode,
 } from "@tabler/icons-vue";
 import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
-import tf, { type TfSponsor } from "@/lib/tf";
 import type { updateSnapshot } from "@toonflow/server/desktop";
 import { saveSettings } from "@/stores/settings";
 import {
@@ -53,7 +45,6 @@ import {
   checkDesktopUpdate,
 } from "@/stores/desktopUpdate";
 
-const messageMarkdown = defineAsyncComponent(() => import("@/components/messageMarkdown.vue"));
 const feedback = useUiFeedback();
 const updateSources = computed(() => [{ value: "official", label: "官方源" }, { value: "github", label: "GitHub" }, ...(customUpdateUrl.value ? [{ value: "custom", label: "自定义源" }] : [])]);
 const repositoryUrl = "https://github.com/HBAI-Ltd/Toonflow-app";
@@ -65,7 +56,6 @@ const sourceSaving = ref(false);
 const checking = computed(() => desktopUpdateChecking.value || action.value === "check");
 const working = computed(() => checking.value || !!action.value || !!snapshot.value?.updating);
 const resultVisible = ref(false);
-const activeSponsorId = ref<number>();
 const controller = new AbortController();
 const resultTitle = computed(() => {
   if (updateError.value) return "更新未完成";
@@ -83,16 +73,6 @@ const resultMessage = computed(() => {
   if (snapshot.value?.updateReady) return "点击“重启并更新”安装新版本，请先完成正在进行的任务。";
   if (!snapshot.value?.updateAvailable) return `当前已是最新版本 v${currentVersion.value}`;
   return snapshot.value.canUpdate ? "有新的版本可用，下载完成后可重启更新。" : "当前客户端不支持应用内更新，请下载安装包。";
-});
-
-const sponsors = ref<TfSponsor[]>([]);
-
-onMounted(async () => {
-  try {
-    sponsors.value = await tf.getSponsorList({ signal: controller.signal });
-  } catch (error) {
-    if (!controller.signal.aborted) feedback.message({ tone: "error", message: getUpdateError(error) });
-  }
 });
 
 onMounted(async () => {
@@ -133,16 +113,6 @@ watch([resultVisible, () => snapshot.value?.updating, action], ([visible, updati
   }, 1500);
   onCleanup(() => clearInterval(timer));
 });
-
-function setSponsorVisible(id: number, visible: boolean) {
-  if (visible || activeSponsorId.value === id) activeSponsorId.value = visible ? id : undefined;
-}
-
-function closeSponsor(event: KeyboardEvent) {
-  if (!activeSponsorId.value) return;
-  event.stopPropagation();
-  activeSponsorId.value = undefined;
-}
 
 function openUpdate() {
   resultVisible.value = true;

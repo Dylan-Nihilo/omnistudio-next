@@ -1,8 +1,8 @@
 import feedback from "@/lib/uiFeedback";
 import axios from "axios";
 import { computed, nextTick, ref, watch } from "vue";
-import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
 import { canvasShortcutFields, defaultCanvasShortcuts, getShortcutBindings, isShortcutAllowed, normalizeShortcut, type CanvasShortcuts } from "@/lib/canvasShortcuts";
+import { platformTextModels } from "@/lib/platformModels";
 
 export const settings = ref<Record<string, unknown>>({});
 // ACT: 页面在 loadSettings 完成后才挂载，加载标记仅保留在设置初始化与自动保存内部。
@@ -81,16 +81,9 @@ export const privacySettings = computed(() => {
   };
 });
 
-export type CustomProviderModel = { id: string; label: string; contextWindow?: number; maxOutputTokens?: number };
-export type CustomProvider = { id: string; label: string; version?: string; apiUrl: string; apiKey: string; protocol: string; models: CustomProviderModel[] };
-export const customProviders = computed<CustomProvider[]>(() => Array.isArray(settings.value.customProviders)
-  ? settings.value.customProviders.filter((item): item is CustomProvider => !!item && typeof item.id === "string" && typeof item.label === "string" && Array.isArray(item.models)
-    && item.models.every((model: CustomProviderModel) => !!model && typeof model.id === "string" && typeof model.label === "string"))
-  : []);
-
-export const modelChoices = computed(() => customProviders.value.flatMap(provider => provider.models.map(model => ({
-  value: JSON.stringify([provider.id, model.id]), providerId: provider.id, modelId: model.id, label: model.label, contextWindow: model.contextWindow,
-}))));
+export const modelChoices = computed(() => platformTextModels.value.map(model => ({
+  value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined,
+})));
 
 export async function loadSettings() {
   if (settingsReady) return;
@@ -112,7 +105,6 @@ export function saveSettings(update?: (current: Record<string, unknown>) => Reco
     if (update && !patch) return false;
     const { data } = await axios.put("/api/settings/save", { settings: { ...settings.value, ...patch } }, { headers: { "x-toonflow-workspace": "1" } });
     if (data.code !== 200) throw new Error("保存设置失败");
-    if (patch && Object.hasOwn(patch, "customProviders")) invalidateNodeModels("language");
     if (patch) {
       applyingSettings = true;
       try { settings.value = { ...settings.value, ...patch }; }

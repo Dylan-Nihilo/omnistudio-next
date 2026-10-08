@@ -1,7 +1,6 @@
 import { Router } from "express";
-import u from "@/utils";
-import { success } from "@/lib/responseFormat";
+import { error } from "@/lib/responseFormat";
 
-export default Router().get("/", async (req, res) => {
-  res.json(success(await u.mediaProvider.listMediaProviders()));
+export default Router().get("/", async (_req, res) => {
+  res.status(403).json(error("媒体供应商由平台统一管理，请使用平台模型目录接口", null, 403));
 });
