@@ -172,8 +172,9 @@ import attachmentList from "./attachmentList.vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { writeClipboardText } from "@/lib/clipboard";
 import anonymousData from "@/lib/anonymousData";
-import { modelChoices } from "@/stores/settings";
+import { usePlatformModelsStore } from "@/stores/platformModels";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useAuthStore } from "@/stores/auth";
 import type { AgentAttachment, AgentConversation, AgentMessage } from "./types";
 import type { AgentEvent, AgentMention } from "@toonflow/server/agent/types";
 import { createConversationStream, readAgentEvents } from "./replyStream";
@@ -183,6 +184,8 @@ import messageMarkdown from "@/components/messageMarkdown.vue";
 const props = defineProps<{ active: boolean; initialSession: AgentConversation | null; sessionFile?: string; disabled: boolean }>();
 const emit = defineEmits<{ session: [file: string]; sent: [prompt: string]; event: [event: AgentEvent] }>();
 const workspaceStore = useWorkspaceStore();
+const auth = useAuthStore();
+const platformModels = usePlatformModelsStore();
 const feedback = useUiFeedback();
 const senderInput = ref<InstanceType<typeof promptInput>>();
 const draftModel = ref<RichInputModel>([]);
@@ -267,6 +270,7 @@ const selectedModel = ref(pendingMessage?.model ?? (props.initialSession?.provid
   ? JSON.stringify([props.initialSession.providerId, props.initialSession.modelId]) : ""));
 const contextMenuVisible = ref(false);
 const reasoningEffort = ref(pendingMessage?.reasoningEffort ?? (props.initialSession?.thinkingLevel === "off" ? "" : props.initialSession?.thinkingLevel ?? ""));
+const modelChoices = computed(() => platformModels.modelChoices);
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const contextWindow = computed(() => contextUsage.value?.contextWindow ?? selectedModelChoice.value?.contextWindow ?? 262144);
 const contextPercent = computed(() => (contextUsage.value?.tokens ?? 0) / contextWindow.value * 100);
@@ -279,6 +283,7 @@ const welcomeSuggestions = [
 watch([locked, () => props.active], ([locked, active]) => {
   getSender()?.setEditable(active && !locked, false);
 });
+void platformModels.load();
 watch(() => props.active, active => {
   if (!active) contextMenuVisible.value = false;
 });
@@ -526,7 +531,7 @@ async function sendCanvasResult(event: Extract<AgentEvent, { type: "canvasCall" 
   if (cancelled) body = JSON.stringify({ directory, callId: event.callId, error: "画布操作已取消" });
   const response = await fetch("/api/agent/canvasResult", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1" },
+    headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken },
     body,
     keepalive: cancelled,
     signal: cancelled ? AbortSignal.timeout(5000) : signal,
@@ -584,7 +589,7 @@ async function sendMessage(source?: AgentMessage) {
     await uploadAttachments(attachments, directory, requestController.signal);
     const response = await fetch("/api/agent", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1" },
+      headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, tools: canvasContext.tools } : undefined }),
       signal: requestController.signal,
     });
@@ -655,7 +660,7 @@ async function sendMessage(source?: AgentMessage) {
     // ACT: Bun 的流断开事件可能不触发；主动结束仍在等待的提问，不依赖断开通知。
     for (const callId of pendingQuestions.values()) {
       void fetch("/api/agent/answer", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1" },
+        method: "POST", headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken },
         body: JSON.stringify({ directory, callId, cancelled: true }), keepalive: true,
       }).catch(() => {});
     }

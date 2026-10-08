@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { success } from "@/lib/responseFormat";
-import u from "@/utils";
+import { requireAuth } from "@/middleware/authContext";
+import { listMediaModels } from "@/utils/media/generation";
 
-export default Router().get("/", async (_req, res) => {
-  res.json(success(await u.mediaGeneration.listMediaModels()));
+export default Router().get("/", requireAuth, async (_req, res) => {
+  res.json(success(await listMediaModels()));
 });

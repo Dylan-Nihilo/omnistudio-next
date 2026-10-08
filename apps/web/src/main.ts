@@ -13,7 +13,7 @@ import router from "@/router";
 import { registerDesktopProtocol } from "@/lib/desktopProtocol";
 import { registerDesktopDownloads } from "@/lib/saveFile";
 import { registerAnonymousData } from "@/lib/anonymousData";
-import { loadSettings, settingsStorage } from "@/stores/settings";
+import { settingsStorage } from "@/stores/settings";
 import { checkDesktopUpdate } from "@/stores/desktopUpdate";
 
 const app = createApp(appRoot);
@@ -36,7 +36,7 @@ async function notifyDesktopReady(failed = false) {
 // ACT: 已安装客户端的自动更新不经过 NSIS；启动时阻止缺少所需 API 的旧 WebView2 进入业务页面。
 (requiresWebView2Update
   ? Promise.reject(new Error("当前 Microsoft Edge WebView2 Runtime 版本过旧。请以管理员身份运行微软最新版安装器；若仍提示已安装，请修复 WebView2 或联系管理员检查更新服务。更新完成后，请完全退出 Toonflow 再重新打开。"))
-  : requiresUiRuntimeUpdate ? Promise.reject(new Error("当前浏览器或桌面运行时不支持新版界面所需能力，请更新浏览器或系统运行时后重试。")) : loadSettings()).then(async () => {
+  : requiresUiRuntimeUpdate ? Promise.reject(new Error("当前浏览器或桌面运行时不支持新版界面所需能力，请更新浏览器或系统运行时后重试。")) : Promise.resolve()).then(async () => {
   app.use(createPinia().use(createPersistedState({ storage: settingsStorage })));
   app.use(router);
   await router.isReady();

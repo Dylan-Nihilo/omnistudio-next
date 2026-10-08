@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
+import { requireAuth, requireCsrf } from "@/middleware/authContext";
 import u from "@/utils";
 import { validateFields } from "@/lib/middleware";
 import { success } from "@/lib/responseFormat";
 
-export default Router().post("/", validateFields({
+export default Router().post("/", requireAuth, requireCsrf, validateFields({
   directory: z.string().min(1).max(4096),
   callId: z.uuid(),
   cancelled: z.boolean().optional(),

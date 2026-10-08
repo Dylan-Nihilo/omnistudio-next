@@ -7,8 +7,8 @@ import buildRoute from "@/core";
 import { error } from "@/lib/responseFormat";
 import desktopRequest from "@/lib/desktop";
 import initializePlugins from "@/utils/plugins/initialize";
-
-const autoInstallProviders = ["tfRouter.ts", "apiMart.ts", "meta.ts"];
+import { attachAuthContext, requireAuth } from "@/middleware/authContext";
+import { checkDatabase, runSqlMigrations } from "@/db/database";
 
 export async function createApp({
   webRoot,
@@ -34,12 +34,14 @@ export async function createApp({
   if (dataDirectory && toolsRoot)
     await initializePlugins(resolve(dataDirectory, "tools"), toolsRoot, /^[a-z][a-zA-Z0-9]*\.tool\.js$/, pluginRevision);
   if (dataDirectory && nodesRoot) await initializePlugins(resolve(dataDirectory, "nodes"), nodesRoot, /^[a-z][a-zA-Z0-9]*\.umd\.js$/, pluginRevision);
-  // ACT: 供应方和技能可由用户编辑，只补首次安装，不随应用版本覆盖。
-  if (dataDirectory && providersRoot)
-    await initializePlugins(resolve(dataDirectory, "providers"), resolve(providersRoot, "media"), autoInstallProviders);
+  // 平台供应商属于服务端可信代码，运行时不读取数据目录中的用户可编辑副本。
+  if (providersRoot) process.env.TOONFLOW_PROVIDERS_DIR = resolve(providersRoot, "media");
   if (dataDirectory && skillsRoot) await initializePlugins(resolve(dataDirectory, "skills"), skillsRoot);
   if (dataDirectory && agentsRoot) await initializePlugins(resolve(dataDirectory, "agents"), agentsRoot);
   const app = express();
+
+  await runSqlMigrations();
+  await checkDatabase();
 
   if (process.env.NODE_ENV === "dev") {
     await buildRoute();
@@ -50,6 +52,12 @@ export async function createApp({
   app.use(["/api/workspaces/files/write", "/api/assets/save"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  app.use(attachAuthContext);
+  app.use("/api", (request, response, next) => {
+    const publicPath = /^\/auth\/(setupStatus|setup|login)$/.test(request.path) || request.path === "/desktop/ready";
+    if (publicPath) return next();
+    return requireAuth(request, response, next);
+  });
   app.use("/api/desktop", desktopRequest);
 
   const { default: initializeProviderModels } = await import("@/utils/ai/initialize");

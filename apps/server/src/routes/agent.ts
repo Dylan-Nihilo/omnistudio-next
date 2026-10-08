@@ -4,6 +4,9 @@ import type { CanvasInfo } from "@toonflow/tools-scaffold/runtime";
 import type { AgentEvent } from "@/agent/runtime/types";
 import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
+import { requireAuth, requireCsrf } from "@/middleware/authContext";
+import { requireWorkspaceMembership, workspaceIdFromRequest } from "@/services/workspaceService";
+import { reserveGeneration, settleGeneration } from "@/services/billingService";
 
 const inputSchema = z.object({
   prompt: z.string().trim(), directory: z.string().min(1),
@@ -25,9 +28,18 @@ const inputSchema = z.object({
   }).optional(),
 });
 
-export default Router().post("/", validateFields(inputSchema.shape), async (req, res) => {
+export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema.shape), async (req, res) => {
   const { directory, canvas, ...options } = req.body as z.infer<typeof inputSchema>;
+  const workspaceId = workspaceIdFromRequest(req);
+  await requireWorkspaceMembership(req.authContext!.user.id, workspaceId);
+  const idempotencyKey = req.header("idempotency-key")?.trim();
+  if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const cwd = await u.workspace.resolveWorkspace(req, directory);
+  const reserved = await reserveGeneration({
+    workspaceId, userId: req.authContext!.user.id, modelId: options.modelId, mediaType: "text",
+    units: Math.max(1, options.prompt.length / 1000), idempotencyKey,
+    requestSnapshot: { providerId: options.providerId, modelId: options.modelId, prompt: options.prompt, sessionFile: options.sessionFile },
+  });
   res.set({ "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
   res.flushHeaders();
   const send = (event: AgentEvent) => {
@@ -41,9 +53,11 @@ export default Router().post("/", validateFields(inputSchema.shape), async (req,
   const close = () => { bridge?.dispose(); questions.dispose(); controller.abort(); };
   res.once("close", close);
   try {
-    await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close }, send);
+    await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { workspaceId, userId: req.authContext!.user.id } }, send);
+    await settleGeneration(reserved.job.id, true, { status: "completed" });
     send({ type: "done" });
   } catch (error) {
+    await settleGeneration(reserved.job.id, false, { error: error instanceof Error ? error.message : "Agent 运行失败" });
     send({ type: "error", message: error instanceof Error ? error.message : "Agent 运行失败" });
   } finally {
     res.off("close", close);

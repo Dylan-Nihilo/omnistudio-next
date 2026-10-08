@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { toolNameSchema } from "@toonflow/tools-scaffold/runtime";
-import { mediaModelsSchema, mediaProviderFileSchema } from "@/utils/media/provider";
 import { getMcpRuntime } from "@/utils/mcp/runtime";
 
 const maxBytes = 20 * 1024 * 1024;
@@ -10,7 +9,6 @@ const pluginName = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
 const skillName = z.string().min(1).max(1024);
 const skillPath = z.string().min(1).max(1024);
 const sessionFile = z.string().regex(/^[\w-]+\.jsonl$/);
-const revision = z.string().regex(/^[a-f0-9]{64}$/);
 const base64 = z.string().max(Math.ceil(maxBytes / 3) * 4).base64();
 const sourceFields = {
   source: z.string().min(1).max(maxBytes).optional(),
@@ -26,7 +24,7 @@ export const appOperations: {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   parameters: z.ZodType;
-  refresh?: { type: "node" | "tool" | "skill" | "provider"; nameField?: string };
+  refresh?: { type: "node" | "tool" | "skill"; nameField?: string };
 }[] = [
   {
     name: "listNodes", description: "列出已安装节点的元数据、说明和启用状态。", method: "GET", path: "/api/nodes/get", parameters: z.strictObject({}),
@@ -92,21 +90,6 @@ export const appOperations: {
   {
     name: "uninstallSkill", description: "卸载全局技能及其文件，不影响工作区内的同名技能。", method: "DELETE", path: "/api/skills/uninstall",
     parameters: z.strictObject({ name: skillName }), refresh: { type: "skill", nameField: "name" },
-  },
-  {
-    name: "listMediaProviders", description: "读取媒体供应商及预置 models、配置 revision；保存与删除时使用最新 revision。", method: "GET", path: "/api/providers/media/list", parameters: z.strictObject({}),
-  },
-  {
-    name: "addMediaProvider", description: "从完整 TypeScript source 添加媒体供应商，沿用现有供应商结构检查。", method: "POST", path: "/api/providers/media/add",
-    parameters: z.strictObject({ source: z.string().min(1).max(2 * 1024 * 1024) }), refresh: { type: "provider" },
-  },
-  {
-    name: "saveMediaProviderModels", description: "修改供应商 TS 中的 models；revision 不匹配时拒绝覆盖。API Key 等凭证通过 updateSettings 配置。", method: "PUT", path: "/api/providers/media/save",
-    parameters: z.strictObject({ fileName: mediaProviderFileSchema, models: mediaModelsSchema, revision }), refresh: { type: "provider", nameField: "fileName" },
-  },
-  {
-    name: "deleteMediaProvider", description: "删除指定媒体供应商及其保存的配置；必须提供当前 revision。", method: "DELETE", path: "/api/providers/media/delete",
-    parameters: z.strictObject({ fileName: mediaProviderFileSchema, revision }), refresh: { type: "provider", nameField: "fileName" },
   },
   {
     name: "listAssets", description: "列出全局素材库的文件和文件夹树；与工作区 asstes 目录不同。", method: "GET", path: "/api/assets/list", parameters: z.strictObject({}),

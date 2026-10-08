@@ -19,7 +19,7 @@ import { computed, ref, watch } from "vue";
 import { IconChevronDown } from "@tabler/icons-vue";
 import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@toonflow/ui";
 import { modelIcon } from "@toonflow/model-icons";
-import { customProviders, modelChoices } from "@/stores/settings";
+import { usePlatformModelsStore } from "@/stores/platformModels";
 
 const selectedModel = defineModel<string>({ default: "" });
 const reasoningEffort = defineModel<string>("reasoningEffort", { default: "" });
@@ -31,11 +31,13 @@ const reasoningOptions = [
   { label: "中", value: "medium" },
   { label: "高", value: "high" },
 ];
-const modelGroups = computed(() => customProviders.value.toSorted((left, right) => Number(right.id === "tfRouter") - Number(left.id === "tfRouter")));
-const modelOptions = computed(() => modelGroups.value.flatMap(provider => provider.models.map(model => ({ value: JSON.stringify([provider.id, model.id]), label: model.label, group: provider.label }))));
+const platformModels = usePlatformModelsStore();
+const modelChoices = computed(() => platformModels.modelChoices);
+const modelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: model.label, group: model.providerLabel })));
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const reasoningLabel = computed(() => reasoningOptions.find(item => item.value === reasoningEffort.value)?.label ?? "默认");
 watch(selectedModel, () => { reasoningEffort.value = ""; });
+void platformModels.load();
 watch(modelChoices, items => {
   if (!selectedModel.value) selectedModel.value = items[0]?.value ?? "";
 }, { immediate: true });

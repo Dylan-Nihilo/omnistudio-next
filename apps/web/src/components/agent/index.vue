@@ -38,6 +38,7 @@ import { computed, onBeforeUnmount, ref, watch, type ComponentPublicInstance } f
 import axios from "axios";
 import { useUiFeedback } from "@toonflow/ui";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useAuthStore } from "@/stores/auth";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import type { AgentConversation, AgentHistory } from "./types";
 import type { AgentEvent, AgentSubAgent } from "@toonflow/server/agent/types";
@@ -54,6 +55,7 @@ const selectedConversation = computed(() => conversations.value.find(item => ite
 const name = computed(() => selectedConversation.value?.name || "新对话");
 const sessionFile = computed(() => selectedConversation.value?.file);
 const workspaceStore = useWorkspaceStore();
+const auth = useAuthStore();
 const history = ref<AgentHistory[]>([]);
 const loading = ref(false);
 const historyLoading = ref(false);
@@ -150,7 +152,7 @@ async function newConversation() {
   try {
     const { data } = await axios.post<{ code: number; data: AgentConversation; message?: string }>("/api/agent/create", {
       directory,
-    }, { headers: { "x-toonflow-workspace": "1" } });
+    }, { headers: { "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken } });
     if (data.code !== 200) throw new Error(data.message || "新建对话失败");
     if (currentRequest !== requestId) return;
     const session = data.data;

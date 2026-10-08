@@ -23,6 +23,7 @@ import {
 } from "@/agent/runtime/sessions";
 import { isMemoryEnabled } from "@/utils/personalization";
 import { lockWorkspaceFiles, resolveWorkspacePath } from "@/utils/workspace/files";
+import type { GenerationBillingContext } from "@/utils/media/generation";
 
 type AgentOptions = {
   prompt: string;
@@ -38,6 +39,7 @@ type AgentOptions = {
   question?: QuestionContext;
   signal?: AbortSignal;
   onCancel?: () => void;
+  billing?: GenerationBillingContext;
 };
 
 export async function run(
@@ -55,6 +57,7 @@ export async function run(
     question,
     signal,
     onCancel,
+    billing,
   }: AgentOptions,
   send: (event: AgentEvent) => void
 ) {
@@ -124,7 +127,7 @@ export async function run(
       abort: () => { controller.abort(); onCancel?.(); return finished.promise; },
     };
     unregister = registerAgentSession(history.getSessionFile()!, active);
-    const tools = await createAgentTools(cwd, canvas, question);
+    const tools = await createAgentTools(cwd, canvas, question, billing);
     if (isMemoryEnabled()) {
       const memoryTool = createMemoryTool();
       if (tools.some(tool => tool.name === memoryTool.name)) throw new Error("工具名称 memory 已被内置全局记忆工具占用");
@@ -137,7 +140,7 @@ export async function run(
     tools.push(await createSubAgentTool({
       cwd, tools, canvas, modelRuntime: runtime, model: runtime.getModel(providerId, modelId), thinkingLevel,
       runTask: (name, task, taskSignal, onProgress) => runDelegatedAgent({
-        cwd, parentFile: file, name, task, providerId, modelId, thinkingLevel, canvas, signal: taskSignal, send, onProgress,
+        cwd, parentFile: file, name, task, providerId, modelId, thinkingLevel, canvas, signal: taskSignal, send, onProgress, billing,
       }),
     }));
     const resources = await createAgentResources(cwd, tools, undefined, child

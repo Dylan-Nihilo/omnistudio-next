@@ -1,10 +1,10 @@
 import { mkdir, readFile, realpath, stat, unlink } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { mediaProviders, type Provider } from "@toonflow/providers";
 import type { GeneratedMedia, MediaGenerationRequest, MediaModel, MediaReference } from "@toonflow/tools-scaffold/runtime";
-import conf from "@/utils/conf";
 import { getMediaProvider, listMediaProviders, loadMediaProviderSource } from "@/utils/media/provider";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
+import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformModels } from "@/services/modelService";
+import { reserveGeneration, settleGeneration } from "@/services/billingService";
 
 const maxMediaSize = 100 * 1024 * 1024;
 const mediaExtensions: Record<string, string> = {
@@ -15,12 +15,10 @@ const mediaExtensions: Record<string, string> = {
   "audio/flac": "flac", "audio/aac": "aac", "audio/mp4": "m4a", "audio/opus": "opus", "audio/pcm": "pcm",
 };
 
-function invalid(message: string): never {
-  throw Object.assign(new Error(message), { status: 400 });
-}
+export type GenerationBillingContext = { workspaceId: string; userId: string; idempotencyKey?: string };
 
-function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+function invalid(message: string, status = 400): never {
+  throw Object.assign(new Error(message), { status });
 }
 
 function imageOptions(value: unknown, pattern: RegExp) {
@@ -28,20 +26,25 @@ function imageOptions(value: unknown, pattern: RegExp) {
 }
 
 export async function listMediaModels(): Promise<MediaModel[]> {
+  const catalog = await listPlatformModels();
   const installedProviders = await listMediaProviders();
-  return installedProviders.flatMap(provider => provider.models.flatMap(model => {
-    if (model.type !== "image" && model.type !== "video" && model.type !== "audio") return [];
-    const builtIn = (mediaProviders as readonly Provider[]).find(item => item.id === provider.id)?.models.find(item => item.id === model.id);
+  return catalog.flatMap(model => {
+    if (model.mediaType === "text") return [];
+    const provider = installedProviders.find(item => item.id === model.providerId);
+    if (!provider) return [];
+    const sourceModel = provider?.models.find(item => item.id === model.modelId && item.type === model.mediaType);
+    const capabilities = model.capabilities && typeof model.capabilities === "object" && !Array.isArray(model.capabilities) ? model.capabilities as Record<string, unknown> : {};
     return [{
-      providerId: provider.id, providerLabel: provider.label, modelId: model.id, label: model.label, type: model.type,
-      mode: model.mode, durationResolutionMap: model.durationResolutionMap, audio: model.audio,
-      ...(model.type === "audio" ? { voices: model.voices } : {}),
-      ...(model.type === "image" ? {
-        imageSizes: imageOptions(Array.isArray(model.imageSizes) ? model.imageSizes : builtIn?.imageSizes, /^[^\u0000-\u001f\u007f]+$/),
-        imageRatios: imageOptions(Array.isArray(model.imageRatios) ? model.imageRatios : builtIn?.imageRatios, /^[1-9]\d{0,3}:[1-9]\d{0,3}$/),
+      providerId: model.providerId, providerLabel: provider?.label ?? model.providerId, modelId: model.modelId, label: model.label,
+      type: model.mediaType, mode: sourceModel?.mode ?? capabilities.mode, durationResolutionMap: sourceModel?.durationResolutionMap ?? capabilities.durationResolutionMap,
+      audio: sourceModel?.audio ?? capabilities.audio,
+      ...(model.mediaType === "audio" ? { voices: sourceModel?.voices ?? capabilities.voices } : {}),
+      ...(model.mediaType === "image" ? {
+        imageSizes: imageOptions(sourceModel?.imageSizes ?? capabilities.imageSizes, /^[^\u0000-\u001f\u007f]+$/),
+        imageRatios: imageOptions(sourceModel?.imageRatios ?? capabilities.imageRatios, /^[1-9]\d{0,3}:[1-9]\d{0,3}$/),
       } : {}),
     } as MediaModel];
-  }));
+  });
 }
 
 function detectMimeType(bytes: Uint8Array, fallback: string) {
@@ -131,43 +134,51 @@ export async function generateMedia(
   mediaType: "image" | "video" | "audio",
   request: MediaGenerationRequest,
   signal?: AbortSignal,
+  billing?: GenerationBillingContext,
 ): Promise<GeneratedMedia[]> {
   signal?.throwIfAborted();
   if (!request.prompt.trim()) invalid("请输入生成提示词");
   const directory = await realpath(cwd);
   const outputDirectory = request.outputDirectory ?? "assets/generated";
   await resolveWorkspacePath(directory, outputDirectory, true);
+  const platformModel = await getPlatformMediaModel(request.providerId, request.modelId, mediaType);
   const providerInfo = await getMediaProvider(request.providerId);
-  const model = providerInfo.models.find(model => model.id === request.modelId && model.type === mediaType);
-  if (!model) invalid("所选媒体模型不存在或类型不匹配，请重新选择");
-  const configurations = record(conf.get("settings", {}).mediaProviderConfigs);
-  const provider = await loadMediaProviderSource(providerInfo.source, record(configurations[providerInfo.id]), signal, undefined, directory);
+  const model = providerInfo.models.find(item => item.id === platformModel.modelId && item.type === mediaType);
+  if (!model) invalid("平台模型目录与供应商运行时不一致", 503);
+  const provider = await loadMediaProviderSource(providerInfo.source, await getPlatformProviderRuntimeConfig(providerInfo.id), signal, undefined, directory);
   const generate = mediaType === "image" ? provider.generateImage : mediaType === "video" ? provider.generateVideo : provider.generateAudio;
   if (typeof generate !== "function") invalid(`此供应商不支持${{ image: "图片", video: "视频", audio: "音频" }[mediaType]}生成`);
   const rules = Array.isArray(provider.rules) ? provider.rules : [];
-  if (rules.some(rule => rule.field === "apiKey") && (typeof provider.config.apiKey !== "string" || !provider.config.apiKey.trim())) invalid("请先在媒体模型设置中配置供应商 API Key");
-  const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal))) : undefined;
-  const images = await references(request.images, "image");
-  signal?.throwIfAborted();
-  const assets = mediaType === "audio"
-    ? await provider.generateAudio!({
-      model: request.modelId, text: request.prompt, audios: await references(request.audios, "audio"),
-      voice: request.voice, speed: request.speed, volume: request.volume, format: request.format, sampleRate: request.sampleRate,
-    })
-    : mediaType === "image"
-    ? await provider.generateImage!({ model: request.modelId, prompt: request.prompt, images, ratio: request.ratio, size: request.size })
-    : await provider.generateVideo!({
-      model: request.modelId, prompt: request.prompt, images,
-      videos: await references(request.videos, "video"), audios: await references(request.audios, "audio"),
-      firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal) : undefined,
-      lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal) : undefined,
-      ratio: request.ratio, resolution: request.resolution, duration: request.duration,
-      generateAudio: request.generateAudio, mode: request.mode,
-    });
-  if (!Array.isArray(assets) || !assets.length) invalid("供应商未返回生成结果");
+  if (rules.some(rule => rule.field === "apiKey") && (typeof provider.config.apiKey !== "string" || !provider.config.apiKey.trim())) invalid("平台供应商凭证未配置", 503);
+  const reserved = billing ? await reserveGeneration({
+    workspaceId: billing.workspaceId, userId: billing.userId, modelId: request.modelId, mediaType,
+    units: mediaType === "video" ? Math.max(1, request.duration ?? 1) : mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1,
+    // Agent 顶层请求已经为文本轮次预留积分；每个媒体工具调用都使用独立键，避免与顶层任务或同轮其它媒体调用冲突。
+    idempotencyKey: `${billing.idempotencyKey ?? "agent-media"}:media:${crypto.randomUUID()}`,
+    requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, request },
+  }) : undefined;
   const written: string[] = [];
   const result: GeneratedMedia[] = [];
   try {
+    const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal))) : undefined;
+    const images = await references(request.images, "image");
+    signal?.throwIfAborted();
+    const assets = mediaType === "audio"
+      ? await provider.generateAudio!({
+        model: request.modelId, text: request.prompt, audios: await references(request.audios, "audio"),
+        voice: request.voice, speed: request.speed, volume: request.volume, format: request.format, sampleRate: request.sampleRate,
+      })
+      : mediaType === "image"
+      ? await provider.generateImage!({ model: request.modelId, prompt: request.prompt, images, ratio: request.ratio, size: request.size })
+      : await provider.generateVideo!({
+        model: request.modelId, prompt: request.prompt, images,
+        videos: await references(request.videos, "video"), audios: await references(request.audios, "audio"),
+        firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal) : undefined,
+        lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal) : undefined,
+        ratio: request.ratio, resolution: request.resolution, duration: request.duration,
+        generateAudio: request.generateAudio, mode: request.mode,
+      });
+    if (!Array.isArray(assets) || !assets.length) invalid("供应商未返回生成结果");
     for (const asset of assets) {
       signal?.throwIfAborted();
       const { bytes, mimeType } = await assetBytes(asset, mediaType, signal);
@@ -185,10 +196,12 @@ export async function generateMedia(
       } finally { release(); }
     }
     signal?.throwIfAborted();
+    if (reserved) await settleGeneration(reserved.job.id, true, { files: result });
     return result;
   } catch (err) {
     // ACT: 只回滚本次创建的文件，保留目录中已有的节点资源。
     await Promise.all(written.map(path => unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; })));
+    if (reserved) await settleGeneration(reserved.job.id, false, { error: err instanceof Error ? err.message : "媒体生成失败" });
     throw err;
   }
 }

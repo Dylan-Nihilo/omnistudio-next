@@ -10,8 +10,9 @@ import conf from "@/utils/conf";
 import { isWithin, resolveWorkspacePath, writeWorkspaceFile, lockWorkspaceFiles } from "@/utils/workspace/files";
 import { listTools, loadTool, validateToolConfig } from "@/utils/plugins/tools";
 import { createSkillContext } from "@/agent/skills";
+import type { GenerationBillingContext } from "@/utils/media/generation";
 
-export function createAgentToolContext(cwd: string, config: Record<string, unknown> = {}, canvas?: CanvasContext, question?: QuestionContext): ToolContext {
+export function createAgentToolContext(cwd: string, config: Record<string, unknown> = {}, canvas?: CanvasContext, question?: QuestionContext, billing?: GenerationBillingContext): ToolContext {
   const skillsDirectory = join(dirname(conf.path), "skills");
   const resolvePath = async (path: string, readOnly = false) => {
     const absolute = resolve(cwd, path);
@@ -29,18 +30,18 @@ export function createAgentToolContext(cwd: string, config: Record<string, unkno
     ffmpeg: signal => createWorkspaceFfmpeg(cwd, signal),
     media: {
       listModels: listMediaModels,
-      generateImage: (request, signal) => generateMedia(cwd, "image", request, signal),
-      generateVideo: (request, signal) => generateMedia(cwd, "video", request, signal),
-      generateAudio: (request, signal) => generateMedia(cwd, "audio", request, signal),
+      generateImage: (request, signal) => generateMedia(cwd, "image", request, signal, billing),
+      generateVideo: (request, signal) => generateMedia(cwd, "video", request, signal, billing),
+      generateAudio: (request, signal) => generateMedia(cwd, "audio", request, signal, billing),
     },
     sdk: { defineTool, createReadToolDefinition, createWriteToolDefinition, createEditToolDefinition, createLsToolDefinition, detectSupportedImageMimeTypeFromFile },
   };
 }
 
-export async function createAgentTools(cwd: string, canvas?: CanvasContext, question?: QuestionContext): Promise<ToolDefinition[]> {
+export async function createAgentTools(cwd: string, canvas?: CanvasContext, question?: QuestionContext, billing?: GenerationBillingContext): Promise<ToolDefinition[]> {
   const tools: ToolDefinition[] = [];
   const names = new Set<string>();
-  const context = createAgentToolContext(cwd, {}, canvas, question);
+  const context = createAgentToolContext(cwd, {}, canvas, question, billing);
   for (const item of await listTools()) {
     if (!item.enabled) continue;
     if (item.loadError) throw new Error(`${item.displayName}：${item.loadError}`);

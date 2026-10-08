@@ -58,7 +58,7 @@ export type NodeAiTool = {
 export function groupNodeModels<T extends Pick<NodeAiModel, "providerId" | "providerLabel">>(models: readonly T[]) {
   return [...Map.groupBy(models, item => item.providerId)].map(([id, items]) => ({
     id, label: items[0]!.providerLabel, models: items,
-  })).sort((left, right) => Number(right.id === "tfRouter") - Number(left.id === "tfRouter"));
+  }));
 }
 
 async function readResult<T>(response: Response): Promise<T> {
@@ -71,6 +71,19 @@ async function readResult<T>(response: Response): Promise<T> {
 const modelCacheKey = Symbol.for("toonflow.nodeModels");
 const modelCacheHost = globalThis as typeof globalThis & { [modelCacheKey]?: Map<string, Promise<unknown[]>> };
 const modelCache = modelCacheHost[modelCacheKey] ??= new Map<string, Promise<unknown[]>>();
+
+function platformHeaders(contentType = false) {
+  const headers: Record<string, string> = contentType ? { "Content-Type": "application/json" } : {};
+  if (typeof document !== "undefined") {
+    const csrfToken = document.cookie.split(";").map(item => item.trim()).find(item => item.startsWith("omnistudio_csrf="))?.slice("omnistudio_csrf=".length);
+    if (csrfToken) headers["x-csrf-token"] = decodeURIComponent(csrfToken);
+  }
+  if (typeof sessionStorage !== "undefined") {
+    const workspaceId = sessionStorage.getItem("omnistudio_workspace_id");
+    if (workspaceId) headers["x-workspace-id"] = workspaceId;
+  }
+  return headers;
+}
 
 export function invalidateNodeModels(type: "language" | "media") {
   modelCache.delete(type === "language" ? "/api/ai/models" : "/api/ai/media/models");
@@ -110,7 +123,7 @@ async function requestModel(input: NodeAiRequest, context: Context, model: Model
   try {
     signal.throwIfAborted();
     const response = await fetch("/api/ai/generate", {
-      method: "POST", headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1" },
+      method: "POST", headers: { ...platformHeaders(true), "x-toonflow-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ providerId, modelId, context, directory, references }), signal,
     });
     if (!response.ok) await readResult(response);
@@ -165,7 +178,7 @@ export function useNodeAi() {
   async function generateMedia<T extends "image" | "video">(mediaType: T, input: NodeImageRequest | NodeVideoRequest, signal?: AbortSignal) {
     return readResult<{ path: string; mimeType: string; mediaType: T }[]>(await fetch("/api/ai/media/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1" },
+      headers: { ...platformHeaders(true), "x-toonflow-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ ...input, mediaType }),
       signal: requestSignal(signal),
     }));

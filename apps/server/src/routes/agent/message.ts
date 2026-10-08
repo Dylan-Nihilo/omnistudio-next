@@ -3,8 +3,9 @@ import { z } from "zod";
 import { validateFields } from "@/lib/middleware";
 import { success } from "@/lib/responseFormat";
 import u from "@/utils";
+import { requireAuth, requireCsrf } from "@/middleware/authContext";
 
-export default Router().delete("/", validateFields({
+export default Router().delete("/", requireAuth, requireCsrf, validateFields({
   directory: z.string().min(1).max(4096),
   sessionFile: z.string().regex(/^[\w-]+\.jsonl$/),
   entryIds: z.array(z.string().min(1).max(128)).min(1).max(1000).optional(),
