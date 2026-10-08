@@ -3,7 +3,7 @@
   "baselineDate": "2026-09-30",
   "sourceInventory": "Toonflow-app/docs/uiInventory20260930/inventory.json",
   "scope": "82 个既有 UI 状态；迁移前截图记录与本轮验证分开，不把历史记录标为全部重新实测",
-  "status": "inProgress",
+  "status": "readyForWebReview",
   "rows": [
     {
       "id": "helloWelcome",
@@ -798,9 +798,9 @@
         "build/nodes/assemblyNode.umd.js"
       ],
       "migration": "legacyCompatibility",
-      "verification": "pending",
+      "verification": "legacyCompatibilityVerified",
       "evidence": "docs/uiMigration/progress.md",
-      "note": "源码缺失，仅可验证原产物兼容，不能声明已重构"
+      "note": "原编译产物和旧宿主已在隔离 Web 环境验证；源码缺失，没有声明自有 UI 重构或实际合成验收"
     },
     {
       "id": "textEditor",
@@ -956,9 +956,9 @@
         "apps/web/src/components/agent/menu.vue"
       ],
       "migration": "ownedUiOrRetainedEngine",
-      "verification": "pending",
+      "verification": "uiContractVerified",
       "evidence": "docs/uiMigration/progress.md",
-      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+      "note": "Web 隔离响应核验通过；不等于真实远端服务执行"
     },
     {
       "id": "modelPicker",
@@ -1013,9 +1013,9 @@
         "apps/web/src/components/agent/conversation.vue"
       ],
       "migration": "ownedUiOrRetainedEngine",
-      "verification": "pending",
+      "verification": "uiContractVerified",
       "evidence": "docs/uiMigration/progress.md",
-      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+      "note": "Web 隔离响应核验通过；不等于真实远端服务执行"
     },
     {
       "id": "languageModelResults",
@@ -1189,17 +1189,24 @@
       "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
     }
   ],
-  "remaining": [
-    "3D 方案播放/定位与导出剩余流程",
-    "共享桌面反馈与未知规则/旧插件兼容终验",
-    "Agent 历史/上下文细项",
-    "Web 代码审阅与最终生产构建，合并前停止"
-  ],
+  "remaining": [],
   "limits": [
     "3 个关闭的 Agent/A2A 弹窗保留关闭",
     "assemblyNode 无源码，属于兼容范围",
     "没有 Windows WebView2 实机验证",
     "没有真实付费生成、支付、下载更新或生产发布"
   ],
-  "priority": "Web 优先；App 验证按用户要求暂不继续"
+  "priority": "Web 优先；App 验证按用户要求暂不继续",
+  "review": {
+    "standards": "2项发现，修复并复核关闭",
+    "spec": "3项发现，修复并复核关闭；默认代理与规范轴重复，合计4项不同问题",
+    "report": "docs/uiMigration/review.md"
+  },
+  "verificationSummary": [
+    "UI 库构建/声明与 Web 类型检查通过",
+    "公共节点/七类节点类型检查与最终 UMD 构建通过",
+    "Web production 构建、实际渲染、输入与启动边界通过",
+    "隔离真实文件/媒体/引用保存及 MP4 导出通过",
+    "代码审阅发现项全部关闭；主工作区未合并"
+  ]
 }

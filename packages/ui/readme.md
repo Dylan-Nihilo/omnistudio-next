@@ -152,3 +152,8 @@ confirm/alert 返回 Promise<"confirm">；prompt 返回 `{ value, action: "confi
 - 表单输入、数字输入、选择器、滑杆和图片的 class/style 应用于组件根节点；原生输入所需 id、ARIA 与事件仍传到真实控件。
 - `uiMediaPlayer` 透传 loadedmetadata/loadeddata，保留播放、暂停、定位、音量、速度、全屏与卸载清理。
 - 反馈 message/notify 支持 grouping；相同类型、语气与消息合并为带重复次数的提示，持续时间重新计时。
+
+
+- `uiNumberInput` 保留正在键入的草稿，避免上下界/精度回写打断逐字输入；模型值仍遵循数值规则，提交后格式化，父组件拒绝时恢复受控值。
+- `uiCheckboxGroup` 支持 min/max 选择数量；达到边界时禁用对应增减选项，并在更新入口保护同一约束。
+- UI 生产入口包含与开发样式入口相同的基础样式，打包产物具备主题字体、间距和控件尺寸变量。
