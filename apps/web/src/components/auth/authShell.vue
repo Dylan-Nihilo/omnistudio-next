@@ -36,18 +36,7 @@ withDefaults(defineProps<{
       .welcomeLabel { display: inline-flex; min-height: 28px; align-items: center; padding: 4px 12px; margin-bottom: 28px; transform: rotate(-2deg); border-radius: 2px; color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font-size: var(--uiFontControl); font-weight: 600; }
       h1 { margin: 0 0 20px; font-size: clamp(36px, 3.8vw, 48px); line-height: 1.2; font-weight: 900; letter-spacing: -1px; }
       .description { max-width: 40ch; margin: 0 0 32px; color: var(--uiTextBody); font-size: var(--uiFontBody); line-height: 1.8; }
-      .authContent { display: grid; gap: 16px; }
-      .authForm { display: grid; gap: 14px; }
-      .field { display: grid; gap: 8px; color: var(--uiTextBody); font-size: var(--uiFontControl); }
-      .authInput { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl); outline: 0; color: var(--uiTextPrimary); background: var(--uiBackgroundSubtle); font: inherit; transition: border-color .18s ease, box-shadow .18s ease; }
-      .authInput:focus { border-color: var(--uiBorderFocus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--uiActionPrimary) 20%, transparent); }
-      .loginButton { display: inline-flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; padding: 12px 16px; border: 0; border-radius: var(--uiRadiusControl); color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font: inherit; font-weight: 600; cursor: pointer; transition: filter .18s ease, opacity .18s ease; }
-      .loginButton:hover { filter: brightness(1.08); }
-      .loginButton:disabled { opacity: .6; cursor: wait; }
-      .secondaryActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
-      .secondaryActions a { color: var(--uiActionPrimary); font-size: var(--uiFontControl); text-decoration: none; }
-      .secondaryActions a:hover { text-decoration: underline; }
-      .errorMessage { margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--uiStatusError) 45%, transparent); border-radius: var(--uiRadiusControl); color: var(--uiStatusError); background: color-mix(in srgb, var(--uiStatusError) 10%, transparent); font-size: var(--uiFontControl); line-height: 1.5; }
+      .authContent { display: grid; gap: 16px; :deep(.authForm) { display: grid; gap: 16px; } :deep(.loginButton) { width: 100%; } :deep(.secondaryActions) { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; } :deep(.secondaryActions a) { color: var(--uiActionPrimary); font-size: var(--uiFontControl); text-decoration: none; } :deep(.secondaryActions a:hover) { text-decoration: underline; } :deep(.errorMessage) { margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--uiStatusError) 45%, transparent); border-radius: var(--uiRadiusControl); color: var(--uiStatusError); background: color-mix(in srgb, var(--uiStatusError) 10%, transparent); font-size: var(--uiFontControl); line-height: 1.5; } }
     }
     .pageFooter { color: var(--uiTextMuted); font-size: var(--uiFontControl); p { margin: 0; line-height: 1.6; } }
   }

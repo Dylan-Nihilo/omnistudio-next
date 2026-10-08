@@ -1,10 +1,10 @@
 <template>
   <authShell title="登录 OmniStudio" description="登录后继续你的漫剧创作，Workspace、项目和平台积分会保持在同一个账户体系中。">
     <form class="authForm" @submit.prevent="submit">
-      <label class="field">邮箱<input v-model.trim="email" class="authInput" type="email" autocomplete="email" required /></label>
-      <label class="field">密码<input v-model="password" class="authInput" type="password" autocomplete="current-password" required /></label>
+      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
+      <uiField label="密码" required><template #default="{ id, required }"><uiInput :id="id" v-model="password" type="password" autocomplete="current-password" :required="required" showPassword /></template></uiField>
       <p v-if="errorMessage" class="errorMessage" role="alert">{{ errorMessage }}</p>
-      <button class="loginButton" type="submit" :disabled="submitting">{{ submitting ? "登录中…" : "登录" }}</button>
+      <uiButton class="loginButton" htmlType="submit" :loading="submitting" :disabled="submitting">{{ submitting ? "登录中…" : "登录" }}</uiButton>
     </form>
     <div v-if="canSetup" class="secondaryActions"><a href="#/auth/setup">首次使用，创建管理员</a></div>
   </authShell>
@@ -15,6 +15,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import authShell from "@/components/auth/authShell.vue";
+import { uiButton, uiField, uiInput } from "@toonflow/ui";
 
 const router = useRouter();
 const auth = useAuthStore();

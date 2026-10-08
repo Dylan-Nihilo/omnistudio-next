@@ -1,12 +1,12 @@
 <template>
   <authShell title="初始化 OmniStudio" description="创建平台管理员和第一个 Workspace，之后即可开始创作并使用平台统一的模型与积分。">
     <form class="authForm" @submit.prevent="submit">
-      <label class="field">管理员名称<input v-model.trim="displayName" class="authInput" type="text" autocomplete="name" required /></label>
-      <label class="field">邮箱<input v-model.trim="email" class="authInput" type="email" autocomplete="email" required /></label>
-      <label class="field">密码<input v-model="password" class="authInput" type="password" minlength="12" autocomplete="new-password" required /></label>
-      <label class="field">Workspace 名称<input v-model.trim="workspaceName" class="authInput" type="text" required /></label>
+      <uiField label="管理员名称" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="displayName" type="text" autocomplete="name" :required="required" /></template></uiField>
+      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
+      <uiField label="密码" required><template #default="{ id, required }"><uiInput :id="id" v-model="password" type="password" minlength="12" autocomplete="new-password" :required="required" showPassword /></template></uiField>
+      <uiField label="Workspace 名称" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="workspaceName" type="text" :required="required" /></template></uiField>
       <p v-if="errorMessage" class="errorMessage" role="alert">{{ errorMessage }}</p>
-      <button class="loginButton" type="submit" :disabled="submitting">{{ submitting ? "初始化中…" : "完成初始化" }}</button>
+      <uiButton class="loginButton" htmlType="submit" :loading="submitting" :disabled="submitting">{{ submitting ? "初始化中…" : "完成初始化" }}</uiButton>
     </form>
     <div class="secondaryActions"><a href="#/auth/login">已有账户，返回登录</a></div>
   </authShell>
@@ -17,6 +17,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import authShell from "@/components/auth/authShell.vue";
+import { uiButton, uiField, uiInput } from "@toonflow/ui";
 
 const router = useRouter();
 const auth = useAuthStore();
