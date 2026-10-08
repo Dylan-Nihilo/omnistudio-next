@@ -15,6 +15,7 @@ declare module 'vue' {
     Agent: typeof import('./../components/agent/index.vue')['default']
     AttachmentList: typeof import('./../components/agent/attachmentList.vue')['default']
     AttachmentPreview: typeof import('./../components/agent/attachmentPreview.vue')['default']
+    AuthShell: typeof import('./../components/auth/authShell.vue')['default']
     CanvasShortcuts: typeof import('./../components/settings/panels/general/canvasShortcuts.vue')['default']
     Conversation: typeof import('./../components/agent/conversation.vue')['default']
     Developer: typeof import('./../components/settings/panels/developer/index.vue')['default']
