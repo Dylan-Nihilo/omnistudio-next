@@ -18,7 +18,7 @@
     </template>
     <div class="videoContent nopan">
       <div v-if="exporting" class="exportLoading" role="status" aria-label="视频导出中">
-        <uiProgress type="circle" :percentage="exportProgress" :width="64" :strokeWidth="3" />
+        <uiProgress aria-label="视频导出进度" type="circle" :percentage="exportProgress" :width="64" :strokeWidth="3" />
         <span>正在导出视频</span>
       </div>
       <videoPlayer

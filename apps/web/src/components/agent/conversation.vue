@@ -127,7 +127,7 @@
                 <span>{{ contextUsage.tokens.toLocaleString() }} / {{ contextWindow.toLocaleString() }} tok</span>
                 <span>{{ contextPercent.toFixed(1) }}%</span>
               </div>
-              <uiProgress :percentage="Math.min(100, contextPercent)" label="上下文用量" />
+              <uiProgress :percentage="Math.min(100, contextPercent)" :showText="false" aria-label="上下文用量" />
             </template>
             <span v-else class="contextHint">{{ contextUsage ? "等待下一次回复更新用量" : "尚无用量数据" }}</span>
             <div v-if="stats" class="contextStats">

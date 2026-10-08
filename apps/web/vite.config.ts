@@ -6,7 +6,7 @@ import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import desktopConfig from "../../electrobun.config.ts";
 import postcssConfig from "../../postcss.config.ts";
 
-const serverOrigin = process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3015";
+const serverOrigin = process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3000";
 
 export default defineConfig({
   cacheDir: process.env.TOONFLOW_UI_CACHE_DIR,
@@ -15,7 +15,7 @@ export default defineConfig({
     "import.meta.env.appVersion": JSON.stringify(desktopConfig.app.version),
   },
   server: {
-    host: "127.0.0.1", port: 5176, strictPort: true,
+    host: "127.0.0.1",
     proxy: {
       "/mcp": { target: serverOrigin, changeOrigin: false },
       "/a2a": { target: serverOrigin, changeOrigin: false },

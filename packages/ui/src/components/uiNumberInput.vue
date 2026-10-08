@@ -19,10 +19,11 @@ const input = ref<HTMLInputElement>();
 const sizeClass = computed(() => "size" + props.size[0]!.toUpperCase() + props.size.slice(1));
 const draft = ref(props.modelValue == null ? "" : String(props.modelValue));
 let committedValue = props.modelValue ?? undefined;
+let editingDraft = false;
 const lower = computed(() => finiteNumber(props.min, -Infinity));
 const upper = computed(() => Math.max(lower.value, finiteNumber(props.max, Infinity)));
 const safeStep = computed(() => props.step > 0 ? finiteNumber(props.step, 1) : 1);
-watch(() => props.modelValue, value => { draft.value = value == null ? "" : String(value); if (document.activeElement !== input.value) committedValue = value ?? undefined; });
+watch(() => props.modelValue, value => { if (!editingDraft) draft.value = value == null ? "" : String(value); if (document.activeElement !== input.value) committedValue = value ?? undefined; });
 function normalize(value: number) {
   if (props.stepStrictly) value = Math.round(value / safeStep.value) * safeStep.value;
   if (props.precision != null && Number.isFinite(props.precision)) value = Number(value.toFixed(Math.min(20, Math.max(0, Math.trunc(props.precision)))));
@@ -35,12 +36,14 @@ function publish(value: number | undefined) {
 }
 function handleInput(event: Event) {
   const element = event.target as HTMLInputElement;
+  editingDraft = true;
   draft.value = element.value;
   if (!element.value && !element.validity.badInput) publish(undefined);
   else if (Number.isFinite(element.valueAsNumber)) publish(normalize(element.valueAsNumber));
 }
 function commit() {
   if (props.disabled || props.readonly) return;
+  editingDraft = false;
   const value = draft.value.trim() ? Number(draft.value) : undefined;
   const normalized = value == null ? undefined : Number.isFinite(value) ? normalize(value) : props.modelValue ?? undefined;
   draft.value = normalized == null ? "" : String(normalized);
@@ -56,7 +59,9 @@ function commit() {
 }
 function stepBy(direction: number) {
   if (props.disabled || props.readonly) return;
-  const base = Number.isFinite(props.modelValue) ? props.modelValue! : 0;
+  const candidate = editingDraft ? Number(draft.value) : props.modelValue;
+  const base = Number.isFinite(candidate) ? candidate! : 0;
+  editingDraft = false;
   const decimals = (value: number) => { const [number, exponent = "0"] = String(value).split("e"); return Math.max(0, (number!.split(".")[1]?.length ?? 0) - Number(exponent)); };
   const precision = Math.min(20, Math.max(decimals(base), decimals(safeStep.value)));
   const value = normalize(Number((base + direction * safeStep.value).toFixed(precision)));

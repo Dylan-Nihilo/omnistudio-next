@@ -1,7 +1,7 @@
 <template>
   <div class="promptInput nodrag nopan nowheel" :class="{ isEmpty: !text }" @keydown.capture="handleMentionKey" @click.capture="previewReference"><div ref="editorElement" /><teleport v-for="target in mentionTargets" :key="target.key" :to="target.element"><slot name="mention" :id="target.tag.id" :name="target.tag.name">@{{ target.tag.name }}</slot></teleport></div>
-  <uiPopover v-model:visible="menuVisible" trigger="manual" :anchor="menuAnchor" placement="bottom-start" :width="280" role="listbox" title="选择参考">
-    <div class="referenceMenu"><button v-for="(reference, index) in options" :key="reference.id" class="referenceOption" :class="{ isActive: index === activeIndex }" type="button" role="option" :aria-selected="index === activeIndex" @pointerdown.prevent @pointermove="activeIndex = index" @click="insertReference(reference)"><img v-if="reference.avatar" :src="String(reference.avatar)" alt="" draggable="false" /><span>{{ reference.name }}</span></button><p v-if="!options.length" class="noReferences">没有匹配的参考</p></div>
+  <uiPopover ref="referencePopover" v-model:visible="menuVisible" trigger="manual" :anchor="menuAnchor" placement="bottom-start" :width="280" role="listbox" title="选择参考">
+    <div class="referenceMenu"><button v-for="(reference, index) in options" :key="reference.id" :id="referencePopover?.panel?.id + 'Option' + index" class="referenceOption" :class="{ isActive: index === activeIndex }" type="button" role="option" :aria-selected="index === activeIndex" @pointerdown.prevent @pointermove="activeIndex = index" @click="insertReference(reference)"><img v-if="reference.avatar" :src="String(reference.avatar)" alt="" draggable="false" /><span>{{ reference.name }}</span></button><p v-if="!options.length" class="noReferences">没有匹配的参考</p></div>
   </uiPopover>
   <uiImageViewer v-if="previewUrl" :modelValue="true" :urls="[previewUrl]" title="图片预览" @update:modelValue="value => { if (!value) previewReferenceId = undefined; }" />
 </template>
@@ -20,6 +20,7 @@ const model = defineModel<RichInputModel>({ required: true });
 const text = defineModel<string>("text", { default: "" });
 const editorElement = ref<HTMLElement>();
 const menuVisible = ref(false);
+const referencePopover = ref<InstanceType<typeof uiPopover>>();
 const query = ref("");
 const activeIndex = ref(0);
 const menuAnchor = shallowRef({ getBoundingClientRect: () => new DOMRect() });
@@ -231,7 +232,7 @@ function createEditor(value: RichInputModel) {
     extensions: [StarterKit.configure({ blockquote: false, bold: false, bulletList: false, code: false, codeBlock: false, heading: false, horizontalRule: false, italic: false, link: false, listItem: false, listKeymap: false, orderedList: false, strike: false, underline: false, dropcursor: false, gapcursor: false, trailingNode: false }), referenceNode, tokenNode, inputNode],
     content: documentModel(value),
     editorProps: {
-      attributes: { class: "richEditor", role: "textbox", "aria-label": props.label, "aria-multiline": "true", "data-placeholder": props.placeholder, spellcheck: "false" },
+      attributes: { class: "richEditor", role: "textbox", "aria-label": props.label, "aria-multiline": "true", "data-placeholder": props.placeholder, spellcheck: "false", ...(props.referenceMenuEnabled ? { "aria-autocomplete": "list", "aria-haspopup": "listbox", "aria-expanded": "false", "aria-controls": referencePopover.value?.panel?.id ?? "" } : {}) },
       handlePaste(view, event) { const copied = event.clipboardData?.getData("application/chat-nodes"); if (!copied || !editor || !view.editable) return false; try { const value: unknown = JSON.parse(copied); if (!validModel(value)) return false; editor.commands.insertContent(documentModel(value).content ?? []); return true; } catch { return false; } },
       handleDOMEvents: { copy: (view, event) => copySelection(view, event), cut: (view, event) => copySelection(view, event, true), compositionend() { cancelAnimationFrame(compositionFrame); compositionFrame = requestAnimationFrame(() => { normalizeReferences(); publish(); updateMenu(); }); return false; } },
     },
@@ -251,6 +252,18 @@ watch(model, value => {
   editor.commands.setTextSelection({ from: Math.min(selection.from, editor.state.doc.content.size), to: Math.min(selection.to, editor.state.doc.content.size) });
   publish();
 }, { deep: true });
+watch([menuVisible, activeIndex, options], () => {
+  const panelId = referencePopover.value?.panel?.id;
+  if (!props.referenceMenuEnabled || !editor || editor.isDestroyed || !panelId) return;
+  const element = editor.view.dom;
+  element.setAttribute("aria-expanded", String(menuVisible.value));
+  element.setAttribute("aria-controls", panelId);
+  if (menuVisible.value && options.value[activeIndex.value]) {
+    const id = panelId + "Option" + activeIndex.value;
+    element.setAttribute("aria-activedescendant", id);
+    document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+  } else element.removeAttribute("aria-activedescendant");
+}, { flush: "post" });
 watch(() => props.references, () => { normalizeReferences(false); publish(); updateMenu(); }, { deep: true });
 onBeforeUnmount(() => { cancelAnimationFrame(compositionFrame); if (JSON.stringify(model.value) === lastModel) publish(); editor?.destroy(); editor = undefined; });
 defineExpose({
