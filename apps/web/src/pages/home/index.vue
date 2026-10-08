@@ -1,84 +1,69 @@
 <template>
-  <el-container class="home">
-    <bg class="pageBackground" />
-    <el-header class="pageHeader">
-      <el-badge isDot :hidden="!hasDesktopUpdate">
-        <el-button round size="large" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</el-button>
-      </el-badge>
-      <div class="githubAction">
-        <span class="arrowHint starHint">
-          点个 Star 支持一下
-          <svg viewBox="0 0 84 44" fill="none" aria-hidden="true">
-            <path d="M4 29C18 40 44 38 44 18C44 1 21 3 24 19C27 37 57 32 77 16M65 17L77 16L73 28" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <el-button round size="large" :icon="IconBrandGithub" tag="a" href="https://github.com/HBAI-Ltd/Toonflow-app" target="_blank" rel="noopener noreferrer">GitHub</el-button>
-      </div>
-    </el-header>
-    <el-main class="pageContent">
-      <section class="creationPanel" aria-label="创建项目">
-        <div class="brand">
-          <el-image class="brandLogo" :src="logoUrl" fit="contain" alt="Toonflow" />
-          <h1>Toonflow</h1>
-        </div>
-        <div class="promptArea">
-          <span class="arrowHint inspirationHint">
-            灵感创作模式
-            <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
-              <path d="M4 9C21 0 44 5 40 23C36 39 14 34 22 20C30 7 49 21 47 52M38 43L47 52L54 42" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-          <el-card class="promptCard" shadow="never" :bodyStyle="{ padding: '20px' }" :footerStyle="{ padding: '12px 16px' }">
-            <el-input v-model="prompt" type="textarea" :rows="4" resize="none" :disabled="creating || opening" :placeholder="promptPlaceholder" aria-label="创作描述" />
-            <template #footer>
-              <div class="composerFooter">
-                <workspacePicker ref="promptWorkspacePicker" v-model="workspaceDirectory" :disabled="creating || opening" />
-                <el-space class="sendActions" wrap :size="12">
-                  <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" class="modelSelect" :disabled="creating || opening" />
-                  <el-button class="sendButton" type="primary" :circle="!!workspaceDirectory" :icon="workspaceDirectory ? IconArrowUp : IconFolder" :loading="creating" :disabled="creating || opening" :aria-label="workspaceDirectory ? '发送' : '选择工作目录'" @click="workspaceDirectory ? createProject() : promptWorkspacePicker?.chooseDirectory()">
-                    <template v-if="!workspaceDirectory" #default>选择工作目录</template>
-                  </el-button>
-                </el-space>
+  <div class="home">
+    <aside class="homeSidebar" aria-label="主导航">
+      <a class="homeBrand" href="#/home" aria-label="OmniStudio 首页"><img :src="logoUrl" alt="OmniStudio" /></a>
+      <nav class="mainNavigation">
+        <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'create' }" :icon="IconFolderPlus" @click="focusCreation">开始创作</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" @click="focusProjects">我的项目</uiButton>
+      </nav>
+      <nav class="secondaryNavigation">
+        <uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton class="navigationItem" variant="ghost" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</uiButton></uiBadge>
+        <uiButton class="navigationItem" variant="ghost" :icon="IconBrandGithub" tag="a" href="https://github.com/HBAI-Ltd/Toonflow-app" target="_blank" rel="noopener noreferrer">GitHub</uiButton>
+      </nav>
+    </aside>
+    <main class="homeContent">
+      <header class="homeHeader"><span>创作工作台</span></header>
+      <section class="creationPanel" aria-labelledby="creationTitle">
+        <img class="heroArtwork" :src="heroInk" alt="" aria-hidden="true" />
+        <div class="creationContent">
+          <span class="creationMode">漫剧创作</span>
+          <h1 id="creationTitle">下一部漫剧，<br />由你开场。</h1>
+          <img class="titleUnderline" :src="inkUnderline" alt="" aria-hidden="true" />
+          <div class="composer">
+            <uiTextarea ref="promptInput" v-model="prompt" class="promptInput" :rows="4" resize="none" :disabled="creating || opening" :placeholder="promptPlaceholder" aria-label="创作描述" />
+            <div class="composerFooter">
+              <workspacePicker ref="promptWorkspacePicker" v-model="workspaceDirectory" :disabled="creating || opening" />
+              <div class="sendActions">
+                <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" class="modelSelect" :disabled="creating || opening" />
+                <uiButton v-if="!workspaceDirectory" :icon="IconFolder" :loading="creating" :disabled="creating || opening" @click="promptWorkspacePicker?.chooseDirectory()">选择工作目录</uiButton>
+                <uiIconButton v-else :icon="IconArrowUp" label="发送" variant="primary" :loading="creating" :disabled="creating || opening" @click="createProject()" />
               </div>
-              <p v-if="!workspaceDirectory" class="workspaceHint" role="status">请先选择一个空文件夹作为工作目录，画布和素材会保存在这里。</p>
-            </template>
-          </el-card>
-        </div>
-      </section>
-      <section class="projectList" aria-labelledby="projectListTitle">
-        <div class="sectionHeader">
-          <h2 id="projectListTitle">项目列表</h2>
-          <el-space wrap>
-            <el-button :icon="iconFolderOpen" :disabled="creating || opening" @click="openProject()">导入项目</el-button>
-            <el-button :icon="IconFolderPlus" :disabled="creating || opening" @click="createProject(false)">添加项目</el-button>
-            <el-button circle :icon="sortDescending ? IconSortDescending : IconSortAscending" :aria-label="sortDescending ? '按时间降序' : '按时间升序'" @click="sortDescending = !sortDescending" />
-            <el-radio-group v-model="viewMode" aria-label="项目视图">
-              <el-radio-button value="grid" aria-label="网格视图"><icon-layout-grid :size="16" /></el-radio-button>
-              <el-radio-button value="list" aria-label="列表视图"><icon-list :size="16" /></el-radio-button>
-            </el-radio-group>
-          </el-space>
-        </div>
-        <div class="projectItems" :class="{ listView: viewMode === 'list' }">
-          <el-card v-for="project in sortedProjects" :key="project.directory" class="projectCard" shadow="hover" :bodyStyle="{ padding: '0' }">
-            <button class="projectEntry" type="button" :disabled="creating || opening" :aria-label="`打开项目 ${project.name}`" @click="openProject(project)">
-              <icon-folder class="projectIcon" :size="28" aria-hidden="true" />
-              <span class="projectInfo">
-                <span class="projectName" :title="project.name">{{ project.name }}</span>
-                <span class="projectPath" :title="project.directory">{{ project.directory }}</span>
-                <span class="projectTime">最近打开 {{ new Date(project.lastOpenedAt).toLocaleString('zh-CN', { hour12: false }) }}</span>
-              </span>
-            </button>
-            <div class="projectActions">
-              <el-button text :icon="IconEdit" :disabled="creating || opening" :aria-label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
-              <el-button text type="danger" :icon="IconTrash" :disabled="creating || opening" :aria-label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="workspaceStore.removeProject(project.directory)" />
             </div>
-          </el-card>
+          </div>
+          <p class="workspaceHint" role="status">{{ workspaceDirectory ? '画布与素材会保存在你选择的文件夹里。' : '请先选择一个空文件夹作为工作目录，画布和素材会保存在这里。' }}</p>
         </div>
       </section>
-    </el-main>
+      <section ref="projectSection" class="projectList" aria-labelledby="projectListTitle">
+        <header class="projectHeader">
+          <h2 id="projectListTitle">最近项目</h2>
+          <div class="projectToolbar">
+            <uiButton variant="ghost" :icon="IconFolderOpen" :disabled="creating || opening" @click="openProject()">导入项目</uiButton>
+            <uiButton variant="secondary" :icon="IconFolderPlus" :disabled="creating || opening" @click="createProject(false)">添加项目</uiButton>
+            <uiIconButton :icon="sortDescending ? IconSortDescending : IconSortAscending" :label="sortDescending ? '按时间降序' : '按时间升序'" @click="sortDescending = !sortDescending" />
+            <uiRadioGroup :modelValue="viewMode" :options="viewOptions" variant="segmented" aria-label="项目视图" @update:modelValue="value => typeof value === 'string' && (viewMode = value)" />
+          </div>
+        </header>
+        <div class="projectItems" :class="{ listView: viewMode === 'list' }">
+          <article v-for="project in sortedProjects" :key="project.directory" class="projectCard">
+            <div class="projectCardHeader">
+              <icon-folder class="projectIcon" :size="20" aria-hidden="true" />
+              <div class="projectActions">
+                <uiIconButton size="small" :icon="IconEdit" :disabled="creating || opening" :label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
+                <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="workspaceStore.removeProject(project.directory)" />
+              </div>
+            </div>
+            <button class="projectEntry" type="button" :disabled="creating || opening" :aria-label="`打开项目 ${project.name}`" @click="openProject(project)">
+              <span class="projectName" :title="project.name">{{ project.name }}</span>
+              <span class="projectPath" :title="project.directory">{{ project.directory }}</span>
+            </button>
+            <div class="projectTime"><span>最近打开</span><time>{{ new Date(project.lastOpenedAt).toLocaleString('zh-CN', { hour12: false }) }}</time></div>
+          </article>
+        </div>
+      </section>
+    </main>
     <settings v-model="settingsVisible" />
     <workspacePicker ref="relocationPicker" hideTrigger />
-  </el-container>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -86,23 +71,29 @@ import axios from "axios";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, useUiFeedback } from "@toonflow/ui";
 import {
   IconSettings, IconBrandGithub,
   IconArrowUp, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
-  IconTrash, IconFolderPlus, IconFolderOpen as iconFolderOpen,
+  IconTrash, IconFolderPlus, IconFolderOpen,
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
-import logoUrl from "@toonflow/assets/logo.svg";
+import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
 import { useWorkspaceStore, type Project } from "@/stores/workspace";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import settings from "@/components/settings/index.vue";
-import bg from "./bg.vue";
+import heroInk from "@toonflow/assets/illustrations/heroInk.png";
+import inkUnderline from "@toonflow/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
 
+const feedback = useUiFeedback();
+const promptInput = ref<InstanceType<typeof uiTextarea>>();
+const projectSection = ref<HTMLElement>();
+const activeSection = ref("create");
+const viewOptions = [{ value: "grid", label: "网格", icon: IconLayoutGrid }, { value: "list", label: "列表", icon: IconList }];
 const settingsVisible = ref(false);
 const router = useRouter();
 const creating = ref(false);
@@ -175,8 +166,8 @@ async function openProject(project?: Project) {
     try { await workspaceStore.openProject(directory); }
     catch (err) {
       if (!project || !axios.isAxiosError(err) || err.response?.status !== 404) throw err;
-      const reselect = await ElMessageBox.confirm(`项目“${project.name}”的文件夹不存在，是否重新选择文件夹？`, "工作目录不存在", {
-        confirmButtonText: "重新选择", cancelButtonText: "取消", type: "warning",
+      const reselect = await feedback.confirm(`项目“${project.name}”的文件夹不存在，是否重新选择文件夹？`, "工作目录不存在", {
+        confirmButtonText: "重新选择", cancelButtonText: "取消",
       }).then(() => true, () => false);
       if (!reselect) return;
       const directory = await relocationPicker.value?.chooseDirectory();
@@ -185,14 +176,14 @@ async function openProject(project?: Project) {
     }
     await router.push("/workspace");
   } catch (err) {
-    ElMessage.error(axios.isAxiosError<{ message?: string }>(err)
+    showError(axios.isAxiosError<{ message?: string }>(err)
       ? err.response?.data.message || "无法打开项目，请重试"
       : err instanceof Error ? err.message : "无法打开项目，请重试");
   } finally { opening.value = false; }
 }
 
 async function renameProject(project: Project) {
-  const result = await ElMessageBox.prompt("请输入项目名称", "重命名项目", {
+  const result = await feedback.prompt("请输入项目名称", "重命名项目", {
     inputValue: project.name, confirmButtonText: "保存", cancelButtonText: "取消",
     inputValidator: value => !!value?.trim() || "项目名称不能为空",
   }).catch(() => null);
@@ -205,15 +196,15 @@ async function createProject(fromPrompt = true) {
   try {
     let path = workspaceDirectory.value;
     if (!fromPrompt) {
-      const confirmed = await ElMessageBox.confirm("请选择一个空文件夹作为项目目录，画布和素材将保存在其中。", "添加项目", {
-        confirmButtonText: "选择空文件夹", cancelButtonText: "取消", type: "info",
+      const confirmed = await feedback.confirm("请选择一个空文件夹作为项目目录，画布和素材将保存在其中。", "添加项目", {
+        confirmButtonText: "选择空文件夹", cancelButtonText: "取消",
       }).then(() => true, () => false);
       if (!confirmed) return;
       path = await relocationPicker.value?.chooseDirectory() ?? "";
       if (!path) return;
     }
     const { directory, empty } = await useWorkspaceFiles(path).list();
-    if (!empty) return ElMessage.warning("该文件夹不为空，请重新选择空文件夹；已有项目请使用“导入项目”或点击项目列表打开。");
+    if (!empty) return feedback.message({ tone: "warning", message: "该文件夹不为空，请重新选择空文件夹；已有项目请使用“导入项目”或点击项目列表打开。" });
     await useWorkspaceFiles(directory).writeJson("画布1.json", { toonflowCanvas: true, nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }, true);
     await workspaceStore.openProject(directory);
     if (fromPrompt && prompt.value.trim()) {
@@ -221,268 +212,54 @@ async function createProject(fromPrompt = true) {
     }
     await router.push("/workspace");
   } catch (err) {
-    ElMessage.error(axios.isAxiosError<{ message?: string }>(err)
+    showError(axios.isAxiosError<{ message?: string }>(err)
       ? err.response?.data.message || "创建项目失败，请重试"
       : err instanceof Error ? err.message : "创建项目失败，请重试");
   } finally {
     creating.value = false;
   }
 }
+function showError(message: string) { feedback.message({ tone: "error", message }); }
+function focusCreation() { activeSection.value = "create"; promptInput.value?.textarea?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); promptInput.value?.focus(); }
+function focusProjects() { activeSection.value = "projects"; projectSection.value?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
 </script>
 
 <style lang="scss" scoped>
 .home {
-  position: relative;
-  isolation: isolate;
-  min-height: 100dvh;
-  color: var(--el-text-color-primary);
-
-  .pageBackground {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
+  display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
+  .homeSidebar {
+    position: sticky; top: 0; display: flex; flex-direction: column; gap: 36px; height: 100dvh; min-width: 0; padding: 20px 16px 28px; border-right: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle);
+    .homeBrand { display: block; margin: 0 4px; img { display: block; width: 100%; height: auto; border-radius: 8px; background: #101010; } }
+    .mainNavigation, .secondaryNavigation { display: flex; flex-direction: column; gap: 10px; }
+    .secondaryNavigation { margin-top: auto; :deep(.uiBadge) { width: 100%; } }
+    .navigationItem { width: 100%; justify-content: flex-start; min-height: 40px; padding-inline: 12px; &.isSelected { color: var(--uiActionPrimary); background: var(--uiActionSoft); } }
   }
-
-  .arrowHint {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--el-color-primary);
-    font-size: 13px;
-    white-space: nowrap;
-    pointer-events: none;
-    animation: hintNudge 2.4s ease-in-out infinite;
-
-    svg {
-      width: 56px;
-      height: 30px;
-      flex-shrink: 0;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
-  }
-
-  .pageHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 72px;
-    padding: 0 clamp(20px, 4vw, 56px);
-
-    a {
-      text-decoration: none;
-    }
-
-    .githubAction {
-      position: relative;
-
-      .starHint {
-        top: 0;
-        right: calc(100% + 12px);
-        height: 100%;
-
-        @media (max-width: 560px) {
-          top: calc(100% + 6px);
-          right: 0;
-          height: auto;
-
-          svg { transform: rotate(-45deg); }
-        }
-      }
-    }
-  }
-
-  .pageContent {
-    padding: 24px clamp(20px, 4vw, 56px) 56px;
-
+  .homeContent {
+    display: flex; flex-direction: column; gap: clamp(32px, 4dvh, 56px); min-width: 0; min-height: 100dvh;
+    padding: clamp(28px, 4dvh, 48px) clamp(32px, 4vw, 64px) clamp(40px, 5dvh, 64px);
+    .homeHeader { flex-shrink: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); }
     .creationPanel {
-      max-width: 800px;
-      margin: clamp(32px, 6vh, 64px) auto 56px;
-
-      .brand {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-        margin-bottom: 36px;
-
-        .brandLogo {
-          width: 48px;
-          height: 48px;
-
-          .dark & {
-            filter: invert(1);
-          }
-        }
-
-        h1 {
-          margin: 0;
-          font-size: clamp(30px, 4vw, 38px);
-          font-weight: 600;
-          letter-spacing: -1px;
-        }
-      }
-
-      .promptArea {
-        position: relative;
-
-        .inspirationHint {
-          bottom: calc(100% + 4px);
-          left: 16px;
-          height: 30px;
-          padding-right: 44px;
-
-          svg {
-            position: absolute;
-            top: -2px;
-            right: 0;
-            width: 36px;
-            height: 36px;
-          }
-        }
-
-        .promptCard {
-          border-radius: calc(var(--ui-radius) * 2.5);
-          border-color: var(--el-border-color-lighter);
-          box-shadow: var(--el-box-shadow-lighter);
-
-          &:focus-within {
-            border-color: var(--el-color-primary-light-5);
-          }
-
-          :deep(.el-textarea__inner) {
-            padding: 4px 0;
-            box-shadow: none;
-            background: transparent;
-            font-size: 15px;
-            line-height: 1.8;
-          }
-
-          :deep(.el-card__footer) {
-            background: var(--el-fill-color-extra-light);
-          }
-
-          .composerFooter {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-
-            .sendActions {
-              margin-left: auto;
-              justify-content: flex-end;
-
-              .modelSelect {
-                width: 190px;
-              }
-
-              .sendButton {
-                height: 36px;
-
-                &.is-circle { width: 36px; }
-              }
-            }
-          }
-
-          .workspaceHint {
-            margin: 12px 0 0;
-            color: var(--el-text-color-regular);
-            font-size: 13px;
-            line-height: 1.6;
-          }
-        }
-      }
+      position: relative; isolation: isolate; display: flex; align-items: center; flex: 1; min-height: 480px;
+      .heroArtwork { position: absolute; z-index: -1; top: 50%; transform: translateY(-50%); right: -32px; width: min(56%, 682px); height: auto; aspect-ratio: 3 / 2; object-fit: contain; pointer-events: none; }
+      .creationContent { width: min(100%, 708px); padding-top: 10px; }
+      .creationMode { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 16px; border-radius: 2px; transform: rotate(-2deg); color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font-size: var(--uiFontLabel); font-weight: 600; }
+      h1 { position: relative; width: fit-content; margin: 28px 0 4px; font-size: clamp(38px, 4vw, 60px); line-height: 1.27; font-weight: 900; letter-spacing: -1.5px; }
+      .titleUnderline { display: block; width: min(340px, 64%); height: auto; margin-bottom: 34px; }
+      .composer { padding: 22px 20px 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); &:focus-within { border-color: var(--uiBorderFocus); } .promptInput { min-height: 112px; padding: 0; border: 0; background: transparent; font-size: var(--uiFontBody); outline: none; } }
+      .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; .sendActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; .modelSelect { max-width: 190px; } } }
+      .workspaceHint { margin: 12px 4px 0; max-width: 65ch; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.6; }
     }
-
     .projectList {
-      max-width: 1040px;
-      margin: 0 auto;
-
+      flex-shrink: 0; min-width: 0; scroll-margin-top: 24px;
+      .projectHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } .projectToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } }
       .projectItems {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-        gap: 16px;
-        margin-top: 16px;
-
-        &.listView { grid-template-columns: 1fr; }
-
-        .projectCard {
-          position: relative;
-
-          .projectActions {
-            position: absolute;
-            top: 12px;
-            right: 8px;
-            display: flex;
-            gap: 4px;
-
-            .el-button { width: 32px; height: 32px; margin: 0; padding: 0; }
-          }
-        }
-
-        .projectEntry {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          width: 100%;
-          padding: 20px 84px 20px 20px;
-          border: 0;
-          background: transparent;
-          color: inherit;
-          font: inherit;
-          text-align: left;
-          cursor: pointer;
-
-          &:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: -2px; }
-          &:disabled { cursor: wait; opacity: 0.6; }
-
-          .projectIcon { flex-shrink: 0; color: var(--el-color-primary); }
-
-          .projectInfo {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            min-width: 0;
-
-            .projectName, .projectPath {
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-
-            .projectName { font-weight: 600; }
-            .projectPath { font-size: 13px; color: var(--el-text-color-regular); }
-            .projectTime { font-size: 12px; color: var(--el-text-color-secondary); }
-          }
-        }
-      }
-
-      .sectionHeader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 16px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--el-border-color-lighter);
-
-        h2 {
-          margin: 0;
-          font-size: 18px;
-          font-weight: 600;
-        }
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 24px;
+        .projectCard { min-width: 0; padding: 20px 24px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:hover, &:focus-within { border-color: var(--uiBorderControl); } .projectCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; .projectIcon { color: var(--uiTextMuted); } .projectActions { display: flex; gap: 4px; } } .projectEntry { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; margin: 0; padding: 0 0 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; &:disabled { cursor: wait; opacity: 0.6; } .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectName { font-size: var(--uiFontTitle); font-weight: 700; } .projectPath { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .projectTime { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); time { min-width: 0; overflow-wrap: anywhere; } } }
+        &.listView { grid-template-columns: 1fr; .projectCard { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 24px; .projectCardHeader { margin: 0; } .projectEntry { padding: 0; } .projectTime { max-width: 260px; padding: 0; border: 0; } } }
       }
     }
   }
-}
-
-@keyframes hintNudge {
-  0%, 100% { transform: translateX(0) rotate(-3deg); }
-  50% { transform: translateX(-6px) rotate(-5deg); }
+  @media (max-width: 1200px) { grid-template-columns: 176px minmax(0, 1fr); .homeSidebar { padding-inline: 12px; } .homeContent { padding-inline: 32px; .creationPanel { min-height: 480px; .heroArtwork { width: 62%; right: -20px; opacity: 0.65; } .creationContent { width: min(100%, 640px); } } } }
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); .homeSidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); .homeBrand { width: 140px; margin: 0; } .mainNavigation, .secondaryNavigation { flex-direction: row; gap: 4px; margin: 0; .navigationItem { width: auto; padding-inline: 8px; } } } .homeContent { padding: 24px 20px 40px; .creationPanel { min-height: 460px; .heroArtwork { width: 78%; opacity: 0.35; } } .projectList .projectItems.listView .projectCard { grid-template-columns: 1fr; gap: 14px; .projectTime { max-width: none; } } } }
 }
 </style>

@@ -1,20 +1,22 @@
 <template>
-  <el-dialog v-model="visible" title="画布节点搜索" width="min(480px, calc(100vw - 32px))" alignCenter appendToBody @opened="searchInput?.focus()">
+  <uiDialog v-model="visible" title="画布节点搜索" :width="560" @opened="nextTick(() => searchInput?.focus())">
     <div class="nodeSearch">
-      <el-input
+      <uiInput
         ref="searchInput"
         v-model="query"
-        :prefixIcon="IconSearch"
+        role="combobox"
+        aria-autocomplete="list"
+        :aria-expanded="visible"
         placeholder="搜索节点名称或类型"
         aria-label="搜索画布节点"
-        aria-controls="canvasSearchResults"
-        :aria-activedescendant="results[activeIndex] ? `canvasSearchResult-${activeIndex}` : undefined"
+        :aria-controls="searchId"
+        :aria-activedescendant="results[activeIndex] ? `${searchId}-${activeIndex}` : undefined"
         clearable
-        @keydown="navigateResults" />
-      <div id="canvasSearchResults" ref="resultList" class="resultList" role="listbox" aria-label="画布节点">
+        @keydown="navigateResults"><template #prefix><icon-search :size="18" /></template></uiInput>
+      <div :id="searchId" ref="resultList" class="resultList" role="listbox" aria-label="画布节点">
         <button
           v-for="(item, index) in results"
-          :id="`canvasSearchResult-${index}`"
+          :id="`${searchId}-${index}`"
           :key="item.node.id"
           class="nodeResult"
           type="button"
@@ -29,21 +31,22 @@
         <p v-if="!results.length" class="empty">没有匹配的节点</p>
       </div>
     </div>
-  </el-dialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, useId, watch } from "vue";
 import { useVueFlow } from "@vue-flow/core";
 import { IconSearch } from "@tabler/icons-vue";
-import type { InputInstance } from "element-plus";
+import { uiDialog, uiInput } from "@toonflow/ui";
 
 const props = defineProps<{ disabled?: boolean }>();
 const flow = useVueFlow();
 const visible = ref(false);
+const searchId = "canvasSearch-" + useId();
 const query = ref("");
 const activeIndex = ref(0);
-const searchInput = ref<InputInstance>();
+const searchInput = ref<InstanceType<typeof uiInput>>();
 const resultList = ref<HTMLElement>();
 const results = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase();
@@ -91,7 +94,7 @@ defineExpose({ open });
 .nodeSearch {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 
   .resultList {
     max-height: min(360px, 50vh);
@@ -101,22 +104,22 @@ defineExpose({ open });
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 16px;
       width: 100%;
-      padding: 10px 12px;
+      padding: 14px 12px;
       border: 0;
-      border-radius: var(--el-border-radius-base);
+      border-radius: var(--uiRadiusControl);
       background: transparent;
-      color: var(--el-text-color-primary);
+      color: var(--uiTextPrimary);
       font: inherit;
       text-align: left;
       cursor: pointer;
 
-      &[aria-selected="true"] { background: var(--el-color-primary-light-9); }
+      &[aria-selected="true"] { background: var(--uiActionSoft); }
       .nodeLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .nodeType { flex-shrink: 0; color: var(--el-text-color-secondary); font-size: 12px; }
+      .nodeType { flex-shrink: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); }
     }
-    .empty { margin: 24px 0; color: var(--el-text-color-secondary); text-align: center; }
+    .empty { margin: 24px 0; color: var(--uiTextMuted); text-align: center; }
   }
 }
 </style>

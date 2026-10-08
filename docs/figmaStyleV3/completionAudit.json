@@ -1,0 +1,181 @@
+{
+  "fileKey": "zJMnhlJ5Kvs4SIM6uG13d1",
+  "objective": "保留橙色吧，然后后面我们可以用绿色做备选，确保颜色可以随时更换，这个研发的时候再说，现在你要根据新版的页面结构，设计新版本的组件库，依然是不修改代码，把所有组件先设计到 figma，我要求不只是简单修改颜色，外观整体都要保持统一",
+  "status": "complete",
+  "scope": "Figma design/component-library stage only; application implementation is not included.",
+  "counts": {
+    "families": 149,
+    "variants": 653,
+    "inventoryStates": 82,
+    "renderedStates": 82,
+    "exportedPreviews": 82
+  },
+  "requirements": [
+    {
+      "id": "orangeDefault",
+      "status": "passed",
+      "evidence": "Theme collection VariableCollectionId:21:184 mode 38:0; editable page/board instances retain black/orange."
+    },
+    {
+      "id": "greenAlternative",
+      "status": "passed",
+      "evidence": "Mode 56:1 on same component instances; 35 semantic colors are primitive aliases. themeSwitch.png visually checked."
+    },
+    {
+      "id": "unifiedAppearance",
+      "status": "passed",
+      "evidence": "New primitive library, shared text/effect styles, 149 component families and new main-page instance references; 82 native state views inspected."
+    },
+    {
+      "id": "sourceCoverage",
+      "status": "passed",
+      "evidence": "componentCoverage.json contains all 82 original inventory IDs, actual node IDs and native structural verification."
+    },
+    {
+      "id": "editableLayers",
+      "status": "passed",
+      "evidence": "Native components/instances/text; no complete-page screenshot used as UI fill. Hero artwork and original logos are discrete content assets."
+    },
+    {
+      "id": "brandPreservation",
+      "status": "passed",
+      "evidence": "Original OmniStudio/漫象工坊 assets preserved; local copied brand asset hashes match supplied sources; brand source component unchanged."
+    },
+    {
+      "id": "noApplicationCode",
+      "status": "passed",
+      "evidence": "No Git diff under apps/ or packages/. No provider/config write, generation, installation or payment was executed."
+    },
+    {
+      "id": "disabledEntries",
+      "status": "passed",
+      "evidence": "Three source-disabled Agent/A2A templates remain isolated and marked sourceDisabled; no application toggles or permissions changed."
+    },
+    {
+      "id": "visualAndGeometryQA",
+      "status": "passed",
+      "evidence": "82 native readbacks, zero in-flow geometry issues with 2px tolerance and intentional scroll clips excluded, zero visible v2 references; per-state PNGs and contact review."
+    }
+  ],
+  "boundaries": [
+    "TF-Router authentication remains a hosted iframe; the Figma file includes its source-observed login preview and the styled host, not a reimplemented authentication service.",
+    "Payment QR content remains runtime order data; no valid payment QR was fabricated and no transaction was created.",
+    "Original V1/V2 archives and hidden backups were retained; zero visible v2 instances in delivered main/state views.",
+    "This is a Figma design delivery, not proof of implemented frontend behavior, HTTP persistence, keyboard automation or live model execution."
+  ],
+  "coveragePage": {
+    "id": "191:2446",
+    "name": "12 · 全量界面覆盖"
+  },
+  "coverageBoards": [
+    {
+      "group": "pages",
+      "id": "192:2446",
+      "name": "coverage/pages",
+      "width": 1800,
+      "height": 10146
+    },
+    {
+      "group": "settings",
+      "id": "192:17670",
+      "name": "coverage/settings",
+      "width": 1800,
+      "height": 8748
+    },
+    {
+      "group": "models",
+      "id": "192:19452",
+      "name": "coverage/models",
+      "width": 1800,
+      "height": 5184
+    },
+    {
+      "group": "plugins",
+      "id": "192:19927",
+      "name": "coverage/plugins",
+      "width": 1800,
+      "height": 7354
+    },
+    {
+      "group": "workspace",
+      "id": "192:20513",
+      "name": "coverage/workspace",
+      "width": 1800,
+      "height": 4172
+    },
+    {
+      "group": "nodes",
+      "id": "192:20938",
+      "name": "coverage/nodes",
+      "width": 1800,
+      "height": 7313
+    },
+    {
+      "group": "agent",
+      "id": "192:21575",
+      "name": "coverage/agent",
+      "width": 1800,
+      "height": 4066
+    },
+    {
+      "group": "conditional",
+      "id": "192:22525",
+      "name": "coverage/conditional",
+      "width": 1800,
+      "height": 5831
+    }
+  ],
+  "mainFrames": [
+    {
+      "id": "41:2",
+      "name": "首页"
+    },
+    {
+      "id": "45:132",
+      "name": "工作区"
+    },
+    {
+      "id": "45:1734",
+      "name": "设置"
+    }
+  ],
+  "additionalFrames": [
+    {
+      "id": "186:1093",
+      "name": "OmniStudio · 首页空项目"
+    },
+    {
+      "id": "186:1242",
+      "name": "OmniStudio · 项目列表"
+    },
+    {
+      "id": "186:1468",
+      "name": "OmniStudio · 文档空状态"
+    },
+    {
+      "id": "186:1667",
+      "name": "OmniStudio · 文档编辑"
+    },
+    {
+      "id": "186:1929",
+      "name": "OmniStudio · 浮动 Agent"
+    },
+    {
+      "id": "186:2340",
+      "name": "OmniStudio · 引导 / welcome"
+    },
+    {
+      "id": "186:2365",
+      "name": "OmniStudio · 引导 / custom"
+    },
+    {
+      "id": "186:2410",
+      "name": "OmniStudio · 引导 / login"
+    }
+  ],
+  "themeReview": {
+    "id": "162:14625"
+  },
+  "pendingRequiredWork": [],
+  "implementationAuthorized": false
+}

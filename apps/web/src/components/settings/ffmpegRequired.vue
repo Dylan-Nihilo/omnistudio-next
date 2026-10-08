@@ -1,15 +1,16 @@
 <template>
-  <el-dialog v-model="visible" title="FFmpeg" width="min(680px, calc(100vw - 32px))" alignCenter appendToBody destroyOnClose>
-    <el-alert class="installationHint" title="安装完成后，请重新发起刚才的操作。" type="info" :closable="false" showIcon />
+  <uiDialog v-model="visible" title="FFmpeg" :width="680" destroyOnClose>
+    <uiAlert class="installationHint" title="安装完成后，请重新发起刚才的操作。" />
     <ffmpeg v-if="visible" :downloadOnOpen="true" />
-  </el-dialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from "vue";
-import { ElMessageBox } from "element-plus";
+import { uiDialog, uiAlert, useUiFeedback } from "@toonflow/ui";
 import ffmpeg from "./panels/pluginMarket/ffmpeg.vue";
 
+const feedback = useUiFeedback();
 const visible = ref(false);
 let pending = false;
 const events = new EventSource("/api/ffmpeg/events");
@@ -20,7 +21,7 @@ events.onmessage = async event => {
   if (data?.type !== "required" || pending || visible.value) return;
   pending = true;
   try {
-    await ElMessageBox.confirm("当前操作需要 FFmpeg，但尚未检测到可用版本。是否下载并安装？", "需要 FFmpeg", {
+    await feedback.confirm("当前操作需要 FFmpeg，但尚未检测到可用版本。是否下载并安装？", "需要 FFmpeg", {
       confirmButtonText: "下载并安装", cancelButtonText: "暂不下载", closeOnClickModal: false,
     });
     if (events.readyState !== EventSource.CLOSED) visible.value = true;

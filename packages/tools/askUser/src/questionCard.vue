@@ -1,9 +1,9 @@
 <template>
-  <el-card class="questionCard" shadow="never" @keydown.stop @keyup.stop>
+  <section class="questionCard" aria-label="确认问题" @keydown.stop @keyup.stop>
     <div class="questionHeader">
       <icon-message-question :size="18" />
       <span class="questionTitle">{{ title }}</span>
-      <el-tag size="small" :type="answer && !skipped ? 'success' : 'info'">{{ statusText }}</el-tag>
+      <uiTag class="questionStatus" :tone="answer && !skipped ? 'success' : 'neutral'">{{ statusText }}</uiTag>
     </div>
     <template v-if="tool.status === 'error'">
       <p class="questionText">表单暂时未生成，请 AI 重新整理。</p>
@@ -14,71 +14,37 @@
     </template>
     <p v-else-if="question" class="questionText">{{ question }}</p>
     <template v-if="waiting">
-      <form-create v-if="formRules.length" v-model="formValues" v-model:api="formApi" :rule="formRules" :option="formOptions" />
+      <uiRuleForm v-if="formRules.length" v-model="formValues" v-model:api="formApi" :rule="formRules" :disabled="submitting" />
       <template v-else>
-        <el-radio-group v-if="options.length" v-model="selected" class="questionOptions" :disabled="submitting" :aria-label="question">
-          <el-radio v-for="option in options" :key="option" :value="option" border>{{ option }}</el-radio>
-          <el-radio value="" border>自行填写</el-radio>
-        </el-radio-group>
-        <el-input
+        <uiRadioGroup v-if="options.length" :modelValue="selected" :options="answerOptions" class="questionOptions" variant="bordered" :disabled="submitting" :aria-label="question" @update:modelValue="value => { if (typeof value === 'string') selected = value; }" />
+        <uiTextarea
           v-model="text"
-          type="textarea"
           :autosize="{ minRows: 2, maxRows: 6 }"
           :disabled="submitting"
           :maxlength="8000"
           :placeholder="options.length ? '也可以直接回答或补充说明' : '输入你的回答'"
           aria-label="回答问题" />
-        <el-text v-if="draftAnswer.length > 8000" type="danger">回答（含选项）不能超过 8000 字</el-text>
+        <p v-if="draftAnswer.length > 8000" class="answerError" role="alert">回答（含选项）不能超过 8000 字</p>
       </template>
       <div class="questionActions">
-        <el-button type="primary" :loading="submitting" :disabled="!directory || (formRules.length ? !formApi : !draftAnswer || draftAnswer.length > 8000)" @click="submitAnswer(false)">
+        <uiButton :loading="submitting" :disabled="!directory || (formRules.length ? !formApi : !draftAnswer || draftAnswer.length > 8000)" @click="submitAnswer(false)">
           提交回答
-        </el-button>
-        <el-button :disabled="!directory || submitting" @click="submitAnswer(true)">跳过</el-button>
+        </uiButton>
+        <uiButton variant="secondary" :disabled="!directory || submitting" @click="submitAnswer(true)">跳过</uiButton>
       </div>
     </template>
     <p v-else-if="answer" class="answerText">{{ answer }}</p>
-  </el-card>
+  </section>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import { computed, ref, shallowRef } from "vue";
 import axios from "axios";
-import formCreate, { type Api, type Options, type Rule } from "@form-create/element-ui";
-import {
-  ElCard, ElTag, ElButton, ElText,
-  ElMessage, ElForm, ElFormItem, ElRow, ElCol,
-  ElInput, ElInputNumber, ElSwitch, ElSelect,
-  ElOption, ElCheckbox, ElCheckboxGroup, ElRadio, ElRadioGroup,
-} from "element-plus";
-import "element-plus/es/components/base/style/css";
-import "element-plus/es/components/card/style/css";
-import "element-plus/es/components/tag/style/css";
-import "element-plus/es/components/button/style/css";
-import "element-plus/es/components/text/style/css";
-import "element-plus/es/components/form/style/css";
-import "element-plus/es/components/form-item/style/css";
-import "element-plus/es/components/row/style/css";
-import "element-plus/es/components/col/style/css";
-import "element-plus/es/components/input/style/css";
-import "element-plus/es/components/input-number/style/css";
-import "element-plus/es/components/switch/style/css";
-import "element-plus/es/components/select/style/css";
-import "element-plus/es/components/option/style/css";
-import "element-plus/es/components/checkbox/style/css";
-import "element-plus/es/components/checkbox-group/style/css";
-import "element-plus/es/components/radio/style/css";
-import "element-plus/es/components/radio-group/style/css";
+import { uiButton, uiRadioGroup, uiRuleForm, uiTag, uiTextarea, useUiFeedback, type UiFieldRule, type UiRuleFormApi } from "@toonflow/ui";
 import { IconMessageQuestion } from "@tabler/icons-vue";
 import type { ToolCall } from "@toonflow/tools-scaffold/runtime";
 
-for (const component of [
-  ElForm, ElFormItem, ElRow, ElCol, ElInput, ElInputNumber, ElSwitch,
-  ElSelect, ElOption, ElCheckbox, ElCheckboxGroup, ElRadio, ElRadioGroup,
-]) formCreate.component(component);
-</script>
-
-<script setup lang="ts">
+const feedback = useUiFeedback();
 const props = defineProps<{ tool: ToolCall; directory?: string }>();
 const title = computed(() => props.tool.question?.title || (typeof props.tool.args?.title === "string" ? props.tool.args.title.trim() : "") || "请确认");
 const selected = ref("");
@@ -86,13 +52,13 @@ const text = ref("");
 const submitting = ref(false);
 const submittedAnswer = ref("");
 const submittedSkipped = ref(false);
-const formApi = shallowRef<Api>();
+const formApi = shallowRef<UiRuleFormApi>();
 const formValues = ref<Record<string, unknown>>({});
-const formOptions = computed<Options>(() => ({ form: { labelPosition: "top", disabled: submitting.value }, submitBtn: false, resetBtn: false }));
-const formRules = computed<Rule[]>(() => (props.tool.question?.fields ?? []).map(field => ({
+const formRules = computed<UiFieldRule[]>(() => (props.tool.question?.fields ?? []).map(field => ({
   type: field.type === "textarea" ? "input" : field.type,
   field: field.field,
   title: field.title,
+  required: field.required,
   value: field.type === "checkbox" ? [] : field.type === "switch" ? false : field.type === "inputNumber" ? undefined : "",
   props: {
     placeholder: field.placeholder,
@@ -114,6 +80,7 @@ const options = computed(() => {
   const values = props.tool.question?.options ?? props.tool.args?.options;
   return Array.isArray(values) ? [...new Set(values.filter((value): value is string => typeof value === "string" && value.trim().length > 0))] : [];
 });
+const answerOptions = computed(() => [...options.value.map(value => ({ value, label: value })), { value: "", label: "自行填写" }]);
 const toolResult = computed(() => {
   if (props.tool.status !== "success" || !props.tool.result) return;
   try {
@@ -154,7 +121,7 @@ async function submitAnswer(skip: boolean) {
     submittedSkipped.value = response.data.data.skipped === true;
   } catch (error) {
     const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-    ElMessage.error(message || (error instanceof Error ? error.message : "提交回答失败"));
+    feedback.message({ tone: "error", message: message || (error instanceof Error ? error.message : "提交回答失败") });
   } finally {
     submitting.value = false;
   }
@@ -163,6 +130,11 @@ async function submitAnswer(skip: boolean) {
 
 <style scoped lang="scss">
 .questionCard {
+  padding: 16px;
+  border: 1px solid var(--uiBorderDefault);
+  border-radius: var(--uiRadiusControl);
+  background: var(--uiBackgroundSubtle);
+  .answerError { color: var(--uiStatusError); }
   .questionHeader {
     display: flex;
     align-items: center;
@@ -173,7 +145,7 @@ async function submitAnswer(skip: boolean) {
       overflow-wrap: anywhere;
     }
 
-    .el-tag {
+    .questionStatus {
       margin-left: auto;
       flex-shrink: 0;
     }
@@ -187,7 +159,7 @@ async function submitAnswer(skip: boolean) {
   }
 
   .errorDetails {
-    color: var(--el-text-color-secondary);
+    color: var(--uiTextMuted);
     font-size: 12px;
 
     summary {
@@ -198,7 +170,7 @@ async function submitAnswer(skip: boolean) {
       max-height: 240px;
       margin-bottom: 0;
       overflow: auto;
-      font-family: var(--el-font-family);
+      font-family: inherit;
     }
   }
 
@@ -209,17 +181,7 @@ async function submitAnswer(skip: boolean) {
     gap: 8px;
     margin-bottom: 12px;
 
-    .el-radio {
-      width: 100%;
-      height: auto;
-      margin: 0;
-      padding: 8px 12px;
-
-      :deep(.el-radio__label) {
-        white-space: normal;
-        overflow-wrap: anywhere;
-      }
-    }
+    :deep(.uiRadio) { width: 100%; margin: 0; padding: 8px 12px; .radioLabel { white-space: normal; overflow-wrap: anywhere; } }
   }
 
   .questionActions {
@@ -228,7 +190,7 @@ async function submitAnswer(skip: boolean) {
     gap: 12px;
     margin-top: 12px;
 
-    .el-button {
+    .uiButton {
       margin: 0;
     }
   }

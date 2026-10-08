@@ -1,59 +1,24 @@
 <template>
   <main class="hello" :class="{ configuring: view !== 'welcome' }">
     <section class="welcomePanel" aria-labelledby="welcomeTitle">
+      <a class="welcomeBrand" href="#/hello" aria-label="OmniStudio"><img :src="logoUrl" alt="OmniStudio" /></a>
       <div v-if="view !== 'welcome'" class="providerContent">
-        <header class="providerHeader">
-          <el-button text :icon="IconArrowLeft" :disabled="saving" @click="view = 'welcome'">返回</el-button>
-          <h1 id="welcomeTitle">{{ view === "login" ? "登录 TF-Router" : "配置语言模型" }}</h1>
-        </header>
-        <div v-if="view === 'login'" v-loading="saving" class="loginBody" element-loading-text="正在配置文本模型和媒体模型…">
-          <iframe ref="loginFrame" class="loginFrame" :src="loginUrl" title="TF-Router 登录与注册" />
-        </div>
-        <div v-else class="providerBody">
-          <languageModel />
-        </div>
-        <div v-if="view === 'login' && loginError" class="loginFeedback" role="status">
-          <el-alert :title="loginError" type="error" :closable="false" showIcon />
-          <el-button v-if="loginKey" type="primary" :loading="saving" @click="configureProviders">重试配置</el-button>
-        </div>
-        <el-button
-          v-else-if="view === 'custom'"
-          type="primary"
-          :loading="saving"
-          :disabled="!customProviders.some((provider) => provider.models.length)"
-          @click="completeSetup">
-          开始使用
-        </el-button>
+        <header class="providerHeader"><uiButton variant="ghost" :icon="IconArrowLeft" :disabled="saving" @click="view = 'welcome'">返回</uiButton><h1 id="welcomeTitle">{{ view === "login" ? "登录 TF-Router" : "配置语言模型" }}</h1></header>
+        <uiLoading v-if="view === 'login'" class="loginBody" :loading="saving" label="正在配置文本模型和媒体模型…"><iframe ref="loginFrame" class="loginFrame" :src="loginUrl" title="TF-Router 登录与注册" /></uiLoading>
+        <div v-else class="providerBody"><languageModel /></div>
+        <div v-if="view === 'login' && loginError" class="loginFeedback" role="status"><uiAlert :title="loginError" tone="error" /><uiButton v-if="loginKey" :loading="saving" @click="configureProviders">重试配置</uiButton></div>
+        <uiButton v-else-if="view === 'custom'" :loading="saving" :disabled="!customProviders.some(provider => provider.models.length)" @click="completeSetup">开始使用</uiButton>
       </div>
       <div v-else class="welcomeContent">
+        <span class="welcomeLabel">漫剧创作</span>
         <h1 id="welcomeTitle">快速开始</h1>
-        <p class="description">选择登录TF-Router可直接自动配置，无需任何复杂操作，即可开始创作。</p>
-
-        <el-button class="loginButton" type="primary" @click="openLogin">
-          <icon-login class="buttonIcon" />
-          登录 TF-Router 自动配置
-        </el-button>
-        <div class="secondaryActions">
-          <el-button class="secondaryButton" round @click="view = 'custom'">
-            <icon-key class="buttonIcon" />
-            添加私有提供商
-          </el-button>
-          <span class="separator">或</span>
-          <el-button class="secondaryButton" round :loading="saving" @click="completeSetup">稍后配置</el-button>
-        </div>
+        <p class="description">选择登录 TF-Router 可直接自动配置，无需复杂操作，即可开始创作。</p>
+        <uiButton class="loginButton" size="large" @click="openLogin"><icon-login :size="18" aria-hidden="true" />登录 TF-Router 自动配置</uiButton>
+        <div class="secondaryActions"><uiButton variant="secondary" @click="view = 'custom'"><icon-key :size="16" aria-hidden="true" />添加私有提供商</uiButton><span class="separator">或</span><uiButton variant="ghost" :loading="saving" @click="completeSetup">稍后配置</uiButton></div>
       </div>
-
-      <footer class="pageFooter">
-        <p>© {{ new Date().getFullYear() }} Toonflow · 保留所有权利。</p>
-      </footer>
+      <footer class="pageFooter"><p>© {{ new Date().getFullYear() }} Toonflow · 保留所有权利。</p></footer>
     </section>
-    <div class="artPanel" aria-hidden="true">
-      <bg class="artBg" />
-      <div class="artBrand">
-        <span class="artLogo" v-html="logoSvg" />
-        <span class="artName">Toonflow</span>
-      </div>
-    </div>
+    <aside class="artPanel" aria-hidden="true"><img class="artwork" :src="heroInk" alt="" /></aside>
   </main>
 </template>
 
@@ -61,7 +26,7 @@
 import axios from "axios";
 import { defineAsyncComponent, onMounted, onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { uiButton, uiAlert, uiLoading, useUiFeedback } from "@toonflow/ui";
 import { IconArrowLeft } from "@tabler/icons-vue";
 import tfRouter from "@toonflow/providers/language/tfRouter";
 import tfRouterSource from "@toonflow/providers/media/tfRouter?raw";
@@ -70,9 +35,10 @@ import { customProviders, saveSettings, type CustomProviderModel } from "@/store
 import type { MediaProvider } from "@/components/settings/panels/mediaModel/types";
 import { useHelloStore } from "@/stores/hello";
 import anonymousData from "@/lib/anonymousData";
-import logoSvg from "@toonflow/assets/logo.svg?raw";
-import bg from "./bg.vue";
+import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import heroInk from "@toonflow/assets/illustrations/heroInk.png";
 
+const feedback = useUiFeedback();
 const languageModel = defineAsyncComponent(() => import("@/components/settings/panels/languageModel/index.vue"));
 const view = ref<"welcome" | "login" | "custom">("welcome");
 const loginUrl = ref("https://api.toonflow.net/login?type=toonflow");
@@ -103,7 +69,7 @@ async function completeSetup() {
     anonymousData.track(view.value === "custom" ? "onboarding.complete" : "onboarding.skip");
     await router.replace("/home");
   } catch {
-    ElMessage.error("保存引导状态失败，请重试");
+    feedback.message({ tone: "error", message: "保存引导状态失败，请重试" });
   } finally {
     saving.value = false;
   }
@@ -121,7 +87,7 @@ function receiveLogin(event: MessageEvent) {
   if (data.msg !== "success") return;
   loginError.value = "";
   if (data.type === "register") {
-    ElMessage.success("注册成功，请继续登录以自动配置模型");
+    feedback.message({ tone: "success", message: "注册成功，请继续登录以自动配置模型" });
     return;
   }
   if (typeof data.key !== "string" || !data.key.trim() || data.key.length > 8192) {
@@ -191,7 +157,7 @@ async function configureProviders() {
     await hello.complete();
     anonymousData.track("onboarding.complete");
     loginKey.value = "";
-    ElMessage.success("文本模型和媒体模型已配置完成");
+    feedback.message({ tone: "success", message: "文本模型和媒体模型已配置完成" });
     await router.replace("/home");
   } catch (error) {
     if (!request.signal.aborted)
@@ -217,218 +183,24 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .hello {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 100svh;
-  padding: 8px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-
+  display: grid; grid-template-columns: minmax(420px, 0.95fr) minmax(0, 1.05fr); min-height: 100dvh; background: var(--uiBackgroundBase); color: var(--uiTextPrimary);
   .welcomePanel {
-    display: grid;
-    grid-template-rows: 1fr auto 1fr;
-    gap: 32px;
-    min-width: 0;
-    min-height: 544px;
-    padding: 48px clamp(24px, 4.4vw, 64px);
-
-    .providerContent {
-      grid-row: 1;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      gap: 24px;
-      min-width: 0;
-      min-height: 0;
-      overflow: hidden;
-
-      .providerHeader {
-        h1 {
-          margin: 16px 0 0;
-          font-size: 28px;
-          font-weight: 650;
-        }
-      }
-
-      .providerBody {
-        min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        padding: 2px;
-      }
-
-      .loginBody {
-        min-height: 0;
-        overflow-y: hidden;
-        overscroll-behavior: contain;
-        background-color: #fff;
-        border-radius: var(--ui-radius);
-        width: 500px;
-
-        .loginFrame {
-          display: block;
-          width: 100%;
-          height: 100%;
-          min-height: 640px;
-          border: 0;
-          background: transparent;
-        }
-      }
-
-      .loginFeedback {
-        display: grid;
-        gap: 12px;
-      }
-    }
-
+    display: flex; flex-direction: column; min-width: 0; min-height: 720px; gap: 32px; padding: 28px clamp(32px, 4.4vw, 72px) 32px; border-right: 1px solid var(--uiBorderDefault);
+    .welcomeBrand { display: block; width: 196px; max-width: 100%; img { display: block; width: 100%; height: auto; border-radius: 8px; background: #101010; } }
     .welcomeContent {
-      grid-row: 2;
-      width: 100%;
-      max-width: 420px;
-      text-align: center;
-
-      h1 {
-        margin: 0 0 12px;
-        font-size: clamp(32px, 3.4vw, 40px);
-        font-weight: 650;
-        line-height: 1.35;
-        letter-spacing: -0.8px;
-      }
-
-      .description {
-        margin: 0 0 32px;
-        color: var(--el-text-color-secondary);
-        font-size: 14px;
-        line-height: 1.8;
-      }
-
-      .buttonIcon {
-        width: 18px;
-        height: 18px;
-        margin-right: 8px;
-      }
-
-      .loginButton {
-        width: 100%;
-        height: 50px;
-        border-radius: calc(var(--ui-radius) * 1.625);
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .secondaryActions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 20px;
-
-        .separator {
-          color: var(--el-text-color-secondary);
-          font-size: 13px;
-        }
-
-        .secondaryButton {
-          height: 36px;
-          margin: 0;
-          padding: 0 16px;
-          font-size: 13px;
-        }
-      }
+      width: 100%; max-width: 460px; margin: auto 0;
+      .welcomeLabel { display: inline-flex; min-height: 28px; align-items: center; padding: 4px 12px; margin-bottom: 28px; transform: rotate(-2deg); border-radius: 2px; color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font-size: var(--uiFontControl); font-weight: 600; }
+      h1 { margin: 0 0 20px; font-size: clamp(36px, 3.8vw, 48px); line-height: 1.2; font-weight: 900; letter-spacing: -1px; }
+      .description { max-width: 40ch; margin: 0 0 32px; color: var(--uiTextBody); font-size: var(--uiFontBody); line-height: 1.8; }
+      .loginButton { width: 100%; min-height: 48px; :deep(.buttonLabel) { display: flex; align-items: center; justify-content: center; gap: 10px; } }
+      .secondaryActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; :deep(.buttonLabel) { display: flex; align-items: center; gap: 8px; } .separator { color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
     }
-
-    .pageFooter {
-      grid-row: 3;
-      align-self: end;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-
-      p {
-        margin: 10px 0 0;
-        line-height: 1.6;
-      }
-    }
+    .pageFooter { color: var(--uiTextMuted); font-size: var(--uiFontControl); p { margin: 0; line-height: 1.6; } }
+    .providerContent { display: flex; flex-direction: column; gap: 24px; flex: 1; min-height: 0; .providerHeader { h1 { margin: 20px 0 0; font-size: var(--uiFontHeading); font-weight: 700; } } .providerBody { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 2px; } .loginBody { flex: 1; min-width: 0; overflow: auto; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: #fff; :deep(> div:first-child) { height: 100%; } .loginFrame { display: block; width: 100%; height: 100%; min-height: 640px; border: 0; background: #fff; } } .loginFeedback { display: flex; flex-direction: column; gap: 12px; } }
   }
-
-  &.configuring {
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-
-    .welcomePanel {
-      grid-template-rows: minmax(0, 1fr) auto;
-      gap: 24px;
-      min-height: 0;
-
-      .pageFooter {
-        grid-row: 2;
-      }
-    }
-  }
-
-  .artPanel {
-    position: relative;
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 28px;
-    border-radius: calc(var(--ui-radius) * 1.125);
-    overflow: hidden;
-    background: radial-gradient(ellipse at 76% 82%, #f3dcb1 0%, transparent 46%), radial-gradient(ellipse at 25% 52%, #667ab5 0%, transparent 52%),
-      radial-gradient(ellipse at 90% 18%, #369889 0%, transparent 48%), linear-gradient(145deg, #123f38, #467f72 48%, #a8c9ad);
-
-    .artBg {
-      z-index: 0;
-    }
-
-    .artBrand {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #fff;
-
-      .artLogo {
-        width: 44px;
-        height: 44px;
-        line-height: 0;
-
-        :deep(svg) {
-          display: block;
-          width: 100%;
-          height: 100%;
-        }
-
-        :deep(path) {
-          fill: #fff;
-        }
-      }
-
-      .artName {
-        font-size: 30px;
-        font-weight: 600;
-        letter-spacing: 0.4px;
-      }
-    }
-  }
-
-  @media (max-width: 700px) {
-    grid-template-columns: 1fr;
-
-    .welcomePanel {
-      padding: 32px 20px;
-
-      .welcomeContent {
-        justify-self: center;
-      }
-    }
-
-    .artPanel {
-      display: none;
-    }
-  }
+  .artPanel { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 28px; background: #101010; overflow: hidden; .artwork { display: block; width: 100%; height: auto; object-fit: contain; aspect-ratio: 3 / 2; } }
+  &.configuring { height: 100dvh; overflow: hidden; .welcomePanel { min-height: 0; gap: 24px; .welcomeBrand { width: 168px; } } }
+  @media (max-width: 1100px) { grid-template-columns: minmax(420px, 1.1fr) minmax(0, 0.9fr); .welcomePanel { padding-inline: 32px; } .artPanel { padding: 12px; } }
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); .welcomePanel { min-height: 100dvh; padding: 24px 20px; border: 0; .welcomeContent { margin: auto; } } .artPanel { display: none; } }
 }
 </style>

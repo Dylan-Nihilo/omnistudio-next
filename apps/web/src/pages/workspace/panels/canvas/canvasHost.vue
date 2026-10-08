@@ -164,6 +164,8 @@ defineExpose({ canvasId, canvasReady, getCanvasContext, readDocumentNode, saveDo
 
 <style scoped lang="scss">
 .canvasHost {
+  // Canvas bounds already exclude the docked Agent, including for legacy plugins.
+  --agentWidth: 0px;
   position: relative;
   width: 100%;
   height: 100%;

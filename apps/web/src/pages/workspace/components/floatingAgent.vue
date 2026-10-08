@@ -1,5 +1,5 @@
 <template>
-  <teleport to="body">
+  <teleport to="body"><uiThemeProvider :mode="uiSettings.theme" :primaryColor="uiSettings.primaryColor" :radius="uiSettings.radius" :fontScale="100">
     <aside
       v-show="visible"
       id="agentPanel"
@@ -28,37 +28,33 @@
         @keydown="resizeWithKeyboard($event, handle.edge)" />
       <agent v-model="visible">
         <template #menuActions>
-          <el-button
-            text
-            circle
-            :aria-label="docked ? '切换为悬浮' : '停靠到右侧'"
-            :title="docked ? '切换为悬浮' : '停靠到右侧'"
-            @click="docked = !docked">
-            <icon-app-window-bottom-right v-if="docked" :size="17" aria-hidden="true" />
-            <icon-layout-sidebar-right v-else :size="17" aria-hidden="true" />
-          </el-button>
+          <uiIconButton variant="ghost" :icon="docked ? IconAppWindowBottomRight : IconLayoutSidebarRight" :label="docked ? '切换为悬浮' : '停靠到右侧'" :title="docked ? '切换为悬浮' : '停靠到右侧'" @click="docked = !docked" />
         </template>
       </agent>
     </aside>
-  </teleport>
+  </uiThemeProvider></teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from "vue";
 import { IconLayoutSidebarRight, IconAppWindowBottomRight } from "@tabler/icons-vue";
 import agent from "@/components/agent/index.vue";
+import { uiThemeProvider, uiIconButton } from "@toonflow/ui";
+import { uiSettings } from "@/stores/settings";
 
+const { topOffset = 0 } = defineProps<{ topOffset?: number }>();
 const visible = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ resize: [width: number] }>();
 const docked = ref(false);
 const viewport = reactive({ width: window.innerWidth, height: window.innerHeight });
-const gap = computed(() => Math.min(15, viewport.width / 2, viewport.height / 2));
-const maxWidth = computed(() => Math.max(0, viewport.width - (docked.value ? 0 : gap.value * 2)));
+const availableHeight = computed(() => Math.max(0, viewport.height - topOffset));
+const gap = computed(() => Math.min(15, viewport.width / 2, availableHeight.value / 2));
+const maxWidth = computed(() => Math.max(0, viewport.width - (docked.value ? Math.min(320, viewport.width / 2) : gap.value * 2)));
 const preferredWidth = ref(420);
 const width = computed(() => Math.min(preferredWidth.value, maxWidth.value));
 const preferredHeight = ref<number>();
 const height = computed(() =>
-  docked.value ? viewport.height : Math.min(preferredHeight.value ?? viewport.height * 0.8, viewport.height - gap.value * 2)
+  docked.value ? availableHeight.value : Math.min(preferredHeight.value ?? availableHeight.value * 0.8, availableHeight.value - gap.value * 2)
 );
 const resizeHandles = computed(
   () =>
@@ -76,7 +72,7 @@ const left = ref(viewport.width - width.value - gap.value);
 const top = ref(viewport.height - height.value - gap.value);
 const panelStyle = computed(() => ({
   left: `${docked.value ? viewport.width - width.value : left.value}px`,
-  top: `${docked.value ? 0 : top.value}px`,
+  top: `${docked.value ? topOffset : top.value}px`,
   width: `${width.value}px`,
   height: `${height.value}px`,
 }));
@@ -96,7 +92,7 @@ type ResizeEdge = "left" | "right" | "bottom";
 
 function movePanel(x: number, y: number) {
   left.value = Math.max(gap.value, Math.min(x, viewport.width - gap.value - width.value));
-  top.value = Math.max(gap.value, Math.min(y, viewport.height - gap.value - height.value));
+  top.value = Math.max(topOffset + gap.value, Math.min(y, viewport.height - gap.value - height.value));
 }
 
 function resizeAnchor(edge: ResizeEdge) {
@@ -176,7 +172,7 @@ function resizeViewport() {
 
 watch([visible, docked], () => stopInteraction());
 watch(
-  [width, height, () => viewport.width, () => viewport.height, docked],
+  [width, height, () => viewport.width, () => viewport.height, docked, () => topOffset],
   () => {
     if (!docked.value) movePanel(left.value, top.value);
   },
@@ -197,20 +193,19 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .floatingAgent {
   position: fixed;
-  z-index: 1001;
+  z-index: var(--uiLayerDropdown);
   box-sizing: border-box;
   max-width: 100vw;
   max-height: 100dvh;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: var(--ui-radius-large, 12px);
-  background: color-mix(in srgb, var(--el-bg-color-overlay) 70%, transparent);
-  backdrop-filter: blur(6px);
-  box-shadow: var(--el-box-shadow-light);
+  border: 1px solid var(--uiBorderControl);
+  border-radius: var(--uiRadiusDialog);
+  background: var(--uiSurfaceRaised);
+  box-shadow: var(--uiShadowDialog);
 
   &.docked {
     border-width: 0 0 0 1px;
     border-radius: 0;
-    background: var(--el-bg-color-overlay);
+    background: var(--uiSurfaceRaised);
     box-shadow: none;
   }
 
@@ -258,7 +253,7 @@ onBeforeUnmount(() => {
 
     &:hover,
     &:focus-visible {
-      background: var(--el-color-primary-light-5);
+      background: var(--uiActionSoft);
     }
   }
 }

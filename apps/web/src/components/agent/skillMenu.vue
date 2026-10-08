@@ -1,8 +1,9 @@
 <template>
-  <div v-click-outside:[editor]="closeMenu" class="skillMenu" @keydown.capture="handleKeydown">
-    <el-button class="skillButton" text circle :disabled="disabled" :aria-expanded="visible" :aria-controls="listId" aria-label="选择技能" title="选择技能" @click="visible ? closeMenu() : buttonVisible = true"><icon-book :size="15" /></el-button>
-    <el-card v-if="visible" class="skillPopup" shadow="always" :bodyStyle="{ padding: '6px' }">
-      <el-scrollbar maxHeight="260px">
+  <div class="skillMenu" @keydown.capture="handleKeydown">
+    <uiPopover :visible="visible" trigger="manual" :anchor="editor?.closest<HTMLElement>('.messageInput') ?? editor" placement="top-start" matchWidth role="listbox" aria-label="技能指令" @update:visible="value => { if (!value) closeMenu(); }">
+    <template #reference><uiButton class="skillButton" variant="ghost" :disabled="disabled" :aria-expanded="visible" :aria-controls="listId" aria-label="选择技能" title="选择技能" @click="visible ? closeMenu() : buttonVisible = true"><icon-book :size="15" /></uiButton></template>
+    <div v-if="visible" class="skillPopup">
+      <div class="skillScroll">
         <div :id="listId" role="listbox" aria-label="技能指令" :aria-busy="loading">
           <div v-if="loading || loadError || !filteredSkills.length" class="skillStatus" role="status">{{ loading ? "正在加载技能…" : loadError || (skills.length ? "没有匹配的技能" : "暂无可用技能") }}</div>
           <button v-for="(skill, index) in filteredSkills" v-else :id="`${listId}-${index}`" :key="skill.name" class="skillItem" :class="{ active: index === activeIndex }" type="button" role="option" :aria-selected="index === activeIndex" @mouseenter="activeIndex = index" @mousedown.prevent @click="selectSkill(skill.name)">
@@ -10,8 +11,9 @@
             <span class="skillDescription">{{ skill.description }}</span>
           </button>
         </div>
-      </el-scrollbar>
-    </el-card>
+      </div>
+    </div>
+    </uiPopover>
   </div>
 </template>
 
@@ -19,7 +21,7 @@
 import { computed, nextTick, ref, useId, watch } from "vue";
 import axios from "axios";
 import { IconBook } from "@tabler/icons-vue";
-import { ClickOutside as vClickOutside } from "element-plus";
+import { uiButton, uiPopover } from "@toonflow/ui";
 
 const props = defineProps<{ directory?: string; active: boolean; disabled: boolean; query?: string; editor?: HTMLElement }>();
 const emit = defineEmits<{ select: [name: string]; dismiss: [] }>();
@@ -63,6 +65,7 @@ watch(filteredSkills, () => { activeIndex.value = 0; });
 watch([visible, activeIndex, filteredSkills, loading, loadError], async () => {
   await nextTick();
   const editor = props.editor?.querySelector('[role="textbox"]');
+  if (!visible.value && editor?.getAttribute("aria-controls") !== listId) return;
   editor?.setAttribute("aria-haspopup", "listbox");
   editor?.setAttribute("aria-expanded", String(visible.value));
   editor?.setAttribute("aria-controls", listId);
@@ -107,15 +110,12 @@ defineExpose({ handleKeydown });
   }
 
   .skillPopup {
-    position: absolute;
-    z-index: 20;
-    right: 0;
-    bottom: calc(100% + 8px);
-    left: 0;
+    min-width: 0;
+    .skillScroll { max-height: 260px; overflow: auto; overscroll-behavior: contain; }
 
     .skillStatus {
       padding: 12px;
-      color: var(--el-text-color-secondary);
+      color: var(--uiTextMuted);
     }
 
     .skillItem {
@@ -125,16 +125,16 @@ defineExpose({ handleKeydown });
       width: 100%;
       padding: 8px;
       border: none;
-      border-radius: var(--el-border-radius-base);
+      border-radius: var(--uiRadiusControl);
       background: transparent;
-      color: var(--el-text-color-primary);
+      color: var(--uiTextPrimary);
       font: inherit;
       text-align: left;
       overflow-wrap: anywhere;
       cursor: pointer;
 
       &.active, &:focus-visible {
-        background: var(--el-fill-color-light);
+        background: var(--uiBackgroundSubtle);
       }
 
       .skillName {
@@ -144,7 +144,7 @@ defineExpose({ handleKeydown });
       }
 
       .skillDescription {
-        color: var(--el-text-color-secondary);
+        color: var(--uiTextMuted);
         font-size: 12px;
       }
     }

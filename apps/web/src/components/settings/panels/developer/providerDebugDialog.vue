@@ -1,124 +1,56 @@
 <template>
-  <el-dialog v-model="visible" title="供应商开发工具" :width="provider ? 'min(1120px, calc(100vw - 32px))' : 'min(560px, calc(100vw - 32px))'" alignCenter appendToBody destroyOnClose :closeOnClickModal="false" @closed="reset">
-    <div class="providerDebug" :class="{ hasProvider: !!provider }">
-      <div class="sourceBar">
-        <div class="sourceInfo">
-          <el-text tag="strong">{{ fileName || '选择本地供应商文件' }}</el-text>
-          <el-text size="small" type="info">每次运行自动读取文件最新内容{{ modifiedAt ? ` · ${modifiedAt}` : '' }}</el-text>
-        </div>
-        <el-button v-if="fileName" :icon="IconRefresh" :loading="action === 'refresh'" :disabled="busy" @click="refreshFile">执行并加载配置</el-button>
-        <el-button :icon="IconFolderOpen" :loading="action === 'select'" :disabled="busy" @click="selectFile">选择文件</el-button>
-      </div>
-      <div v-if="provider" class="debugBody">
-        <section class="parameters" aria-label="调试参数">
-          <h3>{{ provider.label }}</h3>
-          <form-create v-model="config" v-model:api="formApi" :rule="formRules" :option="formOptions" />
-          <el-form labelPosition="top" :disabled="busy">
-            <el-form-item label="模型">
-              <el-select v-model="modelId" placeholder="选择模型" aria-label="调试模型">
-                <el-option v-for="model in provider.models" :key="model.id" :label="model.label" :value="model.id" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="提示词">
-              <el-input v-model="prompt" type="textarea" :rows="4" resize="vertical" aria-label="调试提示词" />
-            </el-form-item>
-            <el-form-item label="参考素材">
-              <div class="references">
-                <div v-for="(item, index) in references" :key="item.url" class="referenceItem">
-                  <el-image v-if="item.file.type.startsWith('image/')" :src="item.url" fit="cover" :previewSrcList="[item.url]" previewTeleported />
-                  <video v-else-if="item.file.type.startsWith('video/')" :src="item.url" muted preload="metadata" />
-                  <icon-volume v-else :size="22" aria-hidden="true" />
-                  <el-button class="removeReference" circle size="small" :icon="IconX" :disabled="busy" :aria-label="`移除 ${item.file.name}`" @click="removeReference(index)" />
-                  <el-select v-if="activeModel?.type === 'video' && item.file.type.startsWith('image/')" v-model="item.role" size="small" aria-label="参考图用途">
-                    <el-option label="参考图" value="images" /><el-option label="首帧" value="firstFrame" /><el-option label="尾帧" value="lastFrame" />
-                  </el-select>
-                </div>
-                <el-button class="addReference" :icon="IconPlus" :disabled="busy" aria-label="添加参考素材" @click="referenceInput?.click()" />
-                <input ref="referenceInput" type="file" multiple :accept="activeModel?.type === 'image' ? 'image/*' : activeModel?.type === 'audio' ? 'audio/*' : 'image/*,video/*,audio/*'" hidden @change="addReferences" />
+  <component :is="useOwnRules ? uiDialog : ElDialog" v-model="visible" title="供应商开发工具" :width="provider ? 1120 : 600" alignCenter appendToBody destroyOnClose :closeOnClickModal="false" :closeOnPressEscape="action !== 'install'" :showClose="action !== 'install'" @closed="reset">
+    <uiThemeProvider :mode="uiSettings.theme" :primaryColor="uiSettings.primaryColor" :radius="uiSettings.radius" :fontScale="100">
+      <div class="providerDebug" :class="{ hasProvider: !!provider }">
+        <header class="sourceBar"><div class="sourceInfo"><strong>{{ fileName || '选择本地供应商文件' }}</strong><span>每次运行自动读取文件最新内容{{ modifiedAt ? ` · ${modifiedAt}` : '' }}</span></div><div class="sourceActions"><uiButton v-if="fileName" variant="secondary" size="small" :icon="IconRefresh" :loading="action === 'refresh'" :disabled="busy" @click="refreshFile">执行并加载配置</uiButton><uiButton variant="secondary" size="small" :icon="IconFolderOpen" :loading="action === 'select'" :disabled="busy" @click="selectFile">选择文件</uiButton></div></header>
+        <div v-if="provider" class="debugBody">
+          <section class="parameters" aria-label="调试参数">
+            <h3>{{ provider.label }}</h3>
+            <uiRuleForm v-if="supportsUiRules(formRules)" v-model="config" :rule="formRules" :disabled="busy" @update:api="value => formApi = value" /><form-create v-else v-model="config" v-model:api="formApi" :rule="formRules" :option="formOptions" />
+            <div class="parameterForm">
+              <uiField label="模型"><uiSelect :modelValue="modelId" :options="provider.models.map(model => ({ value: model.id, label: model.label }))" :disabled="busy" placeholder="选择模型" aria-label="调试模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></uiField>
+              <uiField label="提示词"><uiTextarea v-model="prompt" :rows="4" resize="vertical" :disabled="busy" aria-label="调试提示词" /></uiField>
+              <uiField label="参考素材"><div class="references">
+                <div v-for="(item, index) in references" :key="item.url" class="referenceItem"><uiImage v-if="item.file.type.startsWith('image/')" :src="item.url" :alt="item.file.name" fit="cover" :previewSrcList="[item.url]" /><video v-else-if="item.file.type.startsWith('video/')" :src="item.url" muted preload="metadata" /><icon-volume v-else :size="22" aria-hidden="true" /><uiIconButton class="removeReference" variant="danger" size="small" :icon="IconX" :disabled="busy" :label="`移除 ${item.file.name}`" @click="removeReference(index)" /><uiSelect v-if="activeModel?.type === 'video' && item.file.type.startsWith('image/')" :modelValue="item.role" :options="referenceRoles" size="small" :disabled="busy" aria-label="参考图用途" @update:modelValue="value => typeof value === 'string' && (references = references.map((reference, itemIndex) => itemIndex === index ? { ...reference, role: value } : reference))" /></div>
+                <uiIconButton class="addReference" variant="secondary" :icon="IconPlus" :disabled="busy" label="添加参考素材" @click="referenceInput?.click()" /><input ref="referenceInput" type="file" multiple :accept="activeModel?.type === 'image' ? 'image/*' : activeModel?.type === 'audio' ? 'audio/*' : 'image/*,video/*,audio/*'" hidden @change="addReferences" />
+              </div></uiField>
+              <div class="parameterGrid">
+                <uiField v-if="activeModel?.type !== 'audio'" label="比例"><uiSelect :modelValue="ratio" :options="(activeModel?.imageRatios ?? ['1:1', '16:9', '9:16']).map(value => ({ value, label: value }))" clearable filterable allowCreate :disabled="busy" aria-label="画面比例" @update:modelValue="value => ratio = typeof value === 'string' ? value : ''" /></uiField>
+                <uiField v-if="activeModel?.type === 'image'" label="尺寸"><uiSelect :modelValue="size" :options="(activeModel.imageSizes ?? ['1K', '2K', '4K']).map(value => ({ value, label: value }))" clearable filterable allowCreate :disabled="busy" aria-label="图片尺寸" @update:modelValue="value => size = typeof value === 'string' ? value : ''" /></uiField>
+                <uiField v-if="activeModel?.type === 'video'" label="分辨率"><uiSelect :modelValue="resolution" :options="resolutions.map(value => ({ value, label: value }))" clearable filterable allowCreate :disabled="busy" aria-label="视频分辨率" @update:modelValue="value => resolution = typeof value === 'string' ? value : ''" /></uiField>
+                <uiField v-if="activeModel?.type === 'video'" label="时长（秒）"><uiNumberInput v-model="duration" :min="1" :precision="0" :disabled="busy" aria-label="视频时长" /></uiField>
+                <uiField v-if="activeModel?.type === 'video'" label="生成音频"><uiSwitch v-model="generateAudio" :disabled="busy" aria-label="生成音频" /></uiField>
+                <uiField v-if="activeModel?.type === 'audio'" label="音色"><uiSelect :modelValue="voice" :options="(activeModel.voices ?? []).map(item => ({ value: item.voice, label: item.title }))" clearable filterable allowCreate :disabled="busy" aria-label="音色" @update:modelValue="value => voice = typeof value === 'string' ? value : ''" /></uiField>
               </div>
-            </el-form-item>
-            <div class="parameterGrid">
-              <el-form-item v-if="activeModel?.type !== 'audio'" label="比例">
-                <el-select v-model="ratio" clearable filterable allowCreate defaultFirstOption aria-label="画面比例">
-                  <el-option v-for="item in activeModel?.imageRatios ?? ['1:1', '16:9', '9:16']" :key="item" :label="item" :value="item" />
-                </el-select>
-              </el-form-item>
-              <el-form-item v-if="activeModel?.type === 'image'" label="尺寸">
-                <el-select v-model="size" clearable filterable allowCreate defaultFirstOption aria-label="图片尺寸">
-                  <el-option v-for="item in activeModel.imageSizes ?? ['1K', '2K', '4K']" :key="item" :label="item" :value="item" />
-                </el-select>
-              </el-form-item>
-              <el-form-item v-if="activeModel?.type === 'video'" label="分辨率">
-                <el-select v-model="resolution" clearable filterable allowCreate defaultFirstOption aria-label="视频分辨率">
-                  <el-option v-for="item in resolutions" :key="item" :label="item" :value="item" />
-                </el-select>
-              </el-form-item>
-              <el-form-item v-if="activeModel?.type === 'video'" label="时长（秒）">
-                <el-input-number v-model="duration" :min="1" :precision="0" controlsPosition="right" aria-label="视频时长" />
-              </el-form-item>
-              <el-form-item v-if="activeModel?.type === 'video'" label="生成音频">
-                <el-switch v-model="generateAudio" aria-label="生成音频" />
-              </el-form-item>
-              <el-form-item v-if="activeModel?.type === 'audio'" label="音色">
-                <el-select v-model="voice" clearable filterable allowCreate defaultFirstOption aria-label="音色">
-                  <el-option v-for="item in activeModel.voices ?? []" :key="item.voice" :label="item.title" :value="item.voice" />
-                </el-select>
-              </el-form-item>
+              <details class="extraParameters"><summary>更多请求参数</summary><uiTextarea v-model="extraParameters" :rows="4" :disabled="busy" aria-label="更多请求参数 JSON" placeholder="JSON 对象，可填写 mode、quality、other 等字段" /></details>
             </div>
-            <el-collapse>
-              <el-collapse-item title="更多请求参数" name="request">
-                <el-input v-model="extraParameters" type="textarea" :rows="4" aria-label="更多请求参数 JSON" placeholder="JSON 对象，可填写 mode、quality、other 等字段" />
-              </el-collapse-item>
-            </el-collapse>
-          </el-form>
-        </section>
-        <section class="output" aria-label="调试结果">
-          <el-tabs v-model="activeTab" class="resultTabs">
-            <el-tab-pane label="结果预览" name="preview">
-              <div class="mediaPreview">
-                <template v-for="asset in assets" :key="asset.url">
-                  <el-image v-if="asset.type === 'image'" :src="asset.url" fit="contain" :previewSrcList="imagePreviews" previewTeleported />
-                  <video v-else-if="asset.type === 'video'" :src="asset.url" controls preload="metadata" />
-                  <audio v-else :src="asset.url" controls preload="metadata" />
-                </template>
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="响应数据" name="response"><pre v-if="responseText">{{ responseText }}</pre></el-tab-pane>
-            <el-tab-pane :label="`请求日志${logs.length ? ` (${logs.length})` : ''}`" name="logs">
-              <el-collapse>
-                <el-collapse-item v-for="log in logs" :key="log.id" :name="log.id">
-                  <template #title>
-                    <div class="logTitle"><el-tag size="small" :type="log.state === 'error' ? 'danger' : log.state === 'success' ? 'success' : 'info'">{{ log.status || log.method }}</el-tag><span>{{ log.url }}</span><small v-if="log.duration !== undefined">{{ log.duration }} ms</small></div>
-                  </template>
-                  <pre>{{ log.method }} {{ log.url }}
+          </section>
+          <section class="output" aria-label="调试结果">
+            <uiTabs :modelValue="activeTab" :options="resultTabs" label="调试结果视图" @update:modelValue="value => typeof value === 'string' && (activeTab = value)" />
+            <div class="resultContent">
+              <div v-if="activeTab === 'preview'" class="mediaPreview"><template v-for="asset in assets" :key="asset.url"><uiImage v-if="asset.type === 'image'" :src="asset.url" alt="调试生成图片" fit="contain" :previewSrcList="imagePreviews" /><video v-else-if="asset.type === 'video'" :src="asset.url" controls preload="metadata" /><audio v-else :src="asset.url" controls preload="metadata" /></template></div>
+              <pre v-else-if="activeTab === 'response' && responseText">{{ responseText }}</pre>
+              <div v-else-if="activeTab === 'logs'" class="requestLogs"><details v-for="log in logs" :key="log.id"><summary><uiTag :tone="log.state === 'error' ? 'error' : log.state === 'success' ? 'success' : 'neutral'">{{ log.status || log.method }}</uiTag><span :title="log.url">{{ log.url }}</span><small v-if="log.duration !== undefined">{{ log.duration }} ms</small></summary><pre>{{ log.method }} {{ log.url }}
 {{ log.request }}
-{{ log.response || log.error }}</pre>
-                </el-collapse-item>
-              </el-collapse>
-            </el-tab-pane>
-          </el-tabs>
-        </section>
-      </div>
-      <el-alert v-if="errorMessage" :title="errorMessage" type="error" :closable="false" showIcon />
-    </div>
-    <template v-if="provider" #footer>
-      <div class="debugFooter">
-        <el-text size="small" :type="status === '成功' ? 'success' : status === '失败' ? 'danger' : 'info'" role="status">{{ status }}{{ elapsed ? ` · ${(elapsed / 1000).toFixed(1)} 秒` : '' }}</el-text>
-        <div>
-          <el-button :icon="IconDownload" :disabled="busy || !source" :loading="action === 'install'" @click="install">安装供应商</el-button>
-          <el-button v-if="action === 'run'" type="danger" :icon="IconPlayerStop" @click="stop">停止</el-button>
-          <el-button v-else type="primary" :icon="IconPlayerPlay" :disabled="busy || !fileName" @click="run">运行</el-button>
+{{ log.response || log.error }}</pre></details></div>
+            </div>
+          </section>
         </div>
+        <uiAlert v-if="errorMessage" :title="errorMessage" tone="error" />
       </div>
-    </template>
-  </el-dialog>
+    </uiThemeProvider>
+    <template v-if="provider" #footer><div class="debugFooter"><span class="debugStatus" :class="{ isSuccess: status === '成功', isError: status === '失败' }" role="status">{{ status }}{{ elapsed ? ` · ${(elapsed / 1000).toFixed(1)} 秒` : '' }}</span><div class="footerActions"><uiButton variant="secondary" :icon="IconDownload" :disabled="busy || !source" :loading="action === 'install'" @click="install">安装供应商</uiButton><uiButton v-if="action === 'run'" variant="danger" :icon="IconPlayerStop" @click="stop">停止</uiButton><uiButton v-else :icon="IconPlayerPlay" :disabled="busy || !fileName" @click="run">运行</uiButton></div></div></template>
+  </component>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import axios from "axios";
 import formCreate, { type Api, type Options, type Rule } from "../../formCreate";
-import { ElMessage } from "element-plus";
+import { ElDialog } from "element-plus";
+import { uiDialog, uiThemeProvider, uiRuleForm, uiField, uiSelect, uiTextarea, uiNumberInput, uiSwitch, uiImage, uiButton, uiIconButton, uiTabs, uiTag, uiAlert, useUiFeedback, type UiRuleFormApi } from "@toonflow/ui";
+import { supportsUiRules } from "../../ruleSupport";
+import { uiSettings } from "@/stores/settings";
 import { IconFolderOpen, IconRefresh, IconPlus, IconX, IconVolume, IconDownload, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-vue";
 import type { Provider } from "@toonflow/providers";
 import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
@@ -127,10 +59,13 @@ type DebugProvider = { id: string; label: string; rules: Rule[]; models: Provide
 type DebugLog = { id: number; method: string; url: string; state: string; status?: number; duration?: number; request?: string; response?: string; error?: string };
 type FileHandle = { getFile(): Promise<File>; requestPermission?(options: { mode: "read" }): Promise<PermissionState> };
 type SourceFile = { name: string; source: string; lastModified: number };
+const feedback = useUiFeedback();
+const referenceRoles = [{ value: "images", label: "参考图" }, { value: "firstFrame", label: "首帧" }, { value: "lastFrame", label: "尾帧" }];
 const visible = defineModel<boolean>({ default: false });
 const provider = shallowRef<DebugProvider>();
 const formRules = shallowRef<ReturnType<typeof formCreate.copyRules>>([]);
-const formApi = shallowRef<Api>();
+const formApi = shallowRef<Api | UiRuleFormApi>();
+const useOwnRules = computed(() => supportsUiRules(formRules.value));
 const config = ref<Record<string, unknown>>({});
 const handle = shallowRef<FileHandle>();
 const desktopToken = ref("");
@@ -159,6 +94,7 @@ const logs = shallowRef<DebugLog[]>([]);
 const responseText = ref("");
 const errorMessage = ref("");
 const activeTab = ref("preview");
+const resultTabs = computed(() => [{ value: "preview", label: "结果预览" }, { value: "response", label: "响应数据" }, { value: "logs", label: `请求日志${logs.value.length ? ` (${logs.value.length})` : ""}` }]);
 const status = ref("");
 const elapsed = ref(0);
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
@@ -370,7 +306,7 @@ async function install() {
   try {
     await axios.post("/api/providers/media/add", { source: source.value });
     invalidateNodeModels("media");
-    ElMessage.success("供应商已安装，可在媒体模型设置中配置使用");
+    feedback.message({ tone: "success", message: "供应商已安装，可在媒体模型设置中配置使用" });
   } catch (error) { showError(error); }
   finally { action.value = ""; }
 }
@@ -397,108 +333,16 @@ onBeforeUnmount(reset);
 
 <style lang="scss" scoped>
 .providerDebug {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  &.hasProvider { height: min(660px, calc(100dvh - 180px)); }
-  > .el-alert { flex-shrink: 0; max-height: 120px; overflow: auto; }
-
-  .sourceBar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-
-    .sourceInfo {
-      display: flex;
-      flex: 1;
-      min-width: 0;
-      flex-direction: column;
-      gap: 4px;
-      overflow-wrap: anywhere;
-      .el-text { align-self: flex-start; }
-    }
-    .el-button { margin: 0; }
-  }
-
+  display: flex; flex-direction: column; gap: 24px; min-width: 0;
+  &.hasProvider { height: min(660px, 65dvh); min-height: 320px; }
+  > :deep(.uiAlert) { flex-shrink: 0; max-height: 120px; overflow: auto; }
+  .sourceBar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; flex-shrink: 0; .sourceInfo { flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-wrap: anywhere; strong { font-size: var(--uiFontLabel); font-weight: 500; } span { color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } } .sourceActions { display: flex; flex-wrap: wrap; gap: 8px; } }
   .debugBody {
-    display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
-    min-height: 0;
-    flex: 1;
-    gap: 28px;
-
-    .parameters {
-      overflow: auto;
-      padding-right: 8px;
-      overscroll-behavior: contain;
-      h3 { margin: 0 0 16px; font-size: 14px; color: var(--el-text-color-primary); }
-      .parameterGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
-      .el-select, .el-input-number { width: 100%; }
-
-      .references {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-
-        .referenceItem {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          width: 80px;
-          gap: 6px;
-          .el-image, video { width: 80px; height: 64px; border-radius: var(--el-border-radius-base); object-fit: cover; }
-          .removeReference { position: absolute; right: -6px; top: -6px; width: 20px; height: 20px; min-height: 20px; }
-        }
-        .addReference { width: 64px; height: 64px; margin: 0; }
-      }
-    }
-
-    .output {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-width: 0;
-      min-height: 0;
-      .resultTabs {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        :deep(.el-tabs__content) { overflow-y: auto; overscroll-behavior: contain; }
-      }
-      pre { margin: 0; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-      .mediaPreview {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        .el-image, video { width: 100%; max-height: 440px; object-fit: contain; border-radius: var(--el-border-radius-base); }
-        audio { width: 100%; }
-      }
-      .logTitle {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        min-width: 0;
-        gap: 8px;
-        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        small { flex-shrink: 0; margin-left: auto; color: var(--el-text-color-secondary); }
-      }
-    }
+    display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0; min-width: 0;
+    .parameters { min-width: 0; overflow: auto; overscroll-behavior: contain; padding-right: 20px; border-right: 1px solid var(--uiBorderDefault); h3 { margin: 0 0 20px; font-size: var(--uiFontLabel); font-weight: 600; } .parameterForm { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; } .parameterGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; } .references { display: flex; flex-wrap: wrap; gap: 12px; .referenceItem { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; :deep(.uiImage), video { width: 100px; height: 80px; border-radius: var(--uiRadiusControl); object-fit: cover; } .removeReference { position: absolute; top: 0; right: 0; } } .addReference { width: 64px; height: 64px; } } .extraParameters { summary { margin-bottom: 16px; color: var(--uiTextMuted); font-size: var(--uiFontControl); cursor: pointer; } } }
+    .output { display: flex; flex-direction: column; gap: 20px; min-width: 0; min-height: 0; .resultContent { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; } pre { margin: 0; color: var(--uiTextBody); font-size: var(--uiFontControl); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; } .mediaPreview { display: flex; flex-direction: column; gap: 16px; :deep(.uiImage), video { width: 100%; max-height: 440px; border-radius: var(--uiRadiusControl); object-fit: contain; } audio { width: 100%; } } .requestLogs { details { padding-bottom: 16px; border-bottom: 1px solid var(--uiBorderDefault); + details { margin-top: 16px; } summary { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { flex-shrink: 0; margin-left: auto; color: var(--uiTextMuted); } } } } }
   }
-
-  @media (max-width: 760px) {
-    .sourceBar { flex-wrap: wrap; }
-    .debugBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr 1fr; gap: 16px; }
-  }
+  @media (max-width: 760px) { .debugBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; .parameters { padding-right: 0; padding-bottom: 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); } } }
 }
-.debugFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  min-height: 32px;
-}
+.debugFooter { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; width: 100%; .debugStatus { color: var(--uiTextMuted); font-size: var(--uiFontControl); &.isSuccess { color: var(--uiStatusSuccess); } &.isError { color: var(--uiStatusError); } } .footerActions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; } }
 </style>

@@ -29,6 +29,7 @@
       @pointerup.stop="finishResize"
       @pointercancel="finishResize"
       @lostpointercapture="finishResize"
+      @keydown="resizeWithKeyboard($event, corner)"
       @mousedown.stop
       @click.stop
       @dblclick.stop />
@@ -38,8 +39,9 @@
 <script setup lang="ts">
 import { inject, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useVueFlow, type GraphNode, type NodeProps } from "@vue-flow/core";
-import { ElMessage } from "element-plus";
+import { useUiFeedback } from "@toonflow/ui";
 
+const feedback = useUiFeedback();
 const props = defineProps<NodeProps>();
 const flow = useVueFlow();
 const batchHistory = inject<((action: () => Promise<void>) => Promise<void>) | undefined>("batchCanvasHistory", undefined);
@@ -101,7 +103,7 @@ function startResize(event: PointerEvent, corner: ResizeCorner) {
   });
   void (batchHistory ? batchHistory(action) : action()).catch(error => {
     finishResize();
-    ElMessage.error(error instanceof Error ? error.message : "分组缩放失败");
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "分组缩放失败" });
   });
 }
 
@@ -116,16 +118,36 @@ function moveResize(event: PointerEvent) {
     x: state.position.x + (state.corner.x < 0 ? state.width - width : 0),
     y: state.position.y + (state.corner.y < 0 ? state.height - height : 0),
   };
-  const dx = position.x - state.node.position.x;
-  const dy = position.y - state.node.position.y;
+  applySize(state.node, position, width, height);
+}
+
+function applySize(node: GraphNode, position: { x: number; y: number }, width: number, height: number) {
+  const dx = position.x - node.position.x;
+  const dy = position.y - node.position.y;
   for (const child of flow.getNodes.value) {
     if (child.parentNode === props.id) flow.updateNode(child.id, { position: { x: child.position.x - dx, y: child.position.y - dy } });
   }
   flow.updateNode(props.id, {
     position,
-    style: { ...(typeof state.node.style === "object" ? state.node.style : {}), width: `${width}px`, height: `${height}px` },
+    style: { ...(typeof node.style === "object" ? node.style : {}), width: `${width}px`, height: `${height}px` },
   });
-  state.node.dimensions = { width, height };
+  node.dimensions = { width, height };
+}
+
+function resizeWithKeyboard(event: KeyboardEvent, corner: ResizeCorner) {
+  if (event.isComposing || resize.value || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const node = flow.findNode(props.id);
+  if (!node) return;
+  const step = event.shiftKey ? 1 : 16;
+  const width = Math.max(120, node.dimensions.width + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0) * corner.x);
+  const height = Math.max(80, node.dimensions.height + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0) * corner.y);
+  const position = { x: node.position.x + (corner.x < 0 ? node.dimensions.width - width : 0), y: node.position.y + (corner.y < 0 ? node.dimensions.height - height : 0) };
+  const action = () => { applySize(node, position, width, height); return Promise.resolve(); };
+  void (batchHistory ? batchHistory(action) : action()).catch(error => {
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "分组缩放失败" });
+  });
 }
 
 function finishResize(event?: PointerEvent) {
@@ -155,12 +177,12 @@ watch(
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  border: 1px solid var(--el-border-color);
-  border-radius: var(--el-border-radius-base);
-  background: color-mix(in srgb, var(--el-fill-color-light) 25%, transparent);
+  border: 1px solid var(--uiBorderControl);
+  border-radius: var(--uiRadiusControl);
+  background: color-mix(in srgb, var(--uiBackgroundSubtle) 25%, transparent);
 
   &.selected {
-    border-color: color-mix(in srgb, var(--el-color-primary) 50%, var(--el-border-color));
+    border-color: color-mix(in srgb, var(--uiActionPrimary) 50%, var(--uiBorderControl));
   }
 
   &:hover,
@@ -172,15 +194,15 @@ watch(
   .groupLabel,
   .groupLabelInput {
     position: absolute;
-    left: 0;
-    bottom: calc(100% + 8px);
+    left: 12px;
+    top: 8px;
     height: 22px;
-    max-width: 100%;
+    max-width: calc(100% - 24px);
     line-height: 20px;
   }
 
   .groupLabel {
-    color: var(--el-text-color-secondary);
+    color: var(--uiTextMuted);
     font-size: 12px;
     user-select: none;
     display: inline-block;
@@ -193,11 +215,11 @@ watch(
     box-sizing: border-box;
     width: 100%;
     padding: 0 3px;
-    border: 1px solid var(--el-color-primary);
-    border-radius: var(--el-border-radius-small);
+    border: 1px solid var(--uiActionPrimary);
+    border-radius: var(--uiRadiusControl);
     outline: none;
-    background: var(--el-bg-color);
-    color: var(--el-text-color-primary);
+    background: var(--uiSurfaceRaised);
+    color: var(--uiTextPrimary);
     font-family: inherit;
     font-size: 12px;
   }
@@ -207,9 +229,9 @@ watch(
     width: 9px;
     height: 9px;
     padding: 0;
-    border: 1px solid var(--el-color-primary);
+    border: 1px solid var(--uiActionPrimary);
     border-radius: 2px;
-    background: var(--el-bg-color);
+    background: var(--uiSurfaceRaised);
     opacity: 0;
     touch-action: none;
 

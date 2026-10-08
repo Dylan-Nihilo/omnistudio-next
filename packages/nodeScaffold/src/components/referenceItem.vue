@@ -46,7 +46,7 @@ function moveReference(from: number, index: number) {
   flex: 1;
   gap: 8px;
   min-width: 0;
-  min-height: 48px;
+  min-height: 64px;
   overflow-x: auto;
 }
 </style>

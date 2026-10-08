@@ -1,0 +1,3310 @@
+{
+  "status": "planningOnly",
+  "objective": "在隔离工作区构建自有 Vue UI 组件、Token 和基础样式，逐步替换所有可控 UI，保留原业务逻辑与后端。",
+  "baselineCommit": "ec8f54597bf6e6114ed56b832f9052cd6f735311",
+  "sourceCodeChanged": false,
+  "isolation": {
+    "plannedWorktree": "/Users/dylanthomas/Desktop/projects/toonflowUi",
+    "plannedBranch": "uiRefactor",
+    "created": false,
+    "plannedUiPackage": "@toonflow/ui",
+    "plannedUiPackagePath": "packages/ui",
+    "plannedPreviewPath": "apps/uiPreview",
+    "sharedNodeModules": false,
+    "sharedDataDirectory": false
+  },
+  "stats": {
+    "vueFiles": 88,
+    "webVueFiles": 66,
+    "nodeScaffoldVueFiles": 7,
+    "nodePluginVueFiles": 13,
+    "toolVueFiles": 2,
+    "cssScssFiles": 2,
+    "activePageRoutes": 3,
+    "settingsPanels": 10,
+    "knownUiStates": 82,
+    "elementPlusTagKinds": 57,
+    "elementPlusUiFiles": 79
+  },
+  "categories": {
+    "globalAndShared": {
+      "files": 4,
+      "vue": 3,
+      "lines": 573
+    },
+    "agent": {
+      "files": 10,
+      "vue": 10,
+      "lines": 3041
+    },
+    "markdown": {
+      "files": 2,
+      "vue": 2,
+      "lines": 125
+    },
+    "settings": {
+      "files": 30,
+      "vue": 29,
+      "lines": 8530
+    },
+    "entryAndHome": {
+      "files": 5,
+      "vue": 5,
+      "lines": 1734
+    },
+    "workspaceShell": {
+      "files": 3,
+      "vue": 3,
+      "lines": 643
+    },
+    "canvas": {
+      "files": 12,
+      "vue": 12,
+      "lines": 4011
+    },
+    "document": {
+      "files": 2,
+      "vue": 2,
+      "lines": 1132
+    },
+    "nodeScaffold": {
+      "files": 7,
+      "vue": 7,
+      "lines": 1934
+    },
+    "nodePlugins": {
+      "files": 13,
+      "vue": 13,
+      "lines": 3806
+    },
+    "toolCards": {
+      "files": 2,
+      "vue": 2,
+      "lines": 379
+    }
+  },
+  "files": [
+    {
+      "path": "apps/web/src/App.vue",
+      "lines": 140,
+      "extension": ".vue",
+      "imports": [
+        "@/components/settings/ffmpegRequired.vue",
+        "@/components/updateBox.vue",
+        "@/lib/mcpControl",
+        "@/stores/desktopUpdate",
+        "@/stores/settings",
+        "element-plus",
+        "element-plus/es/locale/lang/zh-cn",
+        "vue"
+      ],
+      "uiTags": {
+        "el-config-provider": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "globalAndShared",
+      "plannedPhase": "foundationAndGlobal",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/assets/main.scss",
+      "lines": 65,
+      "extension": ".scss",
+      "imports": [],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "globalAndShared",
+      "plannedPhase": "foundationAndGlobal",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/attachmentList.vue",
+      "lines": 21,
+      "extension": ".vue",
+      "imports": [
+        "./attachmentPreview.vue",
+        "./types"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/attachmentPreview.vue",
+      "lines": 134,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@/lib/workspaceFiles",
+        "@tabler/icons-vue",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-image": 1,
+        "el-button": 1,
+        "el-dialog": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/conversation.vue",
+      "lines": 1169,
+      "extension": ".vue",
+      "imports": [
+        "./attachmentList.vue",
+        "./mentionContent.vue",
+        "./mentionMenu.vue",
+        "./mentionText",
+        "./mentionThumbnail.vue",
+        "./replyStream",
+        "./skillMenu.vue",
+        "./toolMessage.vue",
+        "./types",
+        "@/components/messageMarkdown.vue",
+        "@/components/modelPopover.vue",
+        "@/lib/anonymousData",
+        "@/lib/clipboard",
+        "@/lib/workspaceFiles",
+        "@/stores/settings",
+        "@/stores/workspace",
+        "@tabler/icons-vue",
+        "@tanstack/vue-virtual",
+        "@tdesign-vue-next/chat/es/chat-item",
+        "@tdesign-vue-next/chat/es/chat-reasoning",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/server/agent/types",
+        "@toonflow/tool-canvas/runtime",
+        "axios",
+        "element-plus",
+        "vue",
+        "x-sender"
+      ],
+      "uiTags": {
+        "el-button": 9,
+        "el-icon": 1,
+        "el-popover": 1,
+        "el-progress": 1
+      },
+      "teleport": true,
+      "virtualOrStream": true,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/index.vue",
+      "lines": 313,
+      "extension": ".vue",
+      "imports": [
+        "./conversation.vue",
+        "./menu.vue",
+        "./types",
+        "@/lib/workspaceFiles",
+        "@/stores/workspace",
+        "@toonflow/server/agent/types",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/mentionContent.vue",
+      "lines": 124,
+      "extension": ".vue",
+      "imports": [
+        "./mentionText",
+        "./mentionThumbnail.vue",
+        "@/lib/workspaceFiles",
+        "@tabler/icons-vue",
+        "@toonflow/server/agent/types",
+        "axios",
+        "vue"
+      ],
+      "uiTags": {
+        "el-tooltip": 1,
+        "el-dialog": 1,
+        "el-button": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/mentionMenu.vue",
+      "lines": 491,
+      "extension": ".vue",
+      "imports": [
+        "./mentionSources",
+        "./mentionThumbnail.vue",
+        "@tabler/icons-vue",
+        "@tanstack/vue-virtual",
+        "@toonflow/server/agent/mentionSources",
+        "@toonflow/server/agent/types",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 6,
+        "el-card": 1,
+        "el-input": 1,
+        "el-scrollbar": 1
+      },
+      "teleport": true,
+      "virtualOrStream": true,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/mentionThumbnail.vue",
+      "lines": 63,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/workspaceFiles",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/menu.vue",
+      "lines": 415,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@/components/settings/panels/pluginMarket/pluginConfigDialog.vue",
+        "@/components/settings/panels/pluginMarket/types",
+        "@tabler/icons-vue",
+        "@toonflow/server/agent/types",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 8,
+        "el-input": 1,
+        "el-popover": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/skillMenu.vue",
+      "lines": 153,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 1,
+        "el-card": 1,
+        "el-scrollbar": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/agent/toolMessage.vue",
+      "lines": 158,
+      "extension": ".vue",
+      "imports": [
+        "@/components/messageMarkdown.vue",
+        "@tabler/icons-vue",
+        "@tdesign-vue-next/chat/es/chat-reasoning",
+        "@toonflow/server/agent/types",
+        "@toonflow/tools-scaffold/client",
+        "vue"
+      ],
+      "uiTags": {
+        "el-text": 1,
+        "el-button": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "agent",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/markdownImage.vue",
+      "lines": 44,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/workspaceFiles",
+        "vue",
+        "vue-stream-markdown"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "markdown",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/messageMarkdown.vue",
+      "lines": 81,
+      "extension": ".vue",
+      "imports": [
+        "./markdownImage.vue",
+        "./markdownOverlays",
+        "@markmend/ast",
+        "vue",
+        "vue-stream-markdown"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "markdown",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/modelPopover.vue",
+      "lines": 131,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/model-icons",
+        "vue"
+      ],
+      "uiTags": {
+        "el-popover": 1,
+        "el-button": 1,
+        "el-form": 1,
+        "el-form-item": 2,
+        "el-select": 1,
+        "el-option-group": 1,
+        "el-option": 1,
+        "el-space": 1,
+        "el-segmented": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "globalAndShared",
+      "plannedPhase": "foundationAndGlobal",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/ffmpegRequired.vue",
+      "lines": 38,
+      "extension": ".vue",
+      "imports": [
+        "./panels/pluginMarket/ffmpeg.vue",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-alert": 1
+      },
+      "teleport": true,
+      "virtualOrStream": true,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/index.vue",
+      "lines": 180,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/desktopUpdate",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-badge": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/about.vue",
+      "lines": 742,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/tf",
+        "@/stores/desktopUpdate",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/server/desktop",
+        "axios",
+        "element-plus",
+        "tdesign-vue-next",
+        "vue"
+      ],
+      "uiTags": {
+        "el-tag": 2,
+        "el-card": 4,
+        "el-select": 1,
+        "el-option": 3,
+        "el-badge": 1,
+        "el-button": 5,
+        "el-popover": 3,
+        "el-dialog": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/developer/index.vue",
+      "lines": 512,
+      "extension": ".vue",
+      "imports": [
+        "../../installPluginFile",
+        "@/lib/saveFile",
+        "@/stores/desktopUpdate",
+        "@/stores/developer",
+        "@/stores/hello",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/server/desktop",
+        "axios",
+        "element-plus",
+        "vue",
+        "vue-router"
+      ],
+      "uiTags": {
+        "el-button": 16,
+        "el-text": 7,
+        "el-input": 3,
+        "el-select": 1,
+        "el-option": 2,
+        "el-checkbox": 1,
+        "el-popconfirm": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/developer/providerDebugDialog.vue",
+      "lines": 504,
+      "extension": ".vue",
+      "imports": [
+        "../../formCreate",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "@toonflow/providers",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-text": 3,
+        "el-button": 7,
+        "form-create": 1,
+        "el-form": 1,
+        "el-form-item": 9,
+        "el-select": 6,
+        "el-option": 8,
+        "el-input": 2,
+        "el-image": 2,
+        "el-input-number": 1,
+        "el-switch": 1,
+        "el-collapse": 2,
+        "el-collapse-item": 2,
+        "el-tabs": 1,
+        "el-tab-pane": 3,
+        "el-tag": 1,
+        "el-alert": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": true,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/developer/systemPromptDialog.vue",
+      "lines": 117,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/settings",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-text": 2,
+        "el-button": 4,
+        "el-input": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/general/canvasShortcuts.vue",
+      "lines": 182,
+      "extension": ".vue",
+      "imports": [
+        "./keyInput.vue",
+        "@/lib/canvasShortcuts",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dropdown": 1,
+        "el-button": 2,
+        "el-dropdown-menu": 1,
+        "el-dropdown-item": 2,
+        "el-form": 1,
+        "el-form-item": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/general/index.vue",
+      "lines": 117,
+      "extension": ".vue",
+      "imports": [
+        "./canvasShortcuts.vue",
+        "@/stores/settings"
+      ],
+      "uiTags": {
+        "el-switch": 3,
+        "el-select": 1,
+        "el-option": 3,
+        "el-color-picker": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/general/keyInput.vue",
+      "lines": 159,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/canvasShortcuts",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-input": 1,
+        "el-button": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue",
+      "lines": 404,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/tf",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/providers",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 2,
+        "el-scrollbar": 1,
+        "el-form": 1,
+        "el-form-item": 7,
+        "el-input": 7,
+        "el-select": 1,
+        "el-option": 1,
+        "el-text": 2,
+        "el-button": 8,
+        "el-input-number": 2,
+        "el-alert": 1,
+        "el-auto-resizer": 1,
+        "el-table-v2": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/languageModel/addProviderDialog.vue",
+      "lines": 279,
+      "extension": ".vue",
+      "imports": [
+        "../../formCreate",
+        "@/components/messageMarkdown.vue",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/model-icons",
+        "@toonflow/providers",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-scrollbar": 1,
+        "el-tag": 1,
+        "el-divider": 1,
+        "form-create": 1,
+        "el-text": 4,
+        "el-button": 3,
+        "el-alert": 2,
+        "el-auto-resizer": 1,
+        "el-table-v2": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": true,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/languageModel/index.vue",
+      "lines": 132,
+      "extension": ".vue",
+      "imports": [
+        "../../tfAccount.vue",
+        "@/lib/tf",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/providers",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-text": 3,
+        "el-tag": 2,
+        "el-space": 1,
+        "el-button": 5,
+        "el-popconfirm": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/mcp/index.vue",
+      "lines": 309,
+      "extension": ".vue",
+      "imports": [
+        "@/components/messageMarkdown.vue",
+        "@/lib/clipboard",
+        "@/lib/saveFile",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-switch": 1,
+        "el-button": 7,
+        "el-alert": 2,
+        "el-tag": 1,
+        "el-input-number": 1,
+        "el-input": 2,
+        "el-dialog": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue",
+      "lines": 370,
+      "extension": ".vue",
+      "imports": [
+        "../../formCreate",
+        "./providerPrompt",
+        "./types",
+        "@/components/messageMarkdown.vue",
+        "@/lib/clipboard",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/model-icons",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "@toonflow/providers",
+        "@toonflow/providers/media/tfRouter?raw",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-scrollbar": 2,
+        "el-tag": 1,
+        "el-divider": 1,
+        "form-create": 1,
+        "el-text": 3,
+        "el-table": 1,
+        "el-table-column": 2,
+        "el-alert": 3,
+        "el-form": 1,
+        "el-form-item": 3,
+        "el-segmented": 1,
+        "el-input": 3,
+        "el-button": 4
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": true,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/mediaModel/editProviderDialog.vue",
+      "lines": 228,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@/components/messageMarkdown.vue",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/model-icons",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "axios",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-form": 1,
+        "el-form-item": 1,
+        "el-input": 1,
+        "el-text": 3,
+        "el-button": 5,
+        "el-card": 1,
+        "el-tag": 2,
+        "el-alert": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/mediaModel/index.vue",
+      "lines": 168,
+      "extension": ".vue",
+      "imports": [
+        "../../tfAccount.vue",
+        "./types",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-text": 3,
+        "el-tag": 2,
+        "el-alert": 1,
+        "el-space": 1,
+        "el-button": 5,
+        "el-popconfirm": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/mediaModel/modelEditorDialog.vue",
+      "lines": 299,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-form": 1,
+        "el-form-item": 7,
+        "el-input": 3,
+        "el-select": 1,
+        "el-option": 2,
+        "el-checkbox-group": 3,
+        "el-checkbox": 3,
+        "el-input-number": 1,
+        "el-radio-group": 1,
+        "el-radio": 3,
+        "el-input-tag": 2,
+        "el-button": 4,
+        "el-alert": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/personalization.vue",
+      "lines": 445,
+      "extension": ".vue",
+      "imports": [
+        "@/components/messageMarkdown.vue",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-alert": 2,
+        "el-input": 2,
+        "el-button": 7,
+        "el-switch": 1,
+        "el-dialog": 1,
+        "el-empty": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/a2aSettingsDialog.vue",
+      "lines": 103,
+      "extension": ".vue",
+      "imports": [
+        "@/pages/home/workspacePicker.vue",
+        "@/stores/settings",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-form": 1,
+        "el-form-item": 5,
+        "el-switch": 1,
+        "el-input": 3,
+        "el-select": 1,
+        "el-option": 1,
+        "el-text": 1,
+        "el-alert": 1,
+        "el-button": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/agentConnectDialog.vue",
+      "lines": 53,
+      "extension": ".vue",
+      "imports": [
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-form": 1,
+        "el-form-item": 3,
+        "el-input": 3,
+        "el-alert": 1,
+        "el-button": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/agentEditorDialog.vue",
+      "lines": 131,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@/components/messageMarkdown.vue",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-alert": 1,
+        "el-button": 4,
+        "el-input": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/ffmpeg.vue",
+      "lines": 387,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-tag": 2,
+        "el-button": 3,
+        "el-alert": 4,
+        "el-text": 1,
+        "el-select": 2,
+        "el-option-group": 1,
+        "el-option": 4,
+        "el-link": 1,
+        "el-progress": 1,
+        "el-collapse": 1,
+        "el-collapse-item": 1,
+        "el-form": 1,
+        "el-form-item": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/index.vue",
+      "lines": 1153,
+      "extension": ".vue",
+      "imports": [
+        "../../installPluginFile",
+        "./a2aSettingsDialog.vue",
+        "./agentConnectDialog.vue",
+        "./agentEditorDialog.vue",
+        "./ffmpeg.vue",
+        "./pluginConfigDialog.vue",
+        "./skillEditorDialog.vue",
+        "./types",
+        "@/lib/clipboard",
+        "@/lib/saveFile",
+        "@/lib/tf",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "@toonflow/providers/language/tfRouter",
+        "axios",
+        "element-plus",
+        "semver/functions/parse",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 16,
+        "el-input": 2,
+        "el-alert": 2,
+        "el-card": 2,
+        "el-text": 6,
+        "el-link": 1,
+        "el-tag": 1,
+        "el-popconfirm": 3,
+        "el-switch": 1,
+        "el-badge": 1,
+        "el-pagination": 1,
+        "el-dialog": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/pluginConfigDialog.vue",
+      "lines": 55,
+      "extension": ".vue",
+      "imports": [
+        "../../formCreate",
+        "./types",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "form-create": 1,
+        "el-alert": 1,
+        "el-button": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": true,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/pluginMarket/skillEditorDialog.vue",
+      "lines": 383,
+      "extension": ".vue",
+      "imports": [
+        "./types",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-alert": 2,
+        "el-button": 3,
+        "el-tree": 1,
+        "el-text": 1,
+        "el-input": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/privacy.vue",
+      "lines": 109,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/settings"
+      ],
+      "uiTags": {
+        "el-switch": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/panels/ui.vue",
+      "lines": 352,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-radio-group": 1,
+        "el-radio": 1,
+        "el-button": 2,
+        "el-color-picker": 1,
+        "el-slider": 2,
+        "el-card": 1,
+        "el-tag": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/providerList.scss",
+      "lines": 92,
+      "extension": ".scss",
+      "imports": [],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/tfAccount.vue",
+      "lines": 268,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/tf",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "axios",
+        "vue"
+      ],
+      "uiTags": {
+        "el-text": 7,
+        "el-skeleton": 1,
+        "el-skeleton-item": 1,
+        "el-button": 5,
+        "el-input": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/settings/tfRechargeDialog.vue",
+      "lines": 259,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/tf",
+        "@tabler/icons-vue",
+        "axios",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-form": 1,
+        "el-form-item": 3,
+        "el-skeleton": 1,
+        "el-text": 6,
+        "el-button": 5,
+        "el-radio-group": 2,
+        "el-radio": 2,
+        "el-input-number": 1,
+        "el-radio-button": 2,
+        "el-image": 1,
+        "el-alert": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "settings",
+      "plannedPhase": "settingsAndForms",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/components/updateBox.vue",
+      "lines": 237,
+      "extension": ".vue",
+      "imports": [
+        "./updateBox.md?raw",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-button": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "globalAndShared",
+      "plannedPhase": "foundationAndGlobal",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/hello/bg.vue",
+      "lines": 320,
+      "extension": ".vue",
+      "imports": [
+        "@/assets/image.png",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "entryAndHome",
+      "plannedPhase": "entryAndHome",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/hello/index.vue",
+      "lines": 434,
+      "extension": ".vue",
+      "imports": [
+        "./bg.vue",
+        "@/components/settings/panels/mediaModel/types",
+        "@/lib/anonymousData",
+        "@/stores/hello",
+        "@/stores/settings",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg?raw",
+        "@toonflow/nodes-scaffold/nodeAi",
+        "@toonflow/providers/language/tfRouter",
+        "@toonflow/providers/media/tfRouter?raw",
+        "axios",
+        "element-plus",
+        "vue",
+        "vue-router"
+      ],
+      "uiTags": {
+        "el-button": 6,
+        "el-alert": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "entryAndHome",
+      "plannedPhase": "entryAndHome",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/home/bg.vue",
+      "lines": 305,
+      "extension": ".vue",
+      "imports": [
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "entryAndHome",
+      "plannedPhase": "entryAndHome",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/home/index.vue",
+      "lines": 488,
+      "extension": ".vue",
+      "imports": [
+        "./bg.vue",
+        "./workspacePicker.vue",
+        "@/components/modelPopover.vue",
+        "@/components/settings/index.vue",
+        "@/lib/workspaceFiles",
+        "@/stores/desktopUpdate",
+        "@/stores/workspace",
+        "@tabler/icons-vue",
+        "@toonflow/assets/logo.svg",
+        "axios",
+        "element-plus",
+        "pinia",
+        "vue",
+        "vue-router"
+      ],
+      "uiTags": {
+        "el-container": 1,
+        "el-header": 1,
+        "el-badge": 1,
+        "el-button": 8,
+        "el-main": 1,
+        "el-image": 1,
+        "el-card": 2,
+        "el-input": 1,
+        "el-space": 2,
+        "el-radio-group": 1,
+        "el-radio-button": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "entryAndHome",
+      "plannedPhase": "entryAndHome",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/home/workspacePicker.vue",
+      "lines": 187,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/workspaceFiles",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 8,
+        "el-dialog": 1,
+        "el-text": 1,
+        "el-alert": 1,
+        "el-table": 1,
+        "el-table-column": 2
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "entryAndHome",
+      "plannedPhase": "entryAndHome",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/components/floatingAgent.vue",
+      "lines": 265,
+      "extension": ".vue",
+      "imports": [
+        "@/components/agent/index.vue",
+        "@tabler/icons-vue",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "workspaceShell",
+      "plannedPhase": "workspaceShell",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/components/workspaceMenu.vue",
+      "lines": 62,
+      "extension": ".vue",
+      "imports": [
+        "@/stores/desktopUpdate",
+        "@tabler/icons-vue",
+        "vue",
+        "vue-router"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-button": 4,
+        "el-badge": 1,
+        "el-dialog": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "workspaceShell",
+      "plannedPhase": "workspaceShell",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/index.vue",
+      "lines": 316,
+      "extension": ".vue",
+      "imports": [
+        "./components/floatingAgent.vue",
+        "./components/workspaceMenu.vue",
+        "./panels/canvas/canvasHost.vue",
+        "@/components/settings/index.vue",
+        "@/lib/anonymousData",
+        "@/lib/mcpControl",
+        "@/stores/workspace",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue",
+        "vue-router"
+      ],
+      "uiTags": {
+        "el-segmented": 1,
+        "el-tooltip": 1,
+        "el-button": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "workspaceShell",
+      "plannedPhase": "workspaceShell",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/canvasHost.vue",
+      "lines": 182,
+      "extension": ".vue",
+      "imports": [
+        "./index.vue",
+        "@/lib/mcpControl",
+        "@/lib/workspaceFiles",
+        "@/stores/workspace",
+        "@toonflow/server/agent/mentionSources",
+        "@toonflow/tool-canvas/runtime",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue",
+      "lines": 503,
+      "extension": ".vue",
+      "imports": [
+        "../canvasDrop",
+        "./assetMenu.vue",
+        "@/lib/workspaceFiles",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/values",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-input": 4,
+        "el-button": 10,
+        "el-scrollbar": 2,
+        "el-tree": 2,
+        "el-image": 1,
+        "el-alert": 2,
+        "el-image-viewer": 1,
+        "el-dialog": 2,
+        "el-form": 1,
+        "el-form-item": 2,
+        "el-select": 1,
+        "el-option": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/assetMenu.vue",
+      "lines": 194,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/saveFile",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dropdown": 1,
+        "el-dropdown-menu": 1,
+        "el-dropdown-item": 4,
+        "el-popover": 1,
+        "el-button": 2,
+        "el-scrollbar": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/canvasControls.vue",
+      "lines": 341,
+      "extension": ".vue",
+      "imports": [
+        "../arrangeCanvas",
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "@vue-flow/minimap",
+        "element-plus",
+        "tdesign-vue-next",
+        "vue"
+      ],
+      "uiTags": {
+        "el-tooltip": 8,
+        "el-button": 16,
+        "el-popover": 3,
+        "el-input-number": 1,
+        "el-dialog": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/canvasMenu.vue",
+      "lines": 542,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/workspaceFiles",
+        "@/pages/workspace/canvasFile",
+        "@/stores/workspace",
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-input": 2,
+        "el-divider": 1,
+        "el-popover": 1,
+        "el-button": 4,
+        "el-scrollbar": 1,
+        "el-text": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/groupNode.vue",
+      "lines": 223,
+      "extension": ".vue",
+      "imports": [
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue",
+      "lines": 408,
+      "extension": ".vue",
+      "imports": [
+        "../arrangeSelection",
+        "../selectionConnections",
+        "../selectionNodes",
+        "./selectionHandle.vue",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dropdown": 1,
+        "el-dropdown-menu": 1,
+        "el-dropdown-item": 16,
+        "el-divider": 3
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/nodeSearch.vue",
+      "lines": 122,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-input": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/remoteNode.vue",
+      "lines": 66,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-button": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/selectionHandle.vue",
+      "lines": 175,
+      "extension": ".vue",
+      "imports": [
+        "../selectionConnections",
+        "../selectionNodes",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/connection",
+        "@vue-flow/core",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/components/selectionToolbar.vue",
+      "lines": 290,
+      "extension": ".vue",
+      "imports": [
+        "../selectionNodes",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/nodeEvent",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-button": 3
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/index.vue",
+      "lines": 965,
+      "extension": ".vue",
+      "imports": [
+        "./canvasDrop",
+        "./components/assetLibrary.vue",
+        "./components/canvasControls.vue",
+        "./components/canvasMenu.vue",
+        "./components/groupNode.vue",
+        "./components/nodeMenu.vue",
+        "./components/nodeSearch.vue",
+        "./components/remoteNode.vue",
+        "./components/selectionToolbar.vue",
+        "./loadNodeComponent",
+        "./nodeClipboard",
+        "./selectionNodes",
+        "./useCanvasHistory",
+        "./useCanvasTools",
+        "@/lib/anonymousData",
+        "@/lib/canvasShortcuts",
+        "@/lib/clipboard",
+        "@/lib/workspaceFiles",
+        "@/stores/settings",
+        "@/stores/workspace",
+        "@earendil-works/pi-agent-core",
+        "@earendil-works/pi-ai",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/connection",
+        "@toonflow/nodes-scaffold/nodeEvent",
+        "@toonflow/nodes-scaffold/nodeTools",
+        "@toonflow/nodes-scaffold/values",
+        "@toonflow/tool-canvas/runtime",
+        "@vue-flow/background",
+        "@vue-flow/core",
+        "axios",
+        "element-plus",
+        "lodash-es",
+        "pinia",
+        "vue"
+      ],
+      "uiTags": {
+        "vue-flow": 1,
+        "el-button": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "canvas",
+      "plannedPhase": "canvasPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/document/components/fileTree.vue",
+      "lines": 265,
+      "extension": ".vue",
+      "imports": [
+        "@/lib/workspaceFiles",
+        "@/pages/workspace/canvasFile",
+        "@tabler/icons-vue",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-alert": 1,
+        "el-tree": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "document",
+      "plannedPhase": "documentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/document/index.vue",
+      "lines": 867,
+      "extension": ".vue",
+      "imports": [
+        "./components/fileTree.vue",
+        "./markdownExtensions",
+        "@/lib/clipboard",
+        "@/lib/workspaceFiles",
+        "@/stores/workspace",
+        "@tabler/icons-vue",
+        "@tiptap/core",
+        "@tiptap/vue-3",
+        "element-plus",
+        "lodash-es",
+        "vue"
+      ],
+      "uiTags": {
+        "el-select": 1,
+        "el-option": 1,
+        "el-button": 17,
+        "el-dropdown": 4,
+        "el-dropdown-menu": 4,
+        "el-dropdown-item": 7,
+        "el-tooltip": 6,
+        "el-popover": 1,
+        "el-input": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "document",
+      "plannedPhase": "documentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/mediaHistory.vue",
+      "lines": 167,
+      "extension": ".vue",
+      "imports": [
+        "../values",
+        "../workspaceFiles",
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 3,
+        "el-dialog": 1,
+        "el-alert": 2,
+        "el-empty": 1,
+        "el-pagination": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/nodeError.vue",
+      "lines": 109,
+      "extension": ".vue",
+      "imports": [
+        "../nodeAi",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/promptInput.vue",
+      "lines": 361,
+      "extension": ".vue",
+      "imports": [
+        "element-plus",
+        "vue",
+        "x-sender"
+      ],
+      "uiTags": {
+        "el-image-viewer": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": false,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/referenceCard.vue",
+      "lines": 180,
+      "extension": ".vue",
+      "imports": [
+        "../values",
+        "../workspaceFiles",
+        "@tabler/icons-vue",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-image": 1,
+        "el-button": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": false,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/referenceItem.vue",
+      "lines": 52,
+      "extension": ".vue",
+      "imports": [
+        "../values",
+        "./referenceCard.vue",
+        "vue-draggable-plus"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/components/videoPlayer.vue",
+      "lines": 373,
+      "extension": ".vue",
+      "imports": [
+        "../workspaceFiles",
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 3,
+        "el-slider": 2,
+        "el-popover": 1,
+        "el-dropdown": 1,
+        "el-dropdown-menu": 1,
+        "el-dropdown-item": 3
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodeScaffold/src/nodeSkeleton.vue",
+      "lines": 692,
+      "extension": ".vue",
+      "imports": [
+        "./connection",
+        "./nodeEvent",
+        "./values",
+        "@tabler/icons-vue",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-dropdown": 1,
+        "el-dropdown-menu": 1,
+        "el-dropdown-item": 5,
+        "el-card": 2,
+        "el-button": 5
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodeScaffold",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/audioNode/src/index.vue",
+      "lines": 176,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/director3dNode/src/directorPanel.vue",
+      "lines": 177,
+      "extension": ".vue",
+      "imports": [
+        "./sceneAnimation",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-select": 1,
+        "el-option-group": 1,
+        "el-option": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/director3dNode/src/directorTour.vue",
+      "lines": 58,
+      "extension": ".vue",
+      "imports": [
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-tour": 1,
+        "el-tour-step": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/director3dNode/src/index.vue",
+      "lines": 442,
+      "extension": ".vue",
+      "imports": [
+        "./agentPrompt",
+        "./agentTools",
+        "./motion",
+        "./renderMedia",
+        "./scene",
+        "./sceneAnimation",
+        "./sceneEditor.vue",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/promptInput",
+        "@toonflow/nodes-scaffold/referenceItem",
+        "@toonflow/nodes-scaffold/runtime",
+        "@vue-flow/core",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/director3dNode/src/lightDirection.vue",
+      "lines": 314,
+      "extension": ".vue",
+      "imports": [
+        "element-plus",
+        "three",
+        "vue"
+      ],
+      "uiTags": {
+        "el-slider": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/director3dNode/src/sceneEditor.vue",
+      "lines": 833,
+      "extension": ".vue",
+      "imports": [
+        "./directorPanel.vue",
+        "./directorTour.vue",
+        "./lightDirection.vue",
+        "./motion",
+        "./scene",
+        "./sceneAnimation",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "three",
+        "three/examples/jsm/controls/PointerLockControls.js",
+        "threejson/core",
+        "vue",
+        "vue-draggable-plus"
+      ],
+      "uiTags": {
+        "el-dialog": 1,
+        "el-popover": 2,
+        "el-button": 8,
+        "el-switch": 4,
+        "el-slider": 1,
+        "el-select": 1,
+        "el-option": 1,
+        "el-input-number": 2,
+        "el-color-picker": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/imageGenerationNode/src/components/generationSettings.vue",
+      "lines": 129,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "element-plus"
+      ],
+      "uiTags": {
+        "el-popover": 1,
+        "el-button": 2,
+        "el-radio-group": 1,
+        "el-radio-button": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/imageGenerationNode/src/index.vue",
+      "lines": 405,
+      "extension": ".vue",
+      "imports": [
+        "./components/generationSettings.vue",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/mediaHistory",
+        "@toonflow/nodes-scaffold/promptInput",
+        "@toonflow/nodes-scaffold/referenceItem",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-card": 1,
+        "el-select": 1,
+        "el-option-group": 1,
+        "el-option": 1,
+        "el-image-viewer": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/imageNode/src/index.vue",
+      "lines": 168,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-image-viewer": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": true,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/textNode/src/index.vue",
+      "lines": 310,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/promptInput",
+        "@toonflow/nodes-scaffold/referenceItem",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-card": 1,
+        "el-select": 1,
+        "el-option-group": 1,
+        "el-option": 1,
+        "el-dialog": 1,
+        "el-input": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/videoGenerationNode/src/components/generationSettings.vue",
+      "lines": 151,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-popover": 1,
+        "el-button": 2,
+        "el-select": 3,
+        "el-option": 3,
+        "el-switch": 1
+      },
+      "teleport": true,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/videoGenerationNode/src/index.vue",
+      "lines": 468,
+      "extension": ".vue",
+      "imports": [
+        "./components/generationSettings.vue",
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/mediaHistory",
+        "@toonflow/nodes-scaffold/promptInput",
+        "@toonflow/nodes-scaffold/referenceItem",
+        "@toonflow/nodes-scaffold/runtime",
+        "@toonflow/nodes-scaffold/videoPlayer",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-card": 1,
+        "el-select": 1,
+        "el-option-group": 1,
+        "el-option": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/nodes/videoNode/src/index.vue",
+      "lines": 175,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/nodes-scaffold/runtime",
+        "@toonflow/nodes-scaffold/videoPlayer",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-button": 2,
+        "el-progress": 1
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": true,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "nodePlugins",
+      "plannedPhase": "nodePresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/tools/askUser/src/questionCard.vue",
+      "lines": 236,
+      "extension": ".vue",
+      "imports": [
+        "@form-create/element-ui",
+        "@tabler/icons-vue",
+        "@toonflow/tools-scaffold/runtime",
+        "axios",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {
+        "el-card": 1,
+        "el-tag": 1,
+        "form-create": 1,
+        "el-radio-group": 1,
+        "el-radio": 2,
+        "el-input": 1,
+        "el-text": 1,
+        "el-button": 2
+      },
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": true,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": false,
+      "category": "toolCards",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    },
+    {
+      "path": "packages/tools/canvas/src/nodeFocusCard.vue",
+      "lines": 143,
+      "extension": ".vue",
+      "imports": [
+        "@tabler/icons-vue",
+        "@toonflow/tools-scaffold/runtime",
+        "element-plus",
+        "vue"
+      ],
+      "uiTags": {},
+      "teleport": false,
+      "virtualOrStream": false,
+      "dynamicForm": false,
+      "canvasEvents": false,
+      "media": false,
+      "responsiveSyntax": true,
+      "category": "toolCards",
+      "plannedPhase": "agentPresentation",
+      "implementationStatus": "notStarted"
+    }
+  ],
+  "dependencyUsage": {
+    "elementPlus": [
+      "apps/web/src/App.vue",
+      "apps/web/src/components/agent/attachmentPreview.vue",
+      "apps/web/src/components/agent/conversation.vue",
+      "apps/web/src/components/agent/index.vue",
+      "apps/web/src/components/agent/mentionContent.vue",
+      "apps/web/src/components/agent/mentionMenu.vue",
+      "apps/web/src/components/agent/menu.vue",
+      "apps/web/src/components/agent/skillMenu.vue",
+      "apps/web/src/components/agent/toolMessage.vue",
+      "apps/web/src/components/modelPopover.vue",
+      "apps/web/src/components/settings/ffmpegRequired.vue",
+      "apps/web/src/components/settings/index.vue",
+      "apps/web/src/components/settings/panels/about.vue",
+      "apps/web/src/components/settings/panels/developer/index.vue",
+      "apps/web/src/components/settings/panels/developer/providerDebugDialog.vue",
+      "apps/web/src/components/settings/panels/developer/systemPromptDialog.vue",
+      "apps/web/src/components/settings/panels/general/canvasShortcuts.vue",
+      "apps/web/src/components/settings/panels/general/index.vue",
+      "apps/web/src/components/settings/panels/general/keyInput.vue",
+      "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue",
+      "apps/web/src/components/settings/panels/languageModel/addProviderDialog.vue",
+      "apps/web/src/components/settings/panels/languageModel/index.vue",
+      "apps/web/src/components/settings/panels/mcp/index.vue",
+      "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue",
+      "apps/web/src/components/settings/panels/mediaModel/editProviderDialog.vue",
+      "apps/web/src/components/settings/panels/mediaModel/index.vue",
+      "apps/web/src/components/settings/panels/mediaModel/modelEditorDialog.vue",
+      "apps/web/src/components/settings/panels/personalization.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/a2aSettingsDialog.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/agentConnectDialog.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/agentEditorDialog.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/ffmpeg.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/index.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/pluginConfigDialog.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/skillEditorDialog.vue",
+      "apps/web/src/components/settings/panels/privacy.vue",
+      "apps/web/src/components/settings/panels/ui.vue",
+      "apps/web/src/components/settings/tfAccount.vue",
+      "apps/web/src/components/settings/tfRechargeDialog.vue",
+      "apps/web/src/components/updateBox.vue",
+      "apps/web/src/pages/hello/index.vue",
+      "apps/web/src/pages/home/index.vue",
+      "apps/web/src/pages/home/workspacePicker.vue",
+      "apps/web/src/pages/workspace/components/floatingAgent.vue",
+      "apps/web/src/pages/workspace/components/workspaceMenu.vue",
+      "apps/web/src/pages/workspace/index.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/assetMenu.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/canvasControls.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/canvasMenu.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/groupNode.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/nodeSearch.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/remoteNode.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/selectionToolbar.vue",
+      "apps/web/src/pages/workspace/panels/canvas/index.vue",
+      "apps/web/src/pages/workspace/panels/document/components/fileTree.vue",
+      "apps/web/src/pages/workspace/panels/document/index.vue",
+      "packages/nodeScaffold/src/components/mediaHistory.vue",
+      "packages/nodeScaffold/src/components/nodeError.vue",
+      "packages/nodeScaffold/src/components/promptInput.vue",
+      "packages/nodeScaffold/src/components/referenceCard.vue",
+      "packages/nodeScaffold/src/components/videoPlayer.vue",
+      "packages/nodeScaffold/src/nodeSkeleton.vue",
+      "packages/nodes/audioNode/src/index.vue",
+      "packages/nodes/director3dNode/src/directorPanel.vue",
+      "packages/nodes/director3dNode/src/directorTour.vue",
+      "packages/nodes/director3dNode/src/index.vue",
+      "packages/nodes/director3dNode/src/lightDirection.vue",
+      "packages/nodes/director3dNode/src/sceneEditor.vue",
+      "packages/nodes/imageGenerationNode/src/components/generationSettings.vue",
+      "packages/nodes/imageGenerationNode/src/index.vue",
+      "packages/nodes/imageNode/src/index.vue",
+      "packages/nodes/textNode/src/index.vue",
+      "packages/nodes/videoGenerationNode/src/components/generationSettings.vue",
+      "packages/nodes/videoGenerationNode/src/index.vue",
+      "packages/nodes/videoNode/src/index.vue",
+      "packages/tools/askUser/src/questionCard.vue",
+      "packages/tools/canvas/src/nodeFocusCard.vue"
+    ],
+    "tdesign": [
+      "apps/web/src/components/agent/conversation.vue",
+      "apps/web/src/components/agent/toolMessage.vue",
+      "apps/web/src/components/settings/panels/about.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/canvasControls.vue"
+    ],
+    "xSender": [
+      "apps/web/src/components/agent/conversation.vue",
+      "packages/nodeScaffold/src/components/promptInput.vue"
+    ],
+    "vueFlow": [
+      "apps/web/src/pages/workspace/panels/canvas/components/canvasControls.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/canvasMenu.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/groupNode.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/nodeSearch.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/remoteNode.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/selectionHandle.vue",
+      "apps/web/src/pages/workspace/panels/canvas/components/selectionToolbar.vue",
+      "apps/web/src/pages/workspace/panels/canvas/index.vue",
+      "packages/nodeScaffold/src/components/mediaHistory.vue",
+      "packages/nodeScaffold/src/components/videoPlayer.vue",
+      "packages/nodeScaffold/src/nodeSkeleton.vue",
+      "packages/nodes/director3dNode/src/index.vue"
+    ],
+    "tiptap": [
+      "apps/web/src/pages/workspace/panels/document/index.vue"
+    ],
+    "formCreate": [
+      "apps/web/src/components/settings/panels/developer/providerDebugDialog.vue",
+      "apps/web/src/components/settings/panels/languageModel/addProviderDialog.vue",
+      "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue",
+      "apps/web/src/components/settings/panels/pluginMarket/pluginConfigDialog.vue",
+      "packages/tools/askUser/src/questionCard.vue"
+    ],
+    "virtual": [
+      "apps/web/src/components/agent/conversation.vue",
+      "apps/web/src/components/agent/mentionMenu.vue"
+    ]
+  },
+  "legacyTagOccurrences": {
+    "el-config-provider": 1,
+    "el-image": 7,
+    "el-button": 282,
+    "el-dialog": 33,
+    "el-icon": 1,
+    "el-popover": 18,
+    "el-progress": 3,
+    "el-tooltip": 16,
+    "el-card": 26,
+    "el-input": 49,
+    "el-scrollbar": 10,
+    "el-text": 56,
+    "el-form": 12,
+    "el-form-item": 44,
+    "el-select": 25,
+    "el-option-group": 6,
+    "el-option": 35,
+    "el-space": 5,
+    "el-segmented": 3,
+    "el-alert": 36,
+    "el-badge": 5,
+    "el-tag": 17,
+    "el-checkbox": 4,
+    "el-popconfirm": 6,
+    "form-create": 5,
+    "el-input-number": 9,
+    "el-switch": 14,
+    "el-collapse": 3,
+    "el-collapse-item": 3,
+    "el-tabs": 1,
+    "el-tab-pane": 3,
+    "el-dropdown": 9,
+    "el-dropdown-menu": 9,
+    "el-dropdown-item": 37,
+    "el-color-picker": 3,
+    "el-auto-resizer": 2,
+    "el-table-v2": 2,
+    "el-divider": 6,
+    "el-table": 2,
+    "el-table-column": 4,
+    "el-checkbox-group": 3,
+    "el-radio-group": 7,
+    "el-radio": 8,
+    "el-input-tag": 2,
+    "el-empty": 2,
+    "el-link": 2,
+    "el-pagination": 2,
+    "el-tree": 4,
+    "el-slider": 7,
+    "el-skeleton": 2,
+    "el-skeleton-item": 1,
+    "el-radio-button": 5,
+    "el-container": 1,
+    "el-header": 1,
+    "el-main": 1,
+    "el-image-viewer": 4,
+    "vue-flow": 1,
+    "el-tour": 1,
+    "el-tour-step": 1
+  },
+  "protectedAndBoundaryFiles": [
+    {
+      "path": "apps/web/src/main.ts",
+      "role": "启动失败 / WebView2 错误页及应用挂载",
+      "policy": "替换 UI 渲染，保留初始化与桌面 ready 握手"
+    },
+    {
+      "path": "apps/web/src/components/settings/formCreate.ts",
+      "role": "规则表单渲染入口",
+      "policy": "保持 Rule / Api 合约，先建立自有 UI 适配再退出旧驱动"
+    },
+    {
+      "path": "apps/web/src/components/markdownOverlays.ts",
+      "role": "Markdown 弹层",
+      "policy": "保留资源与链接处理，迁移弹层外观及键盘行为"
+    },
+    {
+      "path": "apps/web/src/lib/canvasShortcuts.ts",
+      "role": "画布快捷键规则",
+      "policy": "业务规则冻结"
+    },
+    {
+      "path": "apps/web/src/lib/workspaceFiles.ts",
+      "role": "工作区读写入口与资源 URL",
+      "policy": "保留接口、目录快照和资源释放"
+    },
+    {
+      "path": "apps/web/src/lib/mcpControl.ts",
+      "role": "MCP 界面控制桥",
+      "policy": "冻结协议、注册与取消语义"
+    },
+    {
+      "path": "apps/web/src/lib/desktopProtocol.ts",
+      "role": "桌面安装请求确认",
+      "policy": "迁移确认 UI，保留授权与协议校验"
+    },
+    {
+      "path": "apps/web/src/lib/saveFile.ts",
+      "role": "桌面下载 / 保存",
+      "policy": "保留原生保存和下载协议"
+    },
+    {
+      "path": "apps/web/src/lib/tf.ts",
+      "role": "账户与支付服务",
+      "policy": "保留请求与认证，禁止真实交易验证默认执行"
+    },
+    {
+      "path": "apps/web/src/stores/settings.ts",
+      "role": "设置持久化与保存队列",
+      "policy": "保留 schema、用户偏好、错误传播"
+    },
+    {
+      "path": "apps/web/src/stores/workspace.ts",
+      "role": "项目状态与列表",
+      "policy": "保留标识和持久化数据"
+    },
+    {
+      "path": "apps/web/src/stores/hello.ts",
+      "role": "引导完成状态",
+      "policy": "保留初始化与跳转逻辑"
+    },
+    {
+      "path": "apps/web/src/stores/developer.ts",
+      "role": "开发者确认门槛",
+      "policy": "保留权限门槛"
+    },
+    {
+      "path": "apps/web/src/stores/desktopUpdate.ts",
+      "role": "桌面更新状态",
+      "policy": "保留状态与服务调用"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/canvasFile.ts",
+      "role": "画布业务文件结构",
+      "policy": "格式冻结"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/useCanvasTools.ts",
+      "role": "画布工具注册与调用",
+      "policy": "协议、参数与事务语义冻结"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/loadNodeComponent.ts",
+      "role": "动态节点 UMD 加载",
+      "policy": "保留缓存、版本、全局导出"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/useCanvasHistory.ts",
+      "role": "撤销重做",
+      "policy": "历史格式与事务边界冻结"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/canvasDrop.ts",
+      "role": "拖入文件与节点创建",
+      "policy": "只迁移可视反馈，保留业务处理"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/canvas/nodeClipboard.ts",
+      "role": "节点剪贴板",
+      "policy": "格式和业务命令冻结"
+    },
+    {
+      "path": "apps/web/src/pages/workspace/panels/document/markdownExtensions.ts",
+      "role": "编辑器扩展与持久化约束",
+      "policy": "保留文档格式与命令"
+    },
+    {
+      "path": "apps/web/src/components/agent/replyStream.ts",
+      "role": "流式消息归并",
+      "policy": "事件、消息顺序、取消和错误规则冻结"
+    },
+    {
+      "path": "apps/web/src/components/agent/mentionText.ts",
+      "role": "引用文本编码",
+      "policy": "编码和序列化合约冻结"
+    },
+    {
+      "path": "apps/web/src/components/agent/mentionSources.ts",
+      "role": "引用来源查询",
+      "policy": "来源与分页协议冻结"
+    },
+    {
+      "path": "packages/nodeScaffold/index.ts",
+      "role": "节点 UMD 构建及宿主 ABI",
+      "policy": "增加 ui 宿主支持，保留旧导出兼容；禁止提前移除 elementPlus"
+    },
+    {
+      "path": "packages/nodeScaffold/src/runtime.ts",
+      "role": "节点公共导出",
+      "policy": "维持现有 exports"
+    },
+    {
+      "path": "packages/nodeScaffold/src/nodeAi.ts",
+      "role": "节点 AI / 媒体调用",
+      "policy": "业务调用冻结，默认不触发真实生成"
+    },
+    {
+      "path": "packages/nodeScaffold/src/useNode.ts",
+      "role": "节点状态",
+      "policy": "保留数据与工具注册"
+    },
+    {
+      "path": "packages/nodeScaffold/src/useNodeGeneration.ts",
+      "role": "生成状态与生命周期",
+      "policy": "状态、取消、保存与失败回滚冻结"
+    },
+    {
+      "path": "packages/nodeScaffold/src/useNodeReferences.ts",
+      "role": "引用与端口映射",
+      "policy": "映射合约冻结"
+    },
+    {
+      "path": "packages/nodeScaffold/src/workspaceFiles.ts",
+      "role": "节点资源读写与清理",
+      "policy": "保留快照、预览与回滚"
+    },
+    {
+      "path": "packages/nodeScaffold/src/showNodeError.ts",
+      "role": "节点错误通知入口",
+      "policy": "替换通知组件，保留异步内容与生命周期"
+    },
+    {
+      "path": "packages/toolScaffold/index.ts",
+      "role": "工具 UI UMD 构建",
+      "policy": "增加 ui 宿主导出，保留旧 renderer 版本协议"
+    },
+    {
+      "path": "packages/toolScaffold/src/client.ts",
+      "role": "工具 UI 宿主",
+      "policy": "旧 elementPlus / formCreate ABI 兼容岛"
+    },
+    {
+      "path": "packages/toolScaffold/src/runtime.ts",
+      "role": "工具与问题字段 schema",
+      "policy": "协议与字段类型冻结"
+    },
+    {
+      "path": "apps/desktop/src/index.ts",
+      "role": "原生窗口和默认尺寸",
+      "policy": "1280×960 为主要验收尺寸；保留启动、端口和握手"
+    },
+    {
+      "path": "apps/desktop/src/protocol.ts",
+      "role": "toonflow URL scheme",
+      "policy": "协议与安装逻辑冻结"
+    },
+    {
+      "path": "apps/desktop/src/saveFile.ts",
+      "role": "原生保存对话框",
+      "policy": "保留系统能力，不以 Vue UI 替换 OS 保存面板"
+    },
+    {
+      "path": "apps/desktop/scripts/build.ts",
+      "role": "桌面构建入口",
+      "policy": "仅在隔离树操作，注意插件生成与 data 同步"
+    },
+    {
+      "path": "apps/desktop/installer/installer.nsi",
+      "role": "安装 / 卸载可见界面",
+      "policy": "后期视觉与品牌核查，不改变安装路径和卸载语义"
+    },
+    {
+      "path": "apps/desktop/native/protocolLauncher.cs",
+      "role": "协议错误提示",
+      "policy": "可见文案 / 品牌核查，流程不重写"
+    },
+    {
+      "path": "apps/desktop/native/saveFileDialog.cs",
+      "role": "系统文件保存 UI",
+      "policy": "保持原生，属于平台例外"
+    },
+    {
+      "path": "apps/desktop/native/updateHelper.cs",
+      "role": "更新失败提示",
+      "policy": "保持更新安全和交接流程"
+    },
+    {
+      "path": "packages/startup/src/index.ts",
+      "role": "原生启动图协调",
+      "policy": "保留取消与 ready / finish / close"
+    },
+    {
+      "path": "packages/startup/src/splashPlayer.ts",
+      "role": "启动资源渲染",
+      "policy": "只处理视觉资源与品牌，不改时序"
+    },
+    {
+      "path": "packages/startup/src/macSplash.ts",
+      "role": "macOS 原生启动 UI",
+      "policy": "后期核查"
+    },
+    {
+      "path": "packages/startup/src/windowsSplash.ts",
+      "role": "Windows 原生启动 UI",
+      "policy": "后期核查"
+    },
+    {
+      "path": "packages/startup/src/windowsSplashWorker.ts",
+      "role": "启动窗口 Worker",
+      "policy": "不改线程职责"
+    },
+    {
+      "path": "packages/startup/native/macSplash.m",
+      "role": "macOS 原生绘制",
+      "policy": "平台边界核查"
+    },
+    {
+      "path": "postcss.config.ts",
+      "role": "字体 rem 转换",
+      "policy": "新 UI 沿用字体缩放规则，避免固定 px 破坏 fontScale"
+    },
+    {
+      "path": "apps/web/vite.config.ts",
+      "role": "组件自动导入",
+      "policy": "迁移后清理 Element Plus resolver，保留构建与代理"
+    },
+    {
+      "path": "electrobun.config.ts",
+      "role": "应用标识与打包资源",
+      "policy": "app identifier / URL scheme / data 位置不随 UI 重构改变"
+    },
+    {
+      "path": "apps/web/src/types/components.d.ts",
+      "role": "自动生成声明",
+      "policy": "由工具再生成，不手工维护"
+    }
+  ],
+  "phases": [
+    {
+      "id": "isolationBaseline",
+      "title": "隔离工作树和业务基线",
+      "dependencies": [],
+      "deliverables": [
+        "独立 worktree 与分支",
+        "当前 AGENTS 和已审核设计资料副本",
+        "临时数据与独立端口规则",
+        "88 Vue / 82 界面状态迁移台账"
+      ]
+    },
+    {
+      "id": "foundationAndGlobal",
+      "title": "Token 和自有基础 UI",
+      "dependencies": [
+        "isolationBaseline"
+      ],
+      "deliverables": [
+        "packages/ui",
+        "apps/uiPreview",
+        "theme / base / 控件原生实现",
+        "弹层、提示、确认、表单接口"
+      ]
+    },
+    {
+      "id": "entryAndHome",
+      "title": "入口和首页",
+      "dependencies": [
+        "foundationAndGlobal"
+      ],
+      "deliverables": [
+        "品牌与布局重建",
+        "项目网格 / 列表",
+        "引导与目录选择",
+        "启动失败页"
+      ]
+    },
+    {
+      "id": "settingsAndForms",
+      "title": "全设置和规则表单",
+      "dependencies": [
+        "foundationAndGlobal",
+        "entryAndHome"
+      ],
+      "deliverables": [
+        "10 类设置面板",
+        "供应商 / 模型 / 插件 / 编辑弹窗",
+        "form-create 兼容替换",
+        "账户和系统条件状态"
+      ]
+    },
+    {
+      "id": "workspaceShell",
+      "title": "工作区外壳",
+      "dependencies": [
+        "settingsAndForms"
+      ],
+      "deliverables": [
+        "顶栏与面板切换",
+        "停靠 / 浮动 Agent",
+        "保存守卫与状态原样接入"
+      ]
+    },
+    {
+      "id": "canvasPresentation",
+      "title": "画布可视操作",
+      "dependencies": [
+        "workspaceShell"
+      ],
+      "deliverables": [
+        "工具栏 / 菜单 / 搜索 / 素材库",
+        "分组 / 选择 / 端口反馈",
+        "Vue Flow 交互与 MCP 合约保持"
+      ]
+    },
+    {
+      "id": "nodePresentation",
+      "title": "公共节点 UI 和内置节点",
+      "dependencies": [
+        "canvasPresentation"
+      ],
+      "deliverables": [
+        "nodeSkeleton 与媒体公共控件",
+        "7 类有源码节点的内部 UI",
+        "UMD ui 导出与兼容",
+        "assemblyNode 补源 / 边界解决"
+      ]
+    },
+    {
+      "id": "documentPresentation",
+      "title": "文档编辑 UI",
+      "dependencies": [
+        "workspaceShell",
+        "canvasPresentation"
+      ],
+      "deliverables": [
+        "Tiptap 自有工具栏与弹层",
+        "文件树和搜索",
+        "保存 / 取消 / 格式一致"
+      ]
+    },
+    {
+      "id": "agentPresentation",
+      "title": "Agent 和工具卡片 UI",
+      "dependencies": [
+        "nodePresentation",
+        "documentPresentation"
+      ],
+      "deliverables": [
+        "自有消息 / 推理 / 输入组件",
+        "附件 / 引用 / 技能 / 模型菜单",
+        "工具卡片和动态问题表单",
+        "保留流式和虚拟化引擎"
+      ]
+    },
+    {
+      "id": "compatibilityAndAcceptance",
+      "title": "兼容边界和全盘验收",
+      "dependencies": [
+        "agentPresentation"
+      ],
+      "deliverables": [
+        "旧插件宿主合约验证",
+        "桌面 / 启动 / 系统 UI 核查",
+        "82 状态加启动边界验收",
+        "清理自有业务旧 UI 依赖"
+      ]
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "assemblyNodeSourceMissing",
+      "artifact": "build/nodes/assemblyNode.umd.js",
+      "ownedSourceFound": false,
+      "decision": "需要先获得原源码或明确可支持的外部插件 UI 适配边界，不能把编译产物修改当成完整重构。",
+      "blocks": "该节点内部 UI 的终验，不阻止 Token 与自有基础组件库开始。"
+    },
+    {
+      "id": "legacyPluginUiAbi",
+      "files": [
+        "packages/nodeScaffold/index.ts",
+        "packages/toolScaffold/index.ts",
+        "packages/toolScaffold/src/client.ts"
+      ],
+      "decision": "旧安装插件依赖 elementPlus/formCreate 宿主；先并存新 ui，再按兼容证据决定旧宿主退出。",
+      "blocks": "全局直接卸载 Element Plus"
+    },
+    {
+      "id": "hostedAuthAndOsUi",
+      "decision": "第三方 TF-Router 登录和 OS 文件/权限面板不在自有 Vue 渲染控制内；仅重构宿主和自有确认，不复制认证、支付或系统协议逻辑。"
+    }
+  ],
+  "designReferences": {
+    "figmaFileKey": "zJMnhlJ5Kvs4SIM6uG13d1",
+    "completion": "docs/figmaStyleV3/completionAudit.json",
+    "stateCoverage": "docs/figmaStyleV3/componentCoverage.json",
+    "sourceScreenInventory": "docs/uiInventory20260930/inventory.json"
+  },
+  "validationPolicy": {
+    "newTestFiles": false,
+    "automaticTestEntry": false,
+    "dependenciesAndChecksSeparate": true,
+    "liveGenerationPaymentInstallByDefault": false,
+    "manualTypecheckBuildAndUiReview": true,
+    "temporaryConfigurationAndWorkspace": true
+  },
+  "requiredBusinessInvariants": [
+    "原 routes、请求路径/方法/参数、文件标记和数据格式保持",
+    "工作区目录快照、保存队列、flushSave、离开守卫和失败恢复保持",
+    "流式消息顺序、取消、重试、虚拟化定位、引用/附件序列化保持",
+    "节点 ID、端口、事件阻止、撤销、MCP tool 名称/参数与宿主 ABI 保持",
+    "ui 偏好和已有用户自定义保持，不覆盖真实配置",
+    "关闭的 Agent/A2A 功能不因重构开放"
+  ]
+}

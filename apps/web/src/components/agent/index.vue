@@ -8,9 +8,9 @@
       :parentFile="selectedConversation?.parentFile"
       :subAgents="selectedConversation?.subAgents"
       :loading="loading || historyLoading"
-      @open-sub-agent="selectConversation"
+      @openSubAgent="selectConversation"
       @back="backToParent"
-      @new-chat="newConversation"
+      @newChat="newConversation"
       @history="loadHistory(!initialized)"
       @select="selectConversation"
       @rename="renameConversation"
@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from "vue";
 import axios from "axios";
-import { ElMessage } from "element-plus";
+import { useUiFeedback } from "@toonflow/ui";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import type { AgentConversation, AgentHistory } from "./types";
@@ -44,6 +44,7 @@ import type { AgentEvent, AgentSubAgent } from "@toonflow/server/agent/types";
 import agentMenu from "./menu.vue";
 import conversation from "./conversation.vue";
 
+const feedback = useUiFeedback();
 const visible = defineModel<boolean>({ default: false });
 type OpenConversation = { key: number; name: string; file?: string; parentFile?: string; subAgents: AgentSubAgent[]; session: AgentConversation | null };
 // ACT: 会话实例保留到工作区关闭，让切换后的回复继续接收流式内容。
@@ -143,7 +144,7 @@ function setSessionFile(item: OpenConversation, file: string) {
 async function newConversation() {
   if (loading.value || historyLoading.value) return;
   const directory = workspaceStore.project?.directory;
-  if (!directory) return ElMessage.warning("请先打开项目");
+  if (!directory) return feedback.message({ tone: "warning", message: "请先打开项目" });
   const currentRequest = ++requestId;
   loading.value = true;
   try {
@@ -157,9 +158,9 @@ async function newConversation() {
     showConversation(session);
     initialized.value = true;
   } catch (error) {
-    if (currentRequest === requestId) ElMessage.error(axios.isAxiosError(error)
+    if (currentRequest === requestId) feedback.message({ tone: "error", message: axios.isAxiosError(error)
       ? error.response?.data?.message || "新建对话失败"
-      : error instanceof Error ? error.message : "新建对话失败");
+      : error instanceof Error ? error.message : "新建对话失败" });
   } finally {
     if (currentRequest === requestId) loading.value = false;
   }
@@ -195,7 +196,7 @@ async function loadHistory(openLatest = false) {
       initialized.value = true;
     }
   } catch (error) {
-    if (currentRequest === requestId) ElMessage.error(error instanceof Error ? error.message : "读取历史对话失败");
+    if (currentRequest === requestId) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "读取历史对话失败" });
   } finally {
     if (currentRequest === requestId) {
       historyLoading.value = false;
@@ -220,7 +221,7 @@ async function selectConversation(file: string) {
     showConversation(session);
     initialized.value = true;
   } catch (error) {
-    if (currentRequest === requestId) ElMessage.error(error instanceof Error ? error.message : "读取对话失败");
+    if (currentRequest === requestId) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "读取对话失败" });
   } finally {
     if (currentRequest === requestId) loading.value = false;
   }
@@ -231,7 +232,7 @@ async function renameConversation(file: string, value: string) {
   const item = history.value.find(item => item.file === file);
   const nextName = value.trim();
   if (!directory || loading.value || historyLoading.value || (!item && file !== sessionFile.value)) return;
-  if (!nextName || nextName.length > 80) return ElMessage.warning("请输入 1–80 个字符的对话名称");
+  if (!nextName || nextName.length > 80) return feedback.message({ tone: "warning", message: "请输入 1–80 个字符的对话名称" });
   if (nextName === (file === sessionFile.value ? name.value : item?.name)) return;
   const currentRequest = ++requestId;
   loading.value = true;
@@ -245,9 +246,9 @@ async function renameConversation(file: string, value: string) {
     const opened = conversations.value.find(item => item.file === file);
     if (opened) opened.name = data.data.name;
   } catch (error) {
-    if (currentRequest === requestId) ElMessage.error(axios.isAxiosError(error)
+    if (currentRequest === requestId) feedback.message({ tone: "error", message: axios.isAxiosError(error)
       ? error.response?.data?.message || "重命名对话失败"
-      : error instanceof Error ? error.message : "重命名对话失败");
+      : error instanceof Error ? error.message : "重命名对话失败" });
   } finally {
     if (currentRequest === requestId) loading.value = false;
   }
@@ -256,7 +257,7 @@ async function renameConversation(file: string, value: string) {
 async function removeConversation(file: string) {
   const directory = workspaceStore.project?.directory;
   if (!directory || loading.value || historyLoading.value || history.value.length <= 1 || !history.value.some(item => item.file === file)) return;
-  if (!/^[\w-]+\.jsonl$/.test(file)) return ElMessage.error("对话文件名无效");
+  if (!/^[\w-]+\.jsonl$/.test(file)) return feedback.message({ tone: "error", message: "对话文件名无效" });
   const currentRequest = ++requestId;
   loading.value = true;
   try {
@@ -269,9 +270,9 @@ async function removeConversation(file: string) {
     }
     conversations.value = conversations.value.filter(item => item.file !== file);
   } catch (error) {
-    if (currentRequest === requestId) ElMessage.error(axios.isAxiosError(error)
+    if (currentRequest === requestId) feedback.message({ tone: "error", message: axios.isAxiosError(error)
       ? error.response?.data?.message || "移除历史对话失败"
-      : error instanceof Error ? error.message : "移除历史对话失败");
+      : error instanceof Error ? error.message : "移除历史对话失败" });
   } finally {
     if (currentRequest === requestId) loading.value = false;
   }

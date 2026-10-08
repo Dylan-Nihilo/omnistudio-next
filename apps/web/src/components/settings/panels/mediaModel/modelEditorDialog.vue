@@ -1,96 +1,32 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="model ? '编辑模型' : '添加模型'"
-    width="min(640px, calc(100vw - 32px))"
-    alignCenter
-    appendToBody
-    destroyOnClose
-    :closeOnClickModal="false">
-    <div class="dialogContent">
-      <el-form labelPosition="top" @submit.prevent>
-        <el-form-item label="显示名称" required>
-          <el-input v-model="draft.label" clearable aria-label="模型显示名称" />
-        </el-form-item>
-        <el-form-item label="模型 ID" required>
-          <el-input v-model="draft.id" clearable aria-label="模型 ID" />
-        </el-form-item>
-        <el-form-item label="模型类型">
-          <el-select v-model="draft.type" aria-label="模型类型">
-            <el-option v-if="model?.type === 'text'" value="text" label="文本（旧配置）" disabled />
-            <el-option v-for="item in modelTypes" :key="item.value" :value="item.value" :label="item.label" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="draft.type === 'image'" label="图片生成模式" required>
-          <el-checkbox-group v-model="draft.imageMode">
-            <el-checkbox v-for="item in imageModes" :key="item.value" :value="item.value">{{ item.label }}</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <template v-if="draft.type === 'video'">
-          <el-form-item label="视频生成模式" required>
-            <div class="videoModes">
-              <el-checkbox-group v-model="draft.videoMode">
-                <el-checkbox v-for="item in videoModes" :key="item.value" :value="item.value">{{ item.label }}</el-checkbox>
-              </el-checkbox-group>
-              <el-checkbox-group v-if="draft.videoMode.includes('multiReference')" v-model="draft.mixedMode" class="referenceModes">
-                <div v-for="item in referenceModes" :key="item.value" class="referenceItem">
-                  <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
-                  <el-input-number
-                    v-if="draft.mixedMode.includes(item.value)"
-                    v-model="draft.mixedModeCount[item.value]"
-                    :min="1"
-                    :step="1"
-                    :precision="0"
-                    controlsPosition="right"
-                    size="small"
-                    :aria-label="`${item.label}数量`" />
-                </div>
-              </el-checkbox-group>
-            </div>
-          </el-form-item>
-          <el-form-item label="音频输出">
-            <el-radio-group v-model="draft.audio">
-              <el-radio value="optional">可选音频</el-radio>
-              <el-radio :value="true">始终输出音频</el-radio>
-              <el-radio :value="false">无音频</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="时长与分辨率" required>
-            <div class="mappingEditor">
-              <div class="mappingHeader"><span>时长（秒）</span><span>分辨率</span></div>
-              <div v-for="(row, index) in draft.durationResolutionMap" :key="index" class="mappingRow">
-                <span class="rowIndex">{{ index + 1 }}</span>
-                <el-input-tag v-model="row.duration" placeholder="输入后按回车" :aria-label="`第 ${index + 1} 组时长`" />
-                <icon-arrow-right :size="16" aria-hidden="true" />
-                <el-input-tag v-model="row.resolution" placeholder="输入后按回车" :aria-label="`第 ${index + 1} 组分辨率`" />
-                <el-button
-                  text
-                  type="danger"
-                  :icon="IconTrash"
-                  :disabled="draft.durationResolutionMap.length === 1"
-                  :aria-label="`删除第 ${index + 1} 组时长与分辨率`"
-                  @click="draft.durationResolutionMap.splice(index, 1)" />
-              </div>
-              <el-button class="addMapping" :icon="IconPlus" @click="draft.durationResolutionMap.push({ duration: [], resolution: [] })">添加时长与分辨率</el-button>
-            </div>
-          </el-form-item>
-        </template>
-        <details class="modelOptions">
-          <summary>更多配置（JSON）</summary>
-          <el-input v-model="options" type="textarea" :rows="6" resize="vertical" aria-label="模型的更多配置" />
-        </details>
-      </el-form>
+  <uiDialog v-model="visible" :title="model ? '编辑模型' : '添加模型'" :width="760" destroyOnClose :closeOnClickModal="false">
+    <div class="modelEditor">
+      <section class="modelIdentity">
+        <uiField label="显示名称" required><template #default="{ id, required }"><uiInput :id="id" v-model="draft.label" :required="required" clearable aria-label="模型显示名称" /></template></uiField>
+        <uiField label="模型 ID" required><template #default="{ id, required }"><uiInput :id="id" v-model="draft.id" :required="required" clearable aria-label="模型 ID" /></template></uiField>
+        <uiField label="模型类型"><template #default="{ id }"><uiSelect :id="id" :modelValue="draft.type" :options="typeOptions" aria-label="模型类型" @update:modelValue="value => (value === 'image' || value === 'video' || value === 'audio') && (draft.type = value)" /></template></uiField>
+      </section>
+      <section v-if="draft.type === 'image'" class="modelSection"><uiField label="图片生成模式" required><uiCheckboxGroup :modelValue="draft.imageMode" :options="imageModes" aria-label="图片生成模式" @update:modelValue="value => draft.imageMode = stringValues(value)" /></uiField></section>
+      <template v-if="draft.type === 'video'">
+        <section class="modelSection"><uiField label="视频生成模式" required><uiCheckboxGroup :modelValue="draft.videoMode" :options="videoModes" aria-label="视频生成模式" @update:modelValue="value => draft.videoMode = stringValues(value)" /></uiField>
+          <div v-if="draft.videoMode.includes('multiReference')" class="referenceModes"><div v-for="item in referenceModes" :key="item.value" class="referenceItem"><uiCheckbox :modelValue="draft.mixedMode.includes(item.value)" @update:modelValue="value => toggleReference(item.value, value)">{{ item.label }}</uiCheckbox><uiNumberInput v-if="draft.mixedMode.includes(item.value)" v-model="draft.mixedModeCount[item.value]" :min="1" :step="1" :precision="0" size="small" :aria-label="`${item.label}数量`" /></div></div>
+        </section>
+        <section class="modelSection"><uiField label="音频输出"><uiRadioGroup :modelValue="draft.audio" :options="audioOptions" variant="segmented" aria-label="音频输出" @update:modelValue="value => (typeof value === 'boolean' || value === 'optional') && (draft.audio = value)" /></uiField></section>
+        <section class="modelSection" aria-labelledby="mappingTitle">
+          <header class="mappingTitle"><h3 id="mappingTitle">时长与分辨率</h3><uiButton variant="ghost" size="small" :icon="IconPlus" @click="draft.durationResolutionMap.push({ duration: [], resolution: [] })">添加时长与分辨率</uiButton></header>
+          <div class="mappingEditor"><article v-for="(row, index) in draft.durationResolutionMap" :key="index" class="mappingRow"><span class="rowIndex">{{ index + 1 }}</span><uiField label="时长（秒）"><uiTagInput v-model="row.duration" placeholder="输入后按回车" :aria-label="`第 ${index + 1} 组时长`" /></uiField><icon-arrow-right class="mappingArrow" :size="16" aria-hidden="true" /><uiField label="分辨率"><uiTagInput v-model="row.resolution" placeholder="输入后按回车" :aria-label="`第 ${index + 1} 组分辨率`" /></uiField><uiIconButton variant="danger" :icon="IconTrash" :disabled="draft.durationResolutionMap.length === 1" :label="`删除第 ${index + 1} 组时长与分辨率`" @click="draft.durationResolutionMap.splice(index, 1)" /></article></div>
+        </section>
+      </template>
+      <details class="modelOptions"><summary>更多配置（JSON）</summary><uiTextarea v-model="options" :rows="6" resize="vertical" aria-label="模型的更多配置" /></details>
+      <uiAlert v-if="formError" :title="formError" tone="error" />
     </div>
-    <el-alert v-if="formError" class="formError" :title="formError" type="error" :closable="false" showIcon />
-    <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" @click="confirmModel">确定</el-button>
-    </template>
-  </el-dialog>
+    <template #footer><uiButton variant="secondary" @click="visible = false">取消</uiButton><uiButton @click="confirmModel">确定</uiButton></template>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { uiDialog, uiField, uiInput, uiTextarea, uiSelect, uiCheckbox, uiCheckboxGroup, uiRadioGroup, uiNumberInput, uiTagInput, uiButton, uiIconButton, uiAlert, type UiValue } from "@toonflow/ui";
+import { computed, ref, watch } from "vue";
 import { IconArrowRight, IconPlus, IconTrash } from "@tabler/icons-vue";
 import type { MediaProviderModel } from "./types";
 
@@ -102,6 +38,8 @@ const modelTypes = [
   { value: "video", label: "视频" },
   { value: "audio", label: "音频" },
 ];
+const typeOptions = computed(() => [...(model?.type === "text" ? [{ value: "text", label: "文本（旧配置）", disabled: true }] : []), ...modelTypes]);
+const audioOptions = [{ value: "optional", label: "可选音频" }, { value: true, label: "始终输出音频" }, { value: false, label: "无音频" }];
 const imageModes = [
   { value: "text", label: "文生图" },
   { value: "singleImage", label: "单图参考" },
@@ -233,67 +171,19 @@ function confirmModel() {
     formError.value = error instanceof Error ? error.message : "模型配置无效";
   }
 }
+function stringValues(values: UiValue[]) { return values.filter((value): value is string => typeof value === "string"); }
+function toggleReference(value: string, checked: boolean) { draft.value.mixedMode = checked ? [...new Set([...draft.value.mixedMode, value])] : draft.value.mixedMode.filter(item => item !== value); }
 </script>
 
 <style lang="scss" scoped>
-.dialogContent {
-  max-height: min(65dvh, calc(100dvh - 230px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 4px 8px;
-
-  .el-select { width: 100%; }
-
-  .videoModes {
-    width: 100%;
-
-    .referenceModes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 20px;
-      margin-top: 8px;
-
-      .referenceItem {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        .el-checkbox { margin-right: 0; }
-        .el-input-number { width: 88px; }
-      }
-    }
-  }
-
-  .mappingEditor {
-    width: 100%;
-
-    .mappingHeader {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      padding: 0 44px 4px 26px;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-    }
-
-    .mappingRow {
-      display: grid;
-      grid-template-columns: 18px minmax(0, 1fr) 16px minmax(0, 1fr) 32px;
-      align-items: start;
-      gap: 8px;
-      margin-bottom: 8px;
-
-      .rowIndex, > svg { margin-top: 8px; color: var(--el-text-color-secondary); }
-      .el-button { width: 32px; padding: 0; }
-    }
-
-    .addMapping { width: 100%; margin-top: 4px; }
-  }
-
-  .modelOptions {
-    summary { width: fit-content; margin-bottom: 12px; cursor: pointer; }
-  }
+.modelEditor {
+  display: flex; flex-direction: column; gap: 24px; min-width: 0;
+  .modelIdentity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; :deep(.uiField:last-child) { grid-column: 1 / -1; } }
+  .modelSection { min-width: 0; padding-top: 24px; border-top: 1px solid var(--uiBorderDefault); }
+  .referenceModes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px; padding: 16px; border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); .referenceItem { min-width: 0; display: flex; flex-direction: column; gap: 8px; } }
+  .mappingTitle { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; h3 { margin: 0; font-size: var(--uiFontLabel); } }
+  .mappingEditor { display: flex; flex-direction: column; gap: 12px; .mappingRow { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px minmax(0, 1fr) 36px; align-items: center; gap: 12px; padding: 16px 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); .rowIndex, .mappingArrow { color: var(--uiTextMuted); } :deep(.uiField) { min-width: 0; } } }
+  .modelOptions { min-width: 0; padding-top: 20px; border-top: 1px solid var(--uiBorderDefault); summary { width: fit-content; margin-bottom: 16px; color: var(--uiTextMuted); cursor: pointer; font-size: var(--uiFontControl); } }
+  @media (max-width: 700px) { .modelIdentity { grid-template-columns: 1fr; } .referenceModes { grid-template-columns: 1fr; } .mappingEditor .mappingRow { grid-template-columns: 20px minmax(0, 1fr) 36px; .mappingArrow { display: none; } :deep(.uiField:nth-of-type(2)) { grid-column: 2; } :deep(.uiIconButton) { grid-column: 3; grid-row: 1 / span 2; } } }
 }
-
-.formError { margin-top: 12px; }
 </style>

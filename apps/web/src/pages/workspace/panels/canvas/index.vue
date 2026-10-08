@@ -3,7 +3,7 @@
     ref="canvasElement"
     class="canvas"
     :class="{ edgesHidden: !showEdges, handMode, compositingEnabled: generalSettings.canvasCompositingEnabled }"
-    :style="{ '--canvasEdgeColor': generalSettings.canvasEdgeColorMode === 'custom' ? generalSettings.canvasEdgeColor : 'var(--el-color-primary)' }"
+    :style="{ '--canvasEdgeColor': generalSettings.canvasEdgeColorMode === 'custom' ? generalSettings.canvasEdgeColor : 'var(--uiActionPrimary)' }"
     @dblclick="openNodeMenu"
     @wheel.capture="zoomCanvas"
     @gesturestart.capture="zoomCanvas"
@@ -15,43 +15,43 @@
     @drop="dropFiles">
     <vue-flow
       :id="runtimeKey"
-      :only-render-visible-elements="false"
-      :nodes-draggable="true"
-      :node-types="nodeTypes"
-      :snap-to-grid="snapEnabled"
-      :snap-grid="[16, 16]"
-      :min-zoom="0.2"
-      :max-zoom="8"
-      :nodes-connectable="true"
-      :connection-mode="ConnectionMode.Strict"
-      :nodes-focusable="false"
-      :edges-focusable="false"
-      :edges-updatable="false"
-      :elevate-nodes-on-select="true"
-      :elevate-edges-on-select="false"
-      :disable-keyboard-a11y="true"
+      :onlyRenderVisibleElements="false"
+      :nodesDraggable="true"
+      :nodeTypes="nodeTypes"
+      :snapToGrid="snapEnabled"
+      :snapGrid="[16, 16]"
+      :minZoom="0.2"
+      :maxZoom="8"
+      :nodesConnectable="true"
+      :connectionMode="ConnectionMode.Strict"
+      :nodesFocusable="false"
+      :edgesFocusable="false"
+      :edgesUpdatable="false"
+      :elevateNodesOnSelect="true"
+      :elevateEdgesOnSelect="false"
+      :disableKeyboardA11y="true"
       :selectNodesOnDrag="false"
-      :auto-pan-on-node-drag="false"
-      :auto-pan-on-connect="false"
-      :zoom-on-double-click="false"
+      :autoPanOnNodeDrag="false"
+      :autoPanOnConnect="false"
+      :zoomOnDoubleClick="false"
       :zoomOnScroll="false"
       :zoomOnPinch="active && !settingsVisible"
       :panOnScroll="active && !settingsVisible"
       :panOnScrollSpeed="1"
       :panOnDrag="handMode ? true : [1]"
       :panOnScrollMode="PanOnScrollMode.Free"
-      :delete-key-code="null"
+      :deleteKeyCode="null"
       :selectionKeyCode="!handMode"
       :selectionMode="SelectionMode.Partial"
-      :multi-selection-key-code="null"
+      :multiSelectionKeyCode="null"
       :zoomActivationKeyCode="zoomKeyPressed ? true : null"
-      :pan-activation-key-code="null"
+      :panActivationKeyCode="null"
       v-model="flowData"
       @connect="addEdges"
       @edgeClick="showEdgeDisconnect"
       @paneClick="edgeDisconnect = undefined"
       @moveStart="edgeDisconnect = undefined"
-      :default-edge-options="defaultEdgeOptions">
+      :defaultEdgeOptions="defaultEdgeOptions">
       <template v-for="type in remoteNodeTypes" :key="type" #[`node-${type}`]="nodeProps">
         <remoteNode
           v-bind="nodeProps"
@@ -59,7 +59,7 @@
           :error="nodeErrors[type]"
           :loading="nodeLoads.has(type) || (nodeListLoading && !nodeTypes[type] && !nodeErrors[type])" />
       </template>
-      <background :gap="16" pattern-color="var(--el-border-color)" />
+      <background :gap="16" patternColor="var(--uiBorderDefault)" />
       <canvasMenu ref="canvasMenuRef" v-model:canvasId="canvasId" :directory="project?.directory" :initialCanvasId="initialCanvasId" :activateCanvas="activateCanvas" :flushSave="flushCanvases ?? flushCanvasSave">
         <assetLibrary ref="assetLibraryRef" v-model="assetsVisible" :directory="project?.directory" />
       </canvasMenu>
@@ -73,7 +73,7 @@
         :batchHistory="canvasHistory.batch"
         @update:showEdges="edgeDisconnect = undefined" />
       <nodeMenu
-        :key="JSON.stringify([project?.directory, canvasId])"
+        :key="JSON.stringify(['nodeMenu', project?.directory, canvasId])"
         ref="nodeMenuRef"
         :remoteNodes="availableNodes"
         :pasteNode="pasteClipboardNode"
@@ -87,7 +87,7 @@
         @undo="changeHistory('undo')"
         @redo="changeHistory('redo')" />
       <selectionToolbar
-        :key="JSON.stringify([project?.directory, canvasId])"
+        :key="JSON.stringify(['selectionToolbar', project?.directory, canvasId])"
         ref="selectionToolbarRef"
         :batchHistory="canvasHistory.batch"
         :getSignal="() => canvasController.signal"
@@ -95,12 +95,12 @@
       <nodeSearch ref="nodeSearchRef" :disabled="!active || settingsVisible || !canvasId || !project?.directory" />
     </vue-flow>
     <teleport to="body">
-      <el-button
+      <uiIconButton
         v-if="edgeDisconnect && findEdge(edgeDisconnect.id)"
         class="edgeDisconnect"
-        type="danger"
-        circle
-        aria-label="断开连接"
+        variant="danger"
+        :icon="IconUnlink"
+        label="断开连接"
         title="断开连接"
         :style="{ left: `${edgeDisconnect.x}px`, top: `${edgeDisconnect.y}px` }"
         @click.stop="
@@ -108,20 +108,23 @@
           edgeDisconnect = undefined;
         "
         @mouseleave="edgeDisconnect = undefined">
-        <icon-unlink :size="16" />
-      </el-button>
+      </uiIconButton>
     </teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import feedback from "@/lib/uiFeedback";
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, onScopeDispose, provide, ref, shallowReactive, shallowRef, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash-es";
-import { ElMessage } from "element-plus";
+import { uiIconButton } from "@toonflow/ui";
 import { storeToRefs } from "pinia";
 import { IconUnlink } from "@tabler/icons-vue";
 import * as vueRuntime from "vue";
+import * as uiRuntime from "@toonflow/ui";
+import * as tiptapRuntime from "@tiptap/core";
+import * as starterKitRuntime from "@tiptap/starter-kit";
 import * as vueFlowRuntime from "@vue-flow/core";
 import * as elementPlusRuntime from "element-plus";
 import { runAgentLoop } from "@earendil-works/pi-agent-core";
@@ -385,7 +388,7 @@ async function dropFiles(event: DragEvent) {
   try {
     await canvasHistory.batch(() => dropCanvasFiles(event, { directory, availableNodes: availableNodes.value, signal: canvasController.signal, flow }));
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "文件导入失败");
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文件导入失败" });
   }
 }
 
@@ -402,7 +405,7 @@ function selectFiles(position: { x: number; y: number }) {
     try {
       await canvasHistory.batch(() => importCanvasFiles(files, position, context));
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : "文件导入失败");
+      feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文件导入失败" });
     }
   };
   input.click();
@@ -424,13 +427,11 @@ async function changeHistory(direction: "undo" | "redo") {
     await canvasHistory[direction]();
     edgeDisconnect.value = undefined;
   } catch (error) {
-    ElMessage.error(
-      axios.isAxiosError<{ message?: string }>(error)
+    feedback.message({ tone: "error", message: axios.isAxiosError<{ message?: string }>(error)
         ? error.response?.data.message || "恢复画布失败"
         : error instanceof Error
         ? error.message
-        : "恢复画布失败"
-    );
+        : "恢复画布失败" });
   }
 }
 
@@ -450,13 +451,11 @@ const saveCanvas = debounce((directory: string, fileName: string) => {
       saveError = undefined;
     } catch (err) {
       saveError = err;
-      ElMessage.error(
-        axios.isAxiosError<{ message?: string }>(err)
+      feedback.message({ tone: "error", message: axios.isAxiosError<{ message?: string }>(err)
           ? err.response?.data.message || "画布保存失败"
           : err instanceof Error
           ? err.message
-          : "画布保存失败"
-      );
+          : "画布保存失败" });
     }
   });
 }, 500);
@@ -652,9 +651,7 @@ async function pasteClipboardNode(position: { x: number; y: number }, command?: 
       ? `无法读取剪贴板，请在画布上按 ${shortcutLabel(pasteShortcut)} 粘贴`
       : "无法读取剪贴板，请允许浏览器访问剪贴板";
     if (!canvasSignal.aborted)
-      ElMessage.error(
-        error instanceof DOMException && error.name === "NotAllowedError" ? clipboardMessage : error instanceof Error ? error.message : "节点粘贴失败"
-      );
+      feedback.message({ tone: "error", message: error instanceof DOMException && error.name === "NotAllowedError" ? clipboardMessage : error instanceof Error ? error.message : "节点粘贴失败" });
     return false;
   }
 }
@@ -662,7 +659,7 @@ async function pasteClipboardNode(position: { x: number; y: number }, command?: 
 function zoomCanvas(event: WheelEvent | (Event & { scale: number })) {
   if (event.type === "gestureend") gestureScale = undefined;
   if (!props.active || props.settingsVisible || document.fullscreenElement || flow.userSelectionActive.value) return;
-  if (!(event.target instanceof Element) || !event.target.closest(".vue-flow__pane, .vue-flow__node, .vue-flow__edge, .vue-flow__nodesselection")) return;
+  if (!(event.target instanceof Element) || event.target.closest("dialog, [popover], [role='dialog']") || !event.target.closest(".vue-flow__pane, .vue-flow__node, .vue-flow__edge, .vue-flow__nodesselection")) return;
   let factor: number;
   let point = pointerPosition;
   if ("scale" in event) {
@@ -735,7 +732,7 @@ function updateCanvasKeys(event: KeyboardEvent) {
     void canvasHistory
       .batch(() => menu.deleteSelection(nodes))
       .catch((error) => {
-        ElMessage.error(error instanceof Error ? error.message : "节点删除失败");
+        feedback.message({ tone: "error", message: error instanceof Error ? error.message : "节点删除失败" });
       });
     return;
   }
@@ -790,10 +787,10 @@ onBeforeUnmount(() => {
 });
 
 const nodeWindow = window as typeof window & {
-  toonflowNodeHost?: { vue: typeof vueRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
+  toonflowNodeHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; tiptap: typeof tiptapRuntime; starterKit: typeof starterKitRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
   toonflowNodes?: NodeTypesObject;
 };
-nodeWindow.toonflowNodeHost = { vue: vueRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
+nodeWindow.toonflowNodeHost = { vue: vueRuntime, ui: uiRuntime, tiptap: tiptapRuntime, starterKit: starterKitRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
 provide("nodeConfig", (nodeType: string) => nodeConfigs.value[nodeType] ?? {});
 provide("workspaceFiles", () => {
   const directory = project.value?.directory;
@@ -885,10 +882,10 @@ async function loadRemoteNodes(reloadName?: string) {
           console.error("加载远端节点失败", node, error);
           // 保存拒绝时旧组件仍可用，不从节点菜单中移除；脚本加载错误仍排除。
           if (nodeTypes.value[nodeType] && !nodeErrors.value[nodeType]) {
-            if (reloadNames.has(node.name) && !signal.aborted) ElMessage.warning({
+            if (reloadNames.has(node.name) && !signal.aborted) feedback.message({ ...{
               message: `${node.displayName}已安装，但当前节点无法刷新。请等待任务结束后，点击节点右上角的刷新按钮。`,
               grouping: true,
-            });
+            }, tone: "warning" });
           }
         }
       })

@@ -1,4 +1,5 @@
 import * as vueRuntime from "vue";
+import * as uiRuntime from "@toonflow/ui";
 import * as elementPlusRuntime from "element-plus";
 import axios from "axios";
 import formCreate from "@form-create/element-ui";
@@ -6,10 +7,10 @@ import type { Component } from "vue";
 
 type ToolRenderer = { name: string; tools: string[]; url: string };
 const toolWindow = window as typeof window & {
-  toonflowToolHost?: { vue: typeof vueRuntime; elementPlus: typeof elementPlusRuntime; axios: typeof axios; formCreate: typeof formCreate };
+  toonflowToolHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; elementPlus: typeof elementPlusRuntime; axios: typeof axios; formCreate: typeof formCreate };
   toonflowToolViews?: Record<string, Record<string, Component>>;
 };
-toolWindow.toonflowToolHost = { vue: vueRuntime, elementPlus: elementPlusRuntime, axios, formCreate };
+toolWindow.toonflowToolHost = { vue: vueRuntime, ui: uiRuntime, elementPlus: elementPlusRuntime, axios, formCreate };
 const componentLoads = new Map<string, Promise<Record<string, Component>>>();
 let rendererRequest: Promise<ToolRenderer[]> | undefined;
 

@@ -1,54 +1,22 @@
 <template>
-  <nodeSkeleton
-    v-bind="nodeProps"
-    v-model:bottomVisible="node.selected"
-    :topVisible="node.selected"
-    topWidth="max-content"
-    :downloadUrl="downloadUrl"
-    :downloadName="`${nodeProps.label || '文本'}.txt`"
-    :bottomWidth="660"
-    @fullscreen="fullscreen = true; editing = true">
-    <div class="textContent" :class="{ empty: !outputs.text.value.trim() }">
-      <div v-if="outputs.text.value.trim()" class="textPreview nopan nowheel" aria-label="文本内容">{{ outputs.text.value }}</div>
-      <el-button class="editButton nodrag nopan" :icon="IconEdit" :disabled="generating || !textReady" text @dblclick.stop @click.stop="editing = true">编辑</el-button>
-    </div>
-    <template #bottom>
-      <el-card class="promptCard" shadow="never" :bodyStyle="{ padding: '14px 16px 12px' }">
-        <div class="promptHeader" v-if="refList.length">
-          <referenceItem
-            v-model="refList"
-            @preview="setReferencePreview"
-            @remove="removeReference" />
-        </div>
-        <promptInput v-model="promptModel" v-model:text="prompt" :references="referenceMentions" />
-        <div class="promptFooter">
-          <el-select v-model="model" class="modelSelect" filterable :loading="modelsLoading" :disabled="generating" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加模型" placement="top-start" @visible-change="visible => visible && loadModels()">
-            <template #prefix><icon-sparkles :size="17" /></template>
-            <el-option-group v-for="provider in modelGroups" :key="provider.id" :label="provider.label">
-              <el-option v-for="item in provider.models" :key="item.modelId" :label="item.label" :value="JSON.stringify([item.providerId, item.modelId])" />
-            </el-option-group>
-          </el-select>
-          <div class="promptActions">
-            <el-button class="sendButton" :icon="IconArrowUp" :loading="generating" :disabled="!prompt.trim() || !selectedModel || generating || !textReady" title="生成" aria-label="生成" @click="generateText" />
-          </div>
-        </div>
-      </el-card>
-    </template>
+  <nodeSkeleton v-bind="nodeProps" v-model:bottomVisible="node.selected" :topVisible="node.selected" topWidth="max-content" :downloadUrl="downloadUrl" :downloadName="`${nodeProps.label || '文本'}.txt`" :bottomWidth="660" @fullscreen="fullscreen = true; editing = true">
+    <div class="textContent" :class="{ empty: !outputs.text.value.trim() }"><div v-if="outputs.text.value.trim()" class="textPreview nopan nowheel" aria-label="文本内容">{{ outputs.text.value }}</div><uiButton class="editButton nodrag nopan" variant="ghost" size="small" :icon="IconEdit" :disabled="generating || !textReady" @dblclick.stop @click.stop="editing = true">编辑</uiButton></div>
+    <template #bottom><section class="promptCard"><div v-if="refList.length" class="promptHeader"><referenceItem v-model="refList" @preview="setReferencePreview" @remove="removeReference" /></div><promptInput v-model="promptModel" v-model:text="prompt" :references="referenceMentions" /><div class="promptFooter"><div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="visible => visible && loadModels()" /></div><uiIconButton :icon="IconArrowUp" variant="primary" :loading="generating" :disabled="!prompt.trim() || !selectedModel || generating || !textReady" label="生成" title="生成" @click="generateText" /></div></section></template>
   </nodeSkeleton>
-  <el-dialog v-model="editing" title="编辑文本" width="min(860px, calc(100vw - 32px))" :fullscreen="fullscreen" alignCenter appendToBody @closed="fullscreen = false">
-    <el-input class="textEditor" :class="{ fullscreen }" v-model="outputs.text.value" type="textarea" :rows="1" :disabled="generating" resize="none" aria-label="编辑文本内容" />
-  </el-dialog>
+  <uiDialog v-model="editing" title="编辑文本" :width="860" :fullscreen="fullscreen" @closed="fullscreen = false"><uiTextarea class="textEditor" :class="{ fullscreen }" v-model="outputs.text.value" :rows="1" :disabled="generating" resize="none" aria-label="编辑文本内容" /></uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { ElButton, ElCard, ElInput, ElSelect, ElDialog, ElOption, ElOptionGroup, ElMessage } from "element-plus";
+import { uiButton, uiIconButton, uiSelect, uiDialog, uiTextarea, useUiFeedback } from "@toonflow/ui";
 import { IconEdit, IconFileText, IconSparkles, IconArrowUp } from "@tabler/icons-vue";
 import { groupNodeModels, nodeSkeleton, nodeTools, useNode, useNodeReferences, z, type NodeAiModel, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
 import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
 import promptInput from "@toonflow/nodes-scaffold/promptInput";
 
 type PromptModel = NonNullable<InstanceType<typeof promptInput>["$props"]["modelValue"]>;
+
+const feedback = useUiFeedback();
 
 defineOptions({
   inheritAttrs: false,
@@ -127,14 +95,14 @@ async function loadText() {
     Object.defineProperty(outputs.value, "toJSON", { value: () => ({}) });
     textReady.value = true;
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "文本加载失败");
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文本加载失败" });
   }
 }
 
 watch(() => outputs.value.text.value, async (value) => {
   if (!textReady.value || generating.value) return;
   try { await saveText(value); }
-  catch (error) { ElMessage.error(error instanceof Error ? error.message : "文本保存失败"); }
+  catch (error) { feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文本保存失败" }); }
 }, { flush: "sync" });
 nodeEvent.on("copy", () => {
   if (!textReady.value) throw new Error("文本尚未加载");
@@ -153,7 +121,7 @@ async function loadModels() {
       model.value = first ? JSON.stringify([first.providerId, first.modelId]) : "";
     }
   } catch (error) {
-    if (error instanceof Error && error.name !== "AbortError") ElMessage.error(error.message);
+    if (error instanceof Error && error.name !== "AbortError") feedback.message({ tone: "error", message: error.message });
   } finally {
     modelsLoading.value = false;
   }
@@ -180,11 +148,11 @@ async function generateText() {
     });
     outputs.value.text.value = result.text;
   } catch (error) {
-    if (error instanceof Error && error.name !== "AbortError") ElMessage.error(error.message);
+    if (error instanceof Error && error.name !== "AbortError") feedback.message({ tone: "error", message: error.message });
   } finally {
     // 卸载会取消请求并停止 watcher，生成收尾必须自行保存已收到的正文。
     try { await saveText(outputs.value.text.value); }
-    catch (error) { ElMessage.error(error instanceof Error ? error.message : "文本保存失败"); }
+    catch (error) { feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文本保存失败" }); }
     generating.value = false;
   }
 }
@@ -205,106 +173,7 @@ nodeTools.register({
 </script>
 
 <style lang="scss" scoped>
-.textEditor {
-  &.fullscreen :deep(.el-textarea__inner) {
-    height: calc(100dvh - 112px);
-  }
-
-  :deep(.el-textarea__inner) {
-    height: min(560px, calc(100dvh - 144px));
-    padding: 16px 20px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    font-size: 14px;
-    line-height: 1.8;
-  }
-}
-
-.textContent {
-  min-height: 110px;
-
-  &.empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .editButton {
-      margin: 0;
-    }
-  }
-
-  .textPreview {
-    min-height: 110px;
-    max-height: 240px;
-    overflow: auto;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    user-select: none;
-  }
-
-  .editButton {
-    display: flex;
-    margin-left: auto;
-  }
-}
-
-.promptCard {
-  .promptHeader {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .promptFooter {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-
-    .modelSelect {
-      width: 190px;
-      min-width: 0;
-
-      &:deep(.el-select__wrapper) {
-        gap: 6px;
-        padding: 0;
-        box-shadow: none;
-        background: transparent;
-      }
-    }
-
-    .promptActions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      .toolButton {
-        width: 28px;
-        height: 28px;
-        padding: 0;
-      }
-
-      .generationCount {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-      }
-
-      .sendButton {
-        width: 32px;
-        height: 32px;
-        margin: 0;
-        padding: 0;
-        --el-button-bg-color: var(--el-text-color-primary);
-        --el-button-border-color: transparent;
-        --el-button-text-color: var(--el-bg-color);
-        --el-button-hover-bg-color: var(--el-text-color-regular);
-        --el-button-hover-border-color: transparent;
-        --el-button-hover-text-color: var(--el-bg-color);
-      }
-    }
-  }
-}
+.textEditor { height: min(560px, calc(100dvh - 176px)); line-height: 1.8; &.fullscreen { height: calc(100dvh - 144px); } }
+.textContent { min-height: 110px; &.empty { display: flex; align-items: center; justify-content: center; } .textPreview { min-height: 110px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; user-select: none; color: var(--uiTextBody); font-size: var(--uiFontControl); line-height: 1.8; } .editButton { display: flex; margin-left: auto; } }
+.promptCard { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover); .promptHeader { display: flex; align-items: flex-start; gap: 12px; } .promptFooter { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); .modelChoice { display: flex; align-items: center; gap: 8px; width: 240px; min-width: 0; color: var(--uiTextMuted); :deep(.uiPopover) { flex: 1; min-width: 0; } } } }
 </style>

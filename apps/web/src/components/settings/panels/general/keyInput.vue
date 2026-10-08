@@ -1,11 +1,11 @@
 <template>
   <div class="keyInput">
-    <el-input
+    <uiInput
       v-if="mode === 'input'"
       v-model="draft"
       size="small"
       :disabled="disabled"
-      :aria-label="label"
+      :aria-label="label" :aria-describedby="describedBy"
       placeholder="留空即不绑定"
       @keydown.stop
       @blur="commitInput"
@@ -17,6 +17,7 @@
         type="button"
         :disabled="disabled"
         :aria-label="label"
+        :aria-describedby="describedBy"
         :aria-pressed="recording"
         :title="recording ? '按键录制，Esc 取消' : '点击修改快捷键'"
         @click="draft = code; recording = true"
@@ -35,27 +36,19 @@
           </span>
         </span>
       </button>
-      <el-button
-        v-if="draft"
-        class="clearButton"
-        text
-        size="small"
-        :icon="IconX"
-        :disabled="disabled"
-        :aria-label="`清除${label}`"
-        title="取消绑定"
-        @click="draft = ''; emit('change', '')" />
+      <uiIconButton v-if="draft" class="clearButton" size="small" :icon="IconX" :disabled="disabled" :label="`清除${label}`" title="取消绑定" @click="draft = ''; emit('change', '')" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { uiInput, uiIconButton } from "@toonflow/ui";
 import { ref, watch } from "vue";
 import { IconX } from "@tabler/icons-vue";
 import { getShortcutBindings, isModifierShortcut, shortcutFromEvent, shortcutLabel } from "@/lib/canvasShortcuts";
 
-const { code, mode, label, hold = false, disabled = false } = defineProps<{
-  code: string; mode: "listen" | "input"; label: string; hold?: boolean; disabled?: boolean;
+const { code, mode, label, describedBy, hold = false, disabled = false } = defineProps<{
+  code: string; mode: "listen" | "input"; label: string; describedBy?: string; hold?: boolean; disabled?: boolean;
 }>();
 const emit = defineEmits<{ change: [value: string] }>();
 const draft = ref(code);
@@ -97,63 +90,5 @@ function commitInput() {
 </script>
 
 <style lang="scss" scoped>
-.keyInput {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-  gap: 2px;
-
-  .recorder {
-    min-width: 64px;
-    max-width: 100%;
-    padding: 3px;
-    border: 0;
-    border-radius: var(--el-border-radius-base);
-    background: transparent;
-    color: var(--el-text-color-primary);
-    font: inherit;
-    cursor: pointer;
-
-    &:hover { background: var(--el-fill-color-light); }
-    &:focus-visible, &.recording { outline: 2px solid var(--el-color-primary-light-5); }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
-    .placeholder { color: var(--el-text-color-placeholder); font-size: 12px; }
-    .bindings {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 4px;
-
-      .binding {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-
-        .separator { color: var(--el-text-color-secondary); font-size: 12px; }
-        kbd {
-          min-width: 22px;
-          padding: 1px 5px;
-          border: 1px solid var(--el-border-color-lighter);
-          border-radius: 5px;
-          background: var(--el-fill-color-blank);
-          font: inherit;
-          font-size: 12px;
-          line-height: 22px;
-          white-space: nowrap;
-        }
-      }
-    }
-  }
-
-  .clearButton {
-    flex-shrink: 0;
-    width: 20px;
-    height: 24px;
-    margin: 0;
-    padding: 0;
-    opacity: 0;
-  }
-  &:hover .clearButton, &:focus-within .clearButton { opacity: 1; }
-}
+.keyInput { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; .recorder { min-width: 64px; max-width: 100%; padding: 4px; border: 0; border-radius: var(--uiRadiusControl); background: transparent; color: var(--uiTextPrimary); font: inherit; cursor: pointer; &:hover { background: var(--uiSurfaceHover); } &:focus-visible, &.recording { outline: 2px solid var(--uiBorderFocus); } &:disabled { opacity: 0.5; cursor: not-allowed; } .placeholder { color: var(--uiTextMuted); font-size: var(--uiFontControl); } .bindings { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; .binding { display: inline-flex; align-items: center; gap: 4px; .separator { color: var(--uiTextMuted); font-size: var(--uiFontControl); } kbd { min-width: 24px; padding: 2px 6px; border: 1px solid var(--uiBorderControl); border-radius: 4px; background: var(--uiBackgroundSubtle); font: inherit; font-size: var(--uiFontControl); line-height: 22px; white-space: nowrap; } } } } .clearButton { flex-shrink: 0; opacity: 0; } &:hover .clearButton, &:focus-within .clearButton { opacity: 1; } }
 </style>

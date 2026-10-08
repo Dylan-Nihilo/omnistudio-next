@@ -149,11 +149,11 @@ defineExpose({ clear });
   pointer-events: none;
 
   .valid {
-    stroke: var(--el-color-primary);
+    stroke: var(--uiActionPrimary);
   }
 
   .invalid {
-    stroke: var(--el-color-danger);
+    stroke: var(--uiStatusError);
   }
 }
 
@@ -167,8 +167,8 @@ defineExpose({ clear });
   padding: 0;
   border: 0;
   border-radius: 50%;
-  color: var(--el-text-color-secondary);
-  background: var(--el-bg-color);
+  color: var(--uiTextMuted);
+  background: var(--uiSurfaceRaised);
   cursor: crosshair;
   touch-action: none;
 }

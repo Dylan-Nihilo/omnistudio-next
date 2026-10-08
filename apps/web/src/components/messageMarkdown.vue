@@ -64,12 +64,12 @@ const chunks = computed(() => {
   min-width: 0;
 
   .markdownChunk {
-    --background: var(--el-bg-color);
-    --foreground: var(--el-text-color-primary);
-    --muted: var(--el-fill-color-light);
-    --muted-foreground: var(--el-text-color-secondary);
-    --border: var(--el-border-color-lighter);
-    --primary: var(--el-color-primary);
+    --background: var(--uiBackgroundBase);
+    --foreground: var(--uiTextPrimary);
+    --muted: var(--uiBackgroundSubtle);
+    --muted-foreground: var(--uiTextMuted);
+    --border: var(--uiBorderDefault);
+    --primary: var(--uiActionPrimary);
     font-size: inherit;
     line-height: inherit;
 

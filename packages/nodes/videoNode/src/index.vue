@@ -8,18 +8,17 @@
     :style="{ width: previewUrl && videoWidth ? `${videoWidth + 18}px` : undefined }"
     @fullscreen="player?.enterFullscreen()">
     <template #topActions>
-      <el-button
+      <uiIconButton
         :icon="IconTransfer"
         :loading="uploading"
         :disabled="exporting"
-        text
         title="替换视频"
-        aria-label="替换视频"
+        label="替换视频"
         @click.stop="fileInput?.click()" />
     </template>
     <div class="videoContent nopan">
       <div v-if="exporting" class="exportLoading" role="status" aria-label="视频导出中">
-        <el-progress type="circle" :percentage="exportProgress" :width="64" :strokeWidth="3" />
+        <uiProgress type="circle" :percentage="exportProgress" :width="64" :strokeWidth="3" />
         <span>正在导出视频</span>
       </div>
       <videoPlayer
@@ -28,17 +27,16 @@
         :src="previewUrl"
         @loadedmetadata="resizeVideo" />
       <input ref="fileInput" class="fileInput" type="file" accept="video/*" aria-label="选择视频" :disabled="uploading || exporting" @change="uploadVideo" />
-      <el-button
+      <uiButton variant="ghost"
         v-if="!exporting && !outputs.video"
         class="uploadButton"
-        text
         :loading="uploading"
         title="上传视频"
         aria-label="上传视频"
         @dblclick.stop
         @click="fileInput?.click()">
         <icon-upload v-if="!uploading" :size="48" stroke="1.5" />
-      </el-button>
+      </uiButton>
     </div>
   </nodeSkeleton>
 </template>
@@ -46,9 +44,11 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { IconVideo, IconUpload, IconTransfer } from "@tabler/icons-vue";
-import { ElButton, ElMessage, ElProgress } from "element-plus";
+import { uiButton, uiIconButton, uiProgress, useUiFeedback } from "@toonflow/ui";
 import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
 import videoPlayer from "@toonflow/nodes-scaffold/videoPlayer";
+
+const feedback = useUiFeedback();
 
 defineOptions({
   inheritAttrs: false,
@@ -119,8 +119,8 @@ async function uploadVideo(event: Event) {
   const file = input.files?.[0];
   input.value = "";
   if (!file || uploading.value || exporting.value) return;
-  if (!file.type.startsWith("video/")) return void ElMessage.error("请选择视频文件");
-  if (!file.size || file.size > 100 * 1024 * 1024) return void ElMessage.error("视频不能为空且不能超过 100 MB");
+  if (!file.type.startsWith("video/")) return void feedback.message({ tone: "error", message: "请选择视频文件" });
+  if (!file.size || file.size > 100 * 1024 * 1024) return void feedback.message({ tone: "error", message: "视频不能为空且不能超过 100 MB" });
   uploading.value = true;
   try {
     const url = await files.uploadFile(file);
@@ -135,7 +135,7 @@ async function uploadVideo(event: Event) {
 
 function showError(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  ElMessage.error(message || (error instanceof Error ? error.message : fallback));
+  feedback.message({ tone: "error", message: message || (error instanceof Error ? error.message : fallback) });
 }
 </script>
 
@@ -146,7 +146,7 @@ function showError(error: unknown, fallback: string) {
   place-items: center;
   min-height: 144px;
   overflow: hidden;
-  border-radius: var(--el-border-radius-base);
+  border-radius: var(--uiRadiusControl);
 
   .exportLoading {
     display: flex;
@@ -154,7 +154,7 @@ function showError(error: unknown, fallback: string) {
     align-items: center;
     gap: 12px;
     padding: 20px;
-    color: var(--el-text-color-secondary);
+    color: var(--uiTextMuted);
   }
 
   .fileInput {
@@ -165,10 +165,10 @@ function showError(error: unknown, fallback: string) {
     width: 100%;
     height: 144px;
     padding: 0;
-    color: var(--el-text-color-placeholder);
+    color: var(--uiTextMuted);
 
     &:hover {
-      color: var(--el-color-primary);
+      color: var(--uiActionPrimary);
     }
   }
 }

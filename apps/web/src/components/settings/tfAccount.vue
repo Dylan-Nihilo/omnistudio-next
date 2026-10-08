@@ -1,61 +1,20 @@
 <template>
-  <div class="tfAccount" :aria-busy="loading">
+  <section class="tfAccount" aria-label="TF-Router 账户" :aria-busy="loading || saving">
     <div v-if="apiKey" class="accountHeader">
-      <div class="accountBalance">
-        <el-text size="small" type="info">账户余额</el-text>
-        <el-skeleton v-if="loading && !balance" animated>
-          <template #template><el-skeleton-item class="balancePlaceholder" variant="text" /></template>
-        </el-skeleton>
-        <strong v-else class="balanceNumber">{{ balance ? numberFormat.format(balance.balance) : "—" }}</strong>
-      </div>
-      <div class="accountActions">
-        <el-button text circle :icon="IconRefresh" :loading="loading" :disabled="!apiKey" aria-label="刷新余额" title="刷新余额" @click="refresh" />
-        <el-button size="small" :icon="IconCreditCard" :disabled="!apiKey" @click="openRecharge">充值</el-button>
-      </div>
+      <div class="accountBalance"><span class="metricLabel">账户余额</span><uiSkeleton v-if="loading && !balance" class="balancePlaceholder" :rows="1" /><strong v-else class="balanceNumber">{{ balance ? numberFormat.format(balance.balance) : "—" }}</strong></div>
+      <div class="accountActions"><uiIconButton variant="ghost" :icon="IconRefresh" :loading="loading" :disabled="!apiKey" label="刷新余额" title="刷新余额" @click="refresh" /><uiButton variant="secondary" :icon="IconCreditCard" :disabled="!apiKey" @click="openRecharge">充值</uiButton></div>
     </div>
-    <div v-if="!apiKey" class="accountSetup">
-      <el-text size="small" type="info">填写API Key开始使用官方供应商</el-text>
-      <div class="setupForm">
-        <el-input
-          v-model="draftKey"
-          class="setupInput"
-          type="password"
-          showPassword
-          placeholder="粘贴 API Key"
-          :disabled="saving"
-          @keyup.enter="submitKey" />
-        <el-button type="primary" size="small" :loading="saving || fetchingModels" :disabled="!draftKey.trim()" @click="submitKey">保存</el-button>
-      </div>
-      <el-text v-if="setupError" size="small" type="danger">{{ setupError }}</el-text>
-      <el-button tag="a" href="https://api.toonflow.net/" target="_blank" rel="noopener noreferrer" text type="primary" :icon="IconExternalLink">
-        前往 TF-Router 官网 获取 API Key
-      </el-button>
-    </div>
-    <div v-else-if="errorMessage" class="accountError" role="alert">
-      <el-text size="small" type="danger">{{ errorMessage }}</el-text>
-      <el-button text size="small" :disabled="loading" @click="refresh">重试</el-button>
-    </div>
-    <div v-if="balance" class="accountDetails">
-      <div class="accountMetric">
-        <el-text size="small" type="info">密钥余额</el-text>
-        <span>{{ balance.keyBalance === null ? "无限制" : numberFormat.format(balance.keyBalance) }}</span>
-      </div>
-      <div class="accountMetric">
-        <el-text size="small" type="info">累计消费</el-text>
-        <span>{{ numberFormat.format(balance.totalConsumption) }}</span>
-      </div>
-      <div class="accountMetric">
-        <el-text size="small" type="info">累计充值</el-text>
-        <span>{{ numberFormat.format(balance.totalRecharge) }}</span>
-      </div>
-    </div>
+    <div v-if="!apiKey" class="accountSetup"><p>填写 API Key 开始使用官方供应商</p><div class="setupForm"><uiInput v-model="draftKey" type="password" showPassword autocomplete="off" placeholder="粘贴 API Key" aria-label="TF-Router API Key" :disabled="saving" @keyup.enter="submitKey" /><uiButton :loading="saving || fetchingModels" :disabled="!draftKey.trim()" @click="submitKey">保存</uiButton></div><uiAlert v-if="setupError" :title="setupError" tone="error" /><uiButton tag="a" href="https://api.toonflow.net/" target="_blank" rel="noopener noreferrer" variant="ghost" size="small" :icon="IconExternalLink">前往 TF-Router 官网 获取 API Key</uiButton></div>
+    <uiAlert v-else-if="errorMessage" class="accountError" :title="errorMessage" tone="error"><uiButton variant="secondary" size="small" :disabled="loading" @click="refresh">重试</uiButton></uiAlert>
+    <dl v-if="balance" class="accountDetails"><div class="accountMetric"><dt>密钥余额</dt><dd>{{ balance.keyBalance === null ? "无限制" : numberFormat.format(balance.keyBalance) }}</dd></div><div class="accountMetric"><dt>累计消费</dt><dd>{{ numberFormat.format(balance.totalConsumption) }}</dd></div><div class="accountMetric"><dt>累计充值</dt><dd>{{ numberFormat.format(balance.totalRecharge) }}</dd></div></dl>
     <component :is="rechargeDialog" v-model="rechargeVisible" :apiKey="apiKey" />
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, ref, shallowRef, watch, type Component } from "vue";
 import axios from "axios";
+import { uiButton, uiIconButton, uiInput, uiSkeleton, uiAlert } from "@toonflow/ui";
 import { IconCreditCard, IconExternalLink, IconRefresh } from "@tabler/icons-vue";
 import tf, { type TfBalance } from "@/lib/tf";
 import type { CustomProvider, CustomProviderModel } from "@/stores/settings";
@@ -102,7 +61,8 @@ async function submitKey() {
     await props.saveApiKey(key, draftModels.value);
     draftKey.value = "";
   } catch (error) {
-    setupError.value = error instanceof Error ? error.message : "保存失败，请重试";
+    const message = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || "保存失败" : error instanceof Error ? error.message : "保存失败";
+    setupError.value = `${message}；当前填写的内容已保留，请重试`;
   } finally {
     saving.value = false;
   }
@@ -180,89 +140,10 @@ onBeforeUnmount(() => controller?.abort());
 
 <style lang="scss" scoped>
 .tfAccount {
-  margin-top: 16px;
-  padding: 14px;
-  background: var(--el-fill-color-light);
-  border-radius: var(--el-border-radius-base);
-
-  .accountHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-
-    .accountBalance {
-      display: grid;
-      justify-items: start;
-      min-width: 0;
-      gap: 4px;
-
-      .balanceNumber {
-        color: var(--el-text-color-primary);
-        font-size: 24px;
-        line-height: 1.3;
-        font-variant-numeric: tabular-nums;
-        overflow-wrap: anywhere;
-      }
-
-      .balancePlaceholder {
-        width: 112px;
-        height: 28px;
-      }
-    }
-
-    .accountActions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      .el-button + .el-button {
-        margin-left: 0;
-      }
-    }
-  }
-
-  .accountError {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    overflow-wrap: anywhere;
-  }
-
-  .accountSetup {
-    display: grid;
-    gap: 8px;
-    margin-top: 12px;
-
-    .setupForm {
-      display: flex;
-      gap: 8px;
-
-      .setupInput {
-        flex: 1;
-        min-width: 0;
-      }
-    }
-  }
-
-  .accountDetails {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-    gap: 12px 20px;
-    margin-top: 16px;
-
-    .accountMetric {
-      display: grid;
-      justify-items: start;
-      min-width: 0;
-      gap: 4px;
-      color: var(--el-text-color-regular);
-      font-size: 12px;
-      font-variant-numeric: tabular-nums;
-      overflow-wrap: anywhere;
-    }
-  }
+  display: flex; flex-direction: column; gap: 20px; min-width: 0; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--uiBorderDefault);
+  .accountHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; .accountBalance { display: flex; flex-direction: column; gap: 8px; min-width: 0; .metricLabel { color: var(--uiTextMuted); font-size: var(--uiFontControl); } .balanceNumber { color: var(--uiTextPrimary); font-size: var(--uiFontTitle); line-height: 1.5; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .balancePlaceholder { width: 160px; :deep(.skeletonLine) { width: 100%; height: 28px; } } } .accountActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } }
+  .accountSetup { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; min-width: 0; p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .setupForm { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; :deep(.uiInput) { flex: 1 1 240px; min-width: 0; } } }
+  .accountDetails { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0; .accountMetric { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: var(--uiFontControl); dt { color: var(--uiTextMuted); } dd { margin: 0; color: var(--uiTextBody); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } } }
+  @media (max-width: 700px) { .accountDetails { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
 }
 </style>

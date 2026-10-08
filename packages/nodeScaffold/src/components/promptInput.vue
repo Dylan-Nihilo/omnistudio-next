@@ -1,361 +1,269 @@
 <template>
-  <div ref="senderElement" class="promptInput nodrag nopan nowheel" @keydown.capture="handleMentionKey" @click.capture="previewReference" />
-  <el-image-viewer v-if="previewUrl" :urlList="[previewUrl]" teleported @close="previewReferenceId = undefined" />
+  <div class="promptInput nodrag nopan nowheel" :class="{ isEmpty: !text }" @keydown.capture="handleMentionKey" @click.capture="previewReference"><div ref="editorElement" /><teleport v-for="target in mentionTargets" :key="target.key" :to="target.element"><slot name="mention" :id="target.tag.id" :name="target.tag.name">@{{ target.tag.name }}</slot></teleport></div>
+  <uiPopover v-model:visible="menuVisible" trigger="manual" :anchor="menuAnchor" placement="bottom-start" :width="280" role="listbox" title="选择参考">
+    <div class="referenceMenu"><button v-for="(reference, index) in options" :key="reference.id" class="referenceOption" :class="{ isActive: index === activeIndex }" type="button" role="option" :aria-selected="index === activeIndex" @pointerdown.prevent @pointermove="activeIndex = index" @click="insertReference(reference)"><img v-if="reference.avatar" :src="String(reference.avatar)" alt="" draggable="false" /><span>{{ reference.name }}</span></button><p v-if="!options.length" class="noReferences">没有匹配的参考</p></div>
+  </uiPopover>
+  <uiImageViewer v-if="previewUrl" :modelValue="true" :urls="[previewUrl]" title="图片预览" @update:modelValue="value => { if (!value) previewReferenceId = undefined; }" />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { ElImageViewer, useZIndex } from "element-plus";
-import xSender, { type AnyTagProps, type MentionItem } from "x-sender";
-import "x-sender/lib/XSender.css";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { Editor, Node, getHTMLFromFragment, type JSONContent } from "@tiptap/core";
+import { StarterKit } from "@tiptap/starter-kit";
+import { uiPopover, uiImageViewer } from "@toonflow/ui";
+import type { RichInputModel, RichInputReference, RichInputTag } from "../richInputTypes";
 
-const props = defineProps<{ references: (MentionItem & { value: string })[] }>();
-const model = defineModel<AnyTagProps[][]>({ required: true });
+const props = withDefaults(defineProps<{ references?: RichInputReference[]; disabled?: boolean; label?: string; placeholder?: string; referenceMenuEnabled?: boolean }>(), { references: () => [], disabled: false, label: "生成提示词", placeholder: "描述一下生成风格提示词，输入 @ 引用参考", referenceMenuEnabled: true });
+const emit = defineEmits<{ change: []; cursorChange: []; mentionClick: [id: string] }>();
+const mentionTargets = shallowRef<{ key: symbol; element: HTMLElement; tag: Extract<RichInputTag, { type: "Mention" }> }[]>([]);
+const model = defineModel<RichInputModel>({ required: true });
 const text = defineModel<string>("text", { default: "" });
-const senderElement = ref<HTMLElement>();
-const { nextZIndex } = useZIndex();
+const editorElement = ref<HTMLElement>();
+const menuVisible = ref(false);
+const query = ref("");
+const activeIndex = ref(0);
+const menuAnchor = shallowRef({ getBoundingClientRect: () => new DOMRect() });
+const options = computed(() => props.references.filter(reference => `${reference.name} ${reference.pinyin ?? ""}`.toLocaleLowerCase().includes(query.value.toLocaleLowerCase())));
 const previewReferenceId = ref<string>();
-const previewUrl = computed(() => String(props.references.find(item => item.id === previewReferenceId.value)?.avatar ?? ""));
-let sender: xSender | undefined;
-let resetTask: Promise<void> | undefined;
+const previewUrl = computed(() => String(props.references.find(reference => reference.id === previewReferenceId.value)?.avatar ?? ""));
+let editor: Editor | undefined;
+let lastModel = "";
+let normalizing = false;
+let mentionStart = 0;
+let dismissedMention = "";
+let compositionFrame = 0;
 
-function previewReference(event: MouseEvent) {
-  const tag = event.target instanceof Element ? event.target.closest<HTMLElement>(".imageReference[data-reference-id]") : null;
-  const reference = props.references.find(item => item.id === tag?.dataset.referenceId);
-  if (!reference?.avatar) return;
-  event.preventDefault();
-  event.stopPropagation();
-  sender?.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-  previewReferenceId.value = reference.id;
+function referenceAttrs(reference: RichInputReference) {
+  return { id: reference.id, name: reference.name, avatar: String(reference.avatar ?? ""), value: reference.value };
 }
-
-function referenceHtml(reference: MentionItem & { value: string }) {
+function referenceHtml(reference: RichInputReference) {
   const tag = document.createElement("span");
   tag.className = "imageReference";
   tag.dataset.referenceId = reference.id;
   tag.dataset.value = reference.value;
   if (reference.avatar) {
     const image = document.createElement("img");
-    image.src = String(reference.avatar);
-    image.alt = "";
-    image.draggable = false;
-    tag.append(image);
+    image.src = String(reference.avatar); image.alt = ""; image.draggable = false; tag.append(image);
   }
   tag.append(document.createTextNode(reference.name));
-  return tag.outerHTML;
+  return `<span style="display: inline-block;">${tag.outerHTML}</span>`;
+}
+function tagText(tag: RichInputTag) {
+  if (tag.type === "Write") return tag.text;
+  if (tag.type === "Input") return tag.text || tag.placeholder;
+  if (tag.type !== "Custom") return (tag.type === "Mention" ? "@" : tag.type === "Trigger" ? tag.key : "") + tag.name;
+  const template = document.createElement("template"); template.innerHTML = tag.html;
+  for (const reference of template.content.querySelectorAll<HTMLElement>(".imageReference[data-value]")) reference.replaceWith(reference.dataset.value ?? "");
+  return template.content.textContent ?? "";
+}
+function validTag(value: unknown): value is RichInputTag {
+  if (!value || typeof value !== "object") return false;
+  const tag = value as Record<string, unknown>;
+  if (tag.type === "Write") return typeof tag.text === "string";
+  if (tag.type === "Custom") return typeof tag.html === "string";
+  if (tag.type === "Input") return typeof tag.key === "string" && typeof tag.placeholder === "string" && (tag.text === undefined || typeof tag.text === "string");
+  return ["Mention", "Trigger", "Select"].includes(String(tag.type)) && typeof tag.id === "string" && typeof tag.name === "string" && (tag.type === "Mention" || typeof tag.key === "string");
+}
+function validModel(value: unknown): value is RichInputModel {
+  return Array.isArray(value) && value.every(line => Array.isArray(line) && line.every(validTag));
+}
+function parseTag(element: HTMLElement) {
+  try { const tag: unknown = JSON.parse(element.dataset.promptTag ?? ""); return validTag(tag) ? { tag } : false; }
+  catch { return false; }
+}
+function tagNode(tag: RichInputTag): JSONContent[] {
+  if (tag.type === "Write") return tag.text.split(/(\{\{ref \d+\}\})/g).flatMap<JSONContent>(value => {
+    const reference = props.references.find(reference => reference.value === value);
+    return reference ? [{ type: "promptReference", attrs: referenceAttrs(reference) }] : value ? [{ type: "text", text: value }] : [];
+  });
+  if (tag.type === "Custom") {
+    const template = document.createElement("template"); template.innerHTML = tag.html;
+    const id = template.content.querySelector<HTMLElement>(".imageReference[data-reference-id]")?.dataset.referenceId;
+    if (id) { const reference = props.references.find(reference => reference.id === id); return reference ? [{ type: "promptReference", attrs: referenceAttrs(reference) }] : []; }
+  }
+  return [{ type: tag.type === "Input" ? "promptInputToken" : "promptToken", attrs: { tag: { ...tag } } }];
+}
+function documentModel(value: RichInputModel): JSONContent {
+  if (!validModel(value)) throw new Error("提示词数据格式无效");
+  return { type: "doc", content: (value.length ? value : [[]]).map(line => ({ type: "paragraph", content: line.flatMap(tagNode) })) };
+}
+function readModel(content: JSONContent[]): RichInputModel {
+  const lines: RichInputModel = [[{ type: "Write", text: "" }]];
+  let paragraph = false;
+  function add(tag: RichInputTag) {
+    const line = lines.at(-1)!; const previous = line.at(-1)!;
+    if (tag.type === "Write" && previous.type === "Write") previous.text += tag.text;
+    else { line.push(tag); if (tag.type !== "Write") line.push({ type: "Write", text: "" }); }
+  }
+  function read(node: JSONContent) {
+    if (node.type === "paragraph") { if (paragraph) lines.push([{ type: "Write", text: "" }]); paragraph = true; node.content?.forEach(read); }
+    else if (node.type === "hardBreak") lines.push([{ type: "Write", text: "" }]);
+    else if (node.type === "text") add({ type: "Write", text: node.text ?? "" });
+    else if (node.type === "promptReference") { const reference = props.references.find(reference => reference.id === node.attrs?.id); if (reference) add({ type: "Custom", html: referenceHtml(reference) }); }
+    else if (validTag(node.attrs?.tag)) add({ ...node.attrs!.tag });
+    else node.content?.forEach(read);
+  }
+  content.forEach(read); return lines;
+}
+function publish() {
+  if (!editor || editor.isDestroyed) return;
+  const value = readModel(editor.getJSON().content ?? []); const serialized = JSON.stringify(value);
+  if (serialized !== lastModel) { lastModel = serialized; model.value = value; }
+  const prompt = value.map(line => line.map(tagText).join("")).join("\n");
+  if (text.value !== prompt) text.value = prompt;
+  emit("change");
 }
 
-function normalizeModel(value: AnyTagProps[][]): AnyTagProps[][] {
-  if (!value.length) return [[{ type: "Write", text: "" }]];
-  return value.map(line => {
-    const tags = line.flatMap((tag): AnyTagProps[] => {
-      if (tag.type === "Write") return tag.text.split(/(\{\{ref \d+\}\})/g).map(text => {
-        const reference = props.references.find(item => item.value === text);
-        return reference
-          ? { type: "Custom", html: `<span style="display: inline-block;">${referenceHtml(reference)}</span>` }
-          : { type: "Write", text };
-      });
-      if (tag.type !== "Custom") return [tag];
-      const template = document.createElement("template");
-      template.innerHTML = tag.html;
-      const id = template.content.querySelector<HTMLElement>(".imageReference[data-reference-id]")?.dataset.referenceId;
-      if (!id) return [tag];
-      const reference = props.references.find(item => item.id === id);
-      if (!reference) return [];
-      return [{ type: "Custom", html: `<span style="display: inline-block;">${referenceHtml(reference)}</span>` }];
-    });
-    const next: AnyTagProps[] = [{ type: "Write", text: "" }];
-    for (const tag of tags) {
-      const previous = next[next.length - 1];
-      if (tag.type === "Write" && previous.type === "Write") previous.text += tag.text;
-      else {
-        if (tag.type !== "Write" && previous.type !== "Write") next.push({ type: "Write", text: "" });
-        next.push(tag);
+const referenceNode = Node.create({
+  name: "promptReference", group: "inline", inline: true, atom: true,
+  addAttributes: () => ({ id: { default: "", rendered: false }, name: { default: "", rendered: false }, avatar: { default: "", rendered: false }, value: { default: "", rendered: false } }),
+  parseHTML: () => [{ tag: "span.imageReference[data-reference-id]", getAttrs: element => { const reference = props.references.find(reference => reference.id === element.dataset.referenceId); return reference ? referenceAttrs(reference) : false; } }],
+  renderHTML({ node }) { const attrs = { class: "imageReference", "data-reference-id": node.attrs.id, "data-value": node.attrs.value, contenteditable: "false" }; return node.attrs.avatar ? ["span", attrs, ["img", { src: node.attrs.avatar, alt: "", draggable: "false" }], node.attrs.name] : ["span", attrs, node.attrs.name]; },
+  renderText: ({ node }) => node.attrs.value,
+});
+const tokenNode = Node.create({
+  name: "promptToken", group: "inline", inline: true, atom: true,
+  addAttributes: () => ({ tag: { default: null, rendered: false } }),
+  parseHTML: () => [{ tag: "span[data-prompt-tag]:not([data-prompt-input])", getAttrs: parseTag }],
+  renderHTML: ({ node }) => ["span", { class: "promptToken", "data-prompt-tag": JSON.stringify(node.attrs.tag), contenteditable: "false" }, tagText(node.attrs.tag)],
+  renderText: ({ node }) => tagText(node.attrs.tag),
+  addNodeView() {
+    return ({ node }) => {
+      const dom = document.createElement("span"); dom.className = "promptToken"; dom.contentEditable = "false";
+      const key = Symbol();
+      function update(current: typeof node) {
+        const tag = current.attrs.tag as RichInputTag;
+        dom.dataset.promptTag = JSON.stringify(tag);
+        if (tag.type === "Mention") {
+          let button = dom.querySelector("button");
+          if (!button) {
+            button = document.createElement("button"); button.type = "button"; button.className = "promptMention";
+            button.addEventListener("click", () => { const target = mentionTargets.value.find(item => item.key === key); if (target) emit("mentionClick", target.tag.id); });
+            dom.replaceChildren(button);
+          }
+          button.setAttribute("aria-label", `预览 ${tag.name}`);
+          const target = { key, element: button, tag };
+          mentionTargets.value = [...mentionTargets.value.filter(item => item.key !== key), target];
+        } else {
+          mentionTargets.value = mentionTargets.value.filter(item => item.key !== key);
+          dom.textContent = tagText(tag);
+        }
       }
-    }
-    if (next[next.length - 1].type !== "Write") next.push({ type: "Write", text: "" });
-    return next;
-  });
-}
-
-function releaseNodeFocus(instance: xSender) {
-  // ACT: 1.4.6 的排队输入回调仍会聚焦旧 Write；仅让即将移除的节点失效，库支持取消回调后可移除。
-  for (const grid of instance.chatEditor.NODES) {
-    for (const node of grid.children) {
-      if (node.type === "Write" || node.type === "Input") node.focus = () => {};
-    }
-  }
-}
-
-function syncModel(value = sender?.getModel() ?? model.value) {
-  // 输入法组字时只同步文本，等 compositionend 后再替换参考标签，保留正在编辑的 DOM。
-  const next = sender?.chatEditor.isComposition ? value : normalizeModel(value);
-  if (sender && JSON.stringify(sender.getModel()) !== JSON.stringify(next)) {
-    const instance = sender;
-    const editor = instance.chatElement.richText;
-    const selection = instance.getSelection();
-    const focused = document.activeElement === editor;
-    const endpoints = focused ? [selection.anchorNode, selection.focusNode].map((node, index) => {
-      const gridIndex = instance.chatEditor.NODES.findIndex(grid => grid.$el.contains(node));
-      const grid = instance.chatEditor.NODES[gridIndex];
-      const childIndex = grid?.children.findIndex(child => child.$el.contains(node)) ?? -1;
-      const child = grid?.children[childIndex];
-      return {
-        gridIndex, childIndex,
-        text: child?.type === "Write" || child?.type === "Input" ? child.text : undefined,
-        offset: index ? selection.focusOffset : selection.anchorOffset,
-      };
-    }) : [];
-    releaseNodeFocus(instance);
-    const task = instance.reset({ chatNode: next, clearHistory: false });
-    resetTask = task;
-    void task.finally(() => { if (resetTask === task) resetTask = undefined; });
-    // ACT: reset 同步重建 DOM，但下一帧会强制移到末尾；在此恢复选区，并在 reset 完成前抑制该次聚焦。
-    const last = instance.chatEditor.NODES.at(-1)?.children.at(-1);
-    if (last?.type === "Write") {
-      Object.assign(instance.getCurrentNode(), { instance: last, node: last.$el.children[0].firstChild, offset: last.text.length || 1 });
-    }
-    const restored = endpoints.map(endpoint => {
-      const target = instance.chatEditor.NODES[endpoint.gridIndex]?.children[endpoint.childIndex];
-      if ((target?.type !== "Write" && target?.type !== "Input") || target.text !== endpoint.text) return;
-      const node = target.type === "Write" ? target.$el.children[0].firstChild : target.$el.children[0].children[0].firstChild;
-      if (node?.nodeType !== Node.TEXT_NODE || endpoint.offset > (node.textContent?.length ?? 0)) return;
-      return { target, node, offset: endpoint.offset };
-    });
-    const [anchor, focus] = restored;
-    if (anchor && focus) {
-      focus.target.focus(focus.offset);
-      selection.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
-    } else if (focused && last?.type === "Write") last.focus(-1);
-  }
-  model.value = next;
-  text.value = getPromptText(next);
-}
-
-function getPromptText(value: AnyTagProps[][]) {
-  return value.map(line => line.map(tag => {
-    if (tag.type === "Write") return tag.text;
-    if (tag.type === "Input") return tag.text || tag.placeholder;
-    if (tag.type !== "Custom") {
-      const prefix = tag.type === "Mention" ? "@" : tag.type === "Trigger" ? tag.key : "";
-      return prefix + tag.name;
-    }
-    const content = document.createElement("template");
-    content.innerHTML = tag.html;
-    for (const reference of content.content.querySelectorAll<HTMLElement>(".imageReference[data-value]")) {
-      reference.replaceWith(reference.dataset.value ?? "");
-    }
-    return content.content.textContent ?? "";
-  }).join("")).join("\n");
-}
-
-watch(model, (value) => {
-  if (sender && JSON.stringify(value) !== JSON.stringify(sender.getModel())) syncModel(value);
-}, { deep: true });
-
-watch(() => props.references, async (options) => {
-  const instance = sender;
-  if (!instance) return;
-  instance.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-  instance.updateConfig({ mentionConfig: { dialogTitle: "选择参考", callEvery: false, options } });
-  // 等库将本帧的输入 DOM 写回模型后再更新参考，避免用旧文本重建输入框。
-  await instance.nextTick();
-  if (sender === instance) syncModel();
-}, { deep: true });
-
-watch(senderElement, (element, _previous, onCleanup) => {
-  if (!element) return;
-  const popup = document.createElement("div");
-  popup.className = "textNodeMentions nodrag nopan nowheel";
-  popup.style.zIndex = String(nextZIndex());
-  document.body.appendChild(popup);
-  const initialModel: AnyTagProps[][] = model.value.length ? model.value : text.value.split("\n").map(text => [{ type: "Write", text }]);
-  const instance = new xSender(element, {
-    autoFocus: false,
-    placeholder: "描述一下生成风格提示词，输入 @ 引用参考",
-    chatStyle: { minHeight: "70px", maxHeight: "180px", fontSize: "14px", lineHeight: "1.6" },
-    getPopupContainer: () => popup,
-    mentionConfig: { dialogTitle: "选择参考", callEvery: false, options: props.references },
-    keyboardSendFun: () => false,
-    keyboardWrapFun: event => event.key === "Enter" && !event.isComposing,
-  });
-  sender = instance;
-  const editor = instance.chatElement.richText;
-  // ACT: 1.4.6 未检查卸载节点和空 Range 矩形；只适配当前实例，升级到库内修复后可移除。
-  const chatEditor = instance.chatEditor as typeof instance.chatEditor & {
-    focusFirst(): void;
-    focusLast(): void;
-    focusMark(): void;
-    cursorView(): void;
-    insertNodes(nodes: AnyTagProps[][]): Promise<void>;
-  };
-  for (const method of ["focusFirst", "focusLast", "focusMark"] as const) {
-    const focus = chatEditor[method].bind(chatEditor);
-    chatEditor[method] = () => {
-      if (sender !== instance || !editor.isConnected || !editor.getClientRects().length) return;
-      if (method === "focusLast" && resetTask) return;
-      if (method === "focusMark" && !editor.contains(instance.getCurrentNode().node)) return chatEditor.focusLast();
-      focus();
+      update(node);
+      return { dom, update(next) { if (next.type !== node.type) return false; update(next); return true; }, stopEvent: event => event.target instanceof Element && !!event.target.closest("button"), ignoreMutation: () => true, destroy() { mentionTargets.value = mentionTargets.value.filter(item => item.key !== key); } };
     };
-  }
-  const cursorView = chatEditor.cursorView.bind(chatEditor);
-  chatEditor.cursorView = () => {
-    const selection = instance.getSelection();
-    if (sender !== instance || !editor.isConnected || !selection.rangeCount) return;
-    const range = selection.getRangeAt(0);
-    if (!editor.contains(range.commonAncestorContainer) || !range.getClientRects().length || !editor.parentElement?.getClientRects().length) return;
-    cursorView();
-  };
-  const insertNodes = chatEditor.insertNodes.bind(chatEditor);
-  chatEditor.insertNodes = async nodes => {
-    // 选区粘贴会先异步删除，再插入；关闭输入框后不再创建并聚焦新节点。
-    if (sender === instance && editor.isConnected) await insertNodes(nodes);
-  };
-  editor.setAttribute("role", "textbox");
-  editor.setAttribute("aria-label", "生成提示词");
-  editor.setAttribute("aria-multiline", "true");
-  instance.bus.on("textPrompt", xSender.EventSet.EVENT_COMMON_CHANGE, () => syncModel());
-  syncModel(initialModel);
-  // ACT: XSender 1.4.6 默认复制标签名称；复用库截取的选区模型，仅覆盖纯文本，保留富文本粘贴。
-  const copyText = (event: ClipboardEvent) => {
-    const copied = event.clipboardData?.getData("application/chat-nodes");
-    if (copied) event.clipboardData?.setData("text/plain", getPromptText(JSON.parse(copied)));
-  };
-  editor.addEventListener("copy", copyText);
-  editor.addEventListener("cut", copyText);
-  const selectReference = (event: MouseEvent) => {
-    const item = (event.target as Element).closest<HTMLElement>(".chat-mention-dialog-item");
-    if (!item) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const reference = props.references.find(reference => reference.id === item.dataset.id);
-    if (reference) void insertReference(reference);
-  };
-  const closeOutside = (event: PointerEvent) => {
-    if (!element.contains(event.target as Node) && !popup.contains(event.target as Node)) {
-      instance.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-    }
-  };
-  // ACT: XSender 1.4.6 的候选默认插入 Mention；捕获选择事件改用公开 setHtml，库支持自定义渲染后可替换。
-  popup.addEventListener("click", selectReference, true);
-  document.addEventListener("pointerdown", closeOutside, true);
-  onCleanup(() => {
-    model.value = instance.getModel();
-    releaseNodeFocus(instance);
-    sender = undefined;
-    editor.removeEventListener("copy", copyText);
-    editor.removeEventListener("cut", copyText);
-    document.removeEventListener("pointerdown", closeOutside, true);
-    popup.removeEventListener("click", selectReference, true);
-    // ACT: 1.4.6 的 destroy 会删除排队回调仍需用到的字段；先走公开清理事件，库修复后可直接 destroy。
-    instance.bus.offKeyEvent("textPrompt");
-    instance.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-    instance.updateConfig({ mentionConfig: { dialogTitle: "选择参考", callEvery: false, options: [] } });
-    instance.bus.emit(xSender.EventSet.EVENT_COMMON_DESTROY);
-    popup.remove();
-  });
+  },
+});
+const inputNode = Node.create({
+  name: "promptInputToken", group: "inline", inline: true, atom: true,
+  addAttributes: () => ({ tag: { default: null, rendered: false } }),
+  parseHTML: () => [{ tag: "span[data-prompt-input][data-prompt-tag]", getAttrs: element => { const value = parseTag(element); return value && value.tag.type === "Input" ? value : false; } }],
+  renderHTML: ({ node }) => ["span", { "data-prompt-input": "", "data-prompt-tag": JSON.stringify(node.attrs.tag) }, tagText(node.attrs.tag)],
+  renderText: ({ node }) => tagText(node.attrs.tag),
+  addNodeView() {
+    return ({ node, getPos, editor: instance }) => {
+      const dom = document.createElement("span"), input = document.createElement("input"); dom.className = "promptInputToken"; dom.contentEditable = "false"; dom.append(input);
+      let current = node;
+      const update = () => { const tag = current.attrs.tag as Extract<RichInputTag, { type: "Input" }>; input.disabled = props.disabled; input.value = tag.text ?? ""; input.placeholder = tag.placeholder; input.setAttribute("aria-label", tag.key || tag.placeholder); input.size = Math.max(1, (tag.text || tag.placeholder).length); };
+      update();
+      input.addEventListener("input", () => { const position = getPos(); if (typeof position === "number" && !instance.isDestroyed) instance.view.dispatch(instance.state.tr.setNodeMarkup(position, undefined, { tag: { ...current.attrs.tag, text: input.value } })); });
+      input.addEventListener("keydown", event => { const position = getPos(); if (event.key === "Enter" && !event.isComposing && typeof position === "number" && !instance.isDestroyed) { event.preventDefault(); event.stopPropagation(); instance.chain().focus().setTextSelection(position + current.nodeSize).insertContent({ type: "hardBreak" }).run(); } });
+      return { dom, update(next) { if (next.type !== current.type) return false; current = next; update(); return true; }, stopEvent: event => input.contains(event.target as globalThis.Node), ignoreMutation: () => true };
+    };
+  },
 });
 
-async function insertReference(reference: MentionItem) {
-  const instance = sender;
-  if (!instance) return;
-  const cursor = instance.getCurrentNode();
-  const before = cursor.node.textContent?.slice(0, cursor.offset) ?? "";
-  const start = before.lastIndexOf("@");
-  if (start < 0) return;
-  instance.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-  await instance.backspace(start - before.length);
-  const current = props.references.find(item => item.id === reference.id);
-  if (sender === instance && current) await instance.setHtml(referenceHtml(current));
+function normalizeReferences(recordHistory = true) {
+  if (!editor || editor.isDestroyed || editor.view.composing) return;
+  const instance = editor; const edits: { from: number; to: number; attrs?: ReturnType<typeof referenceAttrs> }[] = [];
+  instance.state.doc.descendants((node, position) => {
+    if (node.type.name === "promptReference") { const reference = props.references.find(reference => reference.id === node.attrs.id); const attrs = reference && referenceAttrs(reference); if (!attrs || JSON.stringify(node.attrs) !== JSON.stringify(attrs)) edits.push({ from: position, to: position + node.nodeSize, attrs }); }
+    else if (node.isText) for (const match of node.text!.matchAll(/\{\{ref \d+\}\}/g)) { const reference = props.references.find(reference => reference.value === match[0]); if (reference) edits.push({ from: position + match.index!, to: position + match.index! + match[0].length, attrs: referenceAttrs(reference) }); }
+  });
+  if (!edits.length) return;
+  const transaction = instance.state.tr;
+  for (const edit of edits.reverse()) { const node = transaction.doc.nodeAt(edit.from); if (edit.attrs && node?.type.name === "promptReference") transaction.setNodeMarkup(edit.from, undefined, edit.attrs); else if (edit.attrs) transaction.replaceWith(edit.from, edit.to, instance.schema.nodes.promptReference!.create(edit.attrs)); else transaction.delete(edit.from, edit.to); }
+  normalizing = true;
+  try { instance.view.dispatch(transaction.setMeta("addToHistory", recordHistory)); } finally { normalizing = false; }
 }
-
+function updateMenu() {
+  if (!props.referenceMenuEnabled || props.disabled || !editor || editor.isDestroyed || editor.view.composing || !editor.view.hasFocus() || !editor.view.dom.getClientRects().length || !editor.state.selection.empty) { menuVisible.value = false; return; }
+  const position = editor.state.selection.from; const before = editor.state.doc.textBetween(editor.state.selection.$from.start(), position, "\n", "\ufffc");
+  const match = before.match(/@([^\s@]*)$/);
+  if (!match) { menuVisible.value = false; dismissedMention = ""; return; }
+  mentionStart = position - match[0].length;
+  query.value = match[1]!; activeIndex.value = Math.min(activeIndex.value, Math.max(0, options.value.length - 1));
+  const coords = editor.view.coordsAtPos(position); menuAnchor.value = { getBoundingClientRect: () => new DOMRect(coords.left, coords.bottom, 0, 0) };
+  menuVisible.value = dismissedMention !== `${mentionStart}:${query.value}`;
+}
+function insertReference(reference: RichInputReference) {
+  if (!editor || editor.isDestroyed) return;
+  const current = props.references.find(item => item.id === reference.id); if (!current) return;
+  menuVisible.value = false;
+  editor.chain().focus().deleteRange({ from: mentionStart, to: editor.state.selection.from }).insertContent({ type: "promptReference", attrs: referenceAttrs(current) }).run();
+}
 function handleMentionKey(event: KeyboardEvent) {
-  if (!sender || event.isComposing || !["ArrowUp", "ArrowDown", "Enter", "Escape"].includes(event.key)) return;
-  const dialog = sender.chatElement.dialogRoot.querySelector<HTMLElement>(".chat-mention-dialog-wrap");
-  if (!dialog?.getClientRects().length) return;
-  event.preventDefault();
-  event.stopPropagation();
-  if (event.key === "Escape") {
-    sender.bus.emit(xSender.EventSet.EVENT_COMMON_DIALOG_CLOSE);
-    return;
-  }
-  // ACT: 1.4.6 的候选键盘监听在 window，会被骨架截断；只适配当前实例，库支持局部键盘 API 后可替换。
-  const items = Array.from(dialog.querySelectorAll<HTMLElement>(".chat-mention-dialog-item")).filter(item => item.getClientRects().length);
-  if (!items.length) return;
-  const active = Math.max(0, items.findIndex(item => item.classList.contains("active")));
-  if (event.key === "Enter") {
-    items[active]?.click();
-    return;
-  }
-  const next = (active + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
-  items.forEach((item, index) => item.classList.toggle("active", index === next));
-  items[next]?.scrollIntoView({ block: "nearest" });
+  if (!menuVisible.value || event.isComposing || !["ArrowUp", "ArrowDown", "Enter", "Escape"].includes(event.key)) return;
+  event.preventDefault(); event.stopPropagation();
+  if (event.key === "Escape") { dismissedMention = `${mentionStart}:${query.value}`; menuVisible.value = false; return; }
+  if (!options.value.length) return;
+  if (event.key === "Enter") insertReference(options.value[activeIndex.value]!);
+  else activeIndex.value = (activeIndex.value + (event.key === "ArrowDown" ? 1 : -1) + options.value.length) % options.value.length;
 }
+function previewReference(event: MouseEvent) {
+  const tag = event.target instanceof Element ? event.target.closest<HTMLElement>(".imageReference[data-reference-id]") : null;
+  const reference = props.references.find(reference => reference.id === tag?.dataset.referenceId); if (!reference?.avatar) return;
+  event.preventDefault(); event.stopPropagation(); menuVisible.value = false; previewReferenceId.value = reference.id;
+}
+function copySelection(view: Editor["view"], event: ClipboardEvent, cut = false) {
+  if (!event.clipboardData || view.state.selection.empty) return false;
+  const fragment = view.state.selection.content().content; const value = readModel(fragment.toJSON() ?? []);
+  event.clipboardData.setData("application/chat-nodes", JSON.stringify(value)); event.clipboardData.setData("text/plain", value.map(line => line.map(tagText).join("")).join("\n")); event.clipboardData.setData("text/html", getHTMLFromFragment(fragment, view.state.schema)); event.preventDefault();
+  if (cut && editor?.isEditable) view.dispatch(view.state.tr.deleteSelection().scrollIntoView()); return true;
+}
+function createEditor(value: RichInputModel) {
+  if (!editorElement.value) return;
+  menuVisible.value = false;
+  editor?.destroy();
+  editor = new Editor({
+    element: editorElement.value,
+    editable: !props.disabled,
+    extensions: [StarterKit.configure({ blockquote: false, bold: false, bulletList: false, code: false, codeBlock: false, heading: false, horizontalRule: false, italic: false, link: false, listItem: false, listKeymap: false, orderedList: false, strike: false, underline: false, dropcursor: false, gapcursor: false, trailingNode: false }), referenceNode, tokenNode, inputNode],
+    content: documentModel(value),
+    editorProps: {
+      attributes: { class: "richEditor", role: "textbox", "aria-label": props.label, "aria-multiline": "true", "data-placeholder": props.placeholder, spellcheck: "false" },
+      handlePaste(view, event) { const copied = event.clipboardData?.getData("application/chat-nodes"); if (!copied || !editor || !view.editable) return false; try { const value: unknown = JSON.parse(copied); if (!validModel(value)) return false; editor.commands.insertContent(documentModel(value).content ?? []); return true; } catch { return false; } },
+      handleDOMEvents: { copy: (view, event) => copySelection(view, event), cut: (view, event) => copySelection(view, event, true), compositionend() { cancelAnimationFrame(compositionFrame); compositionFrame = requestAnimationFrame(() => { normalizeReferences(); publish(); updateMenu(); }); return false; } },
+    },
+    onUpdate() { if (!normalizing) normalizeReferences(); publish(); if (!normalizing) updateMenu(); },
+    onSelectionUpdate() { updateMenu(); emit("cursorChange"); },
+    onFocus: updateMenu,
+    onBlur: () => { menuVisible.value = false; },
+  });
+  publish();
+}
+onMounted(() => createEditor(model.value.length ? model.value : text.value.split("\n").map(text => [{ type: "Write" as const, text }])));
+watch(() => props.disabled, disabled => { editor?.setEditable(!disabled, false); editorElement.value?.querySelectorAll("input").forEach(input => { input.disabled = disabled; }); if (disabled) menuVisible.value = false; });
+watch(model, value => {
+  if (!editor || editor.isDestroyed || JSON.stringify(value) === lastModel) return;
+  const selection = editor.state.selection;
+  editor.commands.setContent(documentModel(value), { emitUpdate: false });
+  editor.commands.setTextSelection({ from: Math.min(selection.from, editor.state.doc.content.size), to: Math.min(selection.to, editor.state.doc.content.size) });
+  publish();
+}, { deep: true });
+watch(() => props.references, () => { normalizeReferences(false); publish(); updateMenu(); }, { deep: true });
+onBeforeUnmount(() => { cancelAnimationFrame(compositionFrame); if (JSON.stringify(model.value) === lastModel) publish(); editor?.destroy(); editor = undefined; });
+defineExpose({
+  getEditor: () => editor,
+  getText: (mapTag?: (tag: RichInputTag) => string | undefined) => readModel(editor?.getJSON().content ?? []).map(line => line.map(tag => mapTag?.(tag) ?? tagText(tag)).join("")).join("\n"),
+  setModel(value: RichInputModel = [], clearHistory = true) {
+    if (clearHistory) createEditor(value);
+    else { editor?.commands.setContent(documentModel(value), { emitUpdate: false }); publish(); }
+  },
+});
 </script>
 
-<style scoped>
-.promptInput,
-:global(.textNodeMentions) {
-  --chat-primary: var(--el-color-primary);
-  --chat-text: var(--el-text-color-primary);
-  --chat-text-secondary: var(--el-text-color-regular);
-  --chat-text-placeholder: var(--el-text-color-placeholder);
-  --chat-box: var(--el-bg-color-overlay);
-  --chat-card: var(--el-fill-color-light);
-  --chat-highlight: var(--el-color-primary-light-3);
-  --chat-highlight-card: var(--el-fill-color);
-  --chat-box-shadow: var(--el-box-shadow-light);
-  --chat-rect-padding: 0px;
-}
-
-:global(.textNodeMentions) {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-:global(.textNodeMentions .chat-dialog-wrap .chat-mention-dialog-wrap.chat-view-show) {
-  animation: none;
-}
-
-.promptInput {
-  display: block;
-  margin: 12px 0 16px;
-  cursor: text;
-  -webkit-user-select: text;
-  user-select: text;
-
-  &:deep(.imageReference) {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin: 0 3px;
-    padding: 2px 6px 2px 2px;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: var(--el-border-radius-base);
-    background: var(--el-fill-color-light);
-    color: var(--el-text-color-primary);
-    font-size: 12px;
-    line-height: 18px;
-    white-space: nowrap;
-    vertical-align: middle;
-
-    &:has(img) {
-      cursor: zoom-in;
-    }
-
-    img {
-      width: 18px;
-      height: 18px;
-      flex-shrink: 0;
-      object-fit: cover;
-      border-radius: 3px;
-      pointer-events: none;
-    }
-  }
-
-  &:deep(.chat-placeholder-wrap) {
-    font-style: normal;
-  }
-}
+<style scoped lang="scss">
+.promptInput { position: relative; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); cursor: text; user-select: text; &:focus-within { border-color: var(--uiBorderFocus); outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; } :deep(.richEditor) { position: relative; min-height: 96px; max-height: 200px; padding: 12px; overflow: auto; outline: none; color: var(--uiTextPrimary); font-size: var(--uiFontBody); line-height: 1.7; white-space: pre-wrap; p { margin: 0; } } &.isEmpty :deep(.richEditor)::before { content: attr(data-placeholder); position: absolute; pointer-events: none; color: var(--uiTextMuted); } :deep(.imageReference), :deep(.promptToken) { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; margin-inline: 3px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl); background: var(--uiActionSoft); color: var(--uiTextBody); vertical-align: middle; font-size: var(--uiFontControl); line-height: 1.6; &[data-reference-id]:has(img) { cursor: zoom-in; } img { width: 22px; height: 22px; flex-shrink: 0; object-fit: cover; border-radius: 3px; pointer-events: none; } } :deep(.promptMention) { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; } :deep(.promptInputToken) { display: inline-flex; vertical-align: baseline; input { min-width: 1ch; max-width: 100%; padding: 0 4px; border: 0; border-bottom: 1px solid var(--uiActionPrimary); background: transparent; color: var(--uiTextPrimary); font: inherit; } } }
+.referenceMenu { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; .referenceOption { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: var(--uiRadiusControl); background: transparent; color: var(--uiTextBody); font: inherit; font-size: var(--uiFontControl); text-align: left; cursor: pointer; &.isActive, &:hover { background: var(--uiActionSoft); } img { width: 32px; height: 32px; flex-shrink: 0; object-fit: cover; border-radius: var(--uiRadiusControl); } span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } } .noReferences { margin: 8px; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
 </style>

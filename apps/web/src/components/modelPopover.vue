@@ -1,48 +1,23 @@
 <template>
   <div class="modelPopover">
-    <el-popover
-      v-model:visible="visible"
-      trigger="click"
-      placement="top-start"
-      :width="340"
-      :offset="10"
-      :showArrow="false"
-      popperClass="agentModelPopover"
-      :popperStyle="{ padding: '20px', maxWidth: 'calc(100vw - 24px)' }">
-      <template #reference>
-        <el-button class="modelButton" text :disabled="disabled" aria-label="模型与推理设置">
-          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="14" />
-          <span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span>
-          ·
-          <span class="reasoningLabel">{{ reasoningLabel }}</span>
-          <icon-chevron-down :size="12" />
-        </el-button>
+    <uiPopover v-model:visible="visible" placement="top-start" :width="340" :offset="10" :disabled="disabled">
+      <template #reference="{ triggerAttrs }">
+        <uiButton class="modelButton" variant="ghost" size="small" :disabled="disabled" v-bind="triggerAttrs" aria-label="模型与推理设置">
+          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="14" /><span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
+        </uiButton>
       </template>
-      <el-form class="modelOptions" labelPosition="top">
-        <el-form-item label="模型">
-          <el-select v-model="selectedModel" filterable :disabled="disabled" :teleported="false" placeholder="选择模型" aria-label="选择模型" noDataText="请先在设置中添加模型">
-            <template #prefix><modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="18" /></template>
-            <el-option-group v-for="provider in modelGroups" :key="provider.id" :label="provider.label">
-              <el-option v-for="model in provider.models" :key="model.id" :label="model.label" :value="JSON.stringify([provider.id, model.id])">
-                <el-space :size="8">
-                  <modelIcon :model="model.id" :size="16" />
-                  <span>{{ model.label }}</span>
-                </el-space>
-              </el-option>
-            </el-option-group>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="推理等级">
-          <el-segmented v-model="reasoningEffort" :options="reasoningOptions" :disabled="disabled" block aria-label="推理等级" />
-        </el-form-item>
-      </el-form>
-    </el-popover>
+      <div class="modelOptions">
+        <uiField label="模型"><template #default="{ id }"><div class="modelSelection"><modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="18" /><uiSelect :id="id" :modelValue="selectedModel" :options="modelOptions" filterable :disabled="disabled" placeholder="选择模型" aria-label="选择模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (selectedModel = value)" /></div></template></uiField>
+        <uiField label="推理等级"><uiRadioGroup :modelValue="reasoningEffort" :options="reasoningOptions" :disabled="disabled" variant="segmented" block aria-label="推理等级" @update:modelValue="value => typeof value === 'string' && (reasoningEffort = value)" /></uiField>
+      </div>
+    </uiPopover>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { IconChevronDown } from "@tabler/icons-vue";
+import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@toonflow/ui";
 import { modelIcon } from "@toonflow/model-icons";
 import { customProviders, modelChoices } from "@/stores/settings";
 
@@ -57,6 +32,7 @@ const reasoningOptions = [
   { label: "高", value: "high" },
 ];
 const modelGroups = computed(() => customProviders.value.toSorted((left, right) => Number(right.id === "tfRouter") - Number(left.id === "tfRouter")));
+const modelOptions = computed(() => modelGroups.value.flatMap(provider => provider.models.map(model => ({ value: JSON.stringify([provider.id, model.id]), label: model.label, group: provider.label }))));
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const reasoningLabel = computed(() => reasoningOptions.find(item => item.value === reasoningEffort.value)?.label ?? "默认");
 watch(selectedModel, () => { reasoningEffort.value = ""; });
@@ -66,66 +42,10 @@ watch(modelChoices, items => {
 watch(() => !props.active || props.disabled, close => { if (close) visible.value = false; });
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .modelPopover {
-  display: inline-flex;
-  min-width: 0;
-  max-width: 100%;
-
-  .modelButton {
-    max-width: 100%;
-    min-width: 0;
-    height: 28px;
-    padding: 0 8px;
-    color: var(--el-text-color-regular);
-
-    > span {
-      display: flex;
-      gap: 6px;
-      min-width: 0;
-    }
-    svg {
-      flex-shrink: 0;
-    }
-
-    .reasoningLabel {
-      flex-shrink: 0;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-    }
-
-    .modelName {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-align: left;
-    }
-  }
+  display: inline-flex; min-width: 0; max-width: 100%;
+  .modelButton { min-width: 0; max-width: 100%; padding-inline: 8px; :deep(.buttonLabel) { display: flex; align-items: center; gap: 6px; } svg { flex-shrink: 0; } .modelName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; } .reasoningLabel { flex-shrink: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
 }
-
-.agentModelPopover {
-  .modelOptions {
-    .el-form-item {
-      margin-bottom: 24px;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-      .el-form-item__label {
-        margin-bottom: 10px;
-        font-weight: 500;
-        color: var(--el-text-color-primary);
-      }
-      .el-segmented {
-        width: 100%;
-
-        @media (max-width: 360px) {
-          .el-segmented__item {
-            padding-inline: 6px;
-          }
-        }
-      }
-    }
-  }
-}
+.modelOptions { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding: 4px; .modelSelection { display: flex; align-items: center; gap: 8px; min-width: 0; :deep(.uiPopover) { flex: 1; min-width: 0; } } }
 </style>

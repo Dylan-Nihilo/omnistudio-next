@@ -1,39 +1,39 @@
 <template>
   <div v-if="loaded" class="providerList">
     <div class="itemList">
-      <el-card v-for="item in sortedProviders" :key="item.fileName" class="providerItem" shadow="never">
+      <uiCard v-for="item in sortedProviders" :key="item.fileName" class="providerItem" >
         <div class="providerHeader">
           <div v-if="item.id.toLowerCase() === 'tfrouter'" class="providerMark" aria-hidden="true">
             <img class="providerLogo" :src="logoUrl" alt="" />
           </div>
           <div class="providerInfo">
             <div class="providerHeading">
-              <el-text class="providerName" tag="strong">{{ item.label }}</el-text>
-              <el-tag v-if="item.id.toLowerCase() === 'tfrouter'" size="small">官方</el-tag>
+              <strong class="providerName">{{ item.label }}</strong>
+              <uiTag v-if="item.id.toLowerCase() === 'tfrouter'" >官方</uiTag>
             </div>
-            <el-text class="providerId" size="small" type="info" :title="item.fileName">{{ item.fileName }}</el-text>
+            <span class="providerId" :title="item.fileName">{{ item.fileName }}</span>
           </div>
         </div>
-        <el-alert v-if="item.loadError" :title="item.loadError" type="error" :closable="false" showIcon />
+        <uiAlert v-if="item.loadError" :title="item.loadError" tone="error" />
         <tfAccount v-if="item.id.toLowerCase() === 'tfrouter'" :apiKey="getProviderApiKey(item.id)" :visible="visible" :saveApiKey="(key) => saveProviderApiKey(item.id, key)" />
         <div class="providerFooter">
           <div class="providerMeta">
-            <el-tag v-if="item.version" size="small" type="info" effect="plain">v{{ item.version }}</el-tag>
-            <el-text size="small" type="info">{{ item.models.length }} 个模型</el-text>
+            <uiTag v-if="item.version"   >v{{ item.version }}</uiTag>
+            <span class="providerCount">{{ item.models.length }} 个模型</span>
           </div>
-          <el-space class="itemActions" wrap>
-            <el-button v-if="item.modelsUrl" text :icon="IconDownload" :loading="fetchingFile === item.fileName" :disabled="!!fetchingFile || !!deletingFile || !!item.loadError || !item.revision" @click="fetchModels(item)">获取模型</el-button>
-            <el-button text :icon="IconEdit" :disabled="!!fetchingFile || !!deletingFile || !!item.loadError" @click="editProvider(item)">编辑模型</el-button>
-            <el-popconfirm title="确定删除此供应商及其模型？" confirmButtonText="删除" cancelButtonText="取消" @confirm="deleteProvider(item)">
-              <template #reference><el-button text type="danger" :icon="IconTrash" :loading="deletingFile === item.fileName" :disabled="!!fetchingFile || !!deletingFile || !item.revision">删除</el-button></template>
-            </el-popconfirm>
-          </el-space>
+          <div class="itemActions">
+            <uiButton v-if="item.modelsUrl" variant="ghost" :icon="IconDownload" :loading="fetchingFile === item.fileName" :disabled="!!fetchingFile || !!deletingFile || !!item.loadError || !item.revision" @click="fetchModels(item)">获取模型</uiButton>
+            <uiButton variant="ghost" :icon="IconEdit" :disabled="!!fetchingFile || !!deletingFile || !!item.loadError" @click="editProvider(item)">编辑模型</uiButton>
+            <uiPopconfirm title="确定删除此供应商及其模型？" danger confirmButtonText="删除" cancelButtonText="取消" @confirm="deleteProvider(item)">
+              <template #reference><uiButton variant="danger" :icon="IconTrash" :loading="deletingFile === item.fileName" :disabled="!!fetchingFile || !!deletingFile || !item.revision">删除</uiButton></template>
+            </uiPopconfirm>
+          </div>
         </div>
-      </el-card>
+      </uiCard>
     </div>
     <div class="providerActions">
-      <el-button class="addButton" :icon="IconPlus" @click="openAdd('builtin')">添加供应商</el-button>
-      <el-button class="addButton" :icon="IconSettings" @click="openAdd('custom')">添加自定义供应商</el-button>
+      <uiButton class="addButton" :icon="IconPlus" @click="openAdd('builtin')">添加供应商</uiButton>
+      <uiButton class="addButton" :icon="IconSettings" @click="openAdd('custom')">添加自定义供应商</uiButton>
     </div>
     <component :is="mediaProviderDialog" v-model="providerDialogVisible" :mode="addMode" @added="saveProviderItem" />
     <component :is="editProviderDialog" v-model="editorVisible" :provider="editingProvider" @saved="saveProviderItem" />
@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import axios from "axios";
 import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, ref, shallowRef, type Component } from "vue";
-import { ElMessage } from "element-plus";
+import { uiCard, uiTag, uiButton, uiPopconfirm, uiAlert, useUiFeedback } from "@toonflow/ui";
 import { IconPlus, IconSettings, IconEdit, IconTrash, IconDownload } from "@tabler/icons-vue";
 import logoUrl from "@toonflow/assets/logo.svg";
 import type { MediaProvider } from "./types";
@@ -51,6 +51,7 @@ import { settings, saveSettings } from "@/stores/settings";
 import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
 import tfAccount from "../../tfAccount.vue";
 
+const feedback = useUiFeedback();
 const { visible = true } = defineProps<{ visible?: boolean }>();
 const mediaProviderDialog = shallowRef<Component>();
 const editProviderDialog = shallowRef<Component>();
@@ -99,7 +100,7 @@ async function loadProviders() {
     const { data } = await axios.get<{ data: MediaProvider[] }>("/api/providers/media/list");
     if (request === loadRequest) providers.value = data.data;
   } catch (error) {
-    if (request === loadRequest) ElMessage.error(axios.isAxiosError(error) ? error.response?.data?.message || error.message : "读取媒体供应商失败");
+    if (request === loadRequest) showError(axios.isAxiosError(error) ? error.response?.data?.message || error.message : "读取媒体供应商失败");
   } finally {
     if (request === loadRequest) loaded.value = true;
   }
@@ -128,9 +129,9 @@ async function fetchModels(provider: MediaProvider) {
     if (data.code !== 200 || !data.data) throw new Error(data.message || "获取模型失败");
     saveProviderItem(data.data);
     invalidateNodeModels("media");
-    ElMessage.success("模型列表已更新");
+    feedback.message({ tone: "success", message: "模型列表已更新" });
   } catch (error) {
-    ElMessage.error(axios.isAxiosError(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "获取模型失败，请重试");
+    showError(axios.isAxiosError(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "获取模型失败，请重试");
   } finally { fetchingFile.value = ""; }
 }
 
@@ -153,7 +154,7 @@ async function deleteProvider(provider: MediaProvider) {
     });
   } catch (error) {
     const message = axios.isAxiosError(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "删除失败，请重试";
-    ElMessage.error(deleted ? `供应商已删除，连接配置未清理：${message}` : message);
+    showError(deleted ? `供应商已删除，连接配置未清理：${message}` : message);
   } finally { deletingFile.value = ""; }
 }
 
@@ -163,6 +164,7 @@ function saveProviderItem(provider: MediaProvider) {
   if (index < 0) providers.value.push(provider);
   else providers.value.splice(index, 1, provider);
 }
+function showError(message: string) { feedback.message({ tone: "error", message }); }
 </script>
 
 <style lang="scss" scoped src="../../providerList.scss"></style>

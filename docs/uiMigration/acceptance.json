@@ -1,0 +1,1205 @@
+{
+  "baselineCommit": "ec8f54597bf6e6114ed56b832f9052cd6f735311",
+  "baselineDate": "2026-09-30",
+  "sourceInventory": "Toonflow-app/docs/uiInventory20260930/inventory.json",
+  "scope": "82 个既有 UI 状态；迁移前截图记录与本轮验证分开，不把历史记录标为全部重新实测",
+  "status": "inProgress",
+  "rows": [
+    {
+      "id": "helloWelcome",
+      "title": "快速开始",
+      "group": "pages",
+      "route": "/hello",
+      "entry": "首次使用，或开发者选项重置引导",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue",
+        "apps/web/src/pages/hello/bg.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "helloCustom",
+      "title": "引导 · 配置语言模型",
+      "group": "pages",
+      "route": "/hello",
+      "entry": "快速开始 → 添加私有提供商",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue",
+        "apps/web/src/components/settings/panels/languageModel/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "helloLogin",
+      "title": "引导 · TF-Router 登录/注册",
+      "group": "pages",
+      "route": "/hello",
+      "entry": "快速开始 → 登录 TF-Router 自动配置",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "homeEmpty",
+      "title": "首页 · 空项目列表",
+      "group": "pages",
+      "route": "/home",
+      "entry": "引导 → 稍后配置",
+      "sources": [
+        "apps/web/src/pages/home/index.vue",
+        "apps/web/src/pages/home/bg.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "homeProjects",
+      "title": "首页 · 项目网格",
+      "group": "pages",
+      "route": "/home",
+      "entry": "首页 → 网格视图",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "homeList",
+      "title": "首页 · 项目列表",
+      "group": "pages",
+      "route": "/home",
+      "entry": "首页 → 列表视图",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "workspaceCanvas",
+      "title": "工作区 · 画布",
+      "group": "pages",
+      "route": "/workspace",
+      "entry": "首页 → 打开项目",
+      "sources": [
+        "apps/web/src/pages/workspace/index.vue",
+        "apps/web/src/pages/workspace/panels/canvas/canvasHost.vue",
+        "apps/web/src/pages/workspace/panels/canvas/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "workspaceDocumentEmpty",
+      "title": "工作区 · 文档空编辑区",
+      "group": "pages",
+      "route": "/workspace",
+      "entry": "工作区顶部 → 文档",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue",
+        "apps/web/src/pages/workspace/panels/document/components/fileTree.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "workspaceDocument",
+      "title": "工作区 · 文档编辑",
+      "group": "pages",
+      "route": "/workspace",
+      "entry": "文档 → 展开画布文件 → 选择文本节点",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue",
+        "apps/web/src/pages/workspace/panels/document/components/fileTree.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsUi",
+      "title": "界面设置",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 界面设置",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/ui.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsGeneral",
+      "title": "常规配置",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 常规配置",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/general/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsLanguage",
+      "title": "文本模型",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 文本模型",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/languageModel/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsMedia",
+      "title": "媒体模型",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 媒体模型",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/mediaModel/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsMarket",
+      "title": "插件市场 · 发现插件",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 插件市场",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsMcp",
+      "title": "MCP",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → MCP",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/mcp/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsPersonalization",
+      "title": "个性化",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 个性化",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/personalization.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsPrivacy",
+      "title": "隐私",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 隐私",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/privacy.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsDeveloper",
+      "title": "开发者选项 · 提示门槛",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 开发者选项",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/developer/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "settingsAbout",
+      "title": "关于",
+      "group": "settings",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 关于",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/about.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "languageAdd",
+      "title": "文本模型 · 添加内置供应商",
+      "group": "models",
+      "route": "/hello、/home 或 /workspace",
+      "entry": "文本模型 → 添加供应商",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "languageCustom",
+      "title": "文本模型 · 添加/编辑自定义供应商",
+      "group": "models",
+      "route": "/hello、/home 或 /workspace",
+      "entry": "文本模型 → 添加自定义供应商；已有供应商 → 编辑",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mediaAdd",
+      "title": "媒体模型 · 添加内置供应商",
+      "group": "models",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 媒体模型 → 添加供应商",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mediaCustom",
+      "title": "媒体模型 · 导入自定义供应商",
+      "group": "models",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 媒体模型 → 添加自定义供应商",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mediaEdit",
+      "title": "媒体模型 · 编辑供应商",
+      "group": "models",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 媒体模型 → 编辑模型",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/editProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mediaModelEditor",
+      "title": "媒体模型 · 添加/编辑单个模型",
+      "group": "models",
+      "route": "/home 或 /workspace",
+      "entry": "编辑媒体供应商 → 手动添加或编辑模型",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/modelEditorDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "marketInstalled",
+      "title": "插件市场 · 已安装",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 插件市场 → 已安装",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "marketFfmpeg",
+      "title": "插件市场 · FFmpeg",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 插件市场 → FFmpeg",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/ffmpeg.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "pluginDetails",
+      "title": "插件说明",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "已安装 → 点击普通节点/工具卡片",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue",
+        "apps/web/src/components/messageMarkdown.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "pluginConfig",
+      "title": "插件配置",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "已安装 → 插件的配置按钮",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/pluginConfigDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "skillEditor",
+      "title": "技能文件编辑器",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "已安装 → 点击技能卡片",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/skillEditorDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mcpSkill",
+      "title": "MCP · Toonflow Skill 阅读",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → MCP → 查看 Skill",
+      "sources": [
+        "apps/web/src/components/settings/panels/mcp/index.vue",
+        "apps/web/src/components/messageMarkdown.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "personalizationMemory",
+      "title": "个性化 · 本地记忆",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 个性化 → 查看本地记忆",
+      "sources": [
+        "apps/web/src/components/settings/panels/personalization.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "developerUnlocked",
+      "title": "开发者选项 · 工具内容",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 开发者选项 → 确认并继续",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "providerDebug",
+      "title": "供应商开发工具",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "开发者选项 → 开发供应商",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/providerDebugDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "systemPrompt",
+      "title": "Agent 系统提示词编辑",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "开发者选项 → 编辑提示词",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/systemPromptDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "updateNotes",
+      "title": "版本更新说明",
+      "group": "plugins",
+      "route": "/home 或 /workspace",
+      "entry": "开发者选项 → 查看更新说明",
+      "sources": [
+        "apps/web/src/components/updateBox.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "workspacePicker",
+      "title": "服务器工作目录选择",
+      "group": "workspace",
+      "route": "/home",
+      "entry": "首页 → 导入项目/选择工作目录",
+      "sources": [
+        "apps/web/src/pages/home/workspacePicker.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "projectAdd",
+      "title": "添加项目确认",
+      "group": "workspace",
+      "route": "/home",
+      "entry": "首页 → 添加项目",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "projectRename",
+      "title": "重命名项目",
+      "group": "workspace",
+      "route": "/home",
+      "entry": "项目卡片 → 重命名",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "workspaceExit",
+      "title": "退出项目确认",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "工作区左上角 → 退出项目",
+      "sources": [
+        "apps/web/src/pages/workspace/components/workspaceMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "canvasContextMenu",
+      "title": "画布右键操作菜单",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "画布空白处右键",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "canvasNodeMenu",
+      "title": "添加节点菜单",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "右键 → 添加节点，或快捷键 Tab",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "canvasSwitcher",
+      "title": "画布列表与切换",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "左上角画布名称下拉",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/canvasMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "canvasSearch",
+      "title": "画布节点搜索",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "画布中 ⌘F / Ctrl+F",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeSearch.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "documentSearch",
+      "title": "文档正文查找",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "文档工具栏 → 查找正文",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "assetLibraryEmpty",
+      "title": "全局素材库",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "画布左下角 → 素材库",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue",
+        "apps/web/src/pages/workspace/panels/canvas/components/assetMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "assetSave",
+      "title": "保存到素材库",
+      "group": "workspace",
+      "route": "/workspace",
+      "entry": "选中有输出的节点 → 添加到素材库",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeText",
+      "title": "文本节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 文本",
+      "sources": [
+        "packages/nodes/textNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeImage",
+      "title": "图片节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 图片",
+      "sources": [
+        "packages/nodes/imageNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeVideo",
+      "title": "视频节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 视频",
+      "sources": [
+        "packages/nodes/videoNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeAudio",
+      "title": "音频节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 音频",
+      "sources": [
+        "packages/nodes/audioNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeImageGeneration",
+      "title": "图片生成节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 图片生成",
+      "sources": [
+        "packages/nodes/imageGenerationNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeVideoGeneration",
+      "title": "视频生成节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 视频生成",
+      "sources": [
+        "packages/nodes/videoGenerationNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeDirector",
+      "title": "3D 导演台节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 3D 导演台",
+      "sources": [
+        "packages/nodes/director3dNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeAssembly",
+      "title": "成片合成节点",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "画布 → 添加节点 → 成片合成",
+      "sources": [
+        "build/nodes/assemblyNode.umd.js"
+      ],
+      "migration": "legacyCompatibility",
+      "verification": "pending",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "源码缺失，仅可验证原产物兼容，不能声明已重构"
+    },
+    {
+      "id": "textEditor",
+      "title": "文本节点编辑弹窗",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "文本节点 → 编辑",
+      "sources": [
+        "packages/nodes/textNode/src/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "imageGenerationSettings",
+      "title": "图片生成参数",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "选中图片生成节点 → 图片生成设置",
+      "sources": [
+        "packages/nodes/imageGenerationNode/src/components/generationSettings.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "videoGenerationSettings",
+      "title": "视频生成参数",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "选中视频生成节点 → 视频生成设置",
+      "sources": [
+        "packages/nodes/videoGenerationNode/src/components/generationSettings.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mediaHistory",
+      "title": "图片/视频生成历史",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "选中生成节点 → 历史记录",
+      "sources": [
+        "packages/nodeScaffold/src/components/mediaHistory.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "directorEditor",
+      "title": "3D 导演台编辑器",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "3D 导演台节点 → 打开导演台",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue",
+        "packages/nodes/director3dNode/src/directorPanel.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "directorTour",
+      "title": "3D 导演台首次操作引导",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "首次打开导演台",
+      "sources": [
+        "packages/nodes/director3dNode/src/directorTour.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "directorSettings",
+      "title": "3D 导演台场景设置",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "导演台 → 设置",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "directorLighting",
+      "title": "3D 导演台光照设置",
+      "group": "nodes",
+      "route": "/workspace",
+      "entry": "导演台 → 光照",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue",
+        "packages/nodes/director3dNode/src/lightDirection.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentFloating",
+      "title": "Agent 浮动对话面板",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "工作区右上角 → Toonflow Agent",
+      "sources": [
+        "apps/web/src/pages/workspace/components/floatingAgent.vue",
+        "apps/web/src/components/agent/index.vue",
+        "apps/web/src/components/agent/conversation.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentDocked",
+      "title": "Agent 右侧停靠面板",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "Agent 顶栏 → 停靠到右侧",
+      "sources": [
+        "apps/web/src/pages/workspace/components/floatingAgent.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentHistory",
+      "title": "Agent 历史对话",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "Agent 顶栏 → 历史对话",
+      "sources": [
+        "apps/web/src/components/agent/menu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "pending",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "modelPicker",
+      "title": "模型与推理等级选择",
+      "group": "agent",
+      "route": "/home 或 /workspace",
+      "entry": "输入框底部 → 模型与推理设置",
+      "sources": [
+        "apps/web/src/components/modelPopover.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentSkills",
+      "title": "Agent 技能选择",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "Agent 输入框 → 选择技能",
+      "sources": [
+        "apps/web/src/components/agent/skillMenu.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentMentions",
+      "title": "Agent 节点输出/素材引用",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "Agent 输入框 → @",
+      "sources": [
+        "apps/web/src/components/agent/mentionMenu.vue",
+        "apps/web/src/components/agent/mentionThumbnail.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentContext",
+      "title": "Agent 上下文用量",
+      "group": "agent",
+      "route": "/workspace",
+      "entry": "Agent 输入框 → 查看上下文用量",
+      "sources": [
+        "apps/web/src/components/agent/conversation.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "pending",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "languageModelResults",
+      "title": "文本模型批量选择",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "自定义供应商 → 获取模型列表",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "tfRecharge",
+      "title": "TF-Router 充值",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "已配置 TF-Router 账号 → 充值",
+      "sources": [
+        "apps/web/src/components/settings/tfRechargeDialog.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mcpCopy",
+      "title": "MCP 配置/内容复制弹窗",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "MCP → 复制配置，或剪贴板写入失败时回退",
+      "sources": [
+        "apps/web/src/components/settings/panels/mcp/index.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentConnect",
+      "title": "连接远程 Agent",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "插件市场 → 已安装 → Agent",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/agentConnectDialog.vue"
+      ],
+      "migration": "closedLegacy",
+      "verification": "disabledEntry",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "入口保持关闭，不因 UI 重构启用"
+    },
+    {
+      "id": "a2aSettings",
+      "title": "A2A 服务设置",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "插件市场 → 已安装 → Agent",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/a2aSettingsDialog.vue"
+      ],
+      "migration": "closedLegacy",
+      "verification": "disabledEntry",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "入口保持关闭，不因 UI 重构启用"
+    },
+    {
+      "id": "agentEditor",
+      "title": "Agent 文件编辑器",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "已安装 Agent 卡片",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/agentEditorDialog.vue"
+      ],
+      "migration": "closedLegacy",
+      "verification": "disabledEntry",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "入口保持关闭，不因 UI 重构启用"
+    },
+    {
+      "id": "desktopUpdateResult",
+      "title": "版本检查/下载进度结果",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "设置 → 关于 → 检查更新",
+      "sources": [
+        "apps/web/src/components/settings/panels/about.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "ffmpegRequired",
+      "title": "FFmpeg 缺失提示与安装弹窗",
+      "group": "conditional",
+      "route": "/home 或 /workspace",
+      "entry": "需要 FFmpeg 的操作发现未安装时",
+      "sources": [
+        "apps/web/src/components/settings/ffmpegRequired.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "attachmentPreview",
+      "title": "Agent 图片/视频附件预览",
+      "group": "conditional",
+      "route": "/workspace",
+      "entry": "Agent 添加图片/视频 → 预览",
+      "sources": [
+        "apps/web/src/components/agent/attachmentList.vue",
+        "apps/web/src/components/agent/attachmentPreview.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "mentionPreview",
+      "title": "Agent 已引用内容预览",
+      "group": "conditional",
+      "route": "/workspace",
+      "entry": "消息中的引用内容 → 预览",
+      "sources": [
+        "apps/web/src/components/agent/mentionContent.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "agentTools",
+      "title": "Agent 工具消息与提问卡片",
+      "group": "conditional",
+      "route": "/workspace",
+      "entry": "Agent 调用工具后",
+      "sources": [
+        "apps/web/src/components/agent/toolMessage.vue",
+        "packages/tools/askUser/src/questionCard.vue",
+        "packages/tools/canvas/src/nodeFocusCard.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    },
+    {
+      "id": "nodeError",
+      "title": "节点生成错误详情",
+      "group": "conditional",
+      "route": "/workspace",
+      "entry": "节点生成或处理失败时",
+      "sources": [
+        "packages/nodeScaffold/src/components/nodeError.vue"
+      ],
+      "migration": "ownedUiOrRetainedEngine",
+      "verification": "recordedUiChecks",
+      "evidence": "docs/uiMigration/progress.md",
+      "note": "UI 和请求合约验证不等于真实外部服务或全平台验收"
+    }
+  ],
+  "remaining": [
+    "3D 方案播放/定位与导出剩余流程",
+    "共享桌面反馈与未知规则/旧插件兼容终验",
+    "Agent 历史/上下文细项",
+    "Web 代码审阅与最终生产构建，合并前停止"
+  ],
+  "limits": [
+    "3 个关闭的 Agent/A2A 弹窗保留关闭",
+    "assemblyNode 无源码，属于兼容范围",
+    "没有 Windows WebView2 实机验证",
+    "没有真实付费生成、支付、下载更新或生产发布"
+  ],
+  "priority": "Web 优先；App 验证按用户要求暂不继续"
+}

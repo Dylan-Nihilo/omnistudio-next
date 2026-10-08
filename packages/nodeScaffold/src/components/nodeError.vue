@@ -2,9 +2,9 @@
   <div class="nodeErrorContent">
     <div class="errorLabel">错误详情</div>
     <div class="errorDetail" tabindex="0">{{ message }}</div>
-    <el-button v-if="!explanation || explaining" class="explainButton" size="small" :loading="explaining" :disabled="explaining" @click="explainError">
+    <uiButton v-if="!explanation || explaining" class="explainButton" size="small" :loading="explaining" :disabled="explaining" @click="explainError">
       {{ explaining ? "正在解释…" : explanationError ? "重试 AI 解释" : "AI 解释" }}
-    </el-button>
+    </uiButton>
     <div v-if="explanation || explanationError" class="explanation" aria-live="polite">
       <div class="errorLabel">{{ explanationError ? "暂时无法解释" : "AI 解释" }}</div>
       <div class="explanationText" tabindex="0">{{ explanationError || explanation }}</div>
@@ -15,17 +15,17 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { ElButton, ElNotification } from "element-plus";
+import { uiButton } from "@toonflow/ui";
 import { useNodeAi } from "../nodeAi";
 
-const props = defineProps<{ message: string; context: string; signal: AbortSignal }>();
+const props = defineProps<{ message: string; context: string; signal: AbortSignal; onResize?: () => void }>();
 const ai = useNodeAi();
 const explaining = ref(false);
 const explanation = ref("");
 const explanationError = ref("");
 const modelLabel = ref("");
 
-watch([explanation, explanationError, explaining], () => ElNotification.updateOffsets(), { flush: "post" });
+watch([explanation, explanationError, explaining], () => props.onResize?.(), { flush: "post" });
 
 async function explainError() {
   if (explaining.value || props.signal.aborted) return;
@@ -57,53 +57,8 @@ async function explainError() {
 }
 </script>
 
-<style lang="scss">
-.nodeErrorNotification {
-  width: min(440px, calc(100vw - 32px));
-
-  .el-notification__group {
-    min-width: 0;
-    flex: 1;
-  }
-
-  .nodeErrorContent {
-    text-align: left;
-
-    .errorLabel {
-      margin-bottom: 4px;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-    }
-
-    .errorDetail {
-      max-height: 20vh;
-      overflow: auto;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .explainButton {
-      margin-top: 12px;
-    }
-
-    .explanation {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--el-border-color-lighter);
-
-      .explanationText {
-        max-height: 30vh;
-        overflow: auto;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-
-      .explanationHint {
-        margin-top: 8px;
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-      }
-    }
-  }
-}
+<style lang="scss" scoped>
+:global(.nodeErrorNotification) { width: min(440px, calc(100vw - 32px)); }
+:global(.nodeErrorNotification .el-notification__group) { min-width: 0; flex: 1; }
+.nodeErrorContent { min-width: 0; text-align: left; .errorLabel { margin-bottom: 8px; color: var(--uiTextMuted, var(--el-text-color-secondary)); font-size: var(--uiFontControl, 12px); } .errorDetail { max-height: 20dvh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; } .explainButton { margin-top: 16px; } .explanation { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault, var(--el-border-color-lighter)); .explanationText { max-height: 30dvh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; } .explanationHint { margin-top: 8px; color: var(--uiTextMuted, var(--el-text-color-secondary)); font-size: var(--uiFontControl, 12px); } } }
 </style>

@@ -1,92 +1,13 @@
+
 .providerList {
+  min-width: 0;
   .itemList {
+    display: flex; flex-direction: column; gap: 20px;
     .providerItem {
-      margin-bottom: 12px;
-
-      .providerHeader {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .providerMark {
-          display: grid;
-          place-items: center;
-          flex: 0 0 40px;
-          height: 40px;
-          background: var(--el-fill-color-light);
-          border-radius: var(--el-border-radius-base);
-
-          .providerLogo {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-
-            .dark & {
-              filter: invert(1);
-            }
-          }
-        }
-
-        .providerInfo {
-          flex: 1;
-          min-width: 0;
-          display: grid;
-          justify-items: start;
-          gap: 4px;
-
-          .providerHeading {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-
-            .providerName {
-              color: var(--el-text-color-primary);
-              font-size: 15px;
-              line-height: 1.5;
-              overflow-wrap: anywhere;
-            }
-          }
-
-          .providerId {
-            overflow-wrap: anywhere;
-            line-height: 1.5;
-          }
-        }
-      }
-
-      .providerFooter {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px 16px;
-        margin-top: 16px;
-
-        .providerMeta {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 8px 12px;
-        }
-
-        .itemActions {
-          max-width: 100%;
-          margin-left: auto;
-        }
-      }
+      min-width: 0;
+      .providerHeader { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; .providerMark { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); .providerLogo { width: 24px; height: 24px; object-fit: contain; .dark & { filter: invert(1); } } } .providerInfo { display: grid; gap: 6px; min-width: 0; flex: 1; .providerHeading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; .providerName { color: var(--uiTextPrimary); font-size: var(--uiFontTitle); line-height: 1.5; overflow-wrap: anywhere; } } .providerId { color: var(--uiTextMuted); font-size: var(--uiFontControl); overflow-wrap: anywhere; line-height: 1.5; } } }
+      .providerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--uiBorderDefault); .providerMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; .providerCount { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .itemActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; margin-left: auto; } }
     }
   }
-
-  .providerActions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
-    padding-top: 16px;
-
-    .addButton {
-      width: 100%;
-      margin-left: 0;
-    }
-  }
+  .providerActions { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 24px; .addButton { flex: 1; min-width: min(240px, 100%); } }
 }

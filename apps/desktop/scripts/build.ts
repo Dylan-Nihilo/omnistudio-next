@@ -49,6 +49,7 @@ for (const script of mode === "dev" ? ["dev:plugins"] : [
 ]) {
   await $`${process.execPath} run ${script}`.cwd(projectDir);
 }
+await $`${process.execPath} run build:ui`.cwd(projectDir);
 await $`${process.execPath} run --filter @toonflow/web build`.cwd(projectDir);
 await $`${process.execPath} run --filter @toonflow/mcp build`.cwd(projectDir);
 if (isIntelMac) {

@@ -1,116 +1,45 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="provider ? '编辑供应商' : '添加自定义供应商'"
-    width="min(760px, 94vw)"
-    alignCenter
-    appendToBody
-    destroyOnClose
-    :closeOnClickModal="false"
-    :closeOnPressEscape="!saving"
-    :showClose="!saving"
-    @closed="resetForm">
-    <el-scrollbar maxHeight="65vh">
-      <el-form ref="providerForm" :model="form" :rules="rules" labelPosition="top" :disabled="saving" class="customProviderForm">
-        <div class="formGrid">
-          <el-form-item label="Provider ID" prop="id"><el-input v-model="form.id" placeholder="例如 myProvider" /></el-form-item>
-          <el-form-item label="显示名称" prop="label"><el-input v-model="form.label" placeholder="供应商的显示名称" /></el-form-item>
-          <el-form-item label="API 地址" prop="apiUrl"><el-input v-model="form.apiUrl" placeholder="https://api.example.com/v1" /></el-form-item>
-          <el-form-item label="API 协议" prop="protocol">
-            <el-select v-model="form.protocol" aria-label="API 协议">
-              <el-option v-for="protocol in protocols" :key="protocol" :label="protocol" :value="protocol" />
-            </el-select>
-          </el-form-item>
-        </div>
-        <el-form-item label="API 密钥" prop="apiKey">
-          <el-input v-model="form.apiKey" type="password" showPassword autocomplete="off" placeholder="本地无鉴权服务可留空" />
-        </el-form-item>
-        <div class="modelHeader">
-          <el-text tag="strong">模型列表</el-text>
-          <el-button :icon="IconDownload" :loading="fetching || modelRefreshPending" @click="fetchModels()">获取模型列表</el-button>
-        </div>
+  <uiDialog v-model="visible" :title="provider ? '编辑供应商' : '添加自定义供应商'" :width="800" destroyOnClose :closeOnClickModal="false" :closeOnPressEscape="!saving" :showClose="!saving" @closed="resetForm">
+    <uiForm ref="providerForm" :model="form" :rules="rules" :disabled="saving" class="customProviderForm">
+      <div class="providerIdentity">
+        <uiFormField label="Provider ID" prop="id"><template #default="{ id, invalid, required, describedBy }"><uiInput :id="id" v-model="form.id" :required="required" :error="invalid" :aria-describedby="describedBy" placeholder="例如 myProvider" /></template></uiFormField>
+        <uiFormField label="显示名称" prop="label"><template #default="{ id, invalid, required, describedBy }"><uiInput :id="id" v-model="form.label" :required="required" :error="invalid" :aria-describedby="describedBy" placeholder="供应商的显示名称" /></template></uiFormField>
+      </div>
+      <div class="providerConnection">
+        <uiFormField label="API 地址" prop="apiUrl"><template #default="{ id, invalid, describedBy }"><uiInput :id="id" v-model="form.apiUrl" :error="invalid" :aria-describedby="describedBy" placeholder="https://api.example.com/v1" /></template></uiFormField>
+        <uiFormField label="API 协议" prop="protocol"><template #default="{ id }"><uiSelect :id="id" :modelValue="form.protocol" :options="protocols.map(value => ({ value, label: value }))" aria-label="API 协议" :disabled="saving" @update:modelValue="value => typeof value === 'string' && (form.protocol = value)" /></template></uiFormField>
+      </div>
+      <uiFormField label="API 密钥" prop="apiKey"><template #default="{ id }"><uiInput :id="id" v-model="form.apiKey" type="password" showPassword autocomplete="off" placeholder="本地无鉴权服务可留空" /></template></uiFormField>
+      <section class="modelsSection" aria-label="模型列表">
+        <header class="modelHeader"><h3>模型列表</h3><uiButton variant="secondary" :icon="IconDownload" :loading="fetching || modelRefreshPending" :disabled="saving" @click="fetchModels()">获取模型列表</uiButton></header>
         <div class="modelList">
-          <div v-for="item in models" :key="item.key" class="modelItem">
-            <div class="modelRow">
-              <el-input v-model="item.id" placeholder="模型 ID" aria-label="模型 ID" />
-              <el-input v-model="item.label" placeholder="显示名称" aria-label="模型显示名称" />
-              <el-button
-                text
-                :icon="expandedModels.has(item.key) ? IconChevronUp : IconChevronDown"
-                :aria-expanded="expandedModels.has(item.key)"
-                aria-label="展开 token 设置"
-                @click="expandedModels.has(item.key) ? expandedModels.delete(item.key) : expandedModels.add(item.key)" />
-              <el-button
-                text
-                type="danger"
-                :icon="IconTrash"
-                aria-label="删除模型"
-                @click="models = models.filter((model) => model.key !== item.key)" />
+          <article v-for="(item, index) in models" :key="item.key" class="modelItem">
+            <div class="modelRow"><span class="modelIndex">{{ index + 1 }}</span><uiInput v-model="item.id" placeholder="模型 ID" aria-label="模型 ID" /><uiInput v-model="item.label" placeholder="显示名称" aria-label="模型显示名称" /><uiIconButton :icon="expandedModels.has(item.key) ? IconChevronUp : IconChevronDown" :aria-expanded="expandedModels.has(item.key)" label="展开 token 设置" @click="expandedModels.has(item.key) ? expandedModels.delete(item.key) : expandedModels.add(item.key)" /><uiIconButton variant="danger" :icon="IconTrash" label="删除模型" @click="models = models.filter(model => model.key !== item.key)" /></div>
+            <div v-if="expandedModels.has(item.key)" class="tokenSettings">
+              <uiField label="上下文窗口"><template #default="{ id }"><uiNumberInput :id="id" v-model="item.contextWindow" :min="1" :max="Number.MAX_SAFE_INTEGER" :precision="0" placeholder="未设置" aria-label="上下文窗口" /></template></uiField>
+              <uiField label="最大输出 token"><template #default="{ id }"><uiNumberInput :id="id" v-model="item.maxOutputTokens" :min="1" :max="Number.MAX_SAFE_INTEGER" :precision="0" placeholder="未设置" aria-label="最大输出 token" /></template></uiField>
             </div>
-            <div v-if="expandedModels.has(item.key)" class="formGrid tokenSettings">
-              <el-form-item label="上下文窗口">
-                <el-input-number
-                  v-model="item.contextWindow"
-                  :min="1"
-                  :max="Number.MAX_SAFE_INTEGER"
-                  :precision="0"
-                  controlsPosition="right"
-                  placeholder="未设置"
-                  aria-label="上下文窗口" />
-              </el-form-item>
-              <el-form-item label="最大输出 token">
-                <el-input-number
-                  v-model="item.maxOutputTokens"
-                  :min="1"
-                  :max="Number.MAX_SAFE_INTEGER"
-                  :precision="0"
-                  controlsPosition="right"
-                  placeholder="未设置"
-                  aria-label="最大输出 token" />
-              </el-form-item>
-            </div>
-          </div>
+          </article>
         </div>
-        <el-button class="manualAdd" :icon="IconPlus" @click="addManualModel">手动添加模型</el-button>
-        <el-alert v-if="formError" :title="formError" type="error" :closable="false" showIcon />
-      </el-form>
-    </el-scrollbar>
-    <template #footer>
-      <el-button :disabled="saving" @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="saving" :disabled="fetching || modelRefreshPending" @click="addProvider">
-        {{ provider ? "保存修改" : "确定添加供应商" }}
-      </el-button>
-    </template>
-  </el-dialog>
-  <el-dialog v-model="resultsVisible" title="选择要添加的模型" width="min(680px, 92vw)" alignCenter appendToBody destroyOnClose>
-    <el-input v-model="modelSearch" clearable :prefixIcon="IconSearch" placeholder="搜索模型 ID 或显示名称" aria-label="搜索模型" />
-    <div class="modelResults">
-      <el-auto-resizer>
-        <template #default="{ height, width }">
-          <el-table-v2
-            :columns="resultColumns"
-            :data="filteredModels"
-            :width="width"
-            :height="height"
-            :rowHeight="38"
-            :headerHeight="36"
-            rowKey="id"
-            fixed />
-        </template>
-      </el-auto-resizer>
-    </div>
-    <el-text type="info">{{ filteredModels.length }} 个结果，已勾选 {{ selectedIds.size }} 个</el-text>
-    <template #footer>
-      <el-button @click="resultsVisible = false">取消</el-button>
-      <el-button type="primary" :disabled="!selectedIds.size" @click="addSelectedModels">添加勾选的模型（{{ selectedIds.size }}）</el-button>
-    </template>
-  </el-dialog>
+        <uiButton class="manualAdd" variant="ghost" :icon="IconPlus" @click="addManualModel">手动添加模型</uiButton>
+      </section>
+      <uiAlert v-if="formError" :title="formError" tone="error" />
+    </uiForm>
+    <template #footer><uiButton variant="secondary" :disabled="saving" @click="visible = false">取消</uiButton><uiButton :loading="saving" :disabled="fetching || modelRefreshPending" @click="addProvider">{{ provider ? '保存修改' : '确定添加供应商' }}</uiButton></template>
+    <uiDialog v-model="resultsVisible" title="选择要添加的模型" :width="680" destroyOnClose>
+      <div class="modelSelection"><uiInput v-model="modelSearch" clearable placeholder="搜索模型 ID 或显示名称" aria-label="搜索模型"><template #prefix><icon-search :size="16" aria-hidden="true" /></template></uiInput>
+        <div class="modelResults"><uiResizeBox><template #default="{ height }"><uiVirtualTable :columns="resultColumns" :rows="filteredModels" :height="height" :rowHeight="38" :headerHeight="36" rowKey="id" label="可添加模型" /></template></uiResizeBox></div>
+        <p class="selectionCount">{{ filteredModels.length }} 个结果，已勾选 {{ selectedIds.size }} 个</p>
+      </div>
+      <template #footer><uiButton variant="secondary" @click="resultsVisible = false">取消</uiButton><uiButton :disabled="!selectedIds.size" @click="addSelectedModels">添加勾选的模型（{{ selectedIds.size }}）</uiButton></template>
+    </uiDialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, reactive, ref, shallowRef, watch } from "vue";
 import axios from "axios";
-import { ElCheckbox, type FormInstance, type FormRules, type Column } from "element-plus";
+import { uiDialog, uiForm, uiFormField, uiField, uiInput, uiNumberInput, uiSelect, uiButton, uiIconButton, uiAlert, uiCheckbox, uiVirtualTable, uiResizeBox, type UiFormApi, type UiFormRules, type UiColumn } from "@toonflow/ui";
 import {
   IconPlus,
   IconDownload,
@@ -125,7 +54,7 @@ import { isTfRouterProvider } from "@/lib/tf";
 
 const props = defineProps<{ provider?: CustomProvider }>();
 const visible = defineModel<boolean>({ default: false });
-const providerForm = ref<FormInstance>();
+const providerForm = ref<UiFormApi>();
 const form = reactive({ id: "", label: "", apiUrl: "", protocol: "openai-completions", apiKey: "" });
 const models = ref<(CustomProviderModel & { key: string })[]>([]);
 const expandedModels = ref(new Set<string>());
@@ -139,23 +68,13 @@ const filteredModels = computed(() => {
   const query = modelSearch.value.trim().toLowerCase();
   return query ? fetchedModels.value.filter((item) => `${item.id} ${item.label}`.toLowerCase().includes(query)) : fetchedModels.value;
 });
-const resultColumns = computed<Column[]>(() => [
-  {
-    key: "selection",
-    width: 42,
-    cellRenderer: ({ rowData }) =>
-      h(ElCheckbox, {
-        modelValue: selectedIds.value.has(rowData.id),
-        disabled: addedIds.value.has(rowData.id),
-        ariaLabel: `选择 ${rowData.id}`,
-        onChange: (value: boolean | string | number) => {
-          if (value) selectedIds.value.add(rowData.id);
-          else selectedIds.value.delete(rowData.id);
-        },
-      }),
-  },
-  { key: "id", dataKey: "id", title: "模型 ID", width: 240, flexGrow: 1 },
-  { key: "label", dataKey: "label", title: "显示名称", width: 200, flexGrow: 1 },
+const resultColumns = computed<UiColumn[]>(() => [
+  { key: "selection", label: "", width: 44, render: ({ row }) => h(uiCheckbox, {
+    modelValue: selectedIds.value.has(row.id as string), disabled: addedIds.value.has(row.id as string), "aria-label": `选择 ${row.id}`,
+    onChange: (value: boolean) => { if (value) selectedIds.value.add(row.id as string); else selectedIds.value.delete(row.id as string); },
+  }) },
+  { key: "id", label: "模型 ID", width: 260 },
+  { key: "label", label: "显示名称" },
 ]);
 const resultsVisible = ref(false);
 const fetching = ref(false);
@@ -163,7 +82,7 @@ const modelRefreshPending = ref(false);
 const modelFetchFailed = ref(false);
 const formError = ref("");
 let request: AbortController | undefined;
-const rules: FormRules = {
+const rules: UiFormRules = {
   id: [
     { required: true, message: "请输入 Provider ID", trigger: "blur" },
     { pattern: /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/, message: "仅支持字母、数字、点、下划线和短横线", trigger: "blur" },
@@ -331,7 +250,8 @@ async function addProvider() {
     });
     visible.value = false;
   } catch (error) {
-    formError.value = error instanceof Error ? error.message : "保存失败，请重试；当前填写的内容已保留";
+    const message = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || "保存失败" : error instanceof Error ? error.message : "保存失败";
+    formError.value = `${message}；当前填写的内容已保留，请重试`;
   } finally {
     saving.value = false;
   }
@@ -340,65 +260,16 @@ async function addProvider() {
 
 <style lang="scss" scoped>
 .customProviderForm {
-  padding-right: 12px;
-
-  .formGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 20px;
-
-    .el-input-number {
-      width: 100%;
-    }
+  min-width: 0;
+  .providerIdentity, .providerConnection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .providerConnection { padding-top: 20px; border-top: 1px solid var(--uiBorderDefault); }
+  .modelsSection {
+    min-width: 0; padding-top: 24px; border-top: 1px solid var(--uiBorderDefault);
+    .modelHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; h3 { margin: 0; font-size: var(--uiFontLabel); font-weight: 600; } }
+    .modelList { display: flex; flex-direction: column; gap: 12px; .modelItem { min-width: 0; padding: 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); .modelRow { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) 36px 36px; gap: 8px; align-items: center; .modelIndex { color: var(--uiTextMuted); font-size: var(--uiFontControl); font-variant-numeric: tabular-nums; } } .tokenSettings { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--uiBorderDefault); } } }
+    .manualAdd { width: 100%; margin-top: 12px; }
   }
-
-  .modelHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 8px 0 16px;
-  }
-
-  .modelList {
-    .modelItem {
-      padding: 8px 0;
-      border-bottom: 1px solid var(--el-border-color-lighter);
-
-      .modelRow {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px 28px;
-        align-items: center;
-        gap: 8px;
-
-        .el-button {
-          margin: 0;
-          padding: 4px;
-        }
-      }
-
-      .tokenSettings {
-        padding-top: 12px;
-
-        .el-form-item {
-          margin-bottom: 4px;
-        }
-      }
-    }
-  }
-
-  .manualAdd {
-    width: 100%;
-    margin: 16px 0;
-  }
-
-  @media (max-width: 560px) {
-    .formGrid {
-      grid-template-columns: 1fr;
-    }
-  }
+  @media (max-width: 700px) { .providerIdentity, .providerConnection { grid-template-columns: 1fr; gap: 20px; } .modelsSection .modelList .modelItem { .modelRow { grid-template-columns: 20px minmax(0, 1fr) 36px 36px; :deep(.uiInput:nth-child(3)) { grid-column: 2; grid-row: 2; } } .tokenSettings { grid-template-columns: 1fr; } } }
 }
-.modelResults {
-  height: min(420px, 55dvh);
-  margin: 12px 0;
-}
+.modelSelection { display: flex; flex-direction: column; gap: 16px; .modelResults { height: min(420px, 52dvh); } .selectionCount { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
 </style>

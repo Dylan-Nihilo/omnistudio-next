@@ -1,42 +1,26 @@
 <template>
-  <el-button v-if="!hideTrigger" class="workspaceButton" text :icon="IconFolder" :loading="selecting" :disabled="loading || disabled" :title="selectedDirectory || '选择工作目录'" aria-label="选择工作目录" @click="chooseDirectory">
-    <span class="directoryName">{{ selectedDirectory ? selectedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || selectedDirectory : '工作目录' }}</span>
-    <icon-chevron-down :size="14" />
-  </el-button>
-  <el-dialog v-model="dialogVisible" title="选择服务器工作目录" width="min(680px, 92vw)" appendToBody :closeOnClickModal="!editing" :closeOnPressEscape="!editing" :showClose="!editing" @close="finishSelection?.(null)">
+  <uiButton v-if="!hideTrigger" class="workspaceButton" variant="ghost" :icon="IconFolder" :loading="selecting" :disabled="loading || disabled" :title="selectedDirectory || '选择工作目录'" aria-label="选择工作目录" @click="chooseDirectory"><span class="directoryName">{{ selectedDirectory ? selectedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || selectedDirectory : '工作目录' }}</span><icon-chevron-down :size="14" aria-hidden="true" /></uiButton>
+  <uiDialog v-model="dialogVisible" title="选择服务器工作目录" :width="680" :closeOnClickModal="!editing" :closeOnPressEscape="!editing" :showClose="!editing" @close="finishSelection?.(null)">
     <div class="workspaceBrowser">
-      <div class="directoryHeader">
-        <el-button :icon="IconArrowLeft" circle :disabled="loading || editing || !listing?.path" aria-label="上一级目录" @click="loadDirectory(listing?.parent ?? '')" />
-        <el-text class="directoryPath" truncated :title="listing?.absolutePath">服务器工作区{{ listing?.path ? ` / ${listing.path}` : '' }}</el-text>
-        <el-button :icon="IconFolderPlus" :disabled="loading || editing || !listing || !!browseError" @click="manageEntry('mkdir')">新建文件夹</el-button>
-      </div>
-      <el-alert v-if="browseError" :title="browseError" type="error" :closable="false" />
-      <el-table v-loading="loading" :data="listing?.entries ?? []" height="300" emptyText="当前目录为空">
-        <el-table-column label="名称" minWidth="160">
-          <template #default="{ row }">
-            <el-button v-if="row.type === 'directory'" class="entryName" link :icon="IconFolder" :title="row.name" :disabled="loading || editing" @click="loadDirectory([listing?.path, row.path].filter(Boolean).join('/'))">{{ row.name }}</el-button>
-            <span v-else class="fileName" :title="row.name"><icon-file :size="16" /><span>{{ row.name }}</span></span>
+      <header class="directoryHeader"><uiIconButton :icon="IconArrowLeft" :disabled="loading || editing || !listing?.path" label="上一级目录" @click="loadDirectory(listing?.parent ?? '')" /><span class="directoryPath" :title="listing?.absolutePath">服务器工作区{{ listing?.path ? ` / ${listing.path}` : '' }}</span><uiButton variant="secondary" :icon="IconFolderPlus" :disabled="loading || editing || !listing || !!browseError" @click="manageEntry('mkdir')">新建文件夹</uiButton></header>
+      <uiAlert v-if="browseError" :title="browseError" tone="error" />
+      <uiLoading :loading="loading" label="读取目录中">
+        <uiTable :rows="listing?.entries ?? []" :columns="directoryColumns" :height="300" :emptyText="loading ? '' : '当前目录为空'" label="工作目录内容">
+          <template #cell="{ row, column }">
+            <template v-if="column.key === 'name'"><uiButton v-if="row.type === 'directory'" class="entryName" variant="ghost" :icon="IconFolder" :title="String(row.name)" :disabled="loading || editing" @click="loadDirectory([listing?.path, row.path].filter(Boolean).join('/'))">{{ row.name }}</uiButton><span v-else class="fileName" :title="String(row.name)"><icon-file :size="16" aria-hidden="true" /><span>{{ row.name }}</span></span></template>
+            <div v-else class="entryActions"><uiButton variant="ghost" size="small" :disabled="loading || editing" :aria-label="`重命名 ${row.name}`" @click="manageEntry('rename', row as WorkspaceEntry)">重命名</uiButton><uiButton variant="danger" size="small" :disabled="loading || editing" :aria-label="`删除 ${row.name}`" @click="manageEntry('remove', row as WorkspaceEntry)">删除</uiButton></div>
           </template>
-        </el-table-column>
-        <el-table-column label="操作" width="130" align="right">
-          <template #default="{ row }">
-            <el-button link :disabled="loading || editing" :aria-label="`重命名 ${row.name}`" @click="manageEntry('rename', row as WorkspaceEntry)">重命名</el-button>
-            <el-button link type="danger" :disabled="loading || editing" :aria-label="`删除 ${row.name}`" @click="manageEntry('remove', row as WorkspaceEntry)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </uiTable>
+      </uiLoading>
     </div>
-    <template #footer>
-      <el-button :disabled="editing" @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" :disabled="loading || editing || !listing || !!browseError" @click="confirmDirectory">选择此目录</el-button>
-    </template>
-  </el-dialog>
+    <template #footer><uiButton variant="secondary" :disabled="editing" @click="dialogVisible = false">取消</uiButton><uiButton :disabled="loading || editing || !listing || !!browseError" @click="confirmDirectory">选择此目录</uiButton></template>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import axios from "axios";
 import { onBeforeUnmount, ref } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { uiButton, uiIconButton, uiDialog, uiAlert, uiLoading, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@toonflow/ui";
 import { IconFolder, IconFolderPlus, IconFile, IconChevronDown, IconArrowLeft } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 
@@ -48,6 +32,8 @@ type DirectoryListing = {
   entries: WorkspaceEntry[];
 };
 
+const feedback = useUiFeedback();
+const directoryColumns: UiColumn[] = [{ key: "name", label: "名称" }, { key: "actions", label: "操作", width: 164, align: "right" }];
 const selectedDirectory = defineModel<string>({ default: "" });
 const props = defineProps<{ disabled?: boolean; hideTrigger?: boolean }>();
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
@@ -80,7 +66,7 @@ async function chooseDirectory(): Promise<string | null> {
       return await new Promise<string | null>(resolve => { finishSelection = resolve; });
     }
   } catch (error) {
-    ElMessage.error(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || "无法打开文件夹选择器，请重试" : "无法打开文件夹选择器，请重试");
+    showError(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || "无法打开文件夹选择器，请重试" : "无法打开文件夹选择器，请重试");
     return null;
   }
   finally { selecting.value = false; finishSelection = undefined; }
@@ -108,14 +94,14 @@ async function manageEntry(action: "mkdir" | "rename" | "remove", entry?: Worksp
   editing.value = true;
   try {
     if (action === "remove" && entry) {
-      await ElMessageBox.confirm(entry.type === "directory"
+      await feedback.confirm(entry.type === "directory"
         ? `确定删除文件夹“${entry.name}”及其全部内容？此操作无法撤销。`
         : `确定删除文件“${entry.name}”？此操作无法撤销。`, "删除确认", {
-        type: "warning", confirmButtonText: "删除", cancelButtonText: "取消",
+        danger: true, confirmButtonText: "删除", cancelButtonText: "取消",
       });
       await files.remove(entry.path, entry.type === "directory");
     } else {
-      const { value } = await ElMessageBox.prompt("请输入名称", action === "mkdir" ? "新建文件夹" : "重命名", {
+      const { value } = await feedback.prompt("请输入名称", action === "mkdir" ? "新建文件夹" : "重命名", {
         inputValue: entry?.name ?? "新建文件夹",
         inputValidator: value => {
           const name = value?.trim();
@@ -135,7 +121,7 @@ async function manageEntry(action: "mkdir" | "rename" | "remove", entry?: Worksp
     }
     await loadDirectory(directory.path);
   } catch (error) {
-    if (error !== "cancel" && error !== "close") ElMessage.error(axios.isAxiosError<{ message?: string }>(error)
+    if (!isUiCancelledError(error)) showError(axios.isAxiosError<{ message?: string }>(error)
       ? error.response?.data?.message || "操作失败，请重试" : error instanceof Error ? error.message : "操作失败，请重试");
   } finally { editing.value = false; }
 }
@@ -146,42 +132,10 @@ function confirmDirectory() {
   finishSelection?.(listing.value.absolutePath);
   dialogVisible.value = false;
 }
+function showError(message: string) { feedback.message({ tone: "error", message }); }
 </script>
 
 <style lang="scss" scoped>
-.workspaceButton {
-  max-width: min(340px, 100%);
-
-  :deep(> span) { min-width: 0; gap: 6px; }
-  .directoryName { overflow: hidden; text-overflow: ellipsis; }
-  svg { flex-shrink: 0; }
-}
-
-.workspaceBrowser {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .directoryHeader {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .directoryPath { flex: 1; min-width: 0; }
-    .el-button { flex-shrink: 0; }
-  }
-
-  .entryName {
-    max-width: 100%;
-    :deep(> span) { overflow: hidden; text-overflow: ellipsis; }
-  }
-
-  .fileName {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    svg { flex-shrink: 0; }
-    span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  }
-}
+.workspaceButton { min-width: 0; max-width: min(340px, 100%); :deep(.buttonLabel) { display: flex; align-items: center; gap: 6px; min-width: 0; } .directoryName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.workspaceBrowser { display: flex; flex-direction: column; gap: 16px; min-width: 0; .directoryHeader { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; .directoryPath { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextBody); font-size: var(--uiFontControl); } } .entryName { min-width: 0; max-width: 100%; :deep(.buttonLabel) { overflow: hidden; text-overflow: ellipsis; } } .entryActions { display: flex; justify-content: flex-end; gap: 4px; } .fileName { display: flex; align-items: center; gap: 8px; min-width: 0; svg { flex-shrink: 0; } span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } } }
 </style>

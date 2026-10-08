@@ -55,8 +55,8 @@ watch([inView, () => props.thumbnail?.url, () => props.thumbnail?.mimeType, () =
   height: 36px;
   overflow: hidden;
   border-radius: 5px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
+  background: var(--uiBackgroundSubtle);
+  color: var(--uiTextMuted);
 
   img, video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 }

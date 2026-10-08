@@ -3,7 +3,7 @@
     <section class="settingSection" aria-labelledby="collectionTitle">
       <div class="settingHeader">
         <h3 id="collectionTitle">匿名使用统计</h3>
-        <el-switch
+        <uiSwitch
           :modelValue="privacySettings.dataCollectionEnabled"
           aria-label="匿名使用统计"
           @change="(value) => settings.privacy = { ...privacySettings, dataCollectionEnabled: value === true }" />
@@ -30,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiSwitch } from "@toonflow/ui";
 import { privacySettings, settings } from "@/stores/settings";
 
 const metrics = [
@@ -44,66 +45,15 @@ const metrics = [
 
 <style lang="scss" scoped>
 .privacy {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 0 4px 8px;
-
+  display: flex; flex-direction: column; gap: 32px; min-width: 0;
   .settingSection {
     min-width: 0;
-
-    h3 {
-      margin: 0 0 12px;
-      color: var(--el-text-color-primary);
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .settingHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-
-      h3 { margin: 0; }
-    }
-
-    .description {
-      margin: 8px 0 0;
-      color: var(--el-text-color-secondary);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .metricList {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin: 0;
-
-      .metricItem {
-        display: grid;
-        grid-template-columns: 88px minmax(0, 1fr);
-        gap: 12px;
-        font-size: 13px;
-        line-height: 1.6;
-
-        dt { color: var(--el-text-color-regular); }
-        dd { margin: 0; color: var(--el-text-color-secondary); }
-      }
-    }
-
-    .anonymousId {
-      display: block;
-      padding: 10px 12px;
-      border-radius: var(--el-border-radius-base);
-      background: var(--el-fill-color-light);
-      color: var(--el-text-color-regular);
-      overflow-wrap: anywhere;
-      user-select: text;
-      font-family: monospace;
-      font-size: 12px;
-    }
+    h3 { margin: 0 0 16px; color: var(--uiTextPrimary); font-size: var(--uiFontLabel); font-weight: 600; }
+    .settingHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; h3 { margin: 0; } }
+    .description { max-width: 65ch; margin: 12px 0 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
+    .metricList { display: flex; flex-direction: column; gap: 16px; margin: 0; .metricItem { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--uiBorderDefault); font-size: var(--uiFontBody); line-height: 1.6; dt { color: var(--uiTextBody); } dd { margin: 0; color: var(--uiTextMuted); } } }
+    .anonymousId { display: block; padding: 12px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); color: var(--uiTextBody); overflow-wrap: anywhere; user-select: text; font-size: var(--uiFontControl); }
   }
+  @media (max-width: 700px) { .settingSection .metricList .metricItem { grid-template-columns: 1fr; gap: 8px; } }
 }
 </style>

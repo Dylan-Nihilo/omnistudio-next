@@ -11,10 +11,11 @@
     :style="{ width: previewUrl && imageWidth ? `${imageWidth + 18}px` : undefined }">
     <template #topActions>
       <mediaHistory mediaType="image" :current="outputFile" :disabled="generating || deleting || uploading" @select="outputs.image = { dataType: 'IMAGE', value: $event }" />
-      <el-button :icon="IconTransfer" :loading="uploading" :disabled="generating || deleting" text title="替换图片" aria-label="替换图片" @click.stop="fileInput?.click()" />
+      <uiIconButton :icon="IconTransfer" :loading="uploading" :disabled="generating || deleting" title="替换图片" label="替换图片" @click.stop="fileInput?.click()" />
       <input ref="fileInput" type="file" accept="image/*" hidden aria-label="选择替换图片" :disabled="generating || deleting || uploading" @change="replaceOutput" />
     </template>
-    <div v-loading="generating || uploading" class="imageContent nopan" :aria-busy="generating || uploading">
+    <div class="imageContent nopan" :aria-busy="generating || uploading">
+      <uiLoading v-if="generating || uploading" loading class="generationOverlay" :label="uploading ? '替换图片中' : '生成图片中'" />
       <img
         v-if="previewUrl"
         class="imagePreview"
@@ -28,7 +29,7 @@
       </div>
     </div>
     <template #bottom>
-      <el-card class="promptCard" shadow="never" :bodyStyle="{ padding: '14px 16px 12px' }">
+      <section class="promptCard">
         <referenceItem
           v-if="refList.length"
           v-model="refList"
@@ -36,55 +37,33 @@
           @remove="removeReference" />
         <promptInput v-model="data.promptModel" v-model:text="data.prompt" :references="referenceMentions" />
         <div class="promptFooter">
-          <el-select
-            v-model="data.model"
-            class="modelSelect"
-            filterable
-            :loading="modelsLoading"
-            :disabled="generating || deleting"
-            placeholder="选择模型"
-            aria-label="生成模型"
-            noDataText="请先在设置中添加图片模型"
-            placement="top-start"
-            @visible-change="(visible) => visible && loadModels().catch((error) => showNodeError(error, '模型读取失败'))">
-            <template #prefix><icon-sparkles :size="17" /></template>
-            <el-option-group v-for="provider in modelGroups" :key="provider.id" :label="provider.label">
-              <el-option
-                v-for="item in provider.models"
-                :key="item.modelId"
-                :label="item.label"
-                :value="JSON.stringify([item.providerId, item.modelId])" />
-            </el-option-group>
-          </el-select>
+          <div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="data.model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating || deleting" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加图片模型" @update:modelValue="value => typeof value === 'string' && (data.model = value)" @visibleChange="visible => visible && loadModels().catch(error => showNodeError(error, '模型读取失败'))" /></div>
           <generationSettings
             v-model:size="data.size"
             v-model:ratio="data.ratio"
             :sizes="sizeOptions"
             :ratios="ratioOptions"
             :disabled="generating || deleting || !selectedModel" />
-          <el-button
+          <uiIconButton
+            variant="primary"
             class="sendButton"
             :icon="generating ? IconPlayerStop : IconArrowUp"
             :disabled="deleting || uploading || (!generating && (!generationPrompt || !selectedModel))"
             :title="generating ? '停止生成' : '生成图片'"
-            :aria-label="generating ? '停止生成' : '生成图片'"
+            :label="generating ? '停止生成' : '生成图片'"
             @click="generating ? generationController?.abort() : startGeneration().catch((error) => showNodeError(error, '图片生成失败'))" />
         </div>
-      </el-card>
+      </section>
     </template>
   </nodeSkeleton>
-  <el-image-viewer
-    v-if="previewVisible && previewUrl"
-    :urlList="[previewUrl]"
-    teleported
-    @close="previewVisible = false" />
+  <uiImageViewer v-if="previewUrl" v-model="previewVisible" :urls="[previewUrl]" title="生成图片" />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
-import { ElButton, ElCard, ElSelect, ElOption, ElOptionGroup, ElLoading, ElImageViewer } from "element-plus";
+import { uiIconButton, uiSelect, uiLoading, uiImageViewer } from "@toonflow/ui";
 import { IconPhotoAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, showNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
+import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
 import promptInput from "@toonflow/nodes-scaffold/promptInput";
 import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
 import mediaHistory from "@toonflow/nodes-scaffold/mediaHistory";
@@ -98,7 +77,7 @@ defineOptions({
     { id: "image", type: "source", dataType: "IMAGE", label: "图片输出" },
   ] satisfies NodeHandle[],
 });
-const vLoading = ElLoading.directive;
+const showNodeError = useNodeError();
 const { id, node, nodeProps, nodeEvent, outputs, files, ai, updateNodeInternals } = useNode({
   label: "图片生成",
 });
@@ -340,66 +319,6 @@ nodeTools.register({
 </script>
 
 <style scoped lang="scss">
-.imageContent {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 144px;
-  overflow: hidden;
-  border-radius: var(--el-border-radius-base);
-
-  .imageEmpty {
-    display: grid;
-    place-items: center;
-    min-height: 144px;
-    color: var(--el-text-color-placeholder);
-  }
-
-  :deep(.el-loading-mask) {
-    pointer-events: none;
-  }
-
-  .imagePreview {
-    display: block;
-    width: 100%;
-    max-height: 240px;
-    object-fit: contain;
-    border-radius: var(--el-border-radius-base);
-  }
-
-}
-
-.promptCard {
-  .promptFooter {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-
-    .modelSelect {
-      width: 190px;
-      min-width: 0;
-
-      &:deep(.el-select__wrapper) {
-        gap: 6px;
-        padding: 0;
-        box-shadow: none;
-        background: transparent;
-      }
-    }
-
-    .sendButton {
-      width: 32px;
-      height: 32px;
-      margin-left: auto;
-      padding: 0;
-      --el-button-bg-color: var(--el-text-color-primary);
-      --el-button-border-color: transparent;
-      --el-button-text-color: var(--el-bg-color);
-      --el-button-hover-bg-color: var(--el-text-color-regular);
-      --el-button-hover-border-color: transparent;
-      --el-button-hover-text-color: var(--el-bg-color);
-    }
-  }
-}
+.imageContent { position: relative; display: grid; place-items: center; min-height: 144px; overflow: hidden; border-radius: var(--uiRadiusControl); .generationOverlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; } .imageEmpty { display: grid; place-items: center; min-height: 144px; color: var(--uiTextMuted); } .imagePreview { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: var(--uiRadiusControl); } }
+.promptCard { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover); .referenceHint { color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .promptFooter { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); .modelChoice { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 180px; color: var(--uiTextMuted); :deep(.uiPopover) { flex: 1; min-width: 0; } } .sendButton { margin-left: auto; } } }
 </style>

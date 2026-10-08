@@ -18,12 +18,11 @@
 
 <script setup lang="ts">
 import { computed, inject, nextTick } from "vue";
-import { ElMessage } from "element-plus";
-import "element-plus/es/components/base/style/css";
-import "element-plus/es/components/message/style/css";
+import { useUiFeedback } from "@toonflow/ui";
 import { IconFocus2 } from "@tabler/icons-vue";
 import type { ToolCall, CanvasContext } from "@toonflow/tools-scaffold/runtime";
 
+const feedback = useUiFeedback();
 const props = defineProps<{ tool: ToolCall; directory?: string }>();
 
 type NodeSummary = { nodeId: string; label: string };
@@ -81,14 +80,14 @@ async function focusNode(nodeId: string) {
   await nextTick();
   const canvas = getCanvas?.();
   if (!canvas) {
-    ElMessage.error("画布尚未就绪");
+    feedback.message({ tone: "error", message: "画布尚未就绪" });
     return;
   }
   try {
     await canvas.call({ name: "fitCanvas", args: { nodeIds: [nodeId] } });
     await canvas.call({ name: "selectNodes", args: { nodeIds: [nodeId] } });
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "聚焦节点失败");
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "聚焦节点失败" });
   }
 }
 </script>
@@ -109,22 +108,23 @@ async function focusNode(nodeId: string) {
       gap: 4px;
       min-width: 0;
       max-width: min(100%, 180px);
-      padding: 2px 6px;
+      min-height: 32px;
+      padding: 4px 8px;
       font: inherit;
-      color: var(--el-text-color-regular);
-      background: var(--el-fill-color-light);
+      color: var(--uiTextBody);
+      background: var(--uiBackgroundSubtle);
       border: 1px solid transparent;
-      border-radius: var(--ui-radius, 6px);
+      border-radius: var(--uiRadiusControl);
       cursor: pointer;
 
       &:hover {
-        color: var(--el-color-primary);
-        border-color: var(--el-color-primary-light-5);
-        background: var(--el-color-primary-light-9);
+        color: var(--uiActionPrimary);
+        border-color: var(--uiBorderFocus);
+        background: var(--uiActionSoft);
       }
 
       &:focus-visible {
-        outline: 2px solid var(--el-color-primary);
+        outline: 2px solid var(--uiActionPrimary);
         outline-offset: 2px;
       }
 

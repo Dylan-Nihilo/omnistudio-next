@@ -1,63 +1,20 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="`编辑媒体供应商：${provider?.label ?? ''}`"
-    width="min(800px, calc(100vw - 32px))"
-    alignCenter
-    appendToBody
-    destroyOnClose
-    :closeOnClickModal="false"
-    :closeOnPressEscape="!saving"
-    :showClose="!saving">
+  <uiDialog v-model="visible" :title="`编辑媒体供应商：${provider?.label ?? ''}`" :width="840" destroyOnClose :closeOnClickModal="false" :closeOnPressEscape="!saving" :showClose="!saving">
     <div class="providerEditor">
       <messageMarkdown v-if="provider?.readme" class="providerReadme" :content="provider.readme" />
-      <el-form labelPosition="top" :disabled="saving">
-        <el-form-item label="API Key">
-          <el-input v-model="apiKey" :prefixIcon="IconKey" type="password" showPassword autocomplete="off" aria-label="媒体供应商 API Key" />
-        </el-form-item>
-      </el-form>
-      <div class="modelHeader">
-        <h4>模型配置 <el-text type="info">{{ models.length }}</el-text></h4>
-        <el-button :icon="IconPlus" size="small" :disabled="saving" @click="editModel()">手动添加</el-button>
-      </div>
-      <div class="modelList">
-        <el-card v-for="(item, index) in models" :key="index" class="modelCard" shadow="never">
-          <div class="topInfo">
-            <div class="modelNameWrap">
-              <modelIcon :model="item.id" :size="24" />
-              <div class="modelInfo">
-                <span class="modelName">{{ item.label }}</span>
-                <el-text class="modelId" type="info" size="small">{{ item.id }}</el-text>
-              </div>
-            </div>
-            <div class="actionButtons">
-              <el-button text size="small" :icon="IconEdit" :disabled="saving" :aria-label="`编辑模型 ${item.label}`" @click="editModel(index)">编辑</el-button>
-              <el-button text size="small" type="danger" :icon="IconTrash" :disabled="saving" :aria-label="`删除模型 ${item.label}`" @click="models.splice(index, 1)">删除</el-button>
-            </div>
-          </div>
-          <div class="modelTags">
-            <el-tag size="small">{{ modelTypes[item.type] }}</el-tag>
-            <el-tag v-for="(tag, tagIndex) in modelTags(item)" :key="tagIndex" size="small" type="info">{{ tag }}</el-tag>
-          </div>
-        </el-card>
-        <el-text v-if="!models.length" type="info">暂无模型</el-text>
-      </div>
+      <uiField label="API Key"><template #default="{ id }"><uiInput :id="id" v-model="apiKey" type="password" showPassword autocomplete="off" :disabled="saving" aria-label="媒体供应商 API Key"><template #prefix><icon-key :size="16" aria-hidden="true" /></template></uiInput></template></uiField>
+      <section class="modelSection"><header class="modelHeader"><h3>模型配置 <span>{{ models.length }}</span></h3><uiButton variant="secondary" :icon="IconPlus" :disabled="saving" @click="editModel()">手动添加</uiButton></header>
+        <div class="modelList"><article v-for="(item, index) in models" :key="index" class="modelCard"><div class="topInfo"><div class="modelNameWrap"><modelIcon :model="item.id" :size="24" /><div class="modelInfo"><strong class="modelName">{{ item.label }}</strong><span class="modelId">{{ item.id }}</span></div></div><div class="actionButtons"><uiButton variant="ghost" size="small" :icon="IconEdit" :disabled="saving" :aria-label="`编辑模型 ${item.label}`" @click="editModel(index)">编辑</uiButton><uiButton variant="danger" size="small" :icon="IconTrash" :disabled="saving" :aria-label="`删除模型 ${item.label}`" @click="models.splice(index, 1)">删除</uiButton></div></div><div class="modelTags"><uiTag>{{ modelTypes[item.type] }}</uiTag><uiTag v-for="(tag, tagIndex) in modelTags(item)" :key="tagIndex">{{ tag }}</uiTag></div></article><p v-if="!models.length" class="modelEmpty">暂无模型</p></div>
+      </section>
+      <uiAlert v-if="formError" :title="formError" tone="error" />
     </div>
-    <el-alert v-if="formError" class="formError" :title="formError" type="error" :closable="false" showIcon />
-    <template #footer>
-      <el-button :disabled="saving" @click="visible = false">取消</el-button>
-      <el-button type="primary" :icon="IconDeviceFloppy" :loading="saving" @click="saveModels">保存</el-button>
-    </template>
-    <component
-      :is="modelEditorDialog"
-      v-model="modelEditorVisible"
-      :model="editingModelIndex === undefined ? undefined : models[editingModelIndex]"
-      :models="models"
-      @confirmed="confirmModel" />
-  </el-dialog>
+    <template #footer><uiButton variant="secondary" :disabled="saving" @click="visible = false">取消</uiButton><uiButton :icon="IconDeviceFloppy" :loading="saving" @click="saveModels">保存</uiButton></template>
+    <component :is="modelEditorDialog" v-model="modelEditorVisible" :model="editingModelIndex === undefined ? undefined : models[editingModelIndex]" :models="models" @confirmed="confirmModel" />
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
+import { uiDialog, uiField, uiInput, uiButton, uiTag, uiAlert } from "@toonflow/ui";
 import axios from "axios";
 import { defineAsyncComponent, ref, shallowRef, watch, type Component } from "vue";
 import { IconPlus, IconTrash, IconDeviceFloppy, IconEdit, IconKey } from "@tabler/icons-vue";
@@ -158,71 +115,5 @@ async function saveModels() {
 </script>
 
 <style lang="scss" scoped>
-.providerEditor {
-  max-height: 65dvh;
-  padding: 8px 4px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-
-  .providerReadme { margin-bottom: 20px; }
-
-  .modelHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
-
-    h4 { margin: 0; }
-  }
-
-  .modelList {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    .modelCard {
-      .topInfo {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-
-        .modelNameWrap {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          min-width: 0;
-
-          .modelInfo {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 0;
-            overflow-wrap: anywhere;
-
-            .modelName { font-size: 15px; font-weight: 600; }
-            .modelId { align-self: flex-start; }
-          }
-        }
-
-        .actionButtons {
-          display: flex;
-          flex-shrink: 0;
-          margin-left: auto;
-        }
-      }
-
-      .modelTags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 16px;
-      }
-    }
-  }
-}
-
-.formError { margin-top: 16px; }
+.providerEditor { display: flex; flex-direction: column; gap: 24px; min-width: 0; .providerReadme { overflow-wrap: anywhere; } .modelSection { padding-top: 24px; border-top: 1px solid var(--uiBorderDefault); .modelHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; h3 { margin: 0; font-size: var(--uiFontLabel); span { margin-left: 8px; color: var(--uiTextMuted); font-weight: 400; } } } .modelList { display: flex; flex-direction: column; gap: 16px; .modelCard { min-width: 0; padding: 20px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); .topInfo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; .modelNameWrap { display: flex; gap: 12px; align-items: center; min-width: 0; .modelInfo { display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow-wrap: anywhere; .modelName { font-size: var(--uiFontTitle); font-weight: 600; } .modelId { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } } .actionButtons { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; } } .modelTags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; } } .modelEmpty { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); } } } }
 </style>

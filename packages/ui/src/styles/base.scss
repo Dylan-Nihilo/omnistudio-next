@@ -1,0 +1,55 @@
+.uiTheme {
+  --uiFontFamily: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --uiFontControl: calc(0.8125rem * var(--uiFontScale, 1));
+  --uiFontBody: calc(0.875rem * var(--uiFontScale, 1));
+  --uiFontLabel: calc(0.875rem * var(--uiFontScale, 1));
+  --uiFontTitle: calc(1rem * var(--uiFontScale, 1));
+  --uiFontHeading: calc(1.25rem * var(--uiFontScale, 1));
+  --uiSpace4: 4px;
+  --uiSpace8: 8px;
+  --uiSpace12: 12px;
+  --uiSpace16: 16px;
+  --uiSpace24: 24px;
+  --uiSpace32: 32px;
+  --uiLayerSticky: 1;
+  --uiLayerDropdown: 2;
+  --uiLayerModal: 3;
+  --uiLayerToast: 4;
+  --uiMotionDuration: 150ms;
+  --uiMotionEase: ease-out;
+  --uiShadowPopover: 0 8px 24px rgb(0 0 0 / 24%);
+  --uiShadowDialog: 0 16px 48px rgb(0 0 0 / 28%);
+  --uiControlSmall: 32px;
+  --uiControlMedium: 36px;
+  --uiControlLarge: 40px;
+  --uiRadiusCard: calc(var(--uiRadiusControl, 8px) * 1.5);
+  --uiRadiusDialog: calc(var(--uiRadiusControl, 8px) * 2);
+  color: var(--uiTextPrimary);
+  background: var(--uiBackgroundBase);
+  font-family: var(--uiFontFamily);
+  font-size: var(--uiFontBody);
+  line-height: 1.5;
+  color-scheme: dark;
+
+  &[data-ui-mode="light"] { color-scheme: light; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :focus-visible {
+    outline: 2px solid var(--uiBorderFocus);
+    outline-offset: 3px;
+  }
+
+  button, input, textarea, select { font-family: inherit; }
+  button, input, textarea { -webkit-tap-highlight-color: transparent; }
+  ::selection { background: var(--uiActionSoft); color: var(--uiTextPrimary); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

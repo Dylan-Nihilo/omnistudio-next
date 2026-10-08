@@ -1,82 +1,42 @@
 <template>
-  <el-dialog v-model="visible" :title="`编辑技能 · ${skill.displayName}`" width="min(1080px, calc(100vw - 32px))" alignCenter appendToBody :beforeClose="close" @closed="emit('closed')">
+  <uiDialog v-model="visible" :title="`编辑技能 · ${skill.displayName}`" :width="1080" :beforeClose="close" :closeOnClickModal="false" :closeOnPressEscape="!saving && !moving && !creating && !confirming" @closed="emit('closed')">
     <div class="skillEditor" :aria-busy="filesLoading || fileLoading">
-      <el-alert v-if="filesError" :title="filesError" type="error" :closable="false" showIcon />
+      <uiAlert v-if="filesError" :title="filesError" tone="error" />
       <template v-else>
-        <div class="fileTree">
-          <el-button
-            v-if="isDirectorySkill"
-            class="newFileButton"
-            size="small"
-            :icon="IconFilePlus"
-            :loading="creating"
-            :disabled="saving || moving"
-            @click="createFile">
-            新建文件
-          </el-button>
-          <el-tree
-            :key="treeVersion"
-            class="tree"
-            :data="[treeRoot]"
-            nodeKey="key"
-            :props="{ label: 'label', children: 'children' }"
-            defaultExpandAll
-            highlightCurrent
-            :currentNodeKey="selectedPath"
-            :draggable="isDirectorySkill"
-            :allowDrag="allowDrag"
-            :allowDrop="allowDrop"
-            @nodeClick="handleNodeClick"
-            @nodeDrop="handleNodeDrop">
-            <template #default="{ data }">
-              <span class="treeItem">
-                <icon-folder v-if="data.type === 'directory'" :size="15" aria-hidden="true" />
-                <icon-file v-else :size="15" aria-hidden="true" />
-                <span class="treeLabel">{{ data.label }}</span>
-                <span v-if="dirtyPaths.has(data.key)" class="dirtyMark" aria-hidden="true">●</span>
-              </span>
-            </template>
-          </el-tree>
-        </div>
-        <div class="fileEditor">
-          <el-alert v-if="fileError" :title="fileError" type="error" :closable="false" showIcon />
-          <template v-else>
-            <el-text v-if="selectedPath === mainPath" size="small" type="info">name 为技能标识，不可修改</el-text>
-            <el-input
-              v-model="draft"
-              class="sourceInput"
-              type="textarea"
-              :rows="20"
-              resize="none"
-              :disabled="fileLoading || saving"
-              :aria-label="`${selectedPath} 源码`"
-              :spellcheck="false" />
-          </template>
-        </div>
+        <aside class="fileTree" aria-label="技能文件">
+          <uiButton v-if="isDirectorySkill" class="newFileButton" variant="secondary" size="small" :icon="IconFilePlus" :loading="creating" :disabled="saving || moving || confirming" @click="createFile">新建文件</uiButton>
+          <uiTree :key="treeVersion" class="tree" :data="[treeRoot]" defaultExpandAll :expandOnClickNode="false" :currentNodeKey="selectedPath" :draggable="isDirectorySkill" :allowDrag="allowDrag" :allowDrop="allowDrop" label="技能文件树" @nodeClick="handleNodeClick" @nodeDrop="handleNodeDrop">
+            <template #default="{ node }"><span class="treeItem"><icon-folder v-if="node.children" :size="15" aria-hidden="true" /><icon-file v-else :size="15" aria-hidden="true" /><span class="treeLabel" :title="String(node.value)">{{ node.label }}</span><span v-if="dirtyPaths.has(String(node.value)) || node.value === selectedPath && draft !== original" class="dirtyMark" aria-label="未保存的修改">●</span></span></template>
+          </uiTree>
+        </aside>
+        <section class="fileEditor" aria-label="文件编辑器">
+          <header class="fileHeader"><strong :title="selectedPath">{{ selectedPath }}</strong><span v-if="draft !== original" class="fileStatus">有未保存的修改</span></header>
+          <uiAlert v-if="fileError" :title="fileError" tone="error" />
+          <template v-else><p v-if="selectedPath === mainPath" class="fileHint">name 为技能标识，不可修改</p><uiTextarea v-model="draft" class="sourceInput" :rows="20" resize="none" :disabled="fileLoading || saving" :aria-label="`${selectedPath} 源码`" :spellcheck="false" /></template>
+        </section>
       </template>
     </div>
-    <template #footer>
-      <el-button :disabled="saving || moving || confirming" @click="close()">关闭</el-button>
-      <el-button type="primary" :loading="saving" :disabled="fileLoading || !!fileError || draft === original || confirming" @click="save">保存</el-button>
-    </template>
-  </el-dialog>
+    <template #footer><uiButton variant="secondary" :disabled="saving || moving || creating || confirming" @click="close()">关闭</uiButton><uiButton :loading="saving" :disabled="fileLoading || !!fileError || draft === original || moving || creating || confirming" @click="save">保存</uiButton></template>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import axios from "axios";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { uiDialog, uiAlert, uiButton, uiTree, uiTextarea, useUiFeedback, type UiTreeNode, type UiDropPosition } from "@toonflow/ui";
 import { IconFile, IconFilePlus, IconFolder } from "@tabler/icons-vue";
 import type { Plugin } from "./types";
 
-interface TreeNode {
+interface TreeNode extends UiTreeNode {
   key: string;
+  value: string;
   label: string;
   type: "file" | "directory";
   children?: TreeNode[];
 }
 
 const { skill } = defineProps<{ skill: Plugin }>();
+const feedback = useUiFeedback();
 const emit = defineEmits<{ saved: []; closed: [] }>();
 const visible = ref(true);
 const files = ref<string[]>([]);
@@ -101,7 +61,7 @@ let controller = new AbortController();
 // 单文件技能只有主文件本身，没有可管理的附属文件目录。
 const isDirectorySkill = computed(() => files.value.length > 1 || files.value[0] !== mainPath.value);
 const treeRoot = computed<TreeNode>(() => {
-  const root: TreeNode = { key: "", label: skill.displayName, type: "directory", children: [] };
+  const root: TreeNode = { key: "", value: "", label: skill.displayName, type: "directory", children: [] };
   const directories = new Map<string, TreeNode>([["", root]]);
   for (const path of files.value) {
     const parts = path.split("/");
@@ -109,13 +69,13 @@ const treeRoot = computed<TreeNode>(() => {
     for (let index = 0; index < parts.length - 1; index++) {
       const key = parts.slice(0, index + 1).join("/");
       if (!directories.has(key)) {
-        const node: TreeNode = { key, label: parts[index]!, type: "directory", children: [] };
+        const node: TreeNode = { key, value: key, label: parts[index]!, type: "directory", children: [] };
         directories.get(parentKey)!.children!.push(node);
         directories.set(key, node);
       }
       parentKey = key;
     }
-    directories.get(parentKey)!.children!.push({ key: path, label: parts.at(-1)!, type: "file" });
+    directories.get(parentKey)!.children!.push({ key: path, value: path, label: parts.at(-1)!, type: "file" });
   }
   return root;
 });
@@ -185,34 +145,36 @@ async function selectFile(path: string) {
   }
 }
 
-function handleNodeClick(data: TreeNode) {
-  if (data.type === "file") selectFile(data.key);
+function handleNodeClick(node: UiTreeNode) {
+  const data = node as TreeNode;
+  if (data.type === "file" && !moving.value && !creating.value && !confirming.value) selectFile(data.key);
 }
 
-function allowDrag(node: { data: Record<string, unknown> }) {
-  const data = node.data as unknown as TreeNode;
-  return data.type === "file" && data.key !== mainPath.value && !saving.value && !moving.value;
+function allowDrag(node: UiTreeNode) {
+  const data = node as TreeNode;
+  return data.type === "file" && data.key !== mainPath.value && !saving.value && !moving.value && !creating.value && !confirming.value;
 }
 
 function parentOf(path: string) {
   return path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
 }
 
-function allowDrop(draggingNode: { data: Record<string, unknown> }, dropNode: { data: Record<string, unknown> }, type: string) {
-  const drop = dropNode.data as unknown as TreeNode;
-  if (type === "inner") return drop.type === "directory";
+function allowDrop(draggingNode: UiTreeNode, dropNode: UiTreeNode, type: UiDropPosition) {
+  if (saving.value || moving.value || creating.value || confirming.value) return false;
+  const drop = dropNode as TreeNode;
+  if (type === "inside") return drop.type === "directory";
   // 仅允许拖到同目录内的兄弟文件前后调整顺序；跨目录移动统一走拖入目录节点。
   if (drop.type !== "file") return false;
-  const dragging = draggingNode.data as unknown as TreeNode;
+  const dragging = draggingNode as TreeNode;
   return parentOf(dragging.key) === parentOf(drop.key);
 }
 
-async function handleNodeDrop(draggingNode: { data: Record<string, unknown> }, dropNode: { data: Record<string, unknown> }, dropType: string) {
-  if (moving.value) return;
-  const dragging = draggingNode.data as unknown as TreeNode;
-  const drop = dropNode.data as unknown as TreeNode;
+async function handleNodeDrop(draggingNode: UiTreeNode, dropNode: UiTreeNode, dropType: UiDropPosition) {
+  if (moving.value || saving.value || creating.value || confirming.value) return;
+  const dragging = draggingNode as TreeNode;
+  const drop = dropNode as TreeNode;
   const sourcePath = dragging.key;
-  if (dropType === "inner") {
+  if (dropType === "inside") {
     const fileName = sourcePath.split("/").pop()!;
     const targetPath = drop.key ? `${drop.key}/${fileName}` : fileName;
     if (targetPath === sourcePath) { treeVersion.value++; return; }
@@ -225,7 +187,7 @@ async function handleNodeDrop(draggingNode: { data: Record<string, unknown> }, d
       if (selectedPath.value === sourcePath) selectedPath.value = targetPath;
       await loadFiles();
     } catch (error) {
-      ElMessage.error(errorMessage(error, "移动文件失败，请重试"));
+      feedback.message({ tone: "error", message: errorMessage(error, "移动文件失败，请重试") });
       treeVersion.value++;
     } finally {
       moving.value = false;
@@ -243,7 +205,7 @@ async function handleNodeDrop(draggingNode: { data: Record<string, unknown> }, d
     if (data.code !== 200) throw new Error(data.message || "保存顺序失败");
     await loadFiles();
   } catch (error) {
-    ElMessage.error(errorMessage(error, "保存顺序失败，请重试"));
+    feedback.message({ tone: "error", message: errorMessage(error, "保存顺序失败，请重试") });
     treeVersion.value++;
   } finally {
     moving.value = false;
@@ -251,11 +213,11 @@ async function handleNodeDrop(draggingNode: { data: Record<string, unknown> }, d
 }
 
 async function createFile() {
-  if (creating.value || saving.value || !isDirectorySkill.value) return;
+  if (creating.value || saving.value || moving.value || confirming.value || !isDirectorySkill.value) return;
   const directory = selectedPath.value.includes("/") ? selectedPath.value.slice(0, selectedPath.value.lastIndexOf("/")) : "";
   let fileName: string;
   try {
-    const { value } = await ElMessageBox.prompt(directory ? `新文件将创建在“${directory}”目录` : "新文件将创建在技能根目录", "新建文件", {
+    const { value } = await feedback.prompt(directory ? `新文件将创建在“${directory}”目录` : "新文件将创建在技能根目录", "新建文件", {
       inputPattern: /^[^\\/]+$/,
       inputValidator: value => !!value?.trim() || "请输入文件名称",
       inputErrorMessage: "名称不能包含斜杠",
@@ -272,18 +234,18 @@ async function createFile() {
     await loadFiles();
     await selectFile(path);
   } catch (error) {
-    ElMessage.error(errorMessage(error, "创建文件失败，请重试"));
+    feedback.message({ tone: "error", message: errorMessage(error, "创建文件失败，请重试") });
   } finally {
     creating.value = false;
   }
 }
 
 async function close(done?: () => void) {
-  if (saving.value || confirming.value) return;
+  if (saving.value || moving.value || creating.value || confirming.value) return;
   if (draft.value !== original.value || dirtyPaths.value.size) {
     confirming.value = true;
     try {
-      await ElMessageBox.confirm("修改尚未保存，确定放弃修改并关闭吗？", "未保存的修改", { confirmButtonText: "放弃修改", cancelButtonText: "继续编辑", type: "warning" });
+      await feedback.confirm("修改尚未保存，确定放弃修改并关闭吗？", "未保存的修改", { confirmButtonText: "放弃修改", cancelButtonText: "继续编辑", danger: true });
     } catch { return; }
     finally { confirming.value = false; }
   }
@@ -292,7 +254,7 @@ async function close(done?: () => void) {
 }
 
 async function save() {
-  if (fileLoading.value || saving.value || fileError.value || confirming.value || draft.value === original.value) return;
+  if (fileLoading.value || saving.value || moving.value || creating.value || fileError.value || confirming.value || draft.value === original.value) return;
   saving.value = true;
   const path = selectedPath.value;
   const content = draft.value;
@@ -303,9 +265,9 @@ async function save() {
     drafts.delete(path);
     dirtyPaths.value.delete(path);
     emit("saved");
-    ElMessage.success("已保存");
+    feedback.message({ tone: "success", message: "已保存" });
   } catch (error) {
-    ElMessage.error(errorMessage(error, "保存文件失败，请重试"));
+    feedback.message({ tone: "error", message: errorMessage(error, "保存文件失败，请重试") });
   } finally {
     saving.value = false;
   }
@@ -314,70 +276,10 @@ async function save() {
 
 <style lang="scss" scoped>
 .skillEditor {
-  display: flex;
-  gap: 16px;
-  min-height: min(60vh, 560px);
-
-  .fileTree {
-    display: flex;
-    flex: none;
-    flex-direction: column;
-    gap: 8px;
-    width: 220px;
-
-    .newFileButton {
-      width: 100%;
-      margin-left: 0;
-    }
-
-    .tree {
-      overflow-y: auto;
-    }
-
-    .treeItem {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      font-size: 13px;
-      overflow-wrap: anywhere;
-
-      svg {
-        flex-shrink: 0;
-        color: var(--el-text-color-secondary);
-      }
-
-      .treeLabel {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .dirtyMark {
-        flex-shrink: 0;
-        color: var(--el-color-warning);
-      }
-    }
-  }
-
-  .fileEditor {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .sourceInput {
-    flex: 1;
-
-    :deep(textarea) {
-      height: 100%;
-      min-height: min(56vh, 520px);
-      font-family: ui-monospace, Consolas, monospace;
-      line-height: 1.6;
-      tab-size: 2;
-    }
-  }
+  display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; height: min(64dvh, 640px); min-height: 260px; min-width: 0;
+  > :deep(.uiAlert) { grid-column: 1 / -1; align-self: start; }
+  .fileTree { display: flex; flex-direction: column; gap: 16px; min-width: 0; min-height: 0; padding-right: 20px; border-right: 1px solid var(--uiBorderDefault); .newFileButton { width: 100%; } .tree { flex: 1; min-height: 0; overflow: auto; } .treeItem { display: flex; align-items: center; gap: 8px; min-width: 0; svg { flex-shrink: 0; color: var(--uiTextMuted); } .treeLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dirtyMark { flex-shrink: 0; color: var(--uiActionPrimary); } } }
+  .fileEditor { display: flex; flex-direction: column; gap: 16px; min-width: 0; min-height: 0; .fileHeader { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-width: 0; strong { min-width: 0; overflow-wrap: anywhere; font-size: var(--uiFontLabel); font-weight: 500; } .fileStatus { margin-left: auto; color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .fileHint { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); } .sourceInput { flex: 1; min-height: 0; font-family: ui-monospace, Consolas, monospace; line-height: 1.7; tab-size: 2; } }
+  @media (max-width: 700px) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(100px, 0.35fr) minmax(0, 1fr); gap: 16px; .fileTree { padding-right: 0; padding-bottom: 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); } }
 }
 </style>

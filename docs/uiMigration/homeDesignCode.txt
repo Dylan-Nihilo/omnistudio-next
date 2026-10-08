@@ -1,0 +1,325 @@
+const imgBrandOmniStudioMark = "https://www.figma.com/api/mcp/asset/f2a869c3-9019-4be3-b3f0-7a350a781796.png";
+const img = "https://www.figma.com/api/mcp/asset/3324e470-c63c-4460-887e-e14fbffd3d1d.png";
+const imgFrame = "https://www.figma.com/api/mcp/asset/f9dfc127-f06c-4168-8ff9-bf798c37d65e.svg";
+const imgFrame1 = "https://www.figma.com/api/mcp/asset/15b098cd-8e1a-4fb7-8438-3c3703e8521d.svg";
+const imgFrame2 = "https://www.figma.com/api/mcp/asset/225f8878-ed11-4384-91cd-b25bacb9ed4d.svg";
+const imgFrame3 = "https://www.figma.com/api/mcp/asset/d37f0ad9-6821-4b6c-9efa-36b3f2f223b1.svg";
+const img1 = "https://www.figma.com/api/mcp/asset/888604da-a98d-4872-a55e-0b430106ff74.svg";
+const imgFrame4 = "https://www.figma.com/api/mcp/asset/e764b0db-1a84-4a40-8d0f-1b1890674a80.svg";
+const imgFrame5 = "https://www.figma.com/api/mcp/asset/c65d9d5e-1991-4cb4-9118-26e69a3e7f84.svg";
+const imgFrame6 = "https://www.figma.com/api/mcp/asset/93dab1f8-aedb-4668-a78a-7bb6e78d1eec.svg";
+const imgFrame7 = "https://www.figma.com/api/mcp/asset/9f424504-e314-42c4-8f79-f2c2070a5622.svg";
+const imgFrame8 = "https://www.figma.com/api/mcp/asset/6d33a06c-2fe8-49ac-ab6c-945bf373947e.svg";
+const imgFrame9 = "https://www.figma.com/api/mcp/asset/d7cc1754-3b7b-400e-aebb-8fc5ff3e078a.svg";
+const imgFrame10 = "https://www.figma.com/api/mcp/asset/e8a5f745-de23-423d-ab5d-dad4a44611e3.svg";
+const imgFrame11 = "https://www.figma.com/api/mcp/asset/e10744c6-9dbb-4f52-8771-99bf305fa0b5.svg";
+const imgFrame12 = "https://www.figma.com/api/mcp/asset/f9dbe9ba-9e5e-481f-8dc9-841c952b0127.svg";
+const imgFrame13 = "https://www.figma.com/api/mcp/asset/e68ef314-dbdb-4b44-a827-839a7f976300.svg";
+const imgFrame14 = "https://www.figma.com/api/mcp/asset/446e033e-c689-45e3-93ff-e10ab860e245.svg";
+
+function BrandOmniStudioMark({ className }: { className?: string }) {
+  return (
+    <div className={className || "h-[45.5px] relative w-[78px]"} data-node-id="47:742" data-name="brand/omniStudioMark">
+      <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={imgBrandOmniStudioMark} />
+    </div>
+  );
+}
+
+export default function OmniStudio() {
+  return (
+    <div className="bg-[var(--background-base,#101010)] relative size-full" data-node-id="41:2" data-name="OmniStudio · 首页">
+      <div className="absolute bg-[var(--background-subtle,#1a1a1a)] h-[1080px] left-0 top-0 w-[208px]" data-node-id="41:3" data-name="主导航">
+        <div className="absolute bg-[var(--border-default,#343434)] h-[1080px] left-[207px] top-0 w-px" data-node-id="41:4" data-name="边界" />
+        <div className="absolute content-stretch flex gap-[10px] h-[36px] items-center left-[24px] top-[27px] w-[170px]" data-node-id="41:5" data-name="brand">
+          <BrandOmniStudioMark className="h-[19.833px] relative shrink-0 w-[34px]" />
+          <p className="[word-break:break-word] font-['Inter:Semi_Bold'] font-semibold leading-[28px] not-italic relative shrink-0 text-[20px] text-[color:var(--text-primary,#f3f0e8)] tracking-[-0.7px] whitespace-nowrap" data-node-id="41:10">
+            OmniStudio
+          </p>
+        </div>
+        <div className="absolute bg-[var(--action-soft,#352319)] content-stretch flex gap-[var(--space-12,12px)] h-[40px] items-center left-[16px] px-[var(--space-12,12px)] rounded-[var(--radius-8,8px)] top-[111px] w-[176px]" data-node-id="41:11" data-name="navItem">
+          <div className="relative shrink-0 size-[18px]" data-node-id="I41:11;59:1015" data-name="icon/Plus">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:11;59:1015;6:3" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame} />
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--action-primary,#ff6b35)] whitespace-nowrap" data-node-id="I41:11;59:1019">
+            开始创作
+          </p>
+        </div>
+        <div className="absolute content-stretch flex gap-[var(--space-12,12px)] h-[40px] items-center left-[16px] px-[var(--space-12,12px)] rounded-[var(--radius-8,8px)] top-[161px] w-[176px]" data-node-id="41:27" data-name="navItem">
+          <div className="relative shrink-0 size-[18px]" data-node-id="I41:27;59:1003" data-name="icon/Folder">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:27;59:1003;6:36" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame1} />
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-body,#cac7c0)] whitespace-nowrap" data-node-id="I41:27;59:1007">
+            我的项目
+          </p>
+        </div>
+        <div className="absolute content-stretch flex gap-[var(--space-12,12px)] h-[40px] items-center left-[16px] px-[var(--space-12,12px)] rounded-[var(--radius-8,8px)] top-[941px] w-[176px]" data-node-id="41:42" data-name="navItem">
+          <div className="relative shrink-0 size-[18px]" data-node-id="I41:42;59:1003" data-name="icon/Settings">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:42;59:1003;6:32" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame2} />
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-body,#cac7c0)] whitespace-nowrap" data-node-id="I41:42;59:1007">
+            设置
+          </p>
+        </div>
+        <div className="absolute content-stretch flex gap-[var(--space-12,12px)] h-[40px] items-center left-[16px] px-[var(--space-12,12px)] rounded-[var(--radius-8,8px)] top-[991px] w-[176px]" data-node-id="41:53" data-name="navItem">
+          <div className="relative shrink-0 size-[18px]" data-node-id="I41:53;59:1003" data-name="icon/BrandGithub">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:53;59:1003;6:47" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame3} />
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-body,#cac7c0)] whitespace-nowrap" data-node-id="I41:53;59:1007">
+            GitHub
+          </p>
+        </div>
+        <p className="[word-break:break-word] absolute font-['Noto_Sans_SC:Regular'] font-normal leading-[16px] left-[68px] text-[#8e8c86] text-[11px] top-[66px] whitespace-nowrap" data-node-id="48:876">
+          漫象工坊
+        </p>
+      </div>
+      <p className="[word-break:break-word] absolute font-['Noto_Sans_SC:Regular'] font-normal leading-[18px] left-[264px] text-[12px] text-[color:var(--text-muted,#8e8c86)] top-[36px] whitespace-nowrap" data-node-id="41:63">
+        创作工作台
+      </p>
+      <div className="absolute h-[455px] left-[897px] top-[106px] w-[682px]" data-node-id="41:64" data-name="漫画泼墨主视觉">
+        <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={img} />
+      </div>
+      <div className="absolute flex h-[34.798px] items-center justify-center left-[272px] top-[114.18px] w-[138.963px]" data-node-id="41:65">
+        <div className="-rotate-2 flex-none">
+          <div className="bg-[var(--action-primary,#ff6b35)] content-stretch flex h-[30px] items-center pl-[12px] relative rounded-[2px] w-[138px]" data-name="创作模式">
+            <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[14px] text-[color:var(--text-onAccent,#141414)] whitespace-nowrap" data-node-id="41:66">
+              漫剧创作
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Noto_Sans_SC:Black'] font-black h-[168px] items-start leading-[76px] left-[272px] text-[60px] text-[color:var(--text-primary,#f3f0e8)] top-[180px] tracking-[-1.5px] w-[710px] whitespace-nowrap" data-node-id="41:67" data-name="创作标题">
+        <p className="relative shrink-0" data-node-id="41:68">
+          下一部漫剧，
+        </p>
+        <p className="relative shrink-0" data-node-id="41:69">
+          由你开场。
+        </p>
+      </div>
+      <div className="absolute h-[17.205px] left-[270px] top-[333px] w-[340px]" data-node-id="41:70" data-name="手绘下划线">
+        <div className="absolute inset-[-14.53%_-0.74%]">
+          <img alt="" className="block max-w-none size-full" src={img1} />
+        </div>
+      </div>
+      <div className="absolute bg-[var(--surface-raised,#202020)] border border-[var(--border-default,#343434)] border-solid h-[184px] left-[272px] rounded-[12px] top-[391px] w-[708px]" data-node-id="41:71" data-name="灵感输入">
+        <p className="[word-break:break-word] absolute font-['Noto_Sans_SC:Regular'] font-normal h-[24px] leading-[22px] left-[23px] text-[14px] text-[color:var(--text-muted,#8e8c86)] top-[22px] w-[644px]" data-node-id="41:72">
+          写下故事、角色，或一个镜头的想法…
+        </p>
+        <div className="absolute content-stretch flex h-[40px] items-center justify-between left-[13px] top-[127px] w-[680px]" data-node-id="41:73" data-name="工作目录与发送">
+          <div className="content-stretch flex gap-[var(--space-8,8px)] h-[40px] items-center pl-[9px] relative shrink-0 w-[230px]" data-node-id="41:74" data-name="工作目录">
+            <div className="relative shrink-0 size-[18px]" data-node-id="41:75" data-name="icon/Folder">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:75;6:36" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame4} />
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_SC:Regular'] font-normal leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-body,#cac7c0)] whitespace-nowrap" data-node-id="41:78">
+              选择工作目录
+            </p>
+            <div className="relative shrink-0 size-[12px]" data-node-id="41:79" data-name="icon/ChevronDown">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:79;6:22" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame5} />
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex gap-[10px] h-[40px] items-center justify-end relative shrink-0 w-[302px]" data-node-id="41:82" data-name="生成操作">
+            <div className="content-stretch flex gap-[var(--space-8,8px)] h-[36px] items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 w-[117px]" data-node-id="41:83" data-name="button">
+              <div className="relative shrink-0 size-[16px]" data-node-id="I41:83;57:714" data-name="icon/ChevronDown">
+                <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:83;57:714;6:22" data-name="Frame">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame6} />
+                </div>
+              </div>
+              <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I41:83;57:718">
+                选择模型
+              </p>
+            </div>
+            <div className="bg-[var(--action-primary,#ff6b35)] content-stretch flex gap-[var(--space-8,8px)] h-[36px] items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 w-[165px]" data-node-id="41:94" data-name="button">
+              <div className="relative shrink-0 size-[16px]" data-node-id="I41:94;57:644" data-name="icon/Folder">
+                <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:94;57:644;6:36" data-name="Frame">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame7} />
+                </div>
+              </div>
+              <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-onAccent,#141414)] whitespace-nowrap" data-node-id="I41:94;57:648">
+                选择工作目录
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p className="[word-break:break-word] absolute font-['Noto_Sans_SC:Regular'] font-normal leading-[18px] left-[276px] text-[12px] text-[color:var(--text-muted,#8e8c86)] top-[590px] whitespace-nowrap" data-node-id="41:105">
+        画布与素材会保存在你选择的文件夹里。
+      </p>
+      <div className="absolute content-stretch flex gap-[var(--space-12,12px)] h-[44px] items-center justify-between left-[272px] top-[693px] w-[1264px]" data-node-id="41:106" data-name="项目列表标题">
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[30px] relative shrink-0 text-[20px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="41:107">
+          最近项目
+        </p>
+        <div className="content-stretch flex gap-[7px] h-[40px] items-center relative shrink-0 w-[414px]" data-node-id="41:108" data-name="项目管理">
+          <div className="content-stretch flex gap-[var(--space-8,8px)] h-[36px] items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 w-[115px]" data-node-id="41:109" data-name="button">
+            <div className="relative shrink-0 size-[16px]" data-node-id="I41:109;57:714" data-name="icon/FolderOpen">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:109;57:714;6:44" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame8} />
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I41:109;57:718">
+              导入项目
+            </p>
+          </div>
+          <div className="bg-[var(--surface-raised,#202020)] border border-[var(--omni-border-control,#77736b)] border-solid content-stretch flex gap-[var(--space-8,8px)] h-[36px] items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 w-[116px]" data-node-id="41:117" data-name="button">
+            <div className="relative shrink-0 size-[16px]" data-node-id="I41:117;57:679" data-name="icon/Plus">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:117;57:679;6:3" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame9} />
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_SC:Medium'] font-medium leading-[20px] relative shrink-0 text-[13px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I41:117;57:683">
+              添加项目
+            </p>
+          </div>
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[36px]" data-node-id="41:129" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I41:129;57:878" data-name="icon/SortDescending">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:129;57:878;6:64" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame10} />
+              </div>
+            </div>
+          </div>
+          <div className="bg-[var(--surface-raised,#202020)] border border-[var(--border-default,#343434)] border-solid content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[36px]" data-node-id="41:143" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I41:143;57:907" data-name="icon/LayoutGrid">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:143;57:907;6:50" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame11} />
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[36px]" data-node-id="41:156" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I41:156;57:878" data-name="icon/List">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I41:156;57:878;6:56" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame12} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute bg-[var(--background-subtle,#1a1a1a)] border border-[var(--omni-border-control,#77736b)] border-solid content-stretch flex flex-col gap-[var(--space-16,16px)] items-start left-[272px] p-[var(--space-24,24px)] rounded-[var(--radius-12,12px)] top-[764px] w-[404px]" data-node-id="185:2323" data-name="projectSummaryCard">
+        <div className="content-stretch flex gap-[var(--space-8,8px)] h-[32px] items-center relative shrink-0 w-[356px]" data-node-id="I185:2323;185:2255" data-name="projectActions">
+          <div className="relative shrink-0 size-[20px]" data-node-id="I185:2323;185:2256" data-name="icon/Folder">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2323;185:2256;6:36" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame1} />
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[20px] min-w-px relative" data-node-id="I185:2323;185:2259" data-name="spacer" />
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2323;185:2260" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2323;185:2260;57:878" data-name="icon/Edit">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2323;185:2260;57:878;6:112" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame13} />
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2323;185:2269" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2323;185:2269;57:878" data-name="icon/Trash">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2323;185:2269;57:878;6:117" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame14} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Bold'] font-bold leading-[28px] relative shrink-0 text-[20px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I185:2323;185:2280">
+          雾山来信
+        </p>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Regular'] font-normal h-[24px] leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2323;185:2281">
+          ~/Projects/雾山来信
+        </p>
+        <div className="bg-[var(--border-default,#343434)] h-px relative shrink-0 w-[356px]" data-node-id="I185:2323;185:2282" data-name="divider" />
+        <div className="[word-break:break-word] content-stretch flex font-['Noto_Sans_SC:Regular'] font-normal gap-[var(--space-8,8px)] h-[18px] items-center leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2323;185:2283" data-name="projectFoot">
+          <p className="flex-[1_0_0] min-w-px relative" data-node-id="I185:2323;185:2284">
+            最近打开
+          </p>
+          <p className="relative shrink-0 whitespace-nowrap" data-node-id="I185:2323;185:2285">
+            今天 10:42
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[var(--background-subtle,#1a1a1a)] border border-[var(--border-default,#343434)] border-solid content-stretch flex flex-col gap-[var(--space-16,16px)] items-start left-[702px] p-[var(--space-24,24px)] rounded-[var(--radius-12,12px)] top-[764px] w-[404px]" data-node-id="185:2349" data-name="projectSummaryCard">
+        <div className="content-stretch flex gap-[var(--space-8,8px)] h-[32px] items-center relative shrink-0 w-[356px]" data-node-id="I185:2349;185:2223" data-name="projectActions">
+          <div className="relative shrink-0 size-[20px]" data-node-id="I185:2349;185:2224" data-name="icon/Folder">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2349;185:2224;6:36" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame1} />
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[20px] min-w-px relative" data-node-id="I185:2349;185:2227" data-name="spacer" />
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2349;185:2228" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2349;185:2228;57:878" data-name="icon/Edit">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2349;185:2228;57:878;6:112" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame13} />
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2349;185:2237" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2349;185:2237;57:878" data-name="icon/Trash">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2349;185:2237;57:878;6:117" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame14} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Bold'] font-bold leading-[28px] relative shrink-0 text-[20px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I185:2349;185:2248">
+          街角的超能力者
+        </p>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Regular'] font-normal h-[24px] leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2349;185:2249">
+          ~/Projects/街角的超能力者
+        </p>
+        <div className="bg-[var(--border-default,#343434)] h-px relative shrink-0 w-[356px]" data-node-id="I185:2349;185:2250" data-name="divider" />
+        <div className="[word-break:break-word] content-stretch flex font-['Noto_Sans_SC:Regular'] font-normal gap-[var(--space-8,8px)] h-[18px] items-center leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2349;185:2251" data-name="projectFoot">
+          <p className="flex-[1_0_0] min-w-px relative" data-node-id="I185:2349;185:2252">
+            最近打开
+          </p>
+          <p className="relative shrink-0 whitespace-nowrap" data-node-id="I185:2349;185:2253">
+            昨天 16:20
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[var(--background-subtle,#1a1a1a)] border border-[var(--border-default,#343434)] border-solid content-stretch flex flex-col gap-[var(--space-16,16px)] items-start left-[1132px] p-[var(--space-24,24px)] rounded-[var(--radius-12,12px)] top-[764px] w-[404px]" data-node-id="185:2375" data-name="projectSummaryCard">
+        <div className="content-stretch flex gap-[var(--space-8,8px)] h-[32px] items-center relative shrink-0 w-[356px]" data-node-id="I185:2375;185:2223" data-name="projectActions">
+          <div className="relative shrink-0 size-[20px]" data-node-id="I185:2375;185:2224" data-name="icon/Folder">
+            <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2375;185:2224;6:36" data-name="Frame">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame1} />
+            </div>
+          </div>
+          <div className="flex-[1_0_0] h-[20px] min-w-px relative" data-node-id="I185:2375;185:2227" data-name="spacer" />
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2375;185:2228" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2375;185:2228;57:878" data-name="icon/Edit">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2375;185:2228;57:878;6:112" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame13} />
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-center relative rounded-[var(--radius-8,8px)] shrink-0 size-[32px]" data-node-id="I185:2375;185:2237" data-name="iconButton">
+            <div className="relative shrink-0 size-[18px]" data-node-id="I185:2375;185:2237;57:878" data-name="icon/Trash">
+              <div className="absolute left-0 size-[20px] top-0" data-node-id="I185:2375;185:2237;57:878;6:117" data-name="Frame">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame14} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Bold'] font-bold leading-[28px] relative shrink-0 text-[20px] text-[color:var(--text-primary,#f3f0e8)] whitespace-nowrap" data-node-id="I185:2375;185:2248">
+          最后一班列车
+        </p>
+        <p className="[word-break:break-word] font-['Noto_Sans_SC:Regular'] font-normal h-[24px] leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2375;185:2249">
+          ~/Projects/最后一班列车
+        </p>
+        <div className="bg-[var(--border-default,#343434)] h-px relative shrink-0 w-[356px]" data-node-id="I185:2375;185:2250" data-name="divider" />
+        <div className="[word-break:break-word] content-stretch flex font-['Noto_Sans_SC:Regular'] font-normal gap-[var(--space-8,8px)] h-[18px] items-center leading-[18px] relative shrink-0 text-[12px] text-[color:var(--text-muted,#8e8c86)] w-[356px]" data-node-id="I185:2375;185:2251" data-name="projectFoot">
+          <p className="flex-[1_0_0] min-w-px relative" data-node-id="I185:2375;185:2252">
+            最近打开
+          </p>
+          <p className="relative shrink-0 whitespace-nowrap" data-node-id="I185:2375;185:2253">
+            9 月 28 日
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

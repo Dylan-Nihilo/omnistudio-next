@@ -1,0 +1,23 @@
+{
+  "name": "@toonflow/uiPreview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5175",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@toonflow/ui": "workspace:*",
+    "@toonflow/assets": "workspace:*",
+    "vue": "^3.5.42",
+    "@tabler/icons-vue": "^3.46.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "sass": "^1.104.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.2.2",
+    "vue-tsc": "^3.3.11"
+  }
+}

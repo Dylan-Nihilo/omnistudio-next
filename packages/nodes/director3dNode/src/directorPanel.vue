@@ -21,7 +21,7 @@
         <div v-for="task in tasks" :key="task.id" class="planItem taskItem" :aria-busy="!task.error">
           <icon-alert-circle v-if="task.error" :size="18" aria-hidden="true" /><icon-loader-2 v-else class="loadingIcon" :size="18" aria-hidden="true" />
           <div class="itemContent"><strong>{{ task.instruction }}</strong><span v-if="task.error" class="generationError" role="alert">{{ task.error }}</span><span v-else role="status">后台生成中…</span></div>
-          <el-button v-if="task.error" text :icon="IconArrowBackUp" aria-label="重新编辑指令" @click="emit('editInstruction', task.instruction)" />
+          <uiIconButton v-if="task.error" :icon="IconArrowBackUp" label="重新编辑指令" @click="emit('editInstruction', task.instruction)" />
         </div>
       </div>
       <template v-else>
@@ -32,14 +32,10 @@
     <footer class="chatFooter">
       <div class="inputContent"><slot name="input" /></div>
       <div class="inputActions">
-        <el-select v-model="model" class="modelSelect" size="small" :loading="modelsLoading" filterable placeholder="选择模型" aria-label="生成模型" @visibleChange="$event && emit('loadModels')">
-          <el-option-group v-for="provider in modelGroups" :key="provider.id" :label="provider.label">
-            <el-option v-for="item in provider.models" :key="item.modelId" :label="item.label" :value="JSON.stringify([item.providerId, item.modelId])" />
-          </el-option-group>
-        </el-select>
-        <el-button class="sendButton" type="primary" round :disabled="initializing || !prompt.trim() || !model" aria-label="生成动画" @click="sendInstruction">
-          <icon-sparkles :size="14" /><span>生成方案</span>
-        </el-button>
+        <uiSelect :modelValue="model" class="modelSelect" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" size="small" :loading="modelsLoading" filterable placeholder="选择模型" aria-label="生成模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="$event && emit('loadModels')" />
+        <uiButton class="sendButton" :icon="IconSparkles" :disabled="initializing || !prompt.trim() || !model" aria-label="生成动画" @click="sendInstruction">
+          生成方案
+        </uiButton>
       </div>
     </footer>
   </section>
@@ -47,7 +43,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { ElButton, ElOption, ElOptionGroup, ElSelect } from "element-plus";
+import { uiIconButton, uiSelect, uiButton } from "@toonflow/ui";
 import { IconLoader2, IconSparkles, IconMovie, IconCheck, IconAlertCircle, IconArrowBackUp } from "@tabler/icons-vue";
 import { groupNodeModels, type NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
 
@@ -66,112 +62,7 @@ function sendInstruction() {
 </script>
 
 <style scoped lang="scss">
-.directorPanel {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  color: var(--el-text-color-primary);
-
-  .chatHeader {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 12px 14px;
-    font-size: 14px;
-    font-weight: 500;
-    small { color: var(--el-text-color-secondary); font-weight: 400; }
-  }
-
-  .planContent {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 8px;
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    line-height: 1.7;
-
-    .itemList {
-      display: flex; flex-direction: column; gap: 8px;
-      .planItem {
-        display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px;
-        border: 0; border-radius: calc(var(--el-border-radius-base) * 2);
-        background: transparent; color: var(--el-text-color-regular); text-align: left; font: inherit;
-        &:is(button) { cursor: pointer; }
-        &:is(button):hover { background: var(--el-fill-color); }
-        &:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
-        &.selected { background: var(--el-fill-color); color: var(--el-text-color-primary); }
-        > svg { flex-shrink: 0; }
-        .itemContent { flex: 1; min-width: 0;
-          strong { display: block; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
-          span { display: block; margin-top: 3px; color: var(--el-text-color-secondary); font-size: 11px; }
-          .planInstruction { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; user-select: text; }
-          .generationError { color: var(--el-color-danger); overflow-wrap: anywhere; }
-        }
-      }
-    }
-    h3 { margin: 8px 0; color: var(--el-text-color-primary); font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
-    p { margin: 16px 0; }
-    .loadingIcon { animation: directorLoading 1.2s linear infinite; }
-  }
-
-  .instructionHint { flex-shrink: 0; margin: 12px; font-size: 11px; line-height: 1.5; color: var(--el-text-color-secondary); overflow-wrap: anywhere; }
-
-  .chatFooter {
-    flex-shrink: 0;
-    margin: 0 8px 4px;
-    padding: 4px;
-    border: 1px solid var(--el-border-color-light);
-    border-radius: calc(var(--ui-radius, 4px) * 2.75);
-    background: var(--el-bg-color);
-
-    &:focus-within { border-color: var(--el-color-primary-light-5); }
-
-    .inputContent {
-      padding: 8px;
-      min-width: 0;
-      :deep(.referenceList) { margin-bottom: 8px; }
-    }
-
-    .inputActions {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 4px;
-
-      .modelSelect {
-        flex: 1;
-        min-width: 0;
-        max-width: calc(100% - 112px);
-
-        :deep(.el-select__wrapper) {
-          background: transparent;
-          box-shadow: none;
-          border-radius: var(--el-border-radius-base);
-
-          &:hover:not(.is-disabled) { background: var(--el-fill-color-light); }
-          &.is-focused { box-shadow: 0 0 0 1px var(--el-color-primary-light-5) inset; }
-        }
-
-        :deep(.el-select__selected-item) { color: var(--el-text-color-regular); }
-      }
-
-      .sendButton {
-        flex-shrink: 0;
-        padding: 0 12px;
-        height: 32px;
-        margin: 0;
-      }
-    }
-  }
-}
-
+.directorPanel { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); color: var(--uiTextPrimary); overflow: hidden; .chatHeader { display: flex; flex-shrink: 0; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--uiBorderDefault); font-size: var(--uiFontLabel); small { margin-left: 6px; color: var(--uiTextMuted); } } .planContent { flex: 1; min-height: 0; overflow: auto; padding: 16px; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; .itemList { display: flex; flex-direction: column; gap: 12px; .planItem { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px; border: 1px solid transparent; border-radius: var(--uiRadiusControl); background: transparent; color: var(--uiTextBody); text-align: left; font: inherit; &:is(button) { cursor: pointer; } &:is(button):hover { background: var(--uiSurfaceHover); } &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: -2px; } &.selected { border-color: var(--uiActionPrimary); background: var(--uiActionSoft); color: var(--uiTextPrimary); } > svg { flex-shrink: 0; margin-top: 3px; } .itemContent { flex: 1; min-width: 0; strong { display: block; font-weight: 600; overflow-wrap: anywhere; } span { display: block; margin-top: 4px; color: var(--uiTextMuted); } .planInstruction { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; } .generationError { color: var(--uiStatusError); overflow-wrap: anywhere; } } } } p { margin: 12px 0; } .loadingIcon { animation: directorLoading 1.2s linear infinite; } } .instructionHint { flex-shrink: 0; margin: 12px 20px; font-size: var(--uiFontControl); line-height: 1.7; color: var(--uiTextMuted); overflow-wrap: anywhere; } .chatFooter { flex-shrink: 0; padding: 16px; border-top: 1px solid var(--uiBorderDefault); background: var(--uiSurfaceRaised); .inputContent { min-width: 0; :deep(.referenceList) { margin-bottom: 12px; } } .inputActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 16px; .modelSelect { min-width: 0; } } } }
 @keyframes directorLoading { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .directorPanel .planContent .loadingIcon { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .directorPanel .planContent .loadingIcon { animation: none; } }
 </style>

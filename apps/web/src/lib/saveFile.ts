@@ -1,5 +1,5 @@
+import feedback from "@/lib/uiFeedback";
 import axios from "axios";
-import { ElMessage } from "element-plus";
 
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
 
@@ -46,7 +46,7 @@ export function registerDesktopDownloads() {
     link.dispatchEvent(new CustomEvent("downloadstate", { detail: true }));
     // ACT: 在捕获阶段接管下载，兼容已安装节点的 @click.stop，无需重打包节点；先选保存位置，确认后才拉取内容。
     void saveFile(() => axios.get<Blob>(url.href, { responseType: "blob" }).then(({ data }) => data), link.download || "download").catch(error => {
-      ElMessage.error(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "保存文件失败");
+      feedback.message({ tone: "error", message: axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "保存文件失败" });
     }).finally(() => {
       pending.delete(link);
       link.dispatchEvent(new CustomEvent("downloadstate", { detail: false }));

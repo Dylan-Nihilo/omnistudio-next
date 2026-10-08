@@ -70,13 +70,14 @@ export async function createToolConfig(config: Omit<ToolMetadata, "components" |
         },
         rolldownOptions: {
           input: "virtual:toonflowToolClient",
-          external: ["vue", "@vue/runtime-core", "@vue/runtime-dom", "element-plus", "axios", "@form-create/element-ui"],
+          external: ["vue", "@vue/runtime-core", "@vue/runtime-dom", "@toonflow/ui", "element-plus", "axios", "@form-create/element-ui"],
           output: {
             exports: "default",
             globals: {
               vue: "toonflowToolHost.vue",
               "@vue/runtime-core": "toonflowToolHost.vue",
               "@vue/runtime-dom": "toonflowToolHost.vue",
+              "@toonflow/ui": "toonflowToolHost.ui",
               "element-plus": "toonflowToolHost.elementPlus",
               axios: "toonflowToolHost.axios",
               "@form-create/element-ui": "toonflowToolHost.formCreate",

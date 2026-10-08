@@ -20,7 +20,7 @@
     </div>
     <div class="elevationControl">
       <span>高度</span>
-      <el-slider v-model="elevation" vertical height="160px" :min="-90" :max="90" aria-label="光线高度" @change="commit" />
+      <uiSlider :modelValue="elevation" vertical height="160px" :min="-90" :max="90" aria-label="光线高度" @update:modelValue="setAngle('elevation', $event)" @change="commit" />
       <span>{{ Math.round(elevation) }}°</span>
     </div>
     <div class="angleControl">
@@ -28,7 +28,7 @@
         <span class="azimuthLabel">水平方位 · {{ directionLabel }}</span>
         <span>{{ Math.round(relativeAngle) }}°</span>
       </div>
-      <el-slider
+      <uiSlider
         :modelValue="relativeAngle"
         :min="0"
         :max="360"
@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ElSlider } from "element-plus";
+import { uiSlider } from "@toonflow/ui";
 import {
   ArrowHelper,
   BufferGeometry,
@@ -85,14 +85,19 @@ let sun: Mesh;
 let lightRay: ArrowHelper;
 let heightGuide: Line;
 let drag: { pointerId: number; kind: AngleKind; offset: number } | undefined;
+let pendingAngles: { azimuth: number; elevation: number } | undefined;
 
 function setAngle(kind: AngleKind, angle: number) {
-  if (kind === "azimuth") azimuth.value = (((referenceAzimuth + angle) % 360) + 360) % 360;
-  else elevation.value = Math.max(-90, Math.min(90, angle));
+  const value = pendingAngles ?? { azimuth: azimuth.value, elevation: elevation.value };
+  if (kind === "azimuth") azimuth.value = value.azimuth = (((referenceAzimuth + angle) % 360) + 360) % 360;
+  else elevation.value = value.elevation = Math.max(-90, Math.min(90, angle));
+  pendingAngles = value;
 }
 
 function commit() {
-  emit("change", { azimuth: azimuth.value, elevation: elevation.value });
+  const value = pendingAngles ?? { azimuth: azimuth.value, elevation: elevation.value };
+  pendingAngles = undefined;
+  emit("change", value);
 }
 
 function project(position: Vector3) {
@@ -238,8 +243,8 @@ onBeforeUnmount(() => {
   .directionViewport {
     position: relative;
     height: 220px;
-    border-radius: var(--el-border-radius-base);
-    background: var(--el-fill-color-light);
+    border-radius: var(--uiRadiusControl);
+    background: var(--uiBackgroundSubtle);
     overflow: hidden;
 
     canvas {
@@ -250,7 +255,7 @@ onBeforeUnmount(() => {
     .sceneLabel {
       position: absolute;
       transform: translate(-50%, 4px);
-      color: var(--el-text-color-secondary);
+      color: var(--uiTextMuted);
       font-size: 11px;
       pointer-events: none;
     }
@@ -272,7 +277,7 @@ onBeforeUnmount(() => {
         width: 100%;
         height: 100%;
         border-radius: 50%;
-        box-shadow: 0 0 0 2px var(--el-bg-color-overlay);
+        box-shadow: 0 0 0 2px var(--uiSurfaceRaised);
       }
       &.azimuth::after {
         background: #38bd83;
@@ -284,7 +289,7 @@ onBeforeUnmount(() => {
         cursor: grabbing;
       }
       &:focus-visible {
-        outline: 2px solid var(--el-color-primary);
+        outline: 2px solid var(--uiActionPrimary);
       }
     }
   }

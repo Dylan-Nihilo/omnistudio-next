@@ -1,181 +1,59 @@
 <template>
-  <mini-map
-    v-if="showMap"
-    position="bottom-left"
-    :style="{ bottom: '64px' }"
-    :pannable="true"
-    :zoomable="true"
-    node-color="var(--el-fill-color-dark)"
-    mask-color="var(--el-mask-color-extra-light)" />
-  <panel position="bottom-left">
-    <elCard shadow="never" :body-style="{ padding: '4px' }">
-      <div class="canvasControls">
-        <el-tooltip :showArrow="false" :content="assetsVisible ? '关闭素材库' : '打开素材库'" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]">
-          <el-button
-            class="toolButton"
-            text
-            :type="assetsVisible ? 'primary' : 'default'"
-            :aria-pressed="assetsVisible"
-            aria-label="素材库"
-            @click="assetsVisible = !assetsVisible">
-            <icon-folders :size="17" />
-          </el-button>
-        </el-tooltip>
-        <!-- trigger 用 contextmenu 是为了让整理按钮只由 arrangeNodes 控制显隐，同时仍保留点击外部自动关闭 -->
-        <el-tooltip :showArrow="false" content="整理画布" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]" :disabled="undoPopoverVisible">
-          <span class="toolTrigger">
-            <el-popover trigger="contextmenu" placement="top-start" :width="180" v-model:visible="undoPopoverVisible">
-              <template #reference>
-                <el-button class="toolButton" text :disabled="!canArrange" aria-label="整理画布" @click="arrangeNodes">
-                  <icon-sitemap :size="17" />
-                </el-button>
-              </template>
-              <div class="zoomMenu">
-                <el-button class="zoomAction" style="width: 100%" text @click="undoArrange">撤销整理</el-button>
-              </div>
-            </el-popover>
-          </span>
-        </el-tooltip>
-        <el-tooltip :showArrow="false" :content="showMap ? '隐藏地图' : '显示地图'" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]">
-          <el-button
-            class="toolButton"
-            text
-            :type="showMap ? 'primary' : 'default'"
-            :aria-pressed="showMap"
-            aria-label="显示或隐藏地图"
-            @click="showMap = !showMap">
-            <icon-map :size="17" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip :showArrow="false" :content="snapEnabled ? '关闭网格吸附' : '开启网格吸附'" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]">
-          <el-button
-            class="toolButton"
-            text
-            :type="snapEnabled ? 'primary' : 'default'"
-            :aria-pressed="snapEnabled"
-            aria-label="网格吸附"
-            @click="snapEnabled = !snapEnabled">
-            <icon-magnet :size="17" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip :showArrow="false" :content="showEdges ? '隐藏连线' : '显示连线'" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]">
-          <el-button
-            class="toolButton"
-            text
-            :type="showEdges ? 'primary' : 'default'"
-            :aria-pressed="showEdges"
-            aria-label="显示或隐藏连线"
-            @click="showEdges = !showEdges">
-            <icon-arrow-guide :size="17" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip :showArrow="false" content="适应视图" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]">
-          <el-button class="toolButton" text aria-label="适应视图" @click="fitView()">
-            <icon-focus-centered :size="17" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip :showArrow="false"
-          content="缩放菜单（滚轮调整缩放）"
-          placement="top"
-          :hideAfter="0"
-          :enterable="false"
-          :triggerKeys="[]"
-          :disabled="zoomMenuVisible">
-          <span class="toolTrigger">
-            <el-popover v-model:visible="zoomMenuVisible" trigger="click" placement="top-start" :width="216">
-              <template #reference>
-                <el-button
-                  class="toolButton"
-                  text
-                  aria-label="缩放菜单"
-                  @wheel.stop.prevent="$event.deltaY && applyZoom(Math.min(800, Math.max(20, zoomPercent - Math.sign($event.deltaY))))">
-                  {{ zoomPercent }}%
-                </el-button>
-              </template>
-              <div class="zoomMenu">
-                <el-input-number
-                  class="zoomInput"
-                  :model-value="zoomPercent"
-                  :min="20"
-                  :max="800"
-                  :controls="false"
-                  aria-label="缩放百分比"
-                  @change="applyZoom">
-                  <template #suffix>%</template>
-                </el-input-number>
-                <el-button class="zoomAction" text @click="zoomIn()">放大</el-button>
-                <el-button class="zoomAction" text @click="zoomOut()">缩小</el-button>
-                <el-button class="zoomAction" text @click="fitView()">适合屏幕</el-button>
-              </div>
-            </el-popover>
-          </span>
-        </el-tooltip>
-        <el-tooltip :showArrow="false" content="帮助" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]" :disabled="helpVisible">
-          <span class="toolTrigger">
-            <el-popover v-model:visible="helpVisible" trigger="click" placement="top-end" :width="196">
-              <template #reference>
-                <el-button class="toolButton" text aria-label="帮助">
-                  <icon-help :size="17" />
-                </el-button>
-              </template>
-              <div class="helpMenu">
-                <el-button
-                  class="helpAction"
-                  tag="a"
-                  text
-                  :icon="IconBook"
-                  href="https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  @click="helpVisible = false">
-                  使用教程
-                </el-button>
-                <el-button
-                  class="helpAction"
-                  tag="a"
-                  text
-                  :icon="IconBug"
-                  href="https://docs.qq.com/smartsheet/form/EmvmQBrmlPmr%2Fss_vsqk2v%2FvhiGzE?tab=ss_vsqk2v"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Toonflow 需求/BUG反馈表"
-                  @click="helpVisible = false">
-                  汇报 BUG
-                </el-button>
-                <el-button class="helpAction" text :icon="IconBrandWechat" @click="showContact('community')">加入交流群</el-button>
-                <el-button class="helpAction" text :icon="IconBriefcase" @click="showContact('business')">商务合作</el-button>
-              </div>
-            </el-popover>
-          </span>
-        </el-tooltip>
+  <mini-map v-if="showMap" position="bottom-left" :style="{ bottom: '88px' }" :pannable="true" :zoomable="true" nodeColor="var(--uiSurfaceHover)" maskColor="var(--uiOverlayScrim)" />
+  <panel position="bottom-center" class="controlsPanel">
+    <nav class="canvasControls nodrag nopan nowheel" aria-label="画布工具">
+      <div class="toolGroup">
+        <uiTooltip :content="assetsVisible ? '关闭素材库' : '打开素材库'"><uiIconButton :icon="IconFolders" label="素材库" :aria-pressed="assetsVisible" :class="{ isActive: assetsVisible }" @click="assetsVisible = !assetsVisible" /></uiTooltip>
+        <uiPopover v-model:visible="undoPopoverVisible" trigger="manual" placement="top-start" :width="180">
+          <template #reference><uiTooltip content="整理画布" :disabled="undoPopoverVisible"><uiIconButton :icon="IconSitemap" label="整理画布" :disabled="!canArrange" :loading="arranging" @click="arrangeNodes" /></uiTooltip></template>
+          <uiButton class="menuAction" variant="ghost" @click="undoArrange">撤销整理</uiButton>
+        </uiPopover>
       </div>
-    </elCard>
+      <div class="toolGroup">
+        <uiTooltip :content="showMap ? '隐藏地图' : '显示地图'"><uiIconButton :icon="IconMap" label="显示或隐藏地图" :aria-pressed="showMap" :class="{ isActive: showMap }" @click="showMap = !showMap" /></uiTooltip>
+        <uiTooltip :content="snapEnabled ? '关闭网格吸附' : '开启网格吸附'"><uiIconButton :icon="IconMagnet" label="网格吸附" :aria-pressed="snapEnabled" :class="{ isActive: snapEnabled }" @click="snapEnabled = !snapEnabled" /></uiTooltip>
+        <uiTooltip :content="showEdges ? '隐藏连线' : '显示连线'"><uiIconButton :icon="IconArrowGuide" label="显示或隐藏连线" :aria-pressed="showEdges" :class="{ isActive: showEdges }" @click="showEdges = !showEdges" /></uiTooltip>
+      </div>
+      <div class="toolGroup">
+        <uiTooltip content="适应视图"><uiIconButton :icon="IconFocusCentered" label="适应视图" @click="fitView()" /></uiTooltip>
+        <uiPopover v-model:visible="zoomMenuVisible" placement="top" :width="216">
+          <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" class="zoomTrigger" variant="ghost" aria-label="缩放菜单" @wheel.stop.prevent="$event.deltaY && applyZoom(Math.min(800, Math.max(20, zoomPercent - Math.sign($event.deltaY))))">{{ zoomPercent }}%</uiButton></template>
+          <div class="zoomMenu">
+            <uiField label="缩放百分比"><uiNumberInput :modelValue="zoomPercent" :min="20" :max="800" :controls="false" aria-label="缩放百分比" @change="applyZoom" /></uiField>
+            <uiButton class="menuAction" variant="ghost" @click="zoomIn()">放大</uiButton>
+            <uiButton class="menuAction" variant="ghost" @click="zoomOut()">缩小</uiButton>
+            <uiButton class="menuAction" variant="ghost" @click="fitView()">适合屏幕</uiButton>
+          </div>
+        </uiPopover>
+      </div>
+      <div class="toolGroup">
+        <uiPopover v-model:visible="helpVisible" placement="top-end" :width="216">
+          <template #reference="{ triggerAttrs }"><uiIconButton v-bind="triggerAttrs" :icon="IconHelp" label="帮助" /></template>
+          <div class="helpMenu">
+            <uiButton class="menuAction" variant="ghost" tag="a" :icon="IconBook" href="https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf" target="_blank" rel="noopener noreferrer" @click="helpVisible = false">使用教程</uiButton>
+            <uiButton class="menuAction" variant="ghost" tag="a" :icon="IconBug" href="https://docs.qq.com/smartsheet/form/EmvmQBrmlPmr%2Fss_vsqk2v%2FvhiGzE?tab=ss_vsqk2v" target="_blank" rel="noopener noreferrer" title="Toonflow 需求/BUG反馈表" @click="helpVisible = false">汇报 BUG</uiButton>
+            <uiButton class="menuAction" variant="ghost" :icon="IconBrandWechat" @click="showContact('community')">加入交流群</uiButton>
+            <uiButton class="menuAction" variant="ghost" :icon="IconBriefcase" @click="showContact('business')">商务合作</uiButton>
+          </div>
+        </uiPopover>
+      </div>
+    </nav>
   </panel>
-  <el-dialog v-model="contactVisible" :title="contactInfo.title" width="min(360px, calc(100vw - 32px))" alignCenter appendToBody>
-    <div class="contactContent">
-      <q-r-code
-        :value="contactInfo.url"
-        :size="192"
-        type="svg"
-        color="#000000"
-        bgColor="#ffffff"
-        borderless
-        role="img"
-        :aria-label="`${contactInfo.title}二维码`" />
-      <p class="contactTip">{{ contactInfo.tip }}</p>
-    </div>
-  </el-dialog>
+  <uiDialog v-model="contactVisible" :title="contactInfo.title" :width="360">
+    <div class="contactContent"><q-r-code :value="contactInfo.url" :size="192" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" :aria-label="`${contactInfo.title}二维码`" /><p class="contactTip">{{ contactInfo.tip }}</p></div>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { Panel, useVueFlow, type XYPosition } from "@vue-flow/core";
 import { MiniMap } from "@vue-flow/minimap";
-import { IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat, IconBriefcase } from "@tabler/icons-vue";
-import { ElMessage } from "element-plus";
+import { IconFolders, IconSitemap, IconArrowGuide, IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat, IconBriefcase } from "@tabler/icons-vue";
+import { uiIconButton, uiButton, uiTooltip, uiPopover, uiDialog, uiField, uiNumberInput, useUiFeedback } from "@toonflow/ui";
 import { QRCode } from "tdesign-vue-next";
 import { arrangeCanvas } from "../arrangeCanvas";
 
+const feedback = useUiFeedback();
 const props = defineProps<{
   canvasId: string;
   directory: string | undefined;
@@ -256,7 +134,7 @@ async function arrangeNodes() {
       undoPopoverVisible.value = true;
     });
   } catch (error) {
-    if (!controller.signal.aborted) ElMessage.error(error instanceof Error ? error.message : "整理画布失败");
+    if (!controller.signal.aborted) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "整理画布失败" });
   } finally {
     arrangeController = undefined;
     arranging.value = false;
@@ -276,66 +154,20 @@ async function undoArrange() {
       undoPopoverVisible.value = false;
     });
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "撤销整理失败");
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "撤销整理失败" });
   }
 }
 </script>
 
 <style lang="scss" scoped>
+.controlsPanel { max-width: calc(100% - 24px); }
 .canvasControls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-
-  .toolTrigger {
-    display: inline-flex;
-  }
-
-  .toolButton {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    margin-left: 0;
-    padding: 0;
-  }
+  display: flex; align-items: center; gap: 4px; max-width: 100%; padding: 6px;
+  border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover);
+  .toolGroup { display: flex; align-items: center; gap: 2px; min-width: 0; padding-inline: 4px; &:not(:last-child) { border-right: 1px solid var(--uiBorderDefault); } .isActive { color: var(--uiActionPrimary); background: var(--uiActionSoft); } .zoomTrigger { min-width: 64px; padding-inline: 8px; font-variant-numeric: tabular-nums; } }
+  @media (max-width: 700px) { gap: 0; padding: 4px; .toolGroup { gap: 0; padding-inline: 2px; } }
 }
-
-.zoomMenu {
-  display: flex;
-  flex-direction: column;
-
-  .zoomInput {
-    width: 100%;
-  }
-
-  .zoomAction {
-    justify-content: flex-start;
-    margin-left: 0;
-  }
-}
-
-.helpMenu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .helpAction {
-    justify-content: flex-start;
-    margin-left: 0;
-  }
-}
-
-.contactContent {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-
-  .contactTip {
-    margin: 0;
-    color: var(--el-text-color-secondary);
-    font-size: 12px;
-    line-height: 1.7;
-  }
-}
+.zoomMenu, .helpMenu { display: flex; flex-direction: column; gap: 8px; .menuAction { width: 100%; justify-content: flex-start; } }
+.menuAction { width: 100%; justify-content: flex-start; }
+.contactContent { display: flex; flex-direction: column; align-items: center; gap: 20px; .contactTip { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } }
 </style>

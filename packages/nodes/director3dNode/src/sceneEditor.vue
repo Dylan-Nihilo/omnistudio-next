@@ -1,23 +1,14 @@
 <template>
-  <el-dialog
+  <uiDialog
     class="directorDialog"
-    title="3D 导演台"
+    :title="result ? `3D 导演台 · ${result.name}` : '3D 导演台'"
     :modelValue="visible"
     width="min(1440px, calc(100vw - 40px))"
-    alignCenter
-    appendToBody
     :closeOnClickModal="false"
     :closeOnPressEscape="false"
     :beforeClose="closeEditor"
-    @opened="loadScene"
+    @opened="nextTick(loadScene)"
     @closed="emit('close')">
-    <template #header>
-      <div class="directorHeader">
-        <icon-cube3d-sphere :size="20" />
-        <span>3D 导演台</span>
-        <small v-if="result">{{ result.name }}</small>
-      </div>
-    </template>
     <div ref="workspace" class="directorWorkspace">
       <section class="stagePanel" aria-label="场景与镜头">
         <div class="viewport" :style="{ '--sceneAspect': sceneAspect }">
@@ -46,30 +37,29 @@
           </div>
         </div>
         <div class="playbackBar">
-          <el-popover trigger="click" placement="top-start" :width="180">
-            <template #reference>
-              <el-button :icon="IconSettings" :disabled="!ready" aria-label="场景设置">设置</el-button>
+          <uiPopover trigger="click" placement="top-start" :width="180">
+            <template #reference="{ triggerAttrs }">
+              <uiButton v-bind="triggerAttrs" variant="secondary" :icon="IconSettings" :disabled="!ready" aria-label="场景设置">设置</uiButton>
             </template>
             <div class="sceneSettingsPanel">
               <div class="settingRow">
                 <span>网格</span>
-                <el-switch :modelValue="sceneSettings.gridVisible" aria-label="显示网格" @change="sceneSettings = { ...sceneSettings, gridVisible: $event === true }" />
+                <uiSwitch :modelValue="sceneSettings.gridVisible" aria-label="显示网格" @change="sceneSettings = { ...sceneSettings, gridVisible: $event === true }" />
               </div>
               <div class="settingRow">
                 <span>天空盒</span>
-                <el-switch :modelValue="sceneSettings.skyVisible" aria-label="显示天空盒" @change="sceneSettings = { ...sceneSettings, skyVisible: $event === true }" />
+                <uiSwitch :modelValue="sceneSettings.skyVisible" aria-label="显示天空盒" @change="sceneSettings = { ...sceneSettings, skyVisible: $event === true }" />
               </div>
-              <el-button :icon="IconUserPlus" :loading="addingMannequin" :disabled="!ready || addingMannequin || exportingVideo || !!exportingImage || tasks.some(task => !task.error)" @click="emit('addMannequin')">添加人偶</el-button>
+              <uiButton variant="secondary" :icon="IconUserPlus" :loading="addingMannequin" :disabled="!ready || addingMannequin || exportingVideo || !!exportingImage || tasks.some(task => !task.error)" @click="emit('addMannequin')">添加人偶</uiButton>
             </div>
-          </el-popover>
-          <el-button
+          </uiPopover>
+          <uiIconButton
             class="iconButton"
             :icon="playing ? IconPlayerPause : IconPlayerPlay"
             :disabled="!ready || !result"
-            text
-            :aria-label="playing ? '暂停影片' : '播放影片'"
+            :label="playing ? '暂停影片' : '播放影片'"
             @click="togglePlayback" />
-          <el-slider
+          <uiSlider
             :modelValue="currentTime"
             :max="result?.duration || 1"
             :step="0.01"
@@ -79,44 +69,22 @@
             @pointerdown.capture="pausePlayback"
             @update:modelValue="seekTime" />
           <span class="timeLabel">{{ formatTime(currentTime) }} / {{ formatTime(result?.duration ?? 0) }}</span>
-          <el-select v-model="aspectRatio" class="aspectSelect" aria-label="画面比例" :disabled="!ready">
-            <el-option v-for="ratio in ['16:9', '9:16', '4:3', '1:1']" :key="ratio" :label="ratio" :value="ratio" />
-          </el-select>
-          <el-popover trigger="click" placement="top" :width="340" @beforeEnter="captureLightingReference">
-            <template #reference>
-              <el-button :icon="IconSun" :disabled="!ready" aria-label="光照设置">光照</el-button>
+          <uiSelect :modelValue="aspectRatio" class="aspectSelect" :options="['16:9', '9:16', '4:3', '1:1'].map(value => ({ value, label: value }))" aria-label="画面比例" :disabled="!ready" @update:modelValue="value => typeof value === 'string' && (aspectRatio = value)" />
+          <uiPopover trigger="click" placement="top" :width="340" @show="captureLightingReference">
+            <template #reference="{ triggerAttrs }">
+              <uiButton v-bind="triggerAttrs" variant="secondary" :icon="IconSun" :disabled="!ready" aria-label="光照设置">光照</uiButton>
             </template>
             <div class="lightingPanel">
-              <div class="lightingRow">
-                <span>全局光照 <small>无阴影</small></span>
-                <div class="lightingInputs">
-                  <el-switch :modelValue="lighting.globalEnabled" aria-label="全局光照" @change="updateLighting({ globalEnabled: $event === true })" />
-                  <el-input-number :modelValue="lighting.globalIntensity" :min="0" :max="100" :step="0.1" :precision="2" controlsPosition="right" aria-label="全局光照强度" @update:modelValue="$event != null && updateLighting({ globalIntensity: $event })" />
-                </div>
-              </div>
-              <div class="lightingRow">
-                <span>太阳光 <small>有阴影</small></span>
-                <el-switch :modelValue="lighting.sunEnabled" aria-label="太阳光" @change="updateLighting({ sunEnabled: $event === true })" />
-              </div>
-              <template v-if="lighting.sunEnabled">
-                <lightDirection v-model:azimuth="lightingDraft.azimuth" v-model:elevation="lightingDraft.elevation" :referenceAzimuth="lightingReference" @change="updateLighting" />
-                <div class="lightingRow">
-                  <div class="lightingInputs">
-                    <span>颜色</span>
-                    <el-color-picker :modelValue="lighting.color" :teleported="false" colorFormat="hex" aria-label="太阳光颜色" @change="$event && updateLighting({ color: $event })" />
-                  </div>
-                  <div class="lightingInputs">
-                    <span>强度</span>
-                    <el-input-number :modelValue="lighting.intensity" :min="0" :max="100" :step="0.1" :precision="2" controlsPosition="right" aria-label="太阳光强度" @update:modelValue="$event != null && updateLighting({ intensity: $event })" />
-                  </div>
-                </div>
-              </template>
+              <div class="lightingRow"><span>全局光照 <small>无阴影</small></span><uiSwitch :modelValue="lighting.globalEnabled" aria-label="全局光照" @change="updateLighting({ globalEnabled: $event === true })" /></div>
+              <uiField label="全局光照强度"><uiNumberInput :modelValue="lighting.globalIntensity" :min="0" :max="100" :step="0.1" :precision="2" aria-label="全局光照强度" @update:modelValue="$event != null && updateLighting({ globalIntensity: $event })" /></uiField>
+              <div class="lightingRow"><span>太阳光 <small>有阴影</small></span><uiSwitch :modelValue="lighting.sunEnabled" aria-label="太阳光" @change="updateLighting({ sunEnabled: $event === true })" /></div>
+              <template v-if="lighting.sunEnabled"><lightDirection v-model:azimuth="lightingDraft.azimuth" v-model:elevation="lightingDraft.elevation" :referenceAzimuth="lightingReference" @change="updateLighting" /><div class="lightingOutput"><uiField label="颜色"><uiColorPicker :modelValue="sunColor" aria-label="太阳光颜色" @change="$event && updateLighting({ color: $event })" /></uiField><uiField label="强度"><uiNumberInput :modelValue="lighting.intensity" :min="0" :max="100" :step="0.1" :precision="2" aria-label="太阳光强度" @update:modelValue="$event != null && updateLighting({ intensity: $event })" /></uiField></div></template>
             </div>
-          </el-popover>
-          <el-button :icon="IconPlus" :disabled="!ready" aria-label="添加关键帧" @click="addAnchor">添加关键帧</el-button>
-          <el-button :icon="IconMovie" :disabled="!ready || !result || exportingVideo" :loading="exportingVideo" aria-label="导出视频节点" @click="emit('exportVideo', sceneAspect)">
+          </uiPopover>
+          <uiButton variant="secondary" :icon="IconPlus" :disabled="!ready" aria-label="添加关键帧" @click="addAnchor">添加关键帧</uiButton>
+          <uiButton variant="secondary" :icon="IconMovie" :disabled="!ready || !result || exportingVideo" :loading="exportingVideo" aria-label="导出视频节点" @click="emit('exportVideo', sceneAspect)">
             {{ exportingVideo ? `导出视频 ${exportProgress ?? 0}%` : '导出视频节点' }}
-          </el-button>
+          </uiButton>
         </div>
         <div class="controlHint">WASD 移动 · 空格上升 · Shift 下降 · 滚轮调焦 · 右键记录 · 左键 / Esc 退出取景</div>
         <div class="referenceHeader">
@@ -133,8 +101,8 @@
               <icon-camera v-else :size="22" />
               <span>{{ String(index + 1).padStart(2, "0") }}</span>
             </button>
-            <el-button class="removeReference" :icon="IconX" text circle :aria-label="'删除关键帧 ' + (index + 1)" @click="removeAnchor(anchor.id)" />
-            <el-button class="exportReference" :icon="IconPhotoPlus" text circle size="small" title="导出画布" :disabled="!ready || !!exportingImage" :loading="exportingImage === anchor.id" :aria-label="'导出关键帧 ' + (index + 1) + ' 到画布'" @click="emit('exportImage', anchor, sceneAspect, anchor.time ?? currentTime)" />
+            <uiIconButton class="removeReference" variant="danger" :icon="IconX" :label="'删除关键帧 ' + (index + 1)" @click="removeAnchor(anchor.id)" />
+            <uiIconButton class="exportReference" :icon="IconPhotoPlus" size="small" title="导出画布" :disabled="!ready || !!exportingImage" :loading="exportingImage === anchor.id" :label="'导出关键帧 ' + (index + 1) + ' 到画布'" @click="emit('exportImage', anchor, sceneAspect, anchor.time ?? currentTime)" />
           </div>
         </vue-draggable>
       </section>
@@ -157,18 +125,18 @@
       </directorPanel>
     </div>
     <directorTour v-if="ready && visible" :root="workspace" />
-  </el-dialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ElButton, ElDialog, ElMessage, ElSlider, ElSelect, ElOption, ElPopover, ElSwitch, ElColorPicker, ElInputNumber } from "element-plus";
-import { IconCube3dSphere, IconCamera, IconLoader2, IconPlayerPause, IconPlayerPlay, IconPlus, IconX, IconMovie, IconPhotoPlus, IconSun, IconSettings, IconUserPlus } from "@tabler/icons-vue";
+import { uiDialog, uiButton, uiIconButton, uiSlider, uiSelect, uiPopover, uiSwitch, uiColorPicker, uiNumberInput, uiField, useUiFeedback } from "@toonflow/ui";
+import { IconCamera, IconLoader2, IconPlayerPause, IconPlayerPlay, IconPlus, IconX, IconMovie, IconPhotoPlus, IconSun, IconSettings, IconUserPlus } from "@tabler/icons-vue";
 import directorPanel from "./directorPanel.vue";
 import directorTour from "./directorTour.vue";
 import lightDirection from "./lightDirection.vue";
 import { VueDraggable } from "vue-draggable-plus";
-import { Vector3 } from "three";
+import { Color, Vector3 } from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import type { SceneRuntime } from "threejson/core";
 import type { NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
@@ -176,6 +144,7 @@ import { applyLighting, applySceneSettings, captureCamera, createStage, disposeS
 import { anchorSchema, applyCamera, prepareMotion, sampleMotion, type CameraAnchor } from "./motion";
 import { prepareSceneAnimation, type DirectorPlan, type DirectorPlanItem, type DirectorGeneration } from "./sceneAnimation";
 
+const feedback = useUiFeedback();
 const props = defineProps<{
   scene: SceneDocument;
   result?: DirectorPlan;
@@ -193,6 +162,7 @@ const emit = defineEmits<{ editInstruction: [value: string]; selectPlan: [id: st
 const anchors = defineModel<CameraAnchor[]>("anchors", { default: () => [] });
 const lighting = defineModel<LightingSettings>("lighting", { required: true });
 const sceneSettings = defineModel<SceneSettings>("sceneSettings", { required: true });
+const sunColor = computed(() => "#" + new Color(lighting.value.color).getHexString());
 const lightingDraft = ref({ ...lighting.value });
 const lightingReference = ref(0);
 const prompt = defineModel<string>("prompt", { default: "" });
@@ -282,7 +252,7 @@ async function loadScene() {
   } catch (error) {
     if (!disposed && version === loadVersion) {
       releaseStage();
-      ElMessage.error(error instanceof Error ? error.message : "场景载入失败");
+      feedback.message({ tone: "error", message: error instanceof Error ? error.message : "场景载入失败" });
     }
   }
 }
@@ -346,7 +316,7 @@ async function toggleControl() {
   try {
     await canvas.value.requestPointerLock();
   } catch (error) {
-    if (!disposed) ElMessage.error(error instanceof Error ? error.message : "无法进入第一人称取景");
+    if (!disposed) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "无法进入第一人称取景" });
   }
 }
 function exitControl() {
@@ -470,7 +440,7 @@ watch(() => [lightingDraft.value.azimuth, lightingDraft.value.elevation], ([azim
 });
 function addAnchor() {
   if (!ready.value || !runtime) return;
-  if (anchors.value.length >= 100) return void ElMessage.warning("最多记录 100 个关键帧");
+  if (anchors.value.length >= 100) return void feedback.message({ tone: "warning", message: "最多记录 100 个关键帧" });
   pausePlayback();
   const anchor = anchorSchema.parse({ ...captureCamera(runtime), time: currentTime.value });
   anchorPreviews.value[anchor.id] = captureThumbnail();
@@ -521,7 +491,7 @@ watch(
     try {
       setAnimation();
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : "动画载入失败");
+      feedback.message({ tone: "error", message: error instanceof Error ? error.message : "动画载入失败" });
     }
   },
   { flush: "post" }
@@ -556,60 +526,18 @@ onBeforeUnmount(() => {
     gap: 12px;
   }
 }
-.lightingPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: min(440px, calc(100dvh - 80px));
-  overflow-x: hidden;
-  overflow-y: auto;
-  font-size: 13px;
-  color: var(--el-text-color-regular);
-
-  .lightingRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-
-    .el-input-number {
-      width: 100px;
-    }
-
-    .lightingInputs {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    small {
-      margin-left: 4px;
-      color: var(--el-text-color-secondary);
-      font-size: 11px;
-    }
-  }
-}
-.directorHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--el-text-color-primary);
-  small {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--el-text-color-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
+.lightingPanel { display: flex; flex-direction: column; gap: 20px; max-height: min(440px, calc(100dvh - 80px)); overflow: auto; color: var(--uiTextBody); font-size: var(--uiFontControl); .lightingRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; small { margin-left: 8px; color: var(--uiTextMuted); } } .lightingOutput { display: grid; grid-template-columns: minmax(72px, 1fr) minmax(160px, 2fr); gap: 16px; } }
 .directorWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 24px;
-  height: min(760px, calc(100dvh - 148px));
+  height: min(760px, calc(100dvh - 176px));
   min-height: 0;
   .stagePanel {
+    padding: 16px;
+    border: 1px solid var(--uiBorderDefault);
+    border-radius: var(--uiRadiusCard);
+    background: var(--uiBackgroundSubtle);
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -622,7 +550,7 @@ onBeforeUnmount(() => {
       flex: 1;
       min-height: 180px;
       overflow: hidden;
-      background: var(--el-fill-color-light);
+      background: var(--uiBackgroundSubtle);
       .sceneCanvas,
       .captureFlash {
         width: min(100cqw, calc(100cqh * var(--sceneAspect)));
@@ -636,8 +564,8 @@ onBeforeUnmount(() => {
         outline-offset: -3px;
         transition: outline-color 0.2s, box-shadow 0.2s;
         &.playing {
-          outline-color: var(--el-color-primary);
-          box-shadow: 0 0 18px color-mix(in srgb, var(--el-color-primary) 35%, transparent);
+          outline-color: var(--uiActionPrimary);
+          box-shadow: 0 0 18px color-mix(in srgb, var(--uiActionPrimary) 35%, transparent);
         }
       }
       .captureFlash {
@@ -650,7 +578,7 @@ onBeforeUnmount(() => {
         animation: directorCapture 280ms ease-out;
         @media (prefers-reduced-motion: reduce) {
           background: transparent;
-          box-shadow: inset 0 0 0 2px var(--el-color-primary);
+          box-shadow: inset 0 0 0 2px var(--uiActionPrimary);
           animation-timing-function: step-end;
         }
       }
@@ -675,8 +603,8 @@ onBeforeUnmount(() => {
         gap: 12px;
         align-items: center;
         justify-content: center;
-        background: var(--el-bg-color-overlay);
-        color: var(--el-text-color-secondary);
+        background: var(--uiSurfaceRaised);
+        color: var(--uiTextMuted);
         font-size: 12px;
         .loadingIcon {
           animation: directorLoading 1s linear infinite;
@@ -696,28 +624,26 @@ onBeforeUnmount(() => {
         padding: 0;
         margin: 0;
       }
-      .el-slider {
+      :deep(.uiSlider) {
         flex: 1;
         min-width: 0;
-        --el-slider-height: 4px;
-        --el-slider-button-size: 12px;
       }
       .timeLabel {
-        color: var(--el-text-color-secondary);
+        color: var(--uiTextMuted);
         font-size: 11px;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
       }
       .aspectSelect {
-        width: 86px;
+        width: 100px;
         flex-shrink: 0;
       }
-      > .el-button {
+      > .uiButton {
         margin: 0;
       }
     }
     .controlHint {
-      color: var(--el-text-color-placeholder);
+      color: var(--uiTextMuted);
       font-size: 11px;
       line-height: 1.6;
     }
@@ -727,9 +653,9 @@ onBeforeUnmount(() => {
       align-items: center;
       padding: 18px 0 10px;
       font-size: 12px;
-      color: var(--el-text-color-regular);
+      color: var(--uiTextBody);
       small {
-        color: var(--el-text-color-secondary);
+        color: var(--uiTextMuted);
         font-size: 11px;
         margin-left: 4px;
       }
@@ -747,10 +673,10 @@ onBeforeUnmount(() => {
         flex: 0 0 108px;
         height: 64px;
         border: 1px solid transparent;
-        border-radius: var(--el-border-radius-base);
+        border-radius: var(--uiRadiusControl);
         overflow: hidden;
         &.selected {
-          border-color: var(--el-color-primary);
+          border-color: var(--uiActionPrimary);
         }
         .referenceImage {
           display: flex;
@@ -760,8 +686,8 @@ onBeforeUnmount(() => {
           height: 64px;
           border: 0;
           padding: 0;
-          background: var(--el-fill-color);
-          color: var(--el-text-color-placeholder);
+          background: var(--uiSurfaceHover);
+          color: var(--uiTextMuted);
           cursor: grab;
           img {
             width: 100%;
@@ -785,14 +711,15 @@ onBeforeUnmount(() => {
           right: 3px;
           width: 22px;
           height: 22px;
+          min-height: 22px;
           padding: 0;
-          background: var(--el-bg-color-overlay);
-          color: var(--el-text-color-regular);
+          background: var(--uiSurfaceRaised);
+          color: var(--uiTextBody);
           opacity: 0;
         }
         .exportReference {
-          position: absolute; right: 3px; bottom: 3px; width: 22px; height: 22px; padding: 0; margin: 0; opacity: 0;
-          background: var(--el-bg-color-overlay); color: var(--el-text-color-regular);
+          position: absolute; right: 3px; bottom: 3px; width: 22px; height: 22px; min-height: 22px; padding: 0; margin: 0; opacity: 0;
+          background: var(--uiSurfaceRaised); color: var(--uiTextBody);
         }
         &:hover .exportReference, &:focus-within .exportReference { opacity: 1; }
         &:hover .removeReference,

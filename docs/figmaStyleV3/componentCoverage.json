@@ -1,0 +1,3080 @@
+{
+  "fileKey": "zJMnhlJ5Kvs4SIM6uG13d1",
+  "status": "complete",
+  "scope": "Figma design/component-library stage only; application implementation is not included.",
+  "counts": {
+    "families": 149,
+    "variants": 653,
+    "inventoryStates": 82,
+    "renderedStates": 82,
+    "exportedPreviews": 82
+  },
+  "rows": [
+    {
+      "id": "helloWelcome",
+      "title": "快速开始",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue",
+        "apps/web/src/pages/hello/bg.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:2340"
+      },
+      "verification": {
+        "id": "helloWelcome",
+        "nodeId": "192:2450",
+        "sectionId": "192:2448",
+        "nodeType": "INSTANCE",
+        "textNodes": 8,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "helloWelcome",
+        "nodeId": "192:2450",
+        "sectionId": "192:2448",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/helloWelcome.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "helloCustom",
+      "title": "引导 · 配置语言模型",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue",
+        "apps/web/src/components/settings/panels/languageModel/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:2365"
+      },
+      "verification": {
+        "id": "helloCustom",
+        "nodeId": "192:2471",
+        "sectionId": "192:2469",
+        "nodeType": "INSTANCE",
+        "textNodes": 10,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "helloCustom",
+        "nodeId": "192:2471",
+        "sectionId": "192:2469",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/helloCustom.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "helloLogin",
+      "title": "引导 · TF-Router 登录/注册",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/hello/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:2410"
+      },
+      "verification": {
+        "id": "helloLogin",
+        "nodeId": "192:2498",
+        "sectionId": "192:2496",
+        "nodeType": "INSTANCE",
+        "textNodes": 16,
+        "instances": 11,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "helloLogin",
+        "nodeId": "192:2498",
+        "sectionId": "192:2496",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/helloLogin.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "homeEmpty",
+      "title": "首页 · 空项目列表",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/home/index.vue",
+        "apps/web/src/pages/home/bg.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:1093"
+      },
+      "verification": {
+        "id": "homeEmpty",
+        "nodeId": "192:2542",
+        "sectionId": "192:2540",
+        "nodeType": "FRAME",
+        "textNodes": 19,
+        "instances": 25,
+        "fonts": [
+          "Noto Sans SC",
+          "Inter"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "homeEmpty",
+        "nodeId": "192:2542",
+        "sectionId": "192:2540",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/homeEmpty.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "homeProjects",
+      "title": "首页 · 项目网格",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "41:2"
+      },
+      "verification": {
+        "id": "homeProjects",
+        "nodeId": "192:2618",
+        "sectionId": "192:2616",
+        "nodeType": "FRAME",
+        "textNodes": 31,
+        "instances": 43,
+        "fonts": [
+          "Noto Sans SC",
+          "Inter"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "homeProjects",
+        "nodeId": "192:2618",
+        "sectionId": "192:2616",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/homeProjects.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "homeList",
+      "title": "首页 · 项目列表",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:1242"
+      },
+      "verification": {
+        "id": "homeList",
+        "nodeId": "192:2694",
+        "sectionId": "192:2692",
+        "nodeType": "FRAME",
+        "textNodes": 25,
+        "instances": 43,
+        "fonts": [
+          "Noto Sans SC",
+          "Inter"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "homeList",
+        "nodeId": "192:2694",
+        "sectionId": "192:2692",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/homeList.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "workspaceCanvas",
+      "title": "工作区 · 画布",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/workspace/index.vue",
+        "apps/web/src/pages/workspace/panels/canvas/canvasHost.vue",
+        "apps/web/src/pages/workspace/panels/canvas/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "45:132"
+      },
+      "verification": {
+        "id": "workspaceCanvas",
+        "nodeId": "192:2773",
+        "sectionId": "192:2771",
+        "nodeType": "FRAME",
+        "textNodes": 27,
+        "instances": 101,
+        "fonts": [
+          "Noto Sans SC",
+          "Inter"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "workspaceCanvas",
+        "nodeId": "192:2773",
+        "sectionId": "192:2771",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/workspaceCanvas.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "workspaceDocumentEmpty",
+      "title": "工作区 · 文档空编辑区",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue",
+        "apps/web/src/pages/workspace/panels/document/components/fileTree.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:1468"
+      },
+      "verification": {
+        "id": "workspaceDocumentEmpty",
+        "nodeId": "192:2851",
+        "sectionId": "192:2849",
+        "nodeType": "FRAME",
+        "textNodes": 11,
+        "instances": 28,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "workspaceDocumentEmpty",
+        "nodeId": "192:2851",
+        "sectionId": "192:2849",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/workspaceDocumentEmpty.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "workspaceDocument",
+      "title": "工作区 · 文档编辑",
+      "group": "pages",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue",
+        "apps/web/src/pages/workspace/panels/document/components/fileTree.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:1667"
+      },
+      "verification": {
+        "id": "workspaceDocument",
+        "nodeId": "192:2858",
+        "sectionId": "192:2856",
+        "nodeType": "FRAME",
+        "textNodes": 27,
+        "instances": 48,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "workspaceDocument",
+        "nodeId": "192:2858",
+        "sectionId": "192:2856",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/workspaceDocument.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsUi",
+      "title": "界面设置",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/ui.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=ui",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsUi",
+        "nodeId": "192:17674",
+        "sectionId": "192:17672",
+        "nodeType": "INSTANCE",
+        "textNodes": 40,
+        "instances": 36,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsUi",
+        "nodeId": "192:17674",
+        "sectionId": "192:17672",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsUi.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsGeneral",
+      "title": "常规配置",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/general/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=general",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsGeneral",
+        "nodeId": "192:17845",
+        "sectionId": "192:17843",
+        "nodeType": "INSTANCE",
+        "textNodes": 66,
+        "instances": 72,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsGeneral",
+        "nodeId": "192:17845",
+        "sectionId": "192:17843",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsGeneral.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsLanguage",
+      "title": "文本模型",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/languageModel/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=languageModel",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsLanguage",
+        "nodeId": "192:18136",
+        "sectionId": "192:18134",
+        "nodeType": "INSTANCE",
+        "textNodes": 34,
+        "instances": 37,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsLanguage",
+        "nodeId": "192:18136",
+        "sectionId": "192:18134",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsLanguage.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsMedia",
+      "title": "媒体模型",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/mediaModel/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=mediaModel",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsMedia",
+        "nodeId": "192:18292",
+        "sectionId": "192:18290",
+        "nodeType": "INSTANCE",
+        "textNodes": 34,
+        "instances": 37,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsMedia",
+        "nodeId": "192:18292",
+        "sectionId": "192:18290",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsMedia.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsMarket",
+      "title": "插件市场 · 发现插件",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=pluginMarket",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsMarket",
+        "nodeId": "192:18446",
+        "sectionId": "192:18444",
+        "nodeType": "INSTANCE",
+        "textNodes": 45,
+        "instances": 59,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsMarket",
+        "nodeId": "192:18446",
+        "sectionId": "192:18444",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsMarket.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsMcp",
+      "title": "MCP",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/mcp/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=mcp",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsMcp",
+        "nodeId": "192:18664",
+        "sectionId": "192:18662",
+        "nodeType": "INSTANCE",
+        "textNodes": 39,
+        "instances": 37,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsMcp",
+        "nodeId": "192:18664",
+        "sectionId": "192:18662",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsMcp.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsPersonalization",
+      "title": "个性化",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/personalization.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=personalization",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsPersonalization",
+        "nodeId": "192:18822",
+        "sectionId": "192:18820",
+        "nodeType": "INSTANCE",
+        "textNodes": 27,
+        "instances": 30,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsPersonalization",
+        "nodeId": "192:18822",
+        "sectionId": "192:18820",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsPersonalization.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsPrivacy",
+      "title": "隐私",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/privacy.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=privacy",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsPrivacy",
+        "nodeId": "192:18951",
+        "sectionId": "192:18949",
+        "nodeType": "INSTANCE",
+        "textNodes": 33,
+        "instances": 27,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsPrivacy",
+        "nodeId": "192:18951",
+        "sectionId": "192:18949",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsPrivacy.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsDeveloper",
+      "title": "开发者选项 · 提示门槛",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/developer/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=developer",
+        "props": {},
+        "secondary": {
+          "family": "developerSettings",
+          "variant": "state=locked"
+        }
+      },
+      "verification": {
+        "id": "settingsDeveloper",
+        "nodeId": "192:19083",
+        "sectionId": "192:19081",
+        "nodeType": "INSTANCE",
+        "textNodes": 23,
+        "instances": 28,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsDeveloper",
+        "nodeId": "192:19083",
+        "sectionId": "192:19081",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsDeveloper.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "settingsAbout",
+      "title": "关于",
+      "group": "settings",
+      "sources": [
+        "apps/web/src/components/settings/index.vue",
+        "apps/web/src/components/settings/panels/about.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "settingsDialog",
+        "variant": "section=about",
+        "props": {}
+      },
+      "verification": {
+        "id": "settingsAbout",
+        "nodeId": "192:19312",
+        "sectionId": "192:19310",
+        "nodeType": "INSTANCE",
+        "textNodes": 31,
+        "instances": 33,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "settingsAbout",
+        "nodeId": "192:19312",
+        "sectionId": "192:19310",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/settingsAbout.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "languageAdd",
+      "title": "文本模型 · 添加内置供应商",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addProviderDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "providerPickerDialog",
+        "variant": "kind=language, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "languageAdd",
+        "nodeId": "192:19456",
+        "sectionId": "192:19454",
+        "nodeType": "INSTANCE",
+        "textNodes": 17,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "languageAdd",
+        "nodeId": "192:19456",
+        "sectionId": "192:19454",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/languageAdd.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "languageCustom",
+      "title": "文本模型 · 添加/编辑自定义供应商",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "languageProviderDialog",
+        "variant": "state=create",
+        "props": {}
+      },
+      "verification": {
+        "id": "languageCustom",
+        "nodeId": "192:19501",
+        "sectionId": "192:19499",
+        "nodeType": "INSTANCE",
+        "textNodes": 25,
+        "instances": 24,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "languageCustom",
+        "nodeId": "192:19501",
+        "sectionId": "192:19499",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/languageCustom.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mediaAdd",
+      "title": "媒体模型 · 添加内置供应商",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "providerPickerDialog",
+        "variant": "kind=media, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "mediaAdd",
+        "nodeId": "192:19597",
+        "sectionId": "192:19595",
+        "nodeType": "INSTANCE",
+        "textNodes": 18,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mediaAdd",
+        "nodeId": "192:19597",
+        "sectionId": "192:19595",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mediaAdd.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mediaCustom",
+      "title": "媒体模型 · 导入自定义供应商",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/addCustomProviderDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mediaImportDialog",
+        "variant": "method=file, state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "mediaCustom",
+        "nodeId": "192:19644",
+        "sectionId": "192:19642",
+        "nodeType": "INSTANCE",
+        "textNodes": 15,
+        "instances": 11,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mediaCustom",
+        "nodeId": "192:19644",
+        "sectionId": "192:19642",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mediaCustom.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mediaEdit",
+      "title": "媒体模型 · 编辑供应商",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/editProviderDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mediaProviderDialog",
+        "variant": "state=configured",
+        "props": {}
+      },
+      "verification": {
+        "id": "mediaEdit",
+        "nodeId": "192:19686",
+        "sectionId": "192:19684",
+        "nodeType": "INSTANCE",
+        "textNodes": 25,
+        "instances": 28,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mediaEdit",
+        "nodeId": "192:19686",
+        "sectionId": "192:19684",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mediaEdit.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mediaModelEditor",
+      "title": "媒体模型 · 添加/编辑单个模型",
+      "group": "models",
+      "sources": [
+        "apps/web/src/components/settings/panels/mediaModel/modelEditorDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mediaModelDialog",
+        "variant": "kind=video, state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "mediaModelEditor",
+        "nodeId": "192:19779",
+        "sectionId": "192:19777",
+        "nodeType": "INSTANCE",
+        "textNodes": 41,
+        "instances": 41,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mediaModelEditor",
+        "nodeId": "192:19779",
+        "sectionId": "192:19777",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mediaModelEditor.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "marketInstalled",
+      "title": "插件市场 · 已安装",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "pluginMarketSettings",
+        "variant": "state=installed",
+        "props": {}
+      },
+      "verification": {
+        "id": "marketInstalled",
+        "nodeId": "192:19931",
+        "sectionId": "192:19929",
+        "nodeType": "INSTANCE",
+        "textNodes": 31,
+        "instances": 35,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "marketInstalled",
+        "nodeId": "192:19931",
+        "sectionId": "192:19929",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/marketInstalled.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "marketFfmpeg",
+      "title": "插件市场 · FFmpeg",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/ffmpeg.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "ffmpegSettings",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "marketFfmpeg",
+        "nodeId": "192:20051",
+        "sectionId": "192:20049",
+        "nodeType": "INSTANCE",
+        "textNodes": 16,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "marketFfmpeg",
+        "nodeId": "192:20051",
+        "sectionId": "192:20049",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/marketFfmpeg.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "pluginDetails",
+      "title": "插件说明",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/index.vue",
+        "apps/web/src/components/messageMarkdown.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "pluginDetailsDialog",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "pluginDetails",
+        "nodeId": "192:20090",
+        "sectionId": "192:20088",
+        "nodeType": "INSTANCE",
+        "textNodes": 8,
+        "instances": 3,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "pluginDetails",
+        "nodeId": "192:20090",
+        "sectionId": "192:20088",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/pluginDetails.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "pluginConfig",
+      "title": "插件配置",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/pluginConfigDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "pluginConfigDialog",
+        "variant": "kind=searchKey, state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "pluginConfig",
+        "nodeId": "192:20106",
+        "sectionId": "192:20104",
+        "nodeType": "INSTANCE",
+        "textNodes": 14,
+        "instances": 13,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "pluginConfig",
+        "nodeId": "192:20106",
+        "sectionId": "192:20104",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/pluginConfig.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "skillEditor",
+      "title": "技能文件编辑器",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/skillEditorDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "skillEditorDialog",
+        "variant": "state=dirty",
+        "props": {}
+      },
+      "verification": {
+        "id": "skillEditor",
+        "nodeId": "192:20161",
+        "sectionId": "192:20159",
+        "nodeType": "INSTANCE",
+        "textNodes": 11,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "skillEditor",
+        "nodeId": "192:20161",
+        "sectionId": "192:20159",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/skillEditor.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mcpSkill",
+      "title": "MCP · Toonflow Skill 阅读",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/mcp/index.vue",
+        "apps/web/src/components/messageMarkdown.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mcpSkillDialog",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "mcpSkill",
+        "nodeId": "192:20211",
+        "sectionId": "192:20209",
+        "nodeType": "INSTANCE",
+        "textNodes": 7,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mcpSkill",
+        "nodeId": "192:20211",
+        "sectionId": "192:20209",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mcpSkill.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "personalizationMemory",
+      "title": "个性化 · 本地记忆",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/personalization.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "memoryDialog",
+        "variant": "state=empty",
+        "props": {}
+      },
+      "verification": {
+        "id": "personalizationMemory",
+        "nodeId": "192:20231",
+        "sectionId": "192:20229",
+        "nodeType": "INSTANCE",
+        "textNodes": 6,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "personalizationMemory",
+        "nodeId": "192:20231",
+        "sectionId": "192:20229",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/personalizationMemory.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "developerUnlocked",
+      "title": "开发者选项 · 工具内容",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "developerSettings",
+        "variant": "state=desktop",
+        "props": {}
+      },
+      "verification": {
+        "id": "developerUnlocked",
+        "nodeId": "192:20250",
+        "sectionId": "192:20248",
+        "nodeType": "INSTANCE",
+        "textNodes": 34,
+        "instances": 17,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "developerUnlocked",
+        "nodeId": "192:20250",
+        "sectionId": "192:20248",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/developerUnlocked.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "providerDebug",
+      "title": "供应商开发工具",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/providerDebugDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "providerDebugDialog",
+        "variant": "kind=video, state=result",
+        "props": {}
+      },
+      "verification": {
+        "id": "providerDebug",
+        "nodeId": "192:20332",
+        "sectionId": "192:20330",
+        "nodeType": "INSTANCE",
+        "textNodes": 32,
+        "instances": 36,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "providerDebug",
+        "nodeId": "192:20332",
+        "sectionId": "192:20330",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/providerDebug.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "systemPrompt",
+      "title": "Agent 系统提示词编辑",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/settings/panels/developer/systemPromptDialog.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "systemPromptDialog",
+        "variant": "state=editing",
+        "props": {}
+      },
+      "verification": {
+        "id": "systemPrompt",
+        "nodeId": "192:20468",
+        "sectionId": "192:20466",
+        "nodeType": "INSTANCE",
+        "textNodes": 8,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "systemPrompt",
+        "nodeId": "192:20468",
+        "sectionId": "192:20466",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/systemPrompt.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "updateNotes",
+      "title": "版本更新说明",
+      "group": "plugins",
+      "sources": [
+        "apps/web/src/components/updateBox.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "updateNotesDialog",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "updateNotes",
+        "nodeId": "192:20492",
+        "sectionId": "192:20490",
+        "nodeType": "INSTANCE",
+        "textNodes": 11,
+        "instances": 4,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "updateNotes",
+        "nodeId": "192:20492",
+        "sectionId": "192:20490",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/updateNotes.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "workspacePicker",
+      "title": "服务器工作目录选择",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/home/workspacePicker.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "workspacePicker",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "workspacePicker",
+        "nodeId": "192:20517",
+        "sectionId": "192:20515",
+        "nodeType": "INSTANCE",
+        "textNodes": 15,
+        "instances": 17,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "workspacePicker",
+        "nodeId": "192:20517",
+        "sectionId": "192:20515",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/workspacePicker.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "projectAdd",
+      "title": "添加项目确认",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "projectActionDialog",
+        "variant": "kind=add",
+        "props": {}
+      },
+      "verification": {
+        "id": "projectAdd",
+        "nodeId": "192:20586",
+        "sectionId": "192:20584",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "projectAdd",
+        "nodeId": "192:20586",
+        "sectionId": "192:20584",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/projectAdd.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "projectRename",
+      "title": "重命名项目",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/home/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "projectActionDialog",
+        "variant": "kind=rename",
+        "props": {}
+      },
+      "verification": {
+        "id": "projectRename",
+        "nodeId": "192:20604",
+        "sectionId": "192:20602",
+        "nodeType": "INSTANCE",
+        "textNodes": 6,
+        "instances": 6,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "projectRename",
+        "nodeId": "192:20604",
+        "sectionId": "192:20602",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/projectRename.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "workspaceExit",
+      "title": "退出项目确认",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/components/workspaceMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "projectActionDialog",
+        "variant": "kind=exit",
+        "props": {}
+      },
+      "verification": {
+        "id": "workspaceExit",
+        "nodeId": "192:20624",
+        "sectionId": "192:20622",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "workspaceExit",
+        "nodeId": "192:20624",
+        "sectionId": "192:20622",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/workspaceExit.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "canvasContextMenu",
+      "title": "画布右键操作菜单",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "contextMenu",
+        "variant": "kind=canvas",
+        "props": {}
+      },
+      "verification": {
+        "id": "canvasContextMenu",
+        "nodeId": "192:20642",
+        "sectionId": "192:20640",
+        "nodeType": "INSTANCE",
+        "textNodes": 11,
+        "instances": 11,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "canvasContextMenu",
+        "nodeId": "192:20642",
+        "sectionId": "192:20640",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/canvasContextMenu.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "canvasNodeMenu",
+      "title": "添加节点菜单",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "contextMenu",
+        "variant": "kind=nodes",
+        "props": {}
+      },
+      "verification": {
+        "id": "canvasNodeMenu",
+        "nodeId": "192:20681",
+        "sectionId": "192:20679",
+        "nodeType": "INSTANCE",
+        "textNodes": 17,
+        "instances": 17,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "canvasNodeMenu",
+        "nodeId": "192:20681",
+        "sectionId": "192:20679",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/canvasNodeMenu.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "canvasSwitcher",
+      "title": "画布列表与切换",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/canvasMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasSwitcher",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "canvasSwitcher",
+        "nodeId": "192:20750",
+        "sectionId": "192:20748",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "canvasSwitcher",
+        "nodeId": "192:20750",
+        "sectionId": "192:20748",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/canvasSwitcher.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "canvasSearch",
+      "title": "画布节点搜索",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/nodeSearch.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "nodeSearch",
+        "variant": "state=results",
+        "props": {}
+      },
+      "verification": {
+        "id": "canvasSearch",
+        "nodeId": "192:20782",
+        "sectionId": "192:20780",
+        "nodeType": "INSTANCE",
+        "textNodes": 9,
+        "instances": 8,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "canvasSearch",
+        "nodeId": "192:20782",
+        "sectionId": "192:20780",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/canvasSearch.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "documentSearch",
+      "title": "文档正文查找",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/document/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "documentSearch",
+        "variant": "state=found",
+        "props": {}
+      },
+      "verification": {
+        "id": "documentSearch",
+        "nodeId": "192:20829",
+        "sectionId": "192:20827",
+        "nodeType": "INSTANCE",
+        "textNodes": 3,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "documentSearch",
+        "nodeId": "192:20829",
+        "sectionId": "192:20827",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/documentSearch.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "assetLibraryEmpty",
+      "title": "全局素材库",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue",
+        "apps/web/src/pages/workspace/panels/canvas/components/assetMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "assetLibrary",
+        "variant": "state=empty",
+        "props": {}
+      },
+      "verification": {
+        "id": "assetLibraryEmpty",
+        "nodeId": "192:20857",
+        "sectionId": "192:20855",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "assetLibraryEmpty",
+        "nodeId": "192:20857",
+        "sectionId": "192:20855",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/assetLibraryEmpty.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "assetSave",
+      "title": "保存到素材库",
+      "group": "workspace",
+      "sources": [
+        "apps/web/src/pages/workspace/panels/canvas/components/assetLibrary.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "assetSaveDialog",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "assetSave",
+        "nodeId": "192:20888",
+        "sectionId": "192:20886",
+        "nodeType": "INSTANCE",
+        "textNodes": 13,
+        "instances": 14,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "assetSave",
+        "nodeId": "192:20888",
+        "sectionId": "192:20886",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/assetSave.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeText",
+      "title": "文本节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/textNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=text, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeText",
+        "nodeId": "192:20942",
+        "sectionId": "192:20940",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 8,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeText",
+        "nodeId": "192:20942",
+        "sectionId": "192:20940",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeText.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeImage",
+      "title": "图片节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/imageNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=image, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeImage",
+        "nodeId": "192:20970",
+        "sectionId": "192:20968",
+        "nodeType": "INSTANCE",
+        "textNodes": 2,
+        "instances": 8,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeImage",
+        "nodeId": "192:20970",
+        "sectionId": "192:20968",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeImage.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeVideo",
+      "title": "视频节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/videoNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=video, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeVideo",
+        "nodeId": "192:20996",
+        "sectionId": "192:20994",
+        "nodeType": "INSTANCE",
+        "textNodes": 3,
+        "instances": 14,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeVideo",
+        "nodeId": "192:20996",
+        "sectionId": "192:20994",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeVideo.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeAudio",
+      "title": "音频节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/audioNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=audio, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeAudio",
+        "nodeId": "192:21042",
+        "sectionId": "192:21040",
+        "nodeType": "INSTANCE",
+        "textNodes": 3,
+        "instances": 12,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeAudio",
+        "nodeId": "192:21042",
+        "sectionId": "192:21040",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeAudio.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeImageGeneration",
+      "title": "图片生成节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/imageGenerationNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=imageGeneration, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeImageGeneration",
+        "nodeId": "192:21081",
+        "sectionId": "192:21079",
+        "nodeType": "INSTANCE",
+        "textNodes": 2,
+        "instances": 8,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeImageGeneration",
+        "nodeId": "192:21081",
+        "sectionId": "192:21079",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeImageGeneration.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeVideoGeneration",
+      "title": "视频生成节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/videoGenerationNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=videoGeneration, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeVideoGeneration",
+        "nodeId": "192:21104",
+        "sectionId": "192:21102",
+        "nodeType": "INSTANCE",
+        "textNodes": 3,
+        "instances": 14,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeVideoGeneration",
+        "nodeId": "192:21104",
+        "sectionId": "192:21102",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeVideoGeneration.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeDirector",
+      "title": "3D 导演台节点",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/director3dNode/src/index.vue",
+        "packages/nodeScaffold/src/nodeSkeleton.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=director, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeDirector",
+        "nodeId": "192:21150",
+        "sectionId": "192:21148",
+        "nodeType": "INSTANCE",
+        "textNodes": 3,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeDirector",
+        "nodeId": "192:21150",
+        "sectionId": "192:21148",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeDirector.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeAssembly",
+      "title": "成片合成节点",
+      "group": "nodes",
+      "sources": [
+        "build/nodes/assemblyNode.umd.js"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "canvasNode",
+        "variant": "kind=assembly, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeAssembly",
+        "nodeId": "192:21182",
+        "sectionId": "192:21180",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeAssembly",
+        "nodeId": "192:21182",
+        "sectionId": "192:21180",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeAssembly.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "textEditor",
+      "title": "文本节点编辑弹窗",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/textNode/src/index.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "textEditor",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "textEditor",
+        "nodeId": "192:21213",
+        "sectionId": "192:21211",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 3,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "textEditor",
+        "nodeId": "192:21213",
+        "sectionId": "192:21211",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/textEditor.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "imageGenerationSettings",
+      "title": "图片生成参数",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/imageGenerationNode/src/components/generationSettings.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "generationSettings",
+        "variant": "kind=image",
+        "props": {}
+      },
+      "verification": {
+        "id": "imageGenerationSettings",
+        "nodeId": "192:21228",
+        "sectionId": "192:21226",
+        "nodeType": "INSTANCE",
+        "textNodes": 10,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "imageGenerationSettings",
+        "nodeId": "192:21228",
+        "sectionId": "192:21226",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/imageGenerationSettings.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "videoGenerationSettings",
+      "title": "视频生成参数",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/videoGenerationNode/src/components/generationSettings.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "generationSettings",
+        "variant": "kind=video",
+        "props": {}
+      },
+      "verification": {
+        "id": "videoGenerationSettings",
+        "nodeId": "192:21259",
+        "sectionId": "192:21257",
+        "nodeType": "INSTANCE",
+        "textNodes": 15,
+        "instances": 14,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "videoGenerationSettings",
+        "nodeId": "192:21259",
+        "sectionId": "192:21257",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/videoGenerationSettings.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mediaHistory",
+      "title": "图片/视频生成历史",
+      "group": "nodes",
+      "sources": [
+        "packages/nodeScaffold/src/components/mediaHistory.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mediaHistory",
+        "variant": "state=image",
+        "props": {}
+      },
+      "verification": {
+        "id": "mediaHistory",
+        "nodeId": "192:21308",
+        "sectionId": "192:21306",
+        "nodeType": "INSTANCE",
+        "textNodes": 13,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mediaHistory",
+        "nodeId": "192:21308",
+        "sectionId": "192:21306",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mediaHistory.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "directorEditor",
+      "title": "3D 导演台编辑器",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue",
+        "packages/nodes/director3dNode/src/directorPanel.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "sceneEditor",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "directorEditor",
+        "nodeId": "192:21361",
+        "sectionId": "192:21359",
+        "nodeType": "INSTANCE",
+        "textNodes": 28,
+        "instances": 41,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "directorEditor",
+        "nodeId": "192:21361",
+        "sectionId": "192:21359",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/directorEditor.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "directorTour",
+      "title": "3D 导演台首次操作引导",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/director3dNode/src/directorTour.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "directorTour",
+        "variant": "step=1",
+        "props": {}
+      },
+      "verification": {
+        "id": "directorTour",
+        "nodeId": "192:21514",
+        "sectionId": "192:21512",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 2,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "directorTour",
+        "nodeId": "192:21514",
+        "sectionId": "192:21512",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/directorTour.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "directorSettings",
+      "title": "3D 导演台场景设置",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "sceneSettings",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "directorSettings",
+        "nodeId": "192:21524",
+        "sectionId": "192:21522",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 4,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "directorSettings",
+        "nodeId": "192:21524",
+        "sectionId": "192:21522",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/directorSettings.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "directorLighting",
+      "title": "3D 导演台光照设置",
+      "group": "nodes",
+      "sources": [
+        "packages/nodes/director3dNode/src/sceneEditor.vue",
+        "packages/nodes/director3dNode/src/lightDirection.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "lightingPanel",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "directorLighting",
+        "nodeId": "192:21538",
+        "sectionId": "192:21536",
+        "nodeType": "INSTANCE",
+        "textNodes": 13,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "directorLighting",
+        "nodeId": "192:21538",
+        "sectionId": "192:21536",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/directorLighting.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentFloating",
+      "title": "Agent 浮动对话面板",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/pages/workspace/components/floatingAgent.vue",
+        "apps/web/src/components/agent/index.vue",
+        "apps/web/src/components/agent/conversation.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "186:1929"
+      },
+      "verification": {
+        "id": "agentFloating",
+        "nodeId": "192:21579",
+        "sectionId": "192:21577",
+        "nodeType": "FRAME",
+        "textNodes": 28,
+        "instances": 106,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentFloating",
+        "nodeId": "192:21579",
+        "sectionId": "192:21577",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentFloating.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentDocked",
+      "title": "Agent 右侧停靠面板",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/pages/workspace/components/floatingAgent.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "frameId": "45:132"
+      },
+      "verification": {
+        "id": "agentDocked",
+        "nodeId": "192:21621",
+        "sectionId": "192:21619",
+        "nodeType": "FRAME",
+        "textNodes": 27,
+        "instances": 101,
+        "fonts": [
+          "Noto Sans SC",
+          "Inter"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentDocked",
+        "nodeId": "192:21621",
+        "sectionId": "192:21619",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentDocked.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentHistory",
+      "title": "Agent 历史对话",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/components/agent/menu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "agentHistory",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentHistory",
+        "nodeId": "192:21699",
+        "sectionId": "192:21697",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 17,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentHistory",
+        "nodeId": "192:21699",
+        "sectionId": "192:21697",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentHistory.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "modelPicker",
+      "title": "模型与推理等级选择",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/components/modelPopover.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "modelPopover",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "modelPicker",
+        "nodeId": "192:21766",
+        "sectionId": "192:21764",
+        "nodeType": "INSTANCE",
+        "textNodes": 8,
+        "instances": 3,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "modelPicker",
+        "nodeId": "192:21766",
+        "sectionId": "192:21764",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/modelPicker.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentSkills",
+      "title": "Agent 技能选择",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/components/agent/skillMenu.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "skillMenu",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentSkills",
+        "nodeId": "192:21786",
+        "sectionId": "192:21784",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 3,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentSkills",
+        "nodeId": "192:21786",
+        "sectionId": "192:21784",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentSkills.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentMentions",
+      "title": "Agent 节点输出/素材引用",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/components/agent/mentionMenu.vue",
+        "apps/web/src/components/agent/mentionThumbnail.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mentionMenu",
+        "variant": "state=nodes",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentMentions",
+        "nodeId": "192:21808",
+        "sectionId": "192:21806",
+        "nodeType": "INSTANCE",
+        "textNodes": 9,
+        "instances": 12,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentMentions",
+        "nodeId": "192:21808",
+        "sectionId": "192:21806",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentMentions.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentContext",
+      "title": "Agent 上下文用量",
+      "group": "agent",
+      "sources": [
+        "apps/web/src/components/agent/conversation.vue"
+      ],
+      "sourceStatus": "已截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "contextUsage",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentContext",
+        "nodeId": "192:21858",
+        "sectionId": "192:21856",
+        "nodeType": "INSTANCE",
+        "textNodes": 13,
+        "instances": 1,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentContext",
+        "nodeId": "192:21858",
+        "sectionId": "192:21856",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentContext.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "languageModelResults",
+      "title": "文本模型批量选择",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/languageModel/addCustomProviderDialog.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "languageModelSelection",
+        "variant": "state=selected",
+        "props": {}
+      },
+      "verification": {
+        "id": "languageModelResults",
+        "nodeId": "192:22529",
+        "sectionId": "192:22527",
+        "nodeType": "INSTANCE",
+        "textNodes": 15,
+        "instances": 12,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "languageModelResults",
+        "nodeId": "192:22529",
+        "sectionId": "192:22527",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/languageModelResults.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "tfRecharge",
+      "title": "TF-Router 充值",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/tfRechargeDialog.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "rechargeDialog",
+        "variant": "state=custom",
+        "props": {}
+      },
+      "verification": {
+        "id": "tfRecharge",
+        "nodeId": "192:22578",
+        "sectionId": "192:22576",
+        "nodeType": "INSTANCE",
+        "textNodes": 12,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "tfRecharge",
+        "nodeId": "192:22578",
+        "sectionId": "192:22576",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/tfRecharge.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mcpCopy",
+      "title": "MCP 配置/内容复制弹窗",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/mcp/index.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mcpCopyDialog",
+        "variant": "kind=http",
+        "props": {}
+      },
+      "verification": {
+        "id": "mcpCopy",
+        "nodeId": "192:22620",
+        "sectionId": "192:22618",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 4,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mcpCopy",
+        "nodeId": "192:22620",
+        "sectionId": "192:22618",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mcpCopy.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentConnect",
+      "title": "连接远程 Agent",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/agentConnectDialog.vue"
+      ],
+      "sourceStatus": "入口关闭",
+      "sourceDisabled": true,
+      "reference": {
+        "family": "agentConnectDialog",
+        "variant": "state=default",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentConnect",
+        "nodeId": "192:22634",
+        "sectionId": "192:22632",
+        "nodeType": "INSTANCE",
+        "textNodes": 10,
+        "instances": 9,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": true
+      },
+      "rendered": {
+        "id": "agentConnect",
+        "nodeId": "192:22634",
+        "sectionId": "192:22632",
+        "sourceDisabled": true
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentConnect.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "a2aSettings",
+      "title": "A2A 服务设置",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/a2aSettingsDialog.vue"
+      ],
+      "sourceStatus": "入口关闭",
+      "sourceDisabled": true,
+      "reference": {
+        "family": "a2aSettingsDialog",
+        "variant": "state=disabled",
+        "props": {}
+      },
+      "verification": {
+        "id": "a2aSettings",
+        "nodeId": "192:22668",
+        "sectionId": "192:22666",
+        "nodeType": "INSTANCE",
+        "textNodes": 11,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": true
+      },
+      "rendered": {
+        "id": "a2aSettings",
+        "nodeId": "192:22668",
+        "sectionId": "192:22666",
+        "sourceDisabled": true
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/a2aSettings.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentEditor",
+      "title": "Agent 文件编辑器",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/pluginMarket/agentEditorDialog.vue"
+      ],
+      "sourceStatus": "入口关闭",
+      "sourceDisabled": true,
+      "reference": {
+        "family": "agentEditorDialog",
+        "variant": "state=readonly",
+        "props": {}
+      },
+      "verification": {
+        "id": "agentEditor",
+        "nodeId": "192:22704",
+        "sectionId": "192:22702",
+        "nodeType": "INSTANCE",
+        "textNodes": 6,
+        "instances": 7,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": true
+      },
+      "rendered": {
+        "id": "agentEditor",
+        "nodeId": "192:22704",
+        "sectionId": "192:22702",
+        "sourceDisabled": true
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentEditor.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "desktopUpdateResult",
+      "title": "版本检查/下载进度结果",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/panels/about.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "updateResultDialog",
+        "variant": "state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "desktopUpdateResult",
+        "nodeId": "192:22729",
+        "sectionId": "192:22727",
+        "nodeType": "INSTANCE",
+        "textNodes": 9,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "desktopUpdateResult",
+        "nodeId": "192:22729",
+        "sectionId": "192:22727",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/desktopUpdateResult.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "ffmpegRequired",
+      "title": "FFmpeg 缺失提示与安装弹窗",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/settings/ffmpegRequired.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "ffmpegRequiredDialog",
+        "variant": "state=required",
+        "props": {}
+      },
+      "verification": {
+        "id": "ffmpegRequired",
+        "nodeId": "192:22754",
+        "sectionId": "192:22752",
+        "nodeType": "INSTANCE",
+        "textNodes": 5,
+        "instances": 5,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "ffmpegRequired",
+        "nodeId": "192:22754",
+        "sectionId": "192:22752",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/ffmpegRequired.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "attachmentPreview",
+      "title": "Agent 图片/视频附件预览",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/agent/attachmentList.vue",
+        "apps/web/src/components/agent/attachmentPreview.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "attachmentPreviewDialog",
+        "variant": "kind=video",
+        "props": {}
+      },
+      "verification": {
+        "id": "attachmentPreview",
+        "nodeId": "192:22772",
+        "sectionId": "192:22770",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 10,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "attachmentPreview",
+        "nodeId": "192:22772",
+        "sectionId": "192:22770",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/attachmentPreview.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "mentionPreview",
+      "title": "Agent 已引用内容预览",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/agent/mentionContent.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "mentionPreviewDialog",
+        "variant": "kind=text, state=ready",
+        "props": {}
+      },
+      "verification": {
+        "id": "mentionPreview",
+        "nodeId": "192:22810",
+        "sectionId": "192:22808",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 4,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "mentionPreview",
+        "nodeId": "192:22810",
+        "sectionId": "192:22808",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/mentionPreview.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "agentTools",
+      "title": "Agent 工具消息与提问卡片",
+      "group": "conditional",
+      "sources": [
+        "apps/web/src/components/agent/toolMessage.vue",
+        "packages/tools/askUser/src/questionCard.vue",
+        "packages/tools/canvas/src/nodeFocusCard.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "toolCall",
+        "variant": "state=expanded",
+        "props": {},
+        "additional": [
+          {
+            "family": "questionCard",
+            "variant": "state=form"
+          },
+          {
+            "family": "nodeFocusChip",
+            "variant": "state=default"
+          }
+        ]
+      },
+      "verification": {
+        "id": "agentTools",
+        "nodeId": "192:22824",
+        "sectionId": "192:22822",
+        "nodeType": "INSTANCE",
+        "textNodes": 19,
+        "instances": 16,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "agentTools",
+        "nodeId": "192:22824",
+        "sectionId": "192:22822",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/agentTools.png",
+      "visualReview": "checked"
+    },
+    {
+      "id": "nodeError",
+      "title": "节点生成错误详情",
+      "group": "conditional",
+      "sources": [
+        "packages/nodeScaffold/src/components/nodeError.vue"
+      ],
+      "sourceStatus": "条件态未截图",
+      "sourceDisabled": false,
+      "reference": {
+        "family": "nodeError",
+        "variant": "state=error",
+        "props": {}
+      },
+      "verification": {
+        "id": "nodeError",
+        "nodeId": "192:22889",
+        "sectionId": "192:22887",
+        "nodeType": "INSTANCE",
+        "textNodes": 4,
+        "instances": 2,
+        "fonts": [
+          "Noto Sans SC"
+        ],
+        "issues": [],
+        "visibleLegacy": [],
+        "sourceDisabled": false
+      },
+      "rendered": {
+        "id": "nodeError",
+        "nodeId": "192:22889",
+        "sectionId": "192:22887",
+        "sourceDisabled": false
+      },
+      "preview": "docs/figmaStyleV3/statePreviews/nodeError.png",
+      "visualReview": "checked"
+    }
+  ]
+}

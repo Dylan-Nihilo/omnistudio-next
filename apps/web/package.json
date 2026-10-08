@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc"
@@ -37,6 +37,7 @@
     "@toonflow/server": "workspace:*",
     "@toonflow/tool-canvas": "workspace:*",
     "@toonflow/tools-scaffold": "workspace:*",
+    "@toonflow/ui": "workspace:*",
     "@vue-flow/background": "^1.3.2",
     "@vue-flow/core": "^1.48.2",
     "@vue-flow/minimap": "^1.5.4",

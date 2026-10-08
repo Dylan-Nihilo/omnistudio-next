@@ -1,0 +1,328 @@
+{
+  "status": "packaged",
+  "scope": "Foundation UI library in uiRefactor worktree; not application migration",
+  "package": "@toonflow/ui",
+  "componentCount": 44,
+  "components": [
+    {
+      "name": "uiAlert",
+      "path": "packages/ui/src/components/uiAlert.vue"
+    },
+    {
+      "name": "uiBadge",
+      "path": "packages/ui/src/components/uiBadge.vue"
+    },
+    {
+      "name": "uiButton",
+      "path": "packages/ui/src/components/uiButton.vue"
+    },
+    {
+      "name": "uiCard",
+      "path": "packages/ui/src/components/uiCard.vue"
+    },
+    {
+      "name": "uiCheckbox",
+      "path": "packages/ui/src/components/uiCheckbox.vue"
+    },
+    {
+      "name": "uiCheckboxGroup",
+      "path": "packages/ui/src/components/uiCheckboxGroup.vue"
+    },
+    {
+      "name": "uiCollapse",
+      "path": "packages/ui/src/components/uiCollapse.vue"
+    },
+    {
+      "name": "uiColorPicker",
+      "path": "packages/ui/src/components/uiColorPicker.vue"
+    },
+    {
+      "name": "uiDialog",
+      "path": "packages/ui/src/components/uiDialog.vue"
+    },
+    {
+      "name": "uiDropdown",
+      "path": "packages/ui/src/components/uiDropdown.vue"
+    },
+    {
+      "name": "uiEmpty",
+      "path": "packages/ui/src/components/uiEmpty.vue"
+    },
+    {
+      "name": "uiFeedbackProvider",
+      "path": "packages/ui/src/components/uiFeedbackProvider.vue"
+    },
+    {
+      "name": "uiField",
+      "path": "packages/ui/src/components/uiField.vue"
+    },
+    {
+      "name": "uiForm",
+      "path": "packages/ui/src/components/uiForm.vue"
+    },
+    {
+      "name": "uiFormField",
+      "path": "packages/ui/src/components/uiFormField.vue"
+    },
+    {
+      "name": "uiIconButton",
+      "path": "packages/ui/src/components/uiIconButton.vue"
+    },
+    {
+      "name": "uiImage",
+      "path": "packages/ui/src/components/uiImage.vue"
+    },
+    {
+      "name": "uiImageViewer",
+      "path": "packages/ui/src/components/uiImageViewer.vue"
+    },
+    {
+      "name": "uiInput",
+      "path": "packages/ui/src/components/uiInput.vue"
+    },
+    {
+      "name": "uiLoading",
+      "path": "packages/ui/src/components/uiLoading.vue"
+    },
+    {
+      "name": "uiMediaPlayer",
+      "path": "packages/ui/src/components/uiMediaPlayer.vue"
+    },
+    {
+      "name": "uiNumberInput",
+      "path": "packages/ui/src/components/uiNumberInput.vue"
+    },
+    {
+      "name": "uiPagination",
+      "path": "packages/ui/src/components/uiPagination.vue"
+    },
+    {
+      "name": "uiPopconfirm",
+      "path": "packages/ui/src/components/uiPopconfirm.vue"
+    },
+    {
+      "name": "uiPopover",
+      "path": "packages/ui/src/components/uiPopover.vue"
+    },
+    {
+      "name": "uiProgress",
+      "path": "packages/ui/src/components/uiProgress.vue"
+    },
+    {
+      "name": "uiRadio",
+      "path": "packages/ui/src/components/uiRadio.vue"
+    },
+    {
+      "name": "uiRadioGroup",
+      "path": "packages/ui/src/components/uiRadioGroup.vue"
+    },
+    {
+      "name": "uiResizeBox",
+      "path": "packages/ui/src/components/uiResizeBox.vue"
+    },
+    {
+      "name": "uiRuleForm",
+      "path": "packages/ui/src/components/uiRuleForm.vue"
+    },
+    {
+      "name": "uiSelect",
+      "path": "packages/ui/src/components/uiSelect.vue"
+    },
+    {
+      "name": "uiSkeleton",
+      "path": "packages/ui/src/components/uiSkeleton.vue"
+    },
+    {
+      "name": "uiSlider",
+      "path": "packages/ui/src/components/uiSlider.vue"
+    },
+    {
+      "name": "uiSwitch",
+      "path": "packages/ui/src/components/uiSwitch.vue"
+    },
+    {
+      "name": "uiTable",
+      "path": "packages/ui/src/components/uiTable.vue"
+    },
+    {
+      "name": "uiTabs",
+      "path": "packages/ui/src/components/uiTabs.vue"
+    },
+    {
+      "name": "uiTag",
+      "path": "packages/ui/src/components/uiTag.vue"
+    },
+    {
+      "name": "uiTagInput",
+      "path": "packages/ui/src/components/uiTagInput.vue"
+    },
+    {
+      "name": "uiTextarea",
+      "path": "packages/ui/src/components/uiTextarea.vue"
+    },
+    {
+      "name": "uiThemeProvider",
+      "path": "packages/ui/src/components/uiThemeProvider.vue"
+    },
+    {
+      "name": "uiTooltip",
+      "path": "packages/ui/src/components/uiTooltip.vue"
+    },
+    {
+      "name": "uiTour",
+      "path": "packages/ui/src/components/uiTour.vue"
+    },
+    {
+      "name": "uiTree",
+      "path": "packages/ui/src/components/uiTree.vue"
+    },
+    {
+      "name": "uiVirtualTable",
+      "path": "packages/ui/src/components/uiVirtualTable.vue"
+    }
+  ],
+  "exports": {
+    "runtime": "packages/ui/dist/index.js",
+    "styles": "packages/ui/dist/index.css",
+    "types": "packages/ui/dist/index.d.ts",
+    "development": "packages/ui/src/index.ts"
+  },
+  "engines": [
+    "Vue peer runtime",
+    "@floating-ui/dom 1.8.0",
+    "async-validator 4.2.5",
+    "@tanstack/vue-virtual 3.13.39"
+  ],
+  "legacyCapabilityMapping": {
+    "el-button / el-link / el-icon": [
+      "uiButton",
+      "uiIconButton",
+      "semantic HTML / external icon Component"
+    ],
+    "el-input / el-input-number / el-input-tag": [
+      "uiInput",
+      "uiTextarea",
+      "uiNumberInput",
+      "uiTagInput"
+    ],
+    "el-select / el-option / el-option-group": [
+      "uiSelect: options and group"
+    ],
+    "el-radio / el-radio-group / el-radio-button / el-segmented": [
+      "uiRadio",
+      "uiRadioGroup: default, bordered, segmented"
+    ],
+    "el-checkbox / el-checkbox-group / el-switch / el-slider / el-color-picker": [
+      "uiCheckbox",
+      "uiCheckboxGroup",
+      "uiSwitch",
+      "uiSlider",
+      "uiColorPicker"
+    ],
+    "el-form / el-form-item / form-create": [
+      "uiForm",
+      "uiFormField",
+      "uiField",
+      "uiRuleForm: documented known-field subset, unknown fields blocked"
+    ],
+    "el-dialog / el-popover / el-dropdown / el-dropdown-menu / el-dropdown-item / el-popconfirm / el-tooltip": [
+      "uiDialog",
+      "uiPopover",
+      "uiDropdown: data-driven nested menu",
+      "uiPopconfirm",
+      "uiTooltip"
+    ],
+    "ElMessage / ElNotification / ElMessageBox": [
+      "createUiFeedback",
+      "uiFeedbackProvider",
+      "useUiFeedback"
+    ],
+    "el-alert / el-tag / el-badge / el-progress / el-skeleton / el-skeleton-item / v-loading": [
+      "uiAlert",
+      "uiTag",
+      "uiBadge",
+      "uiProgress",
+      "uiSkeleton",
+      "uiLoading"
+    ],
+    "el-tabs / el-tab-pane / el-collapse / el-collapse-item / el-pagination": [
+      "uiTabs",
+      "uiCollapse",
+      "uiPagination"
+    ],
+    "el-tree / el-table / el-table-column / el-table-v2 / el-auto-resizer": [
+      "uiTree",
+      "uiTable",
+      "uiVirtualTable",
+      "uiResizeBox"
+    ],
+    "el-image / el-image-viewer / media / el-tour / el-tour-step": [
+      "uiImage",
+      "uiImageViewer",
+      "uiMediaPlayer",
+      "uiTour"
+    ],
+    "el-card / el-empty / el-scrollbar / el-text / el-space / el-divider / el-container / el-header / el-main / el-config-provider": [
+      "uiCard",
+      "uiEmpty",
+      "uiThemeProvider",
+      "semantic HTML + scoped layout/scroll classes"
+    ]
+  },
+  "verification": {
+    "uiTypecheck": "passed",
+    "uiBuildAndDeclarations": "passed",
+    "previewTypecheck": "passed",
+    "previewBuild": "passed",
+    "frozenInstall": "passed",
+    "browser": "Chromium via Playwright; no test files created",
+    "passed": [
+      "five catalog groups at 1280x960",
+      "all five groups at 1024x768 and 125% font without horizontal overflow",
+      "nested menus, keyboard focus, topmost Escape and no hover reopening",
+      "prompt error focus and cancelled edit retains current value",
+      "multiple Vue app radio ID isolation",
+      "stale asynchronous validation rejection",
+      "conditional required fields and hidden/false/zero value retention",
+      "unknown field blocks validate and retains original data",
+      "feedback cleanup closes once and clear rejects pending request",
+      "bounded virtual DOM and End key reaches last row",
+      "asynchronous tree loading and filtering",
+      "image navigation/zoom/rotation and tour finish",
+      "decimal number keyboard step and single change",
+      "textarea autosize",
+      "audio metadata/play/pause/mute/volume using an in-memory WAV blob",
+      "current SVG logo loaded at 168x60 without cropping in dark/green/light modes",
+      "custom hex accent updates rendered variables and keeps Logo artwork unchanged"
+    ],
+    "browserPageErrors": 0,
+    "businessApiRequests": 0,
+    "independentReview": "Kimi read-only review request timed out; no second-opinion result accepted"
+  },
+  "brand": {
+    "source": "/Users/dylanthomas/Downloads/omnistudio.svg",
+    "asset": "packages/assets/omniStudioLogo.svg",
+    "sha256": "27d488f65cde06f7e7fbad5ba56671b8c632bae7f6962b73d9b1d49441988bf6",
+    "viewBox": "0 0 448 160",
+    "headerGeometry": {
+      "width": 168,
+      "height": 60
+    },
+    "unchangedArtwork": true,
+    "themeRecoloring": false,
+    "activeOldBlueLogoReferencesInPreview": 0,
+    "historicalAssetsPreserved": true,
+    "remoteFigmaModified": false,
+    "applicationIdentifiersModified": false
+  },
+  "docs": "packages/ui/readme.md",
+  "previews": "docs/uiLibraryPreviews/",
+  "pendingIntegration": [
+    "actual business page migration and 82 application states",
+    "macOS desktop WebView and Windows WebView2 baseline/feature compatibility",
+    "legacy UI overlay and canvas global shortcut coexistence",
+    "unknown external plugin rules and runtime host adapters",
+    "real file/settings persistence, model generation and paid operations not executed",
+    "physical video/fullscreen/native-window verification"
+  ]
+}

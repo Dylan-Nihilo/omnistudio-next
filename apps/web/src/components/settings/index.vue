@@ -1,35 +1,30 @@
 <template>
-  <el-dialog v-model="visible" title="设置" width="min(1080px, calc(100vw - 32px))" alignCenter appendToBody>
-    <div class="settings">
-      <aside class="sidebar" aria-label="设置分类">
-        <template v-for="item in settingsPanels" :key="item.id">
-          <h3 v-if="item.groupLabel" class="settingsGroupLabel">{{ item.groupLabel }}</h3>
-          <button class="settingsItem" type="button" :aria-label="item.id === 'about' && hasDesktopUpdate ? `${item.label}，有新版本可用` : item.label" :aria-pressed="activePanel.id === item.id" @click="activePanel = item">
-            <el-badge class="panelIcon" isDot :hidden="item.id !== 'about' || !hasDesktopUpdate">
-              <component :is="item.icon" :size="18" aria-hidden="true" />
-            </el-badge>
-            <span>{{ item.label }}</span>
-          </button>
-        </template>
-      </aside>
-      <section class="content" :aria-label="activePanel.label" tabindex="0">
-        <h2 class="panelTitle">{{ activePanel.label }}</h2>
-        <div class="panelContent">
-          <transition name="el-fade-in" mode="out-in">
-            <keep-alive include="personalization">
-              <component
-                :is="activePanel.component"
-                v-bind="['pluginMarket', 'languageModel', 'mediaModel', 'personalization'].includes(activePanel.id) ? { visible } : {}" />
-            </keep-alive>
-          </transition>
-        </div>
-      </section>
-    </div>
+  <el-dialog v-model="visible" title="设置" width="min(1120px, calc(100vw - 32px))" alignCenter appendToBody>
+    <uiThemeProvider class="settingsTheme" :mode="uiSettings.theme" :primaryColor="uiSettings.primaryColor" :radius="uiSettings.radius" :fontScale="100">
+      <div class="settings">
+        <aside class="settingsSidebar" aria-label="设置分类">
+          <template v-for="item in settingsPanels" :key="item.id">
+            <h3 v-if="item.groupLabel" class="settingsGroupLabel">{{ item.groupLabel }}</h3>
+            <uiButton class="settingsItem" variant="ghost" :class="{ isActive: activePanel.id === item.id }" :aria-label="item.id === 'about' && hasDesktopUpdate ? `${item.label}，有新版本可用` : item.label" :aria-pressed="activePanel.id === item.id" @click="activePanel = item">
+              <uiBadge dot :hidden="item.id !== 'about' || !hasDesktopUpdate" label="有新版本可用"><component :is="item.icon" :size="18" aria-hidden="true" /></uiBadge><span class="settingsLabel">{{ item.label }}</span>
+            </uiButton>
+          </template>
+        </aside>
+        <section class="settingsContent" :aria-label="activePanel.label" tabindex="0">
+          <header class="settingsHeader"><h2>{{ activePanel.label }}</h2></header>
+          <div class="panelContent">
+            <keep-alive include="personalization"><component :is="activePanel.component" v-bind="['pluginMarket', 'languageModel', 'mediaModel', 'personalization'].includes(activePanel.id) ? { visible } : {}" /></keep-alive>
+          </div>
+        </section>
+      </div>
+    </uiThemeProvider>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { defineAsyncComponent, shallowRef } from "vue";
+import { uiThemeProvider, uiBadge, uiButton } from "@toonflow/ui";
+import { uiSettings } from "@/stores/settings";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import {
   IconPalette,
@@ -44,6 +39,7 @@ import {
   IconSubtitlesAi,
 } from "@tabler/icons-vue";
 
+// ACT: keep the legacy overlay while unported child dialogs still teleport to body.
 const settingsPanels = [
   { id: "ui", label: "界面设置", icon: IconPalette, component: defineAsyncComponent(() => import("./panels/ui.vue")) },
   { id: "general", label: "常规配置", icon: IconSettings, component: defineAsyncComponent(() => import("./panels/general/index.vue")) },
@@ -73,108 +69,12 @@ const visible = defineModel<boolean>({ default: false });
 </script>
 
 <style lang="scss" scoped>
+.settingsTheme { border-radius: var(--uiRadiusControl); overflow: hidden; }
 .settings {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  height: min(72vh, calc(100dvh - 140px));
-  overflow: hidden;
-
-  .sidebar {
-    min-height: 0;
-    overflow-y: auto;
-    padding: 2px;
-
-    .settingsGroupLabel {
-      margin: 14px 12px 6px;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-      font-weight: 400;
-      line-height: 1.5;
-    }
-
-    .settingsItem {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 4px;
-      border: 0;
-      border-radius: var(--el-border-radius-base);
-      background: transparent;
-      color: var(--el-text-color-regular);
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-
-      .panelIcon { display: inline-flex; }
-
-      &:hover {
-        background: var(--el-fill-color-light);
-      }
-
-      &[aria-pressed="true"] {
-        background: var(--el-color-primary-light-9);
-        color: var(--el-color-primary);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--el-color-primary);
-      }
-    }
-  }
-
-  .content {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    padding: 0 20px;
-    overflow: hidden;
-
-    .panelTitle {
-      flex-shrink: 0;
-      margin: 0 0 20px;
-      font-size: 18px;
-    }
-
-    .panelContent {
-      flex: 1;
-      min-height: 0;
-      overflow-x: hidden;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding-left: 5px;
-      padding-right: 5px;
-      padding-bottom: 50px;
-
-      > :deep(.el-fade-in-enter-active),
-      > :deep(.el-fade-in-leave-active) {
-        transition-duration: 100ms;
-      }
-    }
-  }
-
-  @media (max-width: 700px) {
-    grid-template-columns: 44px minmax(0, 1fr);
-
-    .sidebar {
-      .settingsGroupLabel {
-        margin: 12px 0 6px;
-        text-align: center;
-      }
-
-      .settingsItem {
-        justify-content: center;
-        padding: 12px;
-        span {
-          display: none;
-        }
-      }
-    }
-
-    .content {
-      padding: 0 8px 0 16px;
-    }
-  }
+  display: grid; grid-template-columns: 216px minmax(0, 1fr); height: min(74dvh, calc(100dvh - 160px)); min-height: 320px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); overflow: hidden;
+  .settingsSidebar { min-height: 0; overflow: auto; padding: 20px 12px; border-right: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle); .settingsGroupLabel { margin: 20px 12px 8px; color: var(--uiTextMuted); font-size: var(--uiFontControl); font-weight: 400; } .settingsItem { width: 100%; justify-content: flex-start; min-height: 40px; margin-bottom: 4px; :deep(.buttonLabel) { display: flex; align-items: center; gap: 12px; } &.isActive { color: var(--uiActionPrimary); background: var(--uiActionSoft); } } }
+  .settingsContent { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--uiBackgroundBase); .settingsHeader { flex-shrink: 0; padding: 28px 32px 20px; border-bottom: 1px solid var(--uiBorderDefault); h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } } .panelContent { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 24px 32px 32px; } }
+  @media (max-width: 900px) { grid-template-columns: 184px minmax(0, 1fr); .settingsContent { .settingsHeader { padding: 20px 24px; } .panelContent { padding: 24px; } } }
+  @media (max-width: 700px) { grid-template-columns: 60px minmax(0, 1fr); .settingsSidebar { padding-inline: 6px; .settingsGroupLabel { margin-inline: 0; text-align: center; } .settingsItem { justify-content: center; padding-inline: 8px; .settingsLabel { display: none; } } } .settingsContent { .settingsHeader { padding: 20px; } .panelContent { padding: 20px 16px; } } }
 }
 </style>

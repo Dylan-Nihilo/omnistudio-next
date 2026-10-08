@@ -11,78 +11,14 @@
     :nodes="[group]"
     @start="startSelectionConnection"
     @release="(event, nodes) => openMenu(event, true, [], undefined, nodes)" />
-  <el-dropdown
-    ref="menu"
-    trigger="contextmenu"
-    virtualTriggering
-    :virtualRef="menuAnchor"
-    placement="bottom-start"
-    :showArrow="false"
-    :showTimeout="0"
-    :hideTimeout="0"
-    :hideOnClick="false"
-    @command="handleCommand"
-    @visibleChange="(visible: boolean) => !visible && clearConnection()">
-    <template #dropdown>
-      <el-dropdown-menu
-        ref="menuList"
-        class="nodeMenu"
-        :aria-label="menuLevel === 'selection' ? '选区操作' : menuLevel === 'arrange' ? '整理选中节点' : menuLevel === 'actions' ? '操作菜单' : '添加节点'">
-        <template v-if="menuLevel === 'selection'">
-          <el-dropdown-item command="duplicateSelection" :icon="IconCopyPlus" :disabled="selectionBusy || deleting || !selectedNodes.length">
-            创建副本
-          </el-dropdown-item>
-          <el-dropdown-item command="arrange" :icon="IconLayoutGrid" :disabled="!canArrangeSelection">
-            <span>整理选中节点</span>
-            <icon-chevron-right class="nextIcon" :size="14" />
-          </el-dropdown-item>
-          <el-dropdown-item
-            command="deleteSelection"
-            :icon="IconTrash"
-            :disabled="selectionBusy || deleting || !selectedNodes.some((node) => node.deletable !== false)">
-            {{ deleting ? "删除中…" : `删除选中节点（${selectedNodes.length}）` }}
-          </el-dropdown-item>
-        </template>
-        <template v-else-if="menuLevel === 'arrange'">
-          <el-dropdown-item command="selection" :icon="IconChevronLeft">返回选区操作</el-dropdown-item>
-          <el-divider />
-          <el-dropdown-item command="horizontal" :icon="IconLayoutColumns" :disabled="!canArrangeSelection">水平排列</el-dropdown-item>
-          <el-dropdown-item command="vertical" :icon="IconLayoutRows" :disabled="!canArrangeSelection">垂直排列</el-dropdown-item>
-          <el-dropdown-item command="grid" :icon="IconLayoutGrid" :disabled="!canArrangeSelection">宫格排列</el-dropdown-item>
-        </template>
-        <template v-else-if="menuLevel === 'actions'">
-          <el-dropdown-item command="upload" :icon="IconUpload" :disabled="!uploadFiles">上传</el-dropdown-item>
-          <el-dropdown-item command="nodes" :icon="IconPlus">
-            <span>添加节点</span>
-            <icon-chevron-right class="nextIcon" :size="14" />
-          </el-dropdown-item>
-          <el-divider />
-          <el-dropdown-item command="undo" :icon="IconArrowBackUp" :disabled="!canUndo">撤销</el-dropdown-item>
-          <el-dropdown-item command="redo" :icon="IconArrowForwardUp" :disabled="!canRedo">重做</el-dropdown-item>
-          <el-divider />
-          <el-dropdown-item command="paste" :icon="IconClipboard" :disabled="!pasteNode || pasting">
-            {{ pasting ? "粘贴中…" : "从剪切板粘贴" }}
-          </el-dropdown-item>
-        </template>
-        <template v-else>
-          <el-dropdown-item v-if="!directNodes" command="actions" :icon="IconChevronLeft">返回操作菜单</el-dropdown-item>
-          <el-dropdown-item v-else disabled>添加节点</el-dropdown-item>
-          <el-dropdown-item v-for="node in filteredNodes" :key="node.type" :command="node.type" :icon="node.icon">
-            {{ node.label }}
-          </el-dropdown-item>
-          <el-dropdown-item v-if="(pendingHandle || pendingGroup.length) && !filteredNodes.length" disabled>没有可连接的节点</el-dropdown-item>
-        </template>
-      </el-dropdown-menu>
-    </template>
-  </el-dropdown>
+  <uiDropdown ref="menu" class="nodeMenu" trigger="manual" :anchor="menuAnchor" :items="menuItems" :hideOnClick="false" placement="bottom-start" :aria-label="menuLevel === 'selection' ? '选区操作' : menuLevel === 'arrange' ? '整理选中节点' : menuLevel === 'actions' ? '操作菜单' : '添加节点'" @command="handleCommand" @visibleChange="visible => !visible && clearConnection()" />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, type Component } from "vue";
 import { useVueFlow, type ConnectingHandle, type GraphNode, type HandleType } from "@vue-flow/core";
 import { isTypeCompatible, useNodeEvent, validateConnection, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import { ElMessage } from "element-plus";
-import type { DropdownInstance } from "element-plus";
+import { uiDropdown, useUiFeedback, type UiMenuItem } from "@toonflow/ui";
 import selectionHandle from "./selectionHandle.vue";
 import { getSelectionConnections } from "../selectionConnections";
 import { getSelectionRoots, getSelectionTree } from "../selectionNodes";
@@ -97,12 +33,12 @@ import {
   IconArrowBackUp,
   IconArrowForwardUp,
   IconChevronLeft,
-  IconChevronRight,
   IconLayoutColumns,
   IconLayoutRows,
   IconLayoutGrid,
 } from "@tabler/icons-vue";
 
+const feedback = useUiFeedback();
 const { remoteNodes = [], pasteNode, uploadFiles, canUndo = false, canRedo = false, selectionBusy = false, batchHistory } = defineProps<{
   remoteNodes?: { type: string; label: string }[];
   pasteNode?: (position: { x: number; y: number }) => Promise<boolean>;
@@ -113,8 +49,7 @@ const { remoteNodes = [], pasteNode, uploadFiles, canUndo = false, canRedo = fal
   batchHistory?: (action: () => Promise<void>) => Promise<void>;
 }>();
 const emit = defineEmits<{ history: []; undo: []; redo: []; duplicateSelection: [] }>();
-const menu = ref<DropdownInstance>();
-const menuList = ref<{ $el: HTMLElement }>();
+const menu = ref<InstanceType<typeof uiDropdown>>();
 const menuLevel = ref<"actions" | "nodes" | "selection" | "arrange">("actions");
 const selectedNodes = shallowRef<GraphNode[]>([]);
 const deleting = ref(false);
@@ -163,6 +98,32 @@ const filteredNodes = computed(() => {
   });
 });
 
+const menuItems = computed<UiMenuItem[]>(() => {
+  if (menuLevel.value === "selection") return [
+    { value: "duplicateSelection", label: "创建副本", icon: IconCopyPlus, disabled: selectionBusy || deleting.value || !selectedNodes.value.length },
+    { value: "arrange", label: "整理选中节点", icon: IconLayoutGrid, disabled: !canArrangeSelection.value },
+    { value: "deleteSelection", label: deleting.value ? "删除中…" : `删除选中节点（${selectedNodes.value.length}）`, icon: IconTrash, divided: true, disabled: selectionBusy || deleting.value || !selectedNodes.value.some(node => node.deletable !== false) },
+  ];
+  if (menuLevel.value === "arrange") return [
+    { value: "selection", label: "返回选区操作", icon: IconChevronLeft },
+    { value: "horizontal", label: "水平排列", icon: IconLayoutColumns, divided: true, disabled: !canArrangeSelection.value },
+    { value: "vertical", label: "垂直排列", icon: IconLayoutRows, disabled: !canArrangeSelection.value },
+    { value: "grid", label: "宫格排列", icon: IconLayoutGrid, disabled: !canArrangeSelection.value },
+  ];
+  if (menuLevel.value === "actions") return [
+    { value: "upload", label: "上传", icon: IconUpload, disabled: !uploadFiles },
+    { value: "nodes", label: "添加节点", icon: IconPlus },
+    { value: "undo", label: "撤销", icon: IconArrowBackUp, divided: true, disabled: !canUndo },
+    { value: "redo", label: "重做", icon: IconArrowForwardUp, disabled: !canRedo },
+    { value: "paste", label: pasting.value ? "粘贴中…" : "从剪切板粘贴", icon: IconClipboard, divided: true, disabled: !pasteNode || pasting.value },
+  ];
+  return [
+    { value: "actions", label: directNodes.value ? "添加节点" : "返回操作菜单", icon: directNodes.value ? IconPlus : IconChevronLeft, disabled: directNodes.value },
+    ...filteredNodes.value.map(node => ({ value: node.type, label: node.label, icon: node.icon })),
+    ...((pendingHandle.value || pendingGroup.value.length) && !filteredNodes.value.length ? [{ value: "empty", label: "没有可连接的节点", disabled: true }] : []),
+  ];
+});
+
 function clearSelectionHandles() {
   selectionHandleRef.value?.clear();
   groupHandleRefs.value.forEach(handle => handle.clear());
@@ -182,14 +143,14 @@ function clearConnection() {
 function startSelectionConnection() {
   clearConnection();
   clearSelectionHandles();
-  menu.value?.handleClose();
+  menu.value?.close();
 }
 
 onBeforeUnmount(clearConnection);
 flow.onConnectStart(() => {
   pendingHandle.value = undefined;
   clearConnection();
-  menu.value?.handleClose();
+  menu.value?.close();
 });
 
 flow.onConnectEnd((event) => {
@@ -208,7 +169,7 @@ async function openMenu(event: MouseEvent | TouchEvent, nodesOnly = false, selec
   event.preventDefault();
   event.stopPropagation();
   emit("history");
-  menu.value?.handleClose();
+  menu.value?.close();
   clearConnection();
   await nextTick();
   if (!menu.value || (handle && flow.findNode(handle.node.id) !== handle.node)) return;
@@ -228,16 +189,16 @@ async function openMenu(event: MouseEvent | TouchEvent, nodesOnly = false, selec
     flow.startConnection(handle.start, { x: clientX - bounds.left, y: clientY - bounds.top });
   }
   await nextTick();
-  menu.value?.handleOpen();
+  menu.value?.open();
 }
 
 onPaneContextMenu(openMenu);
 onSelectionContextMenu(({ event, nodes }) => openMenu(event, false, nodes));
-onPaneClick(() => menu.value?.handleClose());
-onMoveStart(() => menu.value?.handleClose());
+onPaneClick(() => menu.value?.close());
+onMoveStart(() => menu.value?.close());
 flow.onNodeContextMenu(() => {
   clearConnection();
-  menu.value?.handleClose();
+  menu.value?.close();
 });
 defineExpose({ openMenu, deleteSelection });
 
@@ -246,23 +207,23 @@ async function handleCommand(command: unknown) {
     if (command === "arrange" && !canArrangeSelection.value) return;
     menuLevel.value = command;
     await nextTick();
-    menuList.value?.$el.focus();
+    menu.value?.open();
     return;
   }
   if (command === "duplicateSelection") {
     if (selectionBusy || deleting.value || !selectedNodes.value.length) return;
-    menu.value?.handleClose();
+    menu.value?.close();
     emit("duplicateSelection");
     return;
   }
   if (command === "upload") {
-    menu.value?.handleClose();
+    menu.value?.close();
     uploadFiles?.({ ...nodePosition });
     return;
   }
   if (command === "undo" || command === "redo") {
     if (command === "undo" ? !canUndo : !canRedo) return;
-    menu.value?.handleClose();
+    menu.value?.close();
     if (command === "undo") emit("undo");
     else emit("redo");
     return;
@@ -271,7 +232,7 @@ async function handleCommand(command: unknown) {
     try {
       await batchHistory(() => runCommand(command));
     } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : "画布操作失败");
+      feedback.message({ tone: "error", message: error instanceof Error ? error.message : "画布操作失败" });
     }
     return;
   }
@@ -282,14 +243,14 @@ async function runCommand(command: unknown) {
   if (command === "horizontal" || command === "vertical" || command === "grid") {
     if (!canArrangeSelection.value) return;
     arrangeSelection(flow, selectedNodes.value, command);
-    menu.value?.handleClose();
+    menu.value?.close();
     return;
   }
   if (command === "paste") {
     if (!pasteNode || pasting.value) return;
     pasting.value = true;
     try {
-      if (await pasteNode({ ...nodePosition })) menu.value?.handleClose();
+      if (await pasteNode({ ...nodePosition })) menu.value?.close();
     } finally {
       pasting.value = false;
     }
@@ -312,7 +273,7 @@ async function runCommand(command: unknown) {
     flow.nodesSelectionActive.value = false;
     const created = flow.findNode(id);
     if (created) flow.addSelectedNodes([created]);
-    return menu.value?.handleClose();
+    return menu.value?.close();
   }
   // ACT: 远端节点挂载后才注册端口，沿用画布工具的 nextTick 等待方式。
   await nextTick();
@@ -327,20 +288,20 @@ async function runCommand(command: unknown) {
       flow.removeSelectedElements();
       flow.nodesSelectionActive.value = false;
       clearConnection();
-      menu.value?.handleClose();
+      menu.value?.close();
     } else {
       flow.removeNodes(id, true);
       flow.removeSelectedElements();
       flow.addSelectedNodes(group);
       flow.nodesSelectionActive.value = true;
-      ElMessage.warning("该节点的接收规则不允许整组选中节点连接");
+      feedback.message({ tone: "warning", message: "该节点的接收规则不允许整组选中节点连接" });
     }
     return;
   }
   if (!handle) return;
   if (!created || flow.findNode(handle.node.id) !== handle.node) {
     clearConnection();
-    return menu.value?.handleClose();
+    return menu.value?.close();
   }
   const sourceNode = handle.type === "source" ? handle.node : created;
   const targetNode = handle.type === "target" ? handle.node : created;
@@ -360,9 +321,9 @@ async function runCommand(command: unknown) {
         validateConnection(item, { sourceNode, targetNode, nodes: flow.getNodes.value, edges: flow.getEdges.value })
     );
   if (connection) flow.addEdges(connection);
-  else ElMessage.warning("节点已创建，但没有兼容的端口可连接");
+  else feedback.message({ tone: "warning", message: "节点已创建，但没有兼容的端口可连接" });
   clearConnection();
-  menu.value?.handleClose();
+  menu.value?.close();
 }
 
 async function deleteSelection(selection = selectedNodes.value) {
@@ -382,10 +343,10 @@ async function deleteSelection(selection = selectedNodes.value) {
       if (flow.getNodes.value.some(item => item.parentNode === node.id)) throw new Error("分组内容已变化，请重新删除");
       if (flow.findNode(node.id) === node) flow.removeNodes(node.id, true);
     }
-    menu.value?.handleClose();
+    menu.value?.close();
   } catch (error) {
     const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    ElMessage.error(message || (error instanceof Error ? error.message : "删除选中节点失败"));
+    feedback.message({ tone: "error", message: message || (error instanceof Error ? error.message : "删除选中节点失败") });
   } finally {
     selectedNodes.value = selectedNodes.value.filter((node) => flow.findNode(node.id) === node);
     deleting.value = false;
@@ -394,15 +355,5 @@ async function deleteSelection(selection = selectedNodes.value) {
 </script>
 
 <style lang="scss" scoped>
-.nodeMenu {
-  min-width: 180px;
-
-  :deep(.el-divider--horizontal) {
-    margin: 4px 0;
-  }
-
-  .nextIcon {
-    margin-left: auto;
-  }
-}
+.nodeMenu { min-width: 220px; }
 </style>

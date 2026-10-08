@@ -1,5 +1,7 @@
 <template>
-  <el-config-provider :locale="zhCn">
+  <uiThemeProvider :mode="uiSettings.theme" :primaryColor="uiSettings.primaryColor" :radius="uiSettings.radius" :fontScale="100" class="applicationTheme">
+    <uiFeedbackProvider :feedback="feedback">
+      <el-config-provider :locale="zhCn">
     <router-view v-slot="{ Component: currentComponent }">
       <transition name="el-fade-in">
         <component :is="currentComponent" />
@@ -13,12 +15,17 @@
       :buildCode="updateBoxBuild.hash"
       @opened="rememberUpdateBox"
       @close="rememberUpdateBox" />
-  </el-config-provider>
+      </el-config-provider>
+    </uiFeedbackProvider>
+  </uiThemeProvider>
 </template>
 
 <script setup lang="ts">
+import feedback from "@/lib/uiFeedback";
 import { onBeforeUnmount, ref, shallowRef, watch, watchEffect } from "vue";
-import { ElMessage, useZIndex } from "element-plus";
+import { useZIndex } from "element-plus";
+import { uiThemeProvider, uiFeedbackProvider } from "@toonflow/ui";
+import "@toonflow/ui/styles";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { saveSettings, settings, uiSettings } from "@/stores/settings";
 import { desktopUpdateSnapshot } from "@/stores/desktopUpdate";
@@ -51,7 +58,7 @@ function rememberUpdateBox() {
   void saveSettings(current => {
     const seenBuilds = Array.isArray(current.updateBoxSeenBuilds) ? current.updateBoxSeenBuilds.filter(value => typeof value === "string") : [];
     return seenBuilds.includes(buildKey) ? undefined : { updateBoxSeenBuilds: [...seenBuilds, buildKey] };
-  }).catch(() => { ElMessage.warning("更新说明的展示记录保存失败，下次启动时可能再次显示。"); });
+  }).catch(() => { feedback.message({ tone: "warning", message: "更新说明的展示记录保存失败，下次启动时可能再次显示。" }); });
 }
 
 function preventPageZoom(event: WheelEvent) {
@@ -101,6 +108,8 @@ watchEffect(() => {
 </script>
 
 <style lang="scss">
+.applicationTheme { min-height: 100dvh; }
+
 html {
   background-color: var(--el-bg-color);
   color: var(--el-text-color-primary);

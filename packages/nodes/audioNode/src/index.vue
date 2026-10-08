@@ -8,40 +8,26 @@
     style="width: 320px"
     @fullscreen="enterFullscreen">
     <template #topActions>
-      <el-button
+      <uiIconButton
         :icon="IconTransfer"
         :loading="uploading"
-        text
         title="替换音频"
-        aria-label="替换音频"
+        label="替换音频"
         @click.stop="fileInput?.click()" />
     </template>
     <div ref="audioContent" class="audioContent nopan">
-      <audio
-        v-if="previewUrl"
-        class="audioPreview nodrag nowheel"
-        :src="previewUrl"
-        controls
-        preload="metadata"
-        draggable="false"
-        @pointerdown.stop
-        @mousedown.stop
-        @dblclick.stop
-        aria-label="节点音频"
-        @loadedmetadata="updateNodeInternals"
-        @error="ElMessage.error('无法预览该音频')" />
+      <uiMediaPlayer v-if="previewUrl" class="audioPreview nodrag nowheel" :src="previewUrl" kind="audio" label="节点音频" @pointerdown.stop @mousedown.stop @dblclick.stop @loadedmetadata="updateNodeInternals" @error="feedback.message({ tone: 'error', message: '无法预览该音频' })" />
       <input ref="fileInput" class="fileInput" type="file" accept="audio/*" aria-label="选择音频" :disabled="uploading" @change="uploadAudio" />
-      <el-button
+      <uiButton variant="ghost"
         v-if="!outputs.audio"
         class="uploadButton"
-        text
         :loading="uploading"
         title="上传音频"
         aria-label="上传音频"
         @dblclick.stop
         @click="fileInput?.click()">
         <icon-upload v-if="!uploading" :size="48" stroke="1.5" />
-      </el-button>
+      </uiButton>
     </div>
   </nodeSkeleton>
 </template>
@@ -49,8 +35,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { IconMusic, IconUpload, IconTransfer } from "@tabler/icons-vue";
-import { ElButton, ElMessage } from "element-plus";
+import { uiButton, uiIconButton, uiMediaPlayer, useUiFeedback } from "@toonflow/ui";
 import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
+
+const feedback = useUiFeedback();
 
 defineOptions({
   inheritAttrs: false,
@@ -114,8 +102,8 @@ async function uploadAudio(event: Event) {
   const file = input.files?.[0];
   input.value = "";
   if (!file || uploading.value) return;
-  if (!file.type.startsWith("audio/")) return void ElMessage.error("请选择音频文件");
-  if (!file.size || file.size > 100 * 1024 * 1024) return void ElMessage.error("音频不能为空且不能超过 100 MB");
+  if (!file.type.startsWith("audio/")) return void feedback.message({ tone: "error", message: "请选择音频文件" });
+  if (!file.size || file.size > 100 * 1024 * 1024) return void feedback.message({ tone: "error", message: "音频不能为空且不能超过 100 MB" });
   uploading.value = true;
   try {
     const url = await files.uploadFile(file);
@@ -130,7 +118,7 @@ async function uploadAudio(event: Event) {
 
 function showError(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  ElMessage.error(message || (error instanceof Error ? error.message : fallback));
+  feedback.message({ tone: "error", message: message || (error instanceof Error ? error.message : fallback) });
 }
 </script>
 
@@ -144,7 +132,7 @@ function showError(error: unknown, fallback: string) {
   &:fullscreen {
     justify-content: center;
     padding: 48px;
-    background: var(--el-bg-color);
+    background: var(--uiBackgroundBase);
 
     .audioPreview {
       max-width: 720px;
@@ -155,7 +143,7 @@ function showError(error: unknown, fallback: string) {
   .audioPreview {
     display: block;
     width: 100%;
-    border-radius: var(--el-border-radius-base);
+    border-radius: var(--uiRadiusControl);
   }
 
   .fileInput {
@@ -166,10 +154,10 @@ function showError(error: unknown, fallback: string) {
     width: 100%;
     height: 144px;
     padding: 0;
-    color: var(--el-text-color-placeholder);
+    color: var(--uiTextMuted);
 
     &:hover {
-      color: var(--el-color-primary);
+      color: var(--uiActionPrimary);
     }
   }
 }

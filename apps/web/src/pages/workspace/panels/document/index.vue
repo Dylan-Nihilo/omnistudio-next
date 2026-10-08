@@ -1,236 +1,66 @@
 <template>
   <section class="documentPanel" aria-label="文档编辑" @keydown.ctrl.f.prevent="searchVisible = true" @keydown.meta.f.prevent="searchVisible = true">
-    <fileTree :directory="workspaceStore.project?.directory" @selectNode="openNode" />
-    <div v-loading="opening" class="editorSurface">
-      <div v-if="selectedNode" class="documentHeader">
-        <span class="documentName" :title="`${selectedPath} / ${selectedNode.label}`">{{ selectedNode.label }}</span>
-        <el-select
-          v-if="nodeOutputs.length > 1"
-          :modelValue="outputId"
-          class="outputSelect"
-          size="small"
-          aria-label="文本输出"
-          :disabled="opening"
-          @change="openOutput">
-          <el-option v-for="output in nodeOutputs" :key="output.id" :label="output.label" :value="output.id" />
-        </el-select>
-        <el-button v-if="saveError" text type="danger" size="small" :title="saveError" @click="flushSave().catch(() => {})">保存失败，重试</el-button>
-        <span v-else class="saveStatus" role="status">{{ dirty ? "保存中…" : "已保存" }}</span>
-      </div>
-      <div v-if="editor" class="editorToolbar" role="group" aria-label="文档格式">
-        <div class="toolbarGroup">
-          <el-button
-            class="toolButton"
-            text
-            size="small"
-            :disabled="!editor.can().undo()"
-            aria-label="撤销"
-            title="撤销"
-            @mousedown.prevent
-            @click="editor.chain().focus().undo().run()">
-            <icon-arrow-back-up :size="17" />
-          </el-button>
-          <el-button
-            class="toolButton"
-            text
-            size="small"
-            :disabled="!editor.can().redo()"
-            aria-label="重做"
-            title="重做"
-            @mousedown.prevent
-            @click="editor.chain().focus().redo().run()">
-            <icon-arrow-forward-up :size="17" />
-          </el-button>
-        </div>
-        <div class="toolbarGroup">
-          <el-dropdown trigger="click" @command="setTextStyle">
-            <el-button
-              class="dropdownButton"
-              :class="{ active: editor.isActive('heading') }"
-              text
-              size="small"
-              aria-label="段落样式"
-              :title="textStyle">
-              <icon-heading :size="17" />
-              <icon-chevron-down :size="12" />
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item :command="0">正文</el-dropdown-item>
-                <el-dropdown-item v-for="level in headingLevels" :key="level" :command="level">标题 {{ level }}</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-dropdown trigger="click" @command="(index: number) => listTools[index]?.run(editor!.chain().focus()).run()">
-            <el-button
-              class="dropdownButton"
-              :class="{ active: listTools.some(item => editor!.isActive(item.name)) }"
-              text
-              size="small"
-              aria-label="列表"
-              title="列表">
-              <icon-list :size="17" />
-              <icon-chevron-down :size="12" />
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-for="(item, index) in listTools" :key="item.name" :command="index" :icon="item.icon">
-                  {{ item.label }}
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-tooltip v-for="item in blockTools" :key="item.name" :content="item.label" placement="bottom">
-            <el-button
-              class="toolButton"
-              :class="{ active: editor.isActive(item.name) }"
-              text
-              size="small"
-              :aria-label="item.label"
-              :aria-pressed="editor.isActive(item.name)"
-              @mousedown.prevent
-              @click="item.run(editor.chain().focus()).run()">
-              <component :is="item.icon" :size="17" />
-            </el-button>
-          </el-tooltip>
-        </div>
-        <div class="toolbarGroup">
-          <el-tooltip v-for="item in formatTools" :key="item.name" :content="item.label" placement="bottom">
-            <el-button
-              class="toolButton"
-              :class="{ active: editor.isActive(item.name) }"
-              text
-              size="small"
-              :aria-label="item.label"
-              :aria-pressed="editor.isActive(item.name)"
-              @mousedown.prevent
-              @click="item.run(editor.chain().focus()).run()">
-              <component :is="item.icon" :size="17" />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="链接" placement="bottom">
-            <el-button
-              class="toolButton"
-              :class="{ active: editor.isActive('link') }"
-              text
-              size="small"
-              aria-label="链接"
-              :aria-pressed="editor.isActive('link')"
-              @mousedown.prevent
-              @click="editLink">
-              <icon-link :size="17" />
-            </el-button>
-          </el-tooltip>
-        </div>
-        <div class="toolbarGroup">
-          <el-tooltip v-for="item in scriptTools" :key="item.name" :content="item.label" placement="bottom">
-            <el-button
-              class="toolButton"
-              :class="{ active: editor.isActive(item.name) }"
-              text
-              size="small"
-              :aria-label="item.label"
-              :aria-pressed="editor.isActive(item.name)"
-              @mousedown.prevent
-              @click="item.run(editor.chain().focus()).run()">
-              <component :is="item.icon" :size="17" />
-            </el-button>
-          </el-tooltip>
-        </div>
-        <div class="toolbarGroup">
-          <el-tooltip v-for="item in alignmentTools" :key="item.value" :content="item.label" placement="bottom">
-            <el-button
-              class="toolButton"
-              :class="{ active: editor.isActive({ textAlign: item.value }) }"
-              text
-              size="small"
-              :aria-label="item.label"
-              :aria-pressed="editor.isActive({ textAlign: item.value })"
-              @mousedown.prevent
-              @click="editor.chain().focus().setTextAlign(item.value).run()">
-              <component :is="item.icon" :size="17" />
-            </el-button>
-          </el-tooltip>
-        </div>
-        <div class="toolbarGroup">
-          <el-dropdown trigger="click" @command="insertContent">
-            <el-button text size="small" aria-label="插入内容">
-              <icon-photo :size="17" />
-              添加
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="image" :icon="IconPhoto">图片链接</el-dropdown-item>
-                <el-dropdown-item command="table" :icon="IconTable">表格</el-dropdown-item>
-                <el-dropdown-item command="divider" :icon="IconSeparator">分隔线</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-dropdown v-if="editor.isActive('table')" trigger="click" @command="editTable">
-            <el-button text size="small">
-              表格
-              <icon-chevron-down :size="12" />
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-for="item in tableTools" :key="item.command" :command="item.command">{{ item.label }}</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-        <div class="toolbarGroup">
-          <el-tooltip content="复制 Markdown" placement="bottom">
-            <el-button class="toolButton" text size="small" :disabled="editor.isEmpty" aria-label="复制 Markdown" @click="copyMarkdown">
-              <icon-copy :size="17" />
-            </el-button>
-          </el-tooltip>
-          <el-popover
-            v-model:visible="searchVisible"
-            trigger="click"
-            :width="300"
-            placement="bottom-end"
-            @show="openSearch"
-            @hide="editor.commands.clearSearch()">
-            <template #reference>
-              <el-button class="toolButton" :class="{ active: searchVisible }" text size="small" aria-label="查找正文" title="查找正文">
-                <icon-search :size="17" />
-              </el-button>
-            </template>
-            <div class="findPanel" @keydown.esc.stop="searchVisible = false">
-              <el-input
-                ref="searchInput"
-                v-model="searchTerm"
-                size="small"
-                placeholder="查找正文"
-                aria-label="查找正文内容"
-                clearable
-                @input="value => editor!.commands.setSearchTerm(value)"
-                @keydown.enter.prevent="editor.commands.goToNextResult()" />
-              <div class="findActions">
-                <span aria-live="polite">{{ searchStatus }}</span>
-                <el-button
-                  text
-                  size="small"
-                  :disabled="!editor.storage.findAndReplace.results.length"
-                  aria-label="上一个匹配"
-                  @click="editor.commands.goToPreviousResult()">
-                  <icon-chevron-up :size="16" />
-                </el-button>
-                <el-button
-                  text
-                  size="small"
-                  :disabled="!editor.storage.findAndReplace.results.length"
-                  aria-label="下一个匹配"
-                  @click="editor.commands.goToNextResult()">
-                  <icon-chevron-down :size="16" />
-                </el-button>
-                <el-button text size="small" aria-label="关闭查找" @click="searchVisible = false"><icon-x :size="16" /></el-button>
+    <fileTree :directory="workspaceStore.project?.directory" :selection="selectedNode" @selectNode="openNode" />
+    <div class="editorSurface" :aria-busy="opening || undefined">
+      <div class="editorFrame" :inert="opening || undefined">
+        <header v-if="selectedNode" class="documentHeader">
+          <div class="documentIdentity">
+            <span class="documentName">{{ selectedNode.label }}</span>
+            <span class="documentPath" :title="selectedPath">{{ selectedPath }}</span>
+          </div>
+          <uiSelect v-if="nodeOutputs.length > 1" :modelValue="outputId" :options="outputOptions" class="outputSelect" size="small" aria-label="文本输出" :disabled="opening" @update:modelValue="value => typeof value === 'string' && openOutput(value)" />
+          <uiButton v-if="saveError" variant="danger" size="small" :title="saveError" @click="flushSave().catch(() => {})">保存失败，重试</uiButton>
+          <span v-else class="saveStatus" role="status">{{ dirty ? "保存中…" : "已保存" }}</span>
+        </header>
+        <div v-if="editor" class="editorToolbar" role="group" aria-label="文档格式">
+          <div class="toolbarGroup">
+            <uiIconButton class="toolButton" size="small" :icon="IconArrowBackUp" :disabled="!editor.can().undo()" label="撤销" title="撤销" @mousedown.prevent @click="editor.chain().focus().undo().run()" />
+            <uiIconButton class="toolButton" size="small" :icon="IconArrowForwardUp" :disabled="!editor.can().redo()" label="重做" title="重做" @mousedown.prevent @click="editor.chain().focus().redo().run()" />
+          </div>
+          <div class="toolbarGroup">
+            <uiDropdown :items="textStyles" @command="setTextStyle">
+              <template #reference="{ triggerAttrs }"><uiButton class="dropdownButton" v-bind="triggerAttrs" variant="ghost" size="small" :class="{ active: editor.isActive('heading') }" :icon="IconHeading" aria-label="段落样式" :title="textStyle">{{ textStyle }}<icon-chevron-down :size="12" /></uiButton></template>
+            </uiDropdown>
+            <uiDropdown :items="listItems" @command="setList">
+              <template #reference="{ triggerAttrs }"><uiButton class="dropdownButton" v-bind="triggerAttrs" variant="ghost" size="small" :class="{ active: listTools.some(item => editor!.isActive(item.name)) }" :icon="IconList" aria-label="列表" title="列表"><icon-chevron-down :size="12" /></uiButton></template>
+            </uiDropdown>
+            <uiIconButton v-for="item in blockTools" :key="item.name" class="toolButton" :class="{ active: editor.isActive(item.name) }" size="small" :icon="item.icon" :label="item.label" :title="item.label" :aria-pressed="editor.isActive(item.name)" @mousedown.prevent @click="item.run(editor.chain().focus()).run()" />
+          </div>
+          <div class="toolbarGroup">
+            <uiIconButton v-for="item in formatTools" :key="item.name" class="toolButton" :class="{ active: editor.isActive(item.name) }" size="small" :icon="item.icon" :label="item.label" :title="item.label" :aria-pressed="editor.isActive(item.name)" @mousedown.prevent @click="item.run(editor.chain().focus()).run()" />
+            <uiIconButton class="toolButton" :class="{ active: editor.isActive('link') }" size="small" :icon="IconLink" label="链接" title="链接" :aria-pressed="editor.isActive('link')" @mousedown.prevent @click="editLink" />
+            <uiIconButton v-for="item in scriptTools" :key="item.name" class="toolButton" :class="{ active: editor.isActive(item.name) }" size="small" :icon="item.icon" :label="item.label" :title="item.label" :aria-pressed="editor.isActive(item.name)" @mousedown.prevent @click="item.run(editor.chain().focus()).run()" />
+          </div>
+          <div class="toolbarGroup">
+            <uiIconButton v-for="item in alignmentTools" :key="item.value" class="toolButton" :class="{ active: editor.isActive({ textAlign: item.value }) }" size="small" :icon="item.icon" :label="item.label" :title="item.label" :aria-pressed="editor.isActive({ textAlign: item.value })" @mousedown.prevent @click="editor.chain().focus().setTextAlign(item.value).run()" />
+          </div>
+          <div class="toolbarGroup">
+            <uiDropdown :items="insertItems" @command="insertContent">
+              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" :icon="IconPhoto" aria-label="插入内容">添加<icon-chevron-down :size="12" /></uiButton></template>
+            </uiDropdown>
+            <uiDropdown v-if="editor.isActive('table')" :items="tableItems" @command="editTable">
+              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" aria-label="编辑表格">表格<icon-chevron-down :size="12" /></uiButton></template>
+            </uiDropdown>
+          </div>
+          <div class="toolbarGroup">
+            <uiIconButton class="toolButton" size="small" :icon="IconCopy" :disabled="editor.isEmpty" label="复制 Markdown" title="复制 Markdown" @click="copyMarkdown" />
+            <uiPopover v-model:visible="searchVisible" trigger="click" :width="300" placement="bottom-end" title="查找正文" @show="openSearch" @hide="editor.commands.clearSearch()">
+              <template #reference="{ triggerAttrs }"><uiIconButton class="toolButton" v-bind="triggerAttrs" :class="{ active: searchVisible }" size="small" :icon="IconSearch" label="查找正文" title="查找正文" /></template>
+              <div class="findPanel" @keydown.esc.stop="searchVisible = false">
+                <uiInput ref="searchInput" v-model="searchTerm" size="small" placeholder="查找正文" aria-label="查找正文内容" clearable @input="value => editor!.commands.setSearchTerm(value)" @keydown.enter.prevent="editor.commands.goToNextResult()" />
+                <div class="findActions">
+                  <span aria-live="polite">{{ searchStatus }}</span>
+                  <uiIconButton size="small" :icon="IconChevronUp" :disabled="!editor.storage.findAndReplace.results.length" label="上一个匹配" @click="editor.commands.goToPreviousResult()" />
+                  <uiIconButton size="small" :icon="IconChevronDown" :disabled="!editor.storage.findAndReplace.results.length" label="下一个匹配" @click="editor.commands.goToNextResult()" />
+                  <uiIconButton size="small" :icon="IconX" label="关闭查找" @click="searchVisible = false" />
+                </div>
               </div>
-            </div>
-          </el-popover>
+            </uiPopover>
+          </div>
         </div>
+        <editor-content class="editorBody" :editor="editor" />
       </div>
-      <editor-content class="editorBody" :editor="editor" />
+      <uiLoading v-if="opening" class="openingOverlay" :loading="true" label="读取文档" />
     </div>
   </section>
 </template>
@@ -238,7 +68,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onDeactivated, ref } from "vue";
 import { debounce } from "lodash-es";
-import { ElMessage, ElMessageBox, type InputInstance } from "element-plus";
+import { uiButton, uiDropdown, uiIconButton, uiInput, uiLoading, uiPopover, uiSelect, useUiFeedback, type UiValue } from "@toonflow/ui";
 import { Editor, EditorContent, useEditor } from "@tiptap/vue-3";
 import type { ChainedCommands, EditorOptions } from "@tiptap/core";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -284,6 +114,7 @@ const props = defineProps<{
   saveNode: (directory: string, canvasPath: string, nodeId: string, handleId: string, text: string) => Promise<void>;
 }>();
 const workspaceStore = useWorkspaceStore();
+const feedback = useUiFeedback();
 const selectedNode = ref<TreeSelection>();
 const nodeOutputs = ref<TextOutput[]>([]);
 const outputId = ref("");
@@ -319,7 +150,7 @@ const saveDocument = debounce((change: NonNullable<typeof draft>) => {
 }, 400);
 const searchVisible = ref(false);
 const searchTerm = ref("");
-const searchInput = ref<InputInstance>();
+const searchInput = ref<InstanceType<typeof uiInput>>();
 const editorOptions: Partial<EditorOptions> = {
   extensions: markdownExtensions,
   content: "",
@@ -397,7 +228,7 @@ async function openNode(selection: TreeSelection, reportError = true, signal?: A
     if (!reportError) throw error;
     if (request === openRequest) {
       const fallback = "filePath" in selection ? "读取文件失败" : "读取节点失败";
-      ElMessage.error(error instanceof Error ? error.message : fallback);
+      feedback.message({ tone: "error", message: error instanceof Error ? error.message : fallback });
     }
   } finally {
     if (request === openRequest) {
@@ -418,7 +249,7 @@ async function openOutput(id: string, reportError = true, signal?: AbortSignal) 
     if (request === openRequest) showOutput(id);
   } catch (error) {
     if (!reportError) throw error;
-    if (request === openRequest) ElMessage.error(error instanceof Error ? error.message : "切换文本输出失败");
+    if (request === openRequest) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "切换文本输出失败" });
   } finally {
     if (request === openRequest) {
       opening.value = false;
@@ -478,6 +309,8 @@ defineExpose({ flushSave, cancelSave: () => saveDocument.cancel(), getDocument, 
 
 const headingLevels = [1, 2, 3, 4, 5, 6] as const;
 type HeadingLevel = (typeof headingLevels)[number];
+const textStyles = [{ value: 0, label: "正文" }, ...headingLevels.map(level => ({ value: level, label: `标题 ${level}` }))];
+const outputOptions = computed(() => nodeOutputs.value.map(output => ({ value: output.id, label: output.label })));
 const textStyle = computed(() => {
   const level = headingLevels.find((level) => editor.value?.isActive("heading", { level }));
   return level ? `标题 ${level}` : "正文";
@@ -513,6 +346,8 @@ const alignmentTools = [
   { value: "right", label: "右对齐", icon: IconAlignRight },
   { value: "justify", label: "两端对齐", icon: IconAlignJustified },
 ];
+const insertItems = [{ value: "image", label: "图片链接", icon: IconPhoto }, { value: "table", label: "表格", icon: IconTable }, { value: "divider", label: "分隔线", icon: IconSeparator }];
+const listItems = listTools.map((item, value) => ({ value, label: item.label, icon: item.icon }));
 const tableTools = [
   { command: "addRowAfter", label: "在下方插入行" },
   { command: "addColumnAfter", label: "在右侧插入列" },
@@ -521,14 +356,22 @@ const tableTools = [
   { command: "deleteTable", label: "删除表格" },
 ] as const;
 
-function setTextStyle(level: HeadingLevel | 0) {
+const tableItems = tableTools.map(item => ({ value: item.command, label: item.label }));
+function setList(value: UiValue) {
+  if (editor.value && typeof value === "number") listTools[value]?.run(editor.value.chain().focus()).run();
+}
+
+function setTextStyle(value: UiValue) {
+  if (typeof value !== "number" || value !== 0 && !headingLevels.includes(value as HeadingLevel)) return;
+  const level = value as HeadingLevel | 0;
   const chain = editor.value?.chain().focus();
   if (level === 0) chain?.setParagraph().run();
   else chain?.setHeading({ level }).run();
 }
 
-function editTable(command: (typeof tableTools)[number]["command"]) {
-  editor.value?.chain().focus()[command]().run();
+function editTable(value: UiValue) {
+  const item = tableTools.find(item => item.command === value);
+  if (item) editor.value?.chain().focus()[item.command]().run();
 }
 
 async function openSearch() {
@@ -541,7 +384,7 @@ async function editLink() {
   const currentEditor = editor.value;
   if (!currentEditor) return;
   try {
-    const { value } = await ElMessageBox.prompt("输入链接地址，留空可移除链接", "链接", {
+    const { value } = await feedback.prompt("输入链接地址，留空可移除链接", "链接", {
       inputValue: currentEditor.getAttributes("link").href || "",
       inputValidator: (value) => !value?.trim() || /^(https?:\/\/|mailto:)\S+$/i.test(value.trim()) || "请输入有效的 https、http 或 mailto 链接",
       confirmButtonText: "确定",
@@ -556,13 +399,14 @@ async function editLink() {
   }
 }
 
-async function insertContent(command: "image" | "table" | "divider") {
+async function insertContent(command: UiValue) {
+  if (command !== "image" && command !== "table" && command !== "divider") return;
   const currentEditor = editor.value;
   if (!currentEditor) return;
   if (command === "table") return currentEditor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   if (command === "divider") return currentEditor.chain().focus().setHorizontalRule().run();
   try {
-    const { value } = await ElMessageBox.prompt("输入图片地址", "插入图片", {
+    const { value } = await feedback.prompt("输入图片地址", "插入图片", {
       inputValidator: (value) => /^https?:\/\/\S+$/i.test(value?.trim() || "") || "请输入有效的 https 或 http 图片地址",
       confirmButtonText: "插入",
       cancelButtonText: "取消",
@@ -577,9 +421,9 @@ async function copyMarkdown() {
   if (!editor.value) return;
   try {
     await writeClipboardText(serializeMarkdown(editor.value));
-    ElMessage.success("已复制 Markdown");
+    feedback.message({ tone: "success", message: "已复制 Markdown" });
   } catch {
-    ElMessage.error("复制失败，请检查剪贴板权限");
+    feedback.message({ tone: "error", message: "复制失败，请检查剪贴板权限" });
   }
 }
 
@@ -593,111 +437,42 @@ onDeactivated(() => {
 <style scoped lang="scss">
 .documentPanel {
   display: grid;
-  grid-template-columns: 220px minmax(min-content, 1fr);
+  grid-template-columns: clamp(240px, 20vw, 280px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 20px;
   width: 100%;
   height: 100%;
-  box-sizing: border-box;
-  padding: 64px 20px 20px;
-  padding-right: calc(20px + var(--agentWidth, 0px));
+  min-width: 0;
   overflow: hidden;
-  background: var(--el-fill-color-light);
-
+  background: var(--uiBackgroundBase);
   .editorSurface {
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    width: 100%;
-    min-width: min-content;
-    max-width: 960px;
-    height: 100%;
-    margin: 0 auto;
+    position: relative;
+    min-width: 0;
+    min-height: 0;
     overflow: hidden;
-    border: 1px solid var(--el-border-color-light);
-    border-radius: var(--ui-radius-large, 12px);
-    background: var(--el-bg-color-overlay);
-    box-shadow: var(--el-box-shadow-lighter);
-
+    background: var(--uiSurfaceRaised);
+    .editorFrame { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; }
+    .openingOverlay { position: absolute; inset: 0; }
     .documentHeader {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-      padding: 8px 16px;
-      font-size: 12px;
-
-      .documentName {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-height: 60px; padding: 12px 24px; border-bottom: 1px solid var(--uiBorderDefault);
+      .documentIdentity { flex: 1; min-width: 100px; display: flex; flex-direction: column; gap: 2px;
+        .documentName { font-size: var(--uiFontTitle); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .documentPath { font-size: var(--uiFontControl); color: var(--uiTextMuted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       }
-      .outputSelect {
-        width: 160px;
-      }
-      .saveStatus {
-        color: var(--el-text-color-secondary);
-      }
+      .outputSelect { width: 180px; max-width: 100%; }
+      .saveStatus { color: var(--uiTextMuted); font-size: var(--uiFontControl); white-space: nowrap; }
     }
-
     .editorToolbar {
-      display: flex;
-      flex-shrink: 0;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      border-bottom: 1px solid var(--el-border-color-lighter);
-
-      :deep(.el-button) {
-        gap: 4px;
-        margin-left: 0;
-
-        > span {
-          gap: 4px;
-        }
-      }
-
-      .toolbarGroup {
-        display: flex;
-        flex-shrink: 0;
-        align-items: center;
-        gap: 2px;
-        padding: 0 7px;
-
-        + .toolbarGroup {
-          border-left: 1px solid var(--el-border-color-lighter);
-        }
-      }
-
-      .toolButton,
-      .dropdownButton {
-        height: 32px;
-        border-radius: 7px;
-
-        &.active {
-          color: var(--el-color-primary);
-          background: var(--el-color-primary-light-9);
-        }
-      }
-
-      .toolButton {
-        width: 30px;
-        padding: 0;
-      }
-
-      .dropdownButton {
-        padding: 0 5px;
-      }
+      display: flex; flex-wrap: wrap; flex-shrink: 0; align-items: center; gap: 6px 0; padding: 8px 12px; border-bottom: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle);
+      .toolbarGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid var(--uiBorderDefault); &:last-child { border: 0; } }
+      .toolButton, .dropdownButton { &.active { color: var(--uiTextPrimary); background: var(--uiActionSoft); } }
     }
-
     .editorBody {
       contain: inline-size;
       flex: 1;
       min-height: 0;
       overflow: auto;
-      padding: 48px clamp(24px, 5vw, 64px) 64px;
+      padding: 40px clamp(24px, 4vw, 64px) 64px;
+      overscroll-behavior: contain;
 
       :deep(.tiptap) {
         box-sizing: border-box;
@@ -705,7 +480,7 @@ onDeactivated(() => {
         min-height: 100%;
         cursor: text;
         outline: none;
-        color: var(--el-text-color-primary);
+        color: var(--uiTextPrimary);
         font-size: 15px;
         line-height: 1.8;
         overflow-wrap: anywhere;
@@ -748,32 +523,32 @@ onDeactivated(() => {
           margin: 0.2em 0;
         }
         a {
-          color: var(--el-color-primary);
+          color: var(--uiActionPrimary);
           text-decoration: underline;
         }
         mark {
           padding: 1px 2px;
           border-radius: 3px;
-          background: var(--el-color-warning-light-7);
+          background: var(--uiStatusWarningSoft);
           color: inherit;
         }
         blockquote {
           margin: 1em 0;
           padding-left: 1em;
-          border-left: 3px solid var(--el-border-color);
-          color: var(--el-text-color-secondary);
+          border-left: 3px solid var(--uiBorderDefault);
+          color: var(--uiTextMuted);
         }
         code {
           padding: 2px 5px;
           border-radius: 4px;
-          background: var(--el-fill-color);
+          background: var(--uiSurfaceHover);
           font-family: monospace;
           font-size: 0.9em;
         }
         pre {
           padding: 14px 18px;
           border-radius: 8px;
-          background: var(--el-fill-color-light);
+          background: var(--uiBackgroundSubtle);
           overflow-x: auto;
           code {
             padding: 0;
@@ -783,7 +558,7 @@ onDeactivated(() => {
         hr {
           margin: 1.5em 0;
           border: 0;
-          border-top: 1px solid var(--el-border-color);
+          border-top: 1px solid var(--uiBorderDefault);
         }
         img {
           display: block;
@@ -792,7 +567,7 @@ onDeactivated(() => {
           border-radius: 6px;
         }
         .ProseMirror-selectednode {
-          outline: 2px solid var(--el-color-primary);
+          outline: 2px solid var(--uiActionPrimary);
         }
         ul[data-type="taskList"] {
           padding-left: 0;
@@ -811,7 +586,7 @@ onDeactivated(() => {
               min-width: 0;
             }
             input {
-              accent-color: var(--el-color-primary);
+              accent-color: var(--uiActionPrimary);
               cursor: pointer;
             }
           }
@@ -826,16 +601,16 @@ onDeactivated(() => {
             position: relative;
             min-width: 40px;
             padding: 6px 10px;
-            border: 1px solid var(--el-border-color);
+            border: 1px solid var(--uiBorderDefault);
             vertical-align: top;
           }
           th {
-            background: var(--el-fill-color-light);
+            background: var(--uiBackgroundSubtle);
             font-weight: 600;
             text-align: left;
           }
           .selectedCell {
-            background: var(--el-color-primary-light-9);
+            background: var(--uiActionSoft);
           }
         }
       }
@@ -844,24 +619,7 @@ onDeactivated(() => {
 }
 
 .findPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  .findActions {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-
-    > span {
-      flex: 1;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-    }
-    :deep(.el-button) {
-      margin-left: 0;
-      padding: 5px;
-    }
-  }
+  display: flex; flex-direction: column; gap: 8px;
+  .findActions { display: flex; align-items: center; gap: 2px; > span { flex: 1; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
 }
 </style>

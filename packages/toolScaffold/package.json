@@ -22,7 +22,8 @@
     "vue": "^3.5.42",
     "element-plus": "^2.14.5",
     "axios": "^1.20.0",
-    "@form-create/element-ui": "^3"
+    "@form-create/element-ui": "^3",
+    "@toonflow/ui": "workspace:*"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1"

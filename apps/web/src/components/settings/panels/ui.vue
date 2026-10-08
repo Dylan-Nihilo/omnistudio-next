@@ -1,115 +1,27 @@
 <template>
-  <div class="ui">
-    <p class="intro">让创作空间更合你的习惯，修改会自动保存。</p>
-
+  <div class="appearanceSettings">
     <section class="settingSection" aria-labelledby="themeTitle">
-      <h3 id="themeTitle">
-        <icon-sun-moon :size="18" />
-        外观模式
-      </h3>
-      <el-radio-group
-        class="themeOptions"
-        :modelValue="uiSettings.theme"
-        aria-label="外观模式"
-        @click="captureThemeClickPoint"
-        @change="(value) => changeTheme(String(value))">
-        <el-radio v-for="item in themes" :key="item.value" :value="item.value" border>
-          <span class="themeLabel">
-            <component :is="item.icon" :size="22" />
-            <strong>{{ item.label }}</strong>
-            <small>{{ item.description }}</small>
-          </span>
-        </el-radio>
-      </el-radio-group>
+      <header class="settingHeader"><h3 id="themeTitle"><icon-sun-moon :size="18" aria-hidden="true" />外观模式</h3></header>
+      <div class="themeOptions" role="radiogroup" aria-label="外观模式" @click="captureThemeClickPoint">
+        <uiRadio v-for="item in themes" :key="item.value" :value="item.value" :modelValue="uiSettings.theme" :name="themeGroupName" border @update:modelValue="value => changeTheme(String(value))"><span class="themeLabel"><component :is="item.icon" :size="22" aria-hidden="true" /><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span></uiRadio>
+      </div>
     </section>
-
     <section class="settingSection" aria-labelledby="colorTitle">
-      <div class="settingHeader">
-        <h3 id="colorTitle">
-          <icon-palette :size="18" />
-          主题颜色
-        </h3>
-        <span class="settingValue">{{ uiSettings.primaryColor.toUpperCase() }}</span>
-      </div>
+      <header class="settingHeader"><h3 id="colorTitle"><icon-palette :size="18" aria-hidden="true" />主题颜色</h3><span class="settingValue">{{ uiSettings.primaryColor.toUpperCase() }}</span></header>
       <p class="description">用于按钮、选中状态与创作背景。</p>
-      <div class="colorOptions">
-        <el-button
-          v-for="color in colors"
-          :key="color.value"
-          class="colorSwatch"
-          circle
-          :style="{ '--swatchColor': color.value }"
-          :aria-label="color.label"
-          :aria-pressed="uiSettings.primaryColor.toLowerCase() === color.value"
-          :title="color.label"
-          @click="updateUiSettings({ primaryColor: color.value })">
-          <icon-check v-if="uiSettings.primaryColor.toLowerCase() === color.value" :size="18" />
-        </el-button>
-        <el-color-picker
-          :modelValue="uiSettings.primaryColor"
-          colorFormat="hex"
-          aria-label="自定义主题颜色"
-          @change="changeColor" />
-        <span class="description">自定义</span>
-      </div>
+      <div class="colorOptions"><button v-for="color in colors" :key="color.value" class="colorSwatch" type="button" :style="{ '--swatchColor': color.value }" :aria-label="color.label" :aria-pressed="uiSettings.primaryColor.toLowerCase() === color.value" :title="color.label" @click="updateUiSettings({ primaryColor: color.value })"><icon-check v-if="uiSettings.primaryColor.toLowerCase() === color.value" :size="18" aria-hidden="true" /></button><uiColorPicker :modelValue="uiSettings.primaryColor" aria-label="自定义主题颜色" @change="changeColor" /><span class="description">自定义</span></div>
     </section>
-
-    <section class="settingSection" aria-labelledby="fontTitle">
-      <div class="settingHeader">
-        <h3 id="fontTitle">
-          <icon-text-size :size="18" />
-          字体大小
-        </h3>
-        <span class="settingValue">{{ fontScale }}%</span>
-      </div>
-      <p class="description">统一调整界面、聊天和节点中的文字大小。</p>
-      <el-slider
-        v-model="fontScale"
-        class="settingSlider"
-        :min="85"
-        :max="125"
-        :step="5"
-        :marks="{ 85: '较小', 100: '默认', 125: '较大' }"
-        aria-label="字体大小"
-        @change="(value) => typeof value === 'number' && updateUiSettings({ fontScale: value })" />
-    </section>
-
-    <section class="settingSection" aria-labelledby="radiusTitle">
-      <div class="settingHeader">
-        <h3 id="radiusTitle">
-          <icon-border-radius :size="18" />
-          界面圆角
-        </h3>
-        <span class="settingValue">{{ radius }} px</span>
-      </div>
-      <el-slider
-        v-model="radius"
-        class="settingSlider"
-        :min="0"
-        :max="16"
-        :step="2"
-        :marks="{ 0: '直角', 8: '默认', 16: '圆润' }"
-        aria-label="界面圆角"
-        @change="(value) => typeof value === 'number' && updateUiSettings({ radius: value })" />
-    </section>
-
-    <el-card class="appearancePreview" shadow="never">
-      <div class="previewIcon"><icon-sparkles :size="20" /></div>
-      <div class="previewText">
-        <strong>Toonflow 每一个灵感，都值得被看见</strong>
-        <p>这是当前颜色、字体与圆角的实际效果。</p>
-      </div>
-      <el-tag type="primary" effect="light">预览</el-tag>
-    </el-card>
-
-    <div class="settingsFooter">
-      <el-button :icon="IconRestore" @click="updateUiSettings({ ...defaultUiSettings, startupAnimation: uiSettings.startupAnimation })">恢复界面默认设置</el-button>
+    <div class="displayOptions">
+      <section class="settingSection" aria-labelledby="fontTitle"><header class="settingHeader"><h3 id="fontTitle"><icon-text-size :size="18" aria-hidden="true" />字体大小</h3><span class="settingValue">{{ fontScale }}%</span></header><p class="description">统一调整界面、聊天和节点中的文字大小。</p><uiSlider v-model="fontScale" :min="85" :max="125" :step="5" :marks="{ 85: '较小', 100: '默认', 125: '较大' }" aria-label="字体大小" @change="value => updateUiSettings({ fontScale: value })" /></section>
+      <section class="settingSection" aria-labelledby="radiusTitle"><header class="settingHeader"><h3 id="radiusTitle"><icon-border-radius :size="18" aria-hidden="true" />界面圆角</h3><span class="settingValue">{{ radius }} px</span></header><uiSlider v-model="radius" :min="0" :max="16" :step="2" :marks="{ 0: '直角', 8: '默认', 16: '圆润' }" aria-label="界面圆角" @change="value => updateUiSettings({ radius: value })" /></section>
     </div>
+    <div class="appearancePreview"><img :src="logoUrl" alt="OmniStudio" /><div class="previewText"><strong>每一个灵感，都值得被看见</strong><uiTag>预览</uiTag></div></div>
+    <footer class="settingsFooter"><uiButton variant="secondary" :icon="IconRestore" @click="updateUiSettings({ ...defaultUiSettings, startupAnimation: uiSettings.startupAnimation })">恢复界面默认设置</uiButton></footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watchEffect } from "vue";
+import { nextTick, ref, useId, watchEffect } from "vue";
 import {
   IconSun,
   IconMoon,
@@ -120,8 +32,11 @@ import {
   IconCheck,
   IconRestore,
 } from "@tabler/icons-vue";
+import { uiButton, uiRadio, uiColorPicker, uiSlider, uiTag } from "@toonflow/ui";
+import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
 import { defaultUiSettings, uiSettings, updateUiSettings } from "@/stores/settings";
 
+const themeGroupName = "appearanceTheme-" + useId();
 const fontScale = ref(uiSettings.value.fontScale);
 const radius = ref(uiSettings.value.radius);
 watchEffect(() => {
@@ -135,6 +50,8 @@ const themes = [
   { value: "system", label: "跟随系统", description: "自动切换", icon: IconDeviceDesktop },
 ];
 const colors = [
+  { value: "#ff6b35", label: "创作橙" },
+  { value: "#c3f15a", label: "鲜绿色" },
   { value: "#409eff", label: "天空蓝" },
   { value: "#6366f1", label: "鸢尾紫" },
   { value: "#a855f7", label: "薰衣紫" },
@@ -169,184 +86,15 @@ function changeTheme(value: string) {
 </script>
 
 <style lang="scss" scoped>
-.ui {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 0 4px 8px;
-
-  .intro,
-  .description {
-    margin: 0;
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    line-height: 1.6;
-  }
-
-  .settingSection {
-    min-width: 0;
-
-    h3 {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0 0 12px;
-      color: var(--el-text-color-primary);
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .settingHeader {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-
-      h3 {
-        margin-bottom: 6px;
-      }
-      .settingValue {
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-        font-variant-numeric: tabular-nums;
-      }
-    }
-
-    .themeOptions {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      width: 100%;
-
-      :deep(.el-radio) {
-        height: auto;
-        margin: 0;
-        padding: 14px 10px;
-        align-items: flex-start;
-        background: var(--el-fill-color-extra-light);
-
-        &.is-checked {
-          background: var(--el-color-primary-light-9);
-        }
-        .el-radio__input {
-          margin-top: 4px;
-        }
-        .el-radio__label {
-          min-width: 0;
-          padding-left: 8px;
-        }
-      }
-
-      .themeLabel {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        white-space: normal;
-
-        strong {
-          font-size: 13px;
-          font-weight: 500;
-        }
-        small {
-          color: var(--el-text-color-secondary);
-          font-size: 12px;
-        }
-      }
-    }
-
-    .colorOptions {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 14px;
-
-      .colorSwatch {
-        width: 30px;
-        height: 30px;
-        margin: 0;
-        border: 0;
-        color: #fff;
-        background: var(--swatchColor);
-
-        &[aria-pressed="true"] {
-          outline: 2px solid var(--swatchColor);
-          outline-offset: 3px;
-        }
-        &:focus-visible {
-          outline: 2px solid var(--el-text-color-primary);
-          outline-offset: 3px;
-        }
-      }
-    }
-
-    .settingSlider {
-      width: calc(100% - 48px);
-      margin: 10px 24px 20px;
-
-      :deep(.el-slider__stop) {
-        background-color: var(--el-text-color-secondary);
-        box-shadow: 0 0 0 1px var(--el-bg-color-overlay);
-      }
-    }
-  }
-
-  .appearancePreview {
-    background: var(--el-fill-color-extra-light);
-
-    :deep(.el-card__body) {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px;
-    }
-    .previewIcon {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      border-radius: var(--el-border-radius-base);
-      background: var(--el-color-primary-light-9);
-      color: var(--el-color-primary);
-    }
-    .previewText {
-      flex: 1;
-      min-width: 0;
-      strong {
-        font-size: 15px;
-        font-weight: 500;
-        color: var(--el-text-color-primary);
-      }
-      p {
-        margin: 6px 0 0;
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-        line-height: 1.6;
-      }
-    }
-  }
-
-  .settingsFooter {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  @media (max-width: 700px) {
-    .settingSection .themeOptions {
-      grid-template-columns: 1fr;
-      .themeLabel {
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-    }
-    .appearancePreview {
-      :deep(.el-card__body) {
-        flex-wrap: wrap;
-        padding: 12px;
-      }
-    }
-  }
+.appearanceSettings {
+  display: flex; flex-direction: column; gap: 32px; min-width: 0;
+  .settingSection { min-width: 0; .settingHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--uiFontLabel); font-weight: 600; } .settingValue { color: var(--uiTextMuted); font-size: var(--uiFontControl); font-variant-numeric: tabular-nums; } } .description { margin: 8px 0 16px; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.6; } }
+  .themeOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; :deep(.uiRadio) { min-width: 0; align-items: flex-start; padding: 16px 12px; .radioMark { margin-top: 3px; } } .themeLabel { display: flex; flex-direction: column; gap: 8px; strong { font-size: var(--uiFontLabel); font-weight: 500; } small { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } }
+  .colorOptions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; .colorSwatch { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--uiBorderControl); border-radius: 50%; background: var(--swatchColor); color: #141414; cursor: pointer; &[aria-pressed="true"] { outline: 2px solid var(--uiBorderFocus); outline-offset: 3px; } } .description { margin: 0; } }
+  .displayOptions { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .appearancePreview { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 20px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); img { display: block; width: 168px; height: auto; border-radius: 8px; background: #101010; } .previewText { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; strong { color: var(--uiTextPrimary); font-size: var(--uiFontBody); font-weight: 500; } } }
+  .settingsFooter { display: flex; justify-content: flex-end; }
+  @media (max-width: 900px) { .displayOptions { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .themeOptions { grid-template-columns: 1fr; .themeLabel { flex-direction: row; flex-wrap: wrap; align-items: center; } } }
 }
 </style>

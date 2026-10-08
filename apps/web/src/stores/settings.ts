@@ -1,9 +1,8 @@
+import feedback from "@/lib/uiFeedback";
 import axios from "axios";
 import { computed, nextTick, ref, watch } from "vue";
-import { ElMessage } from "element-plus";
 import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
 import { canvasShortcutFields, defaultCanvasShortcuts, getShortcutBindings, isShortcutAllowed, normalizeShortcut, type CanvasShortcuts } from "@/lib/canvasShortcuts";
-import "element-plus/es/components/message/style/css";
 
 export const settings = ref<Record<string, unknown>>({});
 // ACT: 页面在 loadSettings 完成后才挂载，加载标记仅保留在设置初始化与自动保存内部。
@@ -25,12 +24,12 @@ export const settingsStorage = {
   },
 };
 
-export const defaultUiSettings = { theme: "light", primaryColor: "#409eff", fontScale: 100, radius: 8, startupAnimation: true };
+export const defaultUiSettings = { theme: "dark", primaryColor: "#ff6b35", fontScale: 100, radius: 8, startupAnimation: true };
 export const uiSettings = computed(() => {
   const raw = settings.value.ui;
   const ui = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
   return {
-    theme: ui.theme === "dark" || ui.theme === "system" ? ui.theme : "light",
+    theme: ui.theme === "dark" || ui.theme === "system" || ui.theme === "light" ? ui.theme : defaultUiSettings.theme as "dark" | "light" | "system",
     primaryColor: typeof ui.primaryColor === "string" && /^#[\da-f]{6}$/i.test(ui.primaryColor) ? ui.primaryColor : defaultUiSettings.primaryColor,
     fontScale: typeof ui.fontScale === "number" && Number.isFinite(ui.fontScale) ? Math.min(125, Math.max(85, ui.fontScale)) : defaultUiSettings.fontScale,
     radius: typeof ui.radius === "number" && Number.isFinite(ui.radius) ? Math.min(16, Math.max(0, ui.radius)) : defaultUiSettings.radius,
@@ -127,5 +126,5 @@ export function saveSettings(update?: (current: Record<string, unknown>) => Reco
 
 watch(settings, () => {
   if (!settingsReady || applyingSettings) return;
-  void saveSettings().catch(() => { ElMessage.error("设置保存失败，请稍后重试"); });
+  void saveSettings().catch(() => { feedback.message({ tone: "error", message: "设置保存失败，请稍后重试" }); });
 }, { deep: true, flush: "sync" });

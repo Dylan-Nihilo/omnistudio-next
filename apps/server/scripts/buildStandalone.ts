@@ -16,5 +16,6 @@ for (const group of ["nodes", "tools"]) {
   }
 }
 
+await $`${process.execPath} run build`.cwd(resolve(projectDir, "packages/ui"));
 await $`${process.execPath} run build`.cwd(resolve(projectDir, "apps/web"));
 await $`${process.execPath} run build`.cwd(resolve(projectDir, "apps/server"));

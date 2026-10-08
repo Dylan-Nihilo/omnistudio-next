@@ -50,6 +50,14 @@ body,
   z-index: var(--markdown-tooltip-z-index);
 }
 
+.startupFailure {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 24px;
+  min-height: 100dvh; width: min(620px, 100%); margin: auto; padding: 40px 24px;
+  img { display: block; width: 224px; height: auto; }
+  h1 { margin: 0; font-size: var(--uiFontHeading); }
+  p { margin: 0; color: var(--uiTextBody); line-height: 1.8; overflow-wrap: anywhere; }
+}
+
 *::-webkit-scrollbar {
   width: 6px;
 }

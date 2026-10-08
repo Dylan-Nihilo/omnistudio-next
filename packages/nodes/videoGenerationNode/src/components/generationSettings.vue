@@ -1,51 +1,18 @@
 <template>
-  <el-popover trigger="click" placement="top-start" width="min(340px, calc(100vw - 24px))" :disabled="disabled" :showArrow="false" :popperStyle="{ padding: '14px' }">
-    <template #reference>
-      <el-button class="settingsButton" text size="small" :disabled="disabled" aria-label="视频生成设置">
-        <span class="ratioShape" :style="ratioStyle(ratio)" aria-hidden="true" />
-        <span>{{ [ratio, resolution, duration ? `${duration}秒` : ''].filter(Boolean).join(' · ') }}</span>
-        <icon-chevron-up :size="14" aria-hidden="true" />
-      </el-button>
-    </template>
+  <uiPopover placement="top-start" :width="380" :disabled="disabled" title="视频生成设置">
+    <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" class="settingsButton" variant="ghost" size="small" :disabled="disabled" aria-label="视频生成设置"><span class="ratioShape" :style="ratioStyle(ratio)" aria-hidden="true" /><span>{{ [ratio, resolution, duration ? `${duration}秒` : ''].filter(Boolean).join(' · ') }}</span><icon-chevron-up :size="14" aria-hidden="true" /></uiButton></template>
     <div class="generationSettings nodrag nopan nowheel" @pointerdown.stop @mousedown.stop @dblclick.stop @keydown.stop @wheel.stop>
-      <div v-if="modes.length" class="sectionLabel">生成模式</div>
-      <el-select v-if="modes.length" v-model="mode" :disabled="disabled" :teleported="false" aria-label="视频生成模式">
-        <el-option v-for="item in modes" :key="item.value" :value="item.value" :label="item.label" />
-      </el-select>
-      <div v-if="durations.length || resolutions.length" class="outputOptions">
-        <div v-if="durations.length" class="outputField">
-          <div class="sectionLabel">时长</div>
-          <el-select v-model="duration" :disabled="disabled" :teleported="false" aria-label="视频时长">
-            <el-option v-for="item in durations" :key="item" :value="item" :label="`${item}秒`" />
-          </el-select>
-        </div>
-        <div v-if="resolutions.length" class="outputField">
-          <div class="sectionLabel">分辨率</div>
-          <el-select v-model="resolution" :disabled="disabled" :teleported="false" aria-label="视频分辨率">
-            <el-option v-for="item in resolutions" :key="item" :value="item" :label="item" />
-          </el-select>
-        </div>
-      </div>
-      <div class="sectionLabel">通用比例</div>
-      <div class="ratioOptions" role="group" aria-label="视频比例">
-        <el-button v-for="item in ratios" :key="item" class="ratioButton" :disabled="disabled" :aria-label="`比例 ${item}`" :aria-pressed="ratio === item" @click="ratio = item">
-          <span class="ratioContent">
-            <span class="ratioShape" :style="ratioStyle(item)" aria-hidden="true" />
-            <span>{{ item }}</span>
-          </span>
-        </el-button>
-      </div>
-      <div v-if="model?.audio === 'optional'" class="audioOption">
-        <span class="sectionLabel">生成音频</span>
-        <el-switch v-model="generateAudio" :disabled="disabled" aria-label="生成音频" />
-      </div>
+      <uiField v-if="modes.length" label="生成模式"><uiSelect :modelValue="mode" :options="modes" :disabled="disabled" aria-label="视频生成模式" @update:modelValue="value => typeof value === 'string' && (mode = value)" /></uiField>
+      <div v-if="durations.length || resolutions.length" class="outputOptions"><uiField v-if="durations.length" label="时长"><uiSelect :modelValue="duration" :options="durations.map(value => ({ value, label: `${value}秒` }))" :disabled="disabled" aria-label="视频时长" @update:modelValue="value => typeof value === 'number' && (duration = value)" /></uiField><uiField v-if="resolutions.length" label="分辨率"><uiSelect :modelValue="resolution" :options="resolutions.map(value => ({ value, label: value }))" :disabled="disabled" aria-label="视频分辨率" @update:modelValue="value => typeof value === 'string' && (resolution = value)" /></uiField></div>
+      <uiField label="通用比例"><div class="ratioOptions" role="group" aria-label="视频比例"><uiButton v-for="item in ratios" :key="item" class="ratioButton" variant="secondary" :disabled="disabled" :aria-label="`比例 ${item}`" :aria-pressed="ratio === item" @click="ratio = item"><span class="ratioContent"><span class="ratioShape" :style="ratioStyle(item)" aria-hidden="true" /><span>{{ item }}</span></span></uiButton></div></uiField>
+      <div v-if="model?.audio === 'optional'" class="audioOption"><span>生成音频</span><uiSwitch v-model="generateAudio" :disabled="disabled" aria-label="生成音频" /></div>
     </div>
-  </el-popover>
+  </uiPopover>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { ElButton, ElPopover, ElSelect, ElOption, ElSwitch } from "element-plus";
+import { uiButton, uiPopover, uiField, uiSelect, uiSwitch } from "@toonflow/ui";
 import { IconChevronUp } from "@tabler/icons-vue";
 import type { NodeMediaModel } from "@toonflow/nodes-scaffold/runtime";
 
@@ -77,75 +44,6 @@ function ratioStyle(value: string) {
 </script>
 
 <style scoped lang="scss">
-.ratioShape {
-  display: inline-block;
-  flex-shrink: 0;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  box-sizing: border-box;
-}
-
-.settingsButton {
-  flex-shrink: 0;
-  :deep(> span) { gap: 6px; }
-}
-
-.generationSettings {
-  text-align: left;
-
-  .sectionLabel {
-    margin-bottom: 8px;
-    color: var(--el-text-color-secondary);
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  > .el-select { margin-bottom: 14px; }
-
-  .outputOptions {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 14px;
-    .outputField { flex: 1; min-width: 0; }
-  }
-
-  .ratioOptions {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-
-    .ratioButton {
-      height: 60px;
-      margin: 0;
-      padding: 8px 4px;
-      color: var(--el-text-color-secondary);
-      --el-button-bg-color: var(--el-fill-color-light);
-      --el-button-hover-bg-color: var(--el-fill-color);
-      --el-button-hover-text-color: var(--el-text-color-primary);
-      --el-button-hover-border-color: var(--el-border-color-darker);
-
-      &[aria-pressed="true"] {
-        color: var(--el-text-color-primary);
-        border-color: var(--el-text-color-regular);
-        background: var(--el-fill-color);
-      }
-
-      .ratioContent {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-      }
-    }
-  }
-
-  .audioOption {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 14px;
-    .sectionLabel { margin: 0; }
-  }
-}
+.ratioShape { display: inline-block; flex-shrink: 0; border: 1px solid currentColor; border-radius: 2px; box-sizing: border-box; }
+.generationSettings { display: flex; flex-direction: column; gap: 24px; text-align: left; .outputOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } .ratioOptions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; .ratioButton { min-height: 68px; padding: 8px 4px; &[aria-pressed="true"] { color: var(--uiActionPrimary); border-color: var(--uiActionPrimary); background: var(--uiActionSoft); } .ratioContent { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: var(--uiFontControl); } } } .audioOption { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextBody); font-size: var(--uiFontLabel); } }
 </style>

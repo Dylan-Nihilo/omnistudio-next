@@ -1,122 +1,41 @@
 <template>
   <div class="developerPanel">
     <div class="developer" :class="{ blurred: developerLocked }" :inert="developerLocked">
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>开发者工具</h3>
-          <p>查看页面结构、控制台与网络请求。</p>
-        </div>
-        <el-button type="primary" :icon="IconTerminal2" :loading="opening" :disabled="!isDesktop" @click="openDevTools">打开 DevTools</el-button>
-      </div>
-      <el-text v-if="!isDesktop" type="info">浏览器模式请从浏览器菜单打开开发者工具。</el-text>
-      <el-text v-if="requestError" type="danger" role="alert">{{ requestError }}</el-text>
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>首次使用引导</h3>
-          <p>当前{{ hello.completed ? '已完成' : '未完成' }}。重置后打开引导页，保留已配置的模型。</p>
-        </div>
-        <el-button :icon="IconRefresh" :loading="resettingHello" :disabled="importingStorage || writingStorage" @click="resetHello">重置并打开引导页</el-button>
-      </div>
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>更新说明</h3>
-          <p>打开当前版本的更新说明弹窗。</p>
-        </div>
-        <el-button :icon="IconFileText" :loading="openingUpdateBox" @click="openUpdateBox">查看更新说明</el-button>
-      </div>
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>供应商开发工具</h3>
-          <p>授权读取本地供应商文件，调试生成接口与媒体结果。</p>
-        </div>
-        <el-button :icon="IconCode" @click="providerDebugVisible = true">开发供应商</el-button>
-      </div>
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>Agent 系统提示词</h3>
-          <p>编辑 Agent 的基础指令，保存后下一条消息生效。</p>
-        </div>
-        <el-button :icon="IconEdit" @click="systemPromptVisible = true">编辑提示词</el-button>
-      </div>
-      <div class="developerRow">
-        <div class="toolDescription">
-          <h3>自定义更新源</h3>
-          <p>填写更新清单和安装包所在的目录地址，保存后可在关于页选择。</p>
-        </div>
-        <div class="updateSourceEditor">
-          <el-input v-model="customUpdateUrl" placeholder="https://example.com/desktopUpdates" aria-label="自定义更新源目录地址" clearable :disabled="savingUpdateUrl" @keyup.enter="saveCustomUpdateUrl" />
-          <el-button type="primary" :loading="savingUpdateUrl" @click="saveCustomUpdateUrl">保存</el-button>
-        </div>
-      </div>
-      <el-text v-if="updateUrlError" type="danger" role="alert">{{ updateUrlError }}</el-text>
-      <div class="pluginInstaller">
-        <div class="installerHeader">
-          <h3>手动安装插件</h3>
-          <el-select v-model="installType" class="typeSelect" :disabled="!!installing" aria-label="安装插件类型">
-            <el-option v-for="(item, type) in installTypes" :key="type" :label="item.label" :value="type" />
-            <el-option label="Agent（暂未开放）" value="agent" disabled />
-          </el-select>
-        </div>
-        <div class="toolDescription">
-          <p>{{ selectedInstaller.description }}支持本地文件或文件直链，安装后可在插件市场查看。</p>
-        </div>
-        <el-checkbox v-model="forceInstall" :disabled="!!installing">强制安装（允许覆盖同版本或降级）</el-checkbox>
-        <input ref="fileInput" class="fileInput" type="file" :accept="selectedInstaller.accept" @change="installFile" />
-        <el-button :icon="IconFileUpload" :loading="installing === 'file'" :disabled="!!installing" @click="fileInput?.click()">选择本地{{ selectedInstaller.label }}文件</el-button>
-        <div class="urlInstaller">
-          <el-input v-model="pluginUrl" :disabled="!!installing" :placeholder="`https://example.com/${selectedInstaller.example}`" :aria-label="`${selectedInstaller.label}文件地址`" clearable @keyup.enter="installUrl" />
-          <el-button type="primary" :icon="IconDownload" :loading="installing === 'url'" :disabled="!!installing || !pluginUrl.trim()" @click="installUrl">从 URL 安装</el-button>
-        </div>
-        <el-text v-if="installError" type="danger" role="alert">{{ installError }}</el-text>
-        <el-text v-else-if="installedName" type="success" role="status">{{ installedName }} 已安装</el-text>
-      </div>
-      <div class="storageManager">
-        <div class="developerRow">
-          <div class="toolDescription">
-            <h3>浏览器持久缓存</h3>
-            <p>管理当前站点的 localStorage。修改重新加载后生效；首次使用引导请通过上方按钮重置。导入会覆盖同名项，保留其他项。</p>
-          </div>
-          <div class="storageToolbar">
-            <input ref="storageFileInput" type="file" accept=".json,application/json" hidden @change="importStorage" />
-            <el-button :icon="IconFileUpload" :loading="importingStorage" :disabled="storageBusy" @click="storageFileInput?.click()">导入</el-button>
-            <el-button :icon="IconDownload" :disabled="storageBusy" @click="exportStorage">导出</el-button>
-            <el-button :icon="IconRefresh" :disabled="storageBusy" @click="loadStorage">刷新列表</el-button>
-          </div>
-        </div>
-        <el-text v-if="storageError" type="danger" role="alert">{{ storageError }}</el-text>
-        <el-text v-else-if="storageMessage" type="success" role="status">{{ storageMessage }}</el-text>
+      <section class="toolsSection" aria-label="开发调试">
+        <div class="developerRow"><div class="toolDescription"><h3>开发者工具</h3><p>查看页面结构、控制台与网络请求。</p></div><uiButton variant="secondary" :icon="IconTerminal2" :loading="opening" :disabled="!isDesktop" @click="openDevTools">打开 DevTools</uiButton></div>
+        <p v-if="!isDesktop" class="browserHint">浏览器模式请从浏览器菜单打开开发者工具。</p>
+        <uiAlert v-if="requestError" :title="requestError" tone="error" />
+        <div class="developerRow"><div class="toolDescription"><h3>首次使用引导</h3><p>当前{{ hello.completed ? '已完成' : '未完成' }}。重置后打开引导页，保留已配置的模型。</p></div><uiButton variant="secondary" :icon="IconRefresh" :loading="resettingHello" :disabled="importingStorage || writingStorage" @click="resetHello">重置并打开引导页</uiButton></div>
+        <div class="developerRow"><div class="toolDescription"><h3>更新说明</h3><p>打开当前版本的更新说明弹窗。</p></div><uiButton variant="secondary" :icon="IconFileText" :loading="openingUpdateBox" @click="openUpdateBox">查看更新说明</uiButton></div>
+        <div class="developerRow"><div class="toolDescription"><h3>供应商开发工具</h3><p>授权读取本地供应商文件，调试生成接口与媒体结果。</p></div><uiButton variant="secondary" :icon="IconCode" @click="providerDebugVisible = true">开发供应商</uiButton></div>
+        <div class="developerRow"><div class="toolDescription"><h3>Agent 系统提示词</h3><p>编辑 Agent 的基础指令，保存后下一条消息生效。</p></div><uiButton variant="secondary" :icon="IconEdit" @click="systemPromptVisible = true">编辑提示词</uiButton></div>
+      </section>
+      <section class="updateSourceSection" aria-label="自定义更新源">
+        <div class="toolDescription"><h3>自定义更新源</h3><p>填写更新清单和安装包所在的目录地址，保存后可在关于页选择。</p></div>
+        <div class="updateSourceEditor"><uiInput v-model="customUpdateUrl" placeholder="https://example.com/desktopUpdates" aria-label="自定义更新源目录地址" clearable :disabled="savingUpdateUrl" @keyup.enter="saveCustomUpdateUrl" /><uiButton :loading="savingUpdateUrl" @click="saveCustomUpdateUrl">保存</uiButton></div>
+        <uiAlert v-if="updateUrlError" :title="updateUrlError" tone="error" />
+      </section>
+      <section class="pluginInstaller" aria-label="手动安装插件">
+        <header class="installerHeader"><h3>手动安装插件</h3><uiSelect :modelValue="installType" :options="installOptions" class="typeSelect" :disabled="!!installing" aria-label="安装插件类型" @update:modelValue="value => (value === 'node' || value === 'skill' || value === 'tool') && (installType = value)" /></header>
+        <div class="toolDescription"><p>{{ selectedInstaller.description }}支持本地文件或文件直链，安装后可在插件市场查看。</p></div>
+        <uiCheckbox v-model="forceInstall" :disabled="!!installing">强制安装（允许覆盖同版本或降级）</uiCheckbox>
+        <input ref="fileInput" type="file" :accept="selectedInstaller.accept" hidden @change="installFile" />
+        <div class="fileInstaller"><uiButton variant="secondary" :icon="IconFileUpload" :loading="installing === 'file'" :disabled="!!installing" @click="fileInput?.click()">选择本地{{ selectedInstaller.label }}文件</uiButton></div>
+        <div class="urlInstaller"><uiInput v-model="pluginUrl" :disabled="!!installing" :placeholder="`https://example.com/${selectedInstaller.example}`" :aria-label="`${selectedInstaller.label}文件地址`" clearable @keyup.enter="installUrl" /><uiButton :icon="IconDownload" :loading="installing === 'url'" :disabled="!!installing || !pluginUrl.trim()" @click="installUrl">从 URL 安装</uiButton></div>
+        <uiAlert v-if="installError" :title="installError" tone="error" /><uiAlert v-else-if="installedName" :title="`${installedName} 已安装`" tone="success" />
+      </section>
+      <section class="storageManager" aria-label="浏览器持久缓存">
+        <header class="developerRow"><div class="toolDescription"><h3>浏览器持久缓存</h3><p>管理当前站点的 localStorage。修改重新加载后生效；首次使用引导请通过上方按钮重置。导入会覆盖同名项，保留其他项。</p></div><div class="storageToolbar"><input ref="storageFileInput" type="file" accept=".json,application/json" hidden @change="importStorage" /><uiButton variant="secondary" size="small" :icon="IconFileUpload" :loading="importingStorage" :disabled="storageBusy" @click="storageFileInput?.click()">导入</uiButton><uiButton variant="secondary" size="small" :icon="IconDownload" :disabled="storageBusy" @click="exportStorage">导出</uiButton><uiButton variant="ghost" size="small" :icon="IconRefresh" :disabled="storageBusy" @click="loadStorage">刷新列表</uiButton></div></header>
+        <uiAlert v-if="storageError" :title="storageError" tone="error" /><uiAlert v-else-if="storageMessage" :title="storageMessage" tone="success" />
         <div v-for="entry in storageEntries" :key="entry.key" class="storageItem">
-          <div class="storageHeader">
-            <span class="storageKey">{{ entry.key || '（空键名）' }}</span>
-            <div class="storageActions">
-              <el-button :icon="IconEdit" text :disabled="storageBusy" :aria-label="`修改 ${entry.key}`" @click="editStorage(entry)">修改</el-button>
-              <el-popconfirm title="确定删除这条缓存？" confirmButtonText="删除" cancelButtonText="取消" @confirm="writeStorage(entry, null)">
-                <template #reference>
-                  <el-button :icon="IconTrash" type="danger" text :disabled="storageBusy" :aria-label="`删除 ${entry.key}`">删除</el-button>
-                </template>
-              </el-popconfirm>
-            </div>
-          </div>
-          <template v-if="editingKey === entry.key">
-            <el-input v-model="storageValue" type="textarea" :rows="5" :disabled="storageBusy" :aria-label="`${entry.key} 的值`" />
-            <div class="storageActions">
-              <el-button :disabled="storageBusy" @click="editingKey = null">取消</el-button>
-              <el-button type="primary" :loading="writingStorage" :disabled="storageBusy" @click="writeStorage(entry, storageValue)">保存</el-button>
-            </div>
-          </template>
-          <div v-else class="storageValue">{{ entry.value }}</div>
+          <div class="storageHeader"><span class="storageKey">{{ entry.key || '（空键名）' }}</span><div class="storageActions"><uiButton variant="ghost" size="small" :icon="IconEdit" :disabled="storageBusy" :aria-label="`修改 ${entry.key}`" @click="editStorage(entry)">修改</uiButton><uiPopconfirm title="确定删除这条缓存？" danger confirmButtonText="删除" cancelButtonText="取消" @confirm="writeStorage(entry, null)"><template #reference><uiButton variant="danger" size="small" :icon="IconTrash" :disabled="storageBusy" :aria-label="`删除 ${entry.key}`">删除</uiButton></template></uiPopconfirm></div></div>
+          <template v-if="editingKey === entry.key"><uiTextarea v-model="storageValue" :rows="5" :disabled="storageBusy" :aria-label="`${entry.key} 的值`" /><div class="storageActions"><uiButton variant="secondary" size="small" :disabled="storageBusy" @click="editingKey = null">取消</uiButton><uiButton size="small" :loading="writingStorage" :disabled="storageBusy" @click="writeStorage(entry, storageValue)">保存</uiButton></div></template>
+          <pre v-else class="storageValue">{{ entry.value }}</pre>
         </div>
-      </div>
+      </section>
     </div>
-    <providerDebugDialog v-if="providerDebugVisible" v-model="providerDebugVisible" />
-    <systemPromptDialog v-if="systemPromptVisible" v-model="systemPromptVisible" />
-    <updateBox v-if="updateBoxVisible" v-model="updateBoxVisible" :version="updateBoxBuild.version" :buildCode="updateBoxBuild.hash" />
-    <div v-if="developerLocked" class="developerConfirm">
-      <icon-code :size="28" aria-hidden="true" />
-      <h3>确认进入开发者选项</h3>
-      <p>此功能仅供开发调试，普通用户请勿开启。安装未知节点或修改、清除缓存可能导致程序异常或数据丢失。请确认你了解相关风险后继续，系统将记住你的选择。</p>
-      <el-button type="primary" @click="confirmDeveloper">确认并继续</el-button>
-    </div>
+    <providerDebugDialog v-if="providerDebugVisible" v-model="providerDebugVisible" /><systemPromptDialog v-if="systemPromptVisible" v-model="systemPromptVisible" /><updateBox v-if="updateBoxVisible" v-model="updateBoxVisible" :version="updateBoxBuild.version" :buildCode="updateBoxBuild.hash" />
+    <div v-if="developerLocked" class="developerConfirm"><icon-code :size="28" aria-hidden="true" /><h3>确认进入开发者选项</h3><p>此功能仅供开发调试，普通用户请勿开启。安装未知节点或修改、清除缓存可能导致程序异常或数据丢失。请确认你了解相关风险后继续，系统将记住你的选择。</p><uiButton @click="confirmDeveloper">确认并继续</uiButton></div>
   </div>
 </template>
 
@@ -130,10 +49,11 @@ import { desktopUpdateSnapshot } from "@/stores/desktopUpdate";
 import type { updateSnapshot } from "@toonflow/server/desktop";
 import saveFile from "@/lib/saveFile";
 import { installPluginFile } from "../../installPluginFile";
-import { ElMessage } from "element-plus";
+import { uiButton, uiInput, uiTextarea, uiSelect, uiCheckbox, uiAlert, uiPopconfirm, useUiFeedback } from "@toonflow/ui";
 import axios from "axios";
 import { IconCode, IconTerminal2, IconFileUpload, IconFileText, IconDownload, IconRefresh, IconEdit, IconTrash } from "@tabler/icons-vue";
 
+const feedback = useUiFeedback();
 const developerStore = useDeveloperStore();
 const hello = useHelloStore();
 const router = useRouter();
@@ -162,7 +82,7 @@ async function openUpdateBox() {
     }
     updateBoxVisible.value = true;
   } catch (error) {
-    ElMessage.error(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "读取版本信息失败");
+    feedback.message({ tone: "error", message: axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "读取版本信息失败" });
   } finally {
     openingUpdateBox.value = false;
   }
@@ -185,7 +105,7 @@ async function saveCustomUpdateUrl() {
       ...(url || current.desktopUpdateSource !== "custom" ? {} : { desktopUpdateSource: "official" }),
     }));
     customUpdateUrl.value = url;
-    ElMessage.success("自定义更新源已保存");
+    feedback.message({ tone: "success", message: "自定义更新源已保存" });
   } catch (error) {
     updateUrlError.value = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : error instanceof Error ? error.message : "保存更新源失败";
   } finally {
@@ -201,7 +121,7 @@ async function resetHello() {
     loadStorage();
     await router.replace("/hello");
   } catch {
-    ElMessage.error("重置引导失败，请重试");
+    feedback.message({ tone: "error", message: "重置引导失败，请重试" });
   } finally {
     resettingHello.value = false;
   }
@@ -217,6 +137,7 @@ const installTypes = {
   skill: { label: "技能", accept: ".zip,.md,.tar,.tar.gz,.tgz", example: "skill.zip", description: "支持包含技能与资源的 .zip 包、SKILL.md，以及 .tar、.tar.gz、.tgz 包。" },
   tool: { label: "工具", accept: ".tool.js", example: "mediaGeneration.tool.js", description: "选择脚手架打包的 .tool.js 文件。" },
 };
+const installOptions = [...Object.entries(installTypes).map(([value, item]) => ({ value, label: item.label })), { value: "agent", label: "Agent（暂未开放）", disabled: true }];
 const installType = ref<keyof typeof installTypes>("node");
 const selectedInstaller = computed(() => installTypes[installType.value]);
 const fileInput = ref<HTMLInputElement>();
@@ -387,126 +308,22 @@ async function openDevTools() {
 
 <style lang="scss" scoped>
 .developerPanel {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-
+  position: relative; height: 100%; min-width: 0; overflow: hidden;
   .developer {
-    height: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 32px; height: 100%; min-width: 0; overflow: auto; overscroll-behavior: contain; padding-right: 4px;
     &.blurred { filter: blur(6px); user-select: none; pointer-events: none; }
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-
-    .toolDescription {
-      h3 { margin: 0 0 8px; font-size: 14px; color: var(--el-text-color-primary); }
-      p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--el-text-color-secondary); }
-    }
-
-    .pluginInstaller {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
-      margin-top: 16px;
-
-      .installerHeader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-        width: 100%;
-
-        h3 { margin: 0; font-size: 14px; color: var(--el-text-color-primary); }
-        .typeSelect { width: 160px; }
-      }
-
-      .fileInput { display: none; }
-      .urlInstaller {
-        display: flex;
-        flex-wrap: wrap;
-        width: 100%;
-        gap: 12px;
-
-        .el-input { flex: 1; min-width: 200px; }
-      }
-    }
-
-    .developerRow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-
-      .updateSourceEditor {
-        display: flex;
-        flex: 1;
-        flex-wrap: wrap;
-        gap: 8px;
-        min-width: min(100%, 280px);
-
-        .el-input { flex: 1; min-width: 200px; }
-      }
-    }
-
+    h3 { margin: 0; color: var(--uiTextPrimary); font-size: var(--uiFontLabel); font-weight: 600; }
+    .toolDescription { min-width: 0; p { max-width: 70ch; margin: 8px 0 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } }
+    .developerRow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; min-width: 0; .toolDescription { flex: 1 1 280px; } }
+    .toolsSection { display: flex; flex-direction: column; gap: 24px; min-width: 0; .browserHint { margin: -12px 0 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
+    .updateSourceSection, .pluginInstaller, .storageManager { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding-top: 28px; border-top: 1px solid var(--uiBorderDefault); }
+    .updateSourceSection .updateSourceEditor, .pluginInstaller .urlInstaller { display: flex; flex-wrap: wrap; gap: 12px; min-width: 0; :deep(.uiInput) { flex: 1 1 240px; min-width: 0; } }
+    .pluginInstaller .installerHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; :deep(.uiPopover) { width: 180px; } }
     .storageManager {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 16px;
-      min-width: 0;
-
-      .storageToolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-
-        .el-button { margin-left: 0; }
-      }
-
-      .storageItem {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 12px;
-        border-radius: var(--el-border-radius-base);
-        background: var(--el-fill-color-light);
-
-        .storageHeader {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 8px;
-
-          .storageKey { overflow-wrap: anywhere; font-size: 13px; font-weight: 500; }
-        }
-
-        .storageActions { display: flex; justify-content: flex-end; flex-shrink: 0; }
-        .storageValue { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: auto; font-size: 13px; color: var(--el-text-color-secondary); }
-      }
+      .storageToolbar, .storageActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+      .storageItem { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding-top: 20px; border-top: 1px solid var(--uiBorderDefault); .storageHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; .storageKey { min-width: 0; overflow-wrap: anywhere; font-size: var(--uiFontControl); font-weight: 500; } } .storageValue { margin: 0; max-height: 160px; overflow: auto; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; } }
     }
   }
-
-  .developerConfirm {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 24px;
-    overflow-y: auto;
-    text-align: center;
-    background: color-mix(in srgb, var(--el-bg-color) 75%, transparent);
-
-    h3 { margin: 0; font-size: 16px; }
-    p { margin: 0; max-width: 320px; line-height: 1.6; color: var(--el-text-color-secondary); }
-  }
+  .developerConfirm { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px; overflow: auto; text-align: center; background: color-mix(in srgb, var(--uiBackgroundBase) 90%, transparent); h3 { margin: 0; font-size: var(--uiFontHeading); } p { max-width: 44ch; margin: 0; color: var(--uiTextBody); font-size: var(--uiFontBody); line-height: 1.7; } }
 }
 </style>

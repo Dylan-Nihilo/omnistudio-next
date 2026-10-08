@@ -1,6 +1,7 @@
 <template>
   <nodeSkeleton v-bind="nodeProps" style="width: 320px">
-    <button v-loading="modelLoading" type="button" class="directorContent nopan" :disabled="modelLoading" :title="modelError || undefined" aria-label="打开导演台" @dblclick.stop @click.stop="openEditor">
+    <button type="button" class="directorContent nopan" :disabled="modelLoading" :title="modelError || undefined" aria-label="打开导演台" @dblclick.stop @click.stop="openEditor">
+      <uiLoading v-if="modelLoading" loading class="modelLoading" label="载入模型" />
       <img v-if="preview" class="scenePreview" :src="preview" alt="最后镜头" draggable="false" />
       <div v-else class="emptyPreview">
         <icon-cube3d-sphere :size="38" stroke="1.2" />
@@ -24,7 +25,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useVueFlow } from "@vue-flow/core";
 import { IconCube3dSphere } from "@tabler/icons-vue";
-import { ElLoading, ElMessage } from "element-plus";
+import { uiLoading, useUiFeedback } from "@toonflow/ui";
 import { nodeSkeleton, useNode, useNodeFiles, useNodeReferences, z, type NodeHandle, type NodeData, type NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
 import promptInput from "@toonflow/nodes-scaffold/promptInput";
 import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
@@ -49,7 +50,7 @@ defineOptions({
   handles: [{ id: "in", type: "target", dataType: ["STRING", "IMAGE", "VIDEO"], label: "文本、图片、视频输入" }] satisfies NodeHandle[],
 });
 const { node, nodeProps, previewReady, ai, files, nodeEvent } = useNode({ label: "3D导演台" });
-const vLoading = ElLoading.directive;
+const feedback = useUiFeedback();
 const { addNodes, findNode, getNodes, nodeTypes, removeNodes } = useVueFlow();
 const mediaFiles = useNodeFiles();
 const exportingVideo = ref(false);
@@ -131,7 +132,7 @@ async function loadModel() {
     if (!selectedPlan.value) data.value.selectedPlanId = value.plans[0]?.id;
   } catch (error) {
     modelError.value = error instanceof Error ? error.message : "模型文件读取失败";
-    if (!disposed) ElMessage.error(`导演台加载失败：${modelError.value}`);
+    if (!disposed) feedback.message({ tone: "error", message: `导演台加载失败：${modelError.value}` });
   } finally {
     modelLoading.value = false;
   }
@@ -172,7 +173,7 @@ async function addMannequin() {
     modelSaving = saving.catch(() => {});
     await saving;
   } catch (error) {
-    if (!disposed) ElMessage.error(error instanceof Error ? error.message : "人偶添加失败");
+    if (!disposed) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "人偶添加失败" });
   } finally {
     addingMannequin.value = false;
   }
@@ -199,7 +200,7 @@ nodeEvent.on("save", async (reason) => {
 async function exportToCanvas(kind: "image" | "video", key: string, aspect: number, render: (signal: AbortSignal) => Promise<File>) {
   if (kind === "video" ? exportingVideo.value : exportingImage.value) return;
   const type = `remote-${kind}Node`;
-  if (!nodeTypes?.value?.[type]) return void ElMessage.error(`请先启用${kind === "image" ? "图片" : "视频"}节点插件`);
+  if (!nodeTypes?.value?.[type]) return void feedback.message({ tone: "error", message: `请先启用${kind === "image" ? "图片" : "视频"}节点插件` });
   if (kind === "video") { exportingVideo.value = true; exportProgress.value = 0; }
   else exportingImage.value = key;
   const id = crypto.randomUUID();
@@ -248,9 +249,9 @@ async function exportToCanvas(kind: "image" | "video", key: string, aspect: numb
     };
     committed = true;
     if (kind === "video") exportProgress.value = 100;
-    ElMessage.success(`${kind === "image" ? "图片" : "视频"}已导出到画布`);
+    feedback.message({ tone: "success", message: `${kind === "image" ? "图片" : "视频"}已导出到画布` });
   } catch (error) {
-    if (!disposed && !discarded) ElMessage.error(error instanceof Error ? error.message : "导出失败，请重试");
+    if (!disposed && !discarded) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "导出失败，请重试" });
     if (exportNode && findNode(id) === exportNode) removeNodes(id);
   } finally {
     stopWatching();
@@ -259,7 +260,7 @@ async function exportToCanvas(kind: "image" | "video", key: string, aspect: numb
       try { await workspaceFiles!.remove(`assets/${id}`, true); }
       catch (cleanupError) {
         const code = (cleanupError as { response?: { data?: { data?: { code?: string } } } })?.response?.data?.data?.code;
-        if (!disposed && code !== "ENOENT") ElMessage.error("导出中断，临时素材清理失败");
+        if (!disposed && code !== "ENOENT") feedback.message({ tone: "error", message: "导出中断，临时素材清理失败" });
       }
     }
     if (kind === "video") exportingVideo.value = false;
@@ -292,7 +293,7 @@ async function loadModels() {
     // ACT: 只给空配置选默认模型，保留暂时不可用的旧选择。
     if (!model.value) model.value = first ? JSON.stringify([first.providerId, first.modelId]) : "";
   } catch (error) {
-    if (!disposed) ElMessage.error(error instanceof Error ? error.message : "模型加载失败");
+    if (!disposed) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "模型加载失败" });
   } finally {
     modelsLoading.value = false;
   }
@@ -325,7 +326,7 @@ watch([scene, selectedPlan, lighting, sceneSettings, modelLoading, previewReady]
     if (plan) planPreviews.set(plan, { scene: value, lighting: light, settings, image });
     if (!disposed && version === previewVersion) preview.value = image;
   } catch (error) {
-    if (!disposed && version === previewVersion) ElMessage.error(error instanceof Error ? error.message : "预览生成失败");
+    if (!disposed && version === previewVersion) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "预览生成失败" });
   }
 }, { immediate: true });
 
@@ -410,6 +411,8 @@ async function generate() {
 
 <style scoped lang="scss">
 .directorContent {
+  position: relative;
+  .modelLoading { position: absolute; inset: 0; pointer-events: none; }
   display: block;
   width: 100%;
   padding: 0;
@@ -417,10 +420,10 @@ async function generate() {
   cursor: pointer;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  color: var(--el-text-color-regular);
-  background: var(--el-fill-color-light);
-  border-radius: var(--el-border-radius-base);
-  &:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
+  color: var(--uiTextBody);
+  background: var(--uiBackgroundSubtle);
+  border-radius: var(--uiRadiusControl);
+  &:focus-visible { outline: 2px solid var(--uiActionPrimary); outline-offset: 2px; }
 
   .scenePreview {
     display: block;
@@ -435,7 +438,7 @@ async function generate() {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--el-text-color-placeholder);
+    color: var(--uiTextMuted);
   }
 
 }

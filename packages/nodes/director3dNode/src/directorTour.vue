@@ -1,22 +1,12 @@
 <template>
-  <el-tour v-model="open" :targetAreaClickable="false" :contentStyle="{ maxWidth: 'calc(100vw - 32px)' }" @close="complete">
-    <el-tour-step
-      v-for="(step, index) in steps"
-      :key="step.target"
-      :target="() => root?.querySelector<HTMLElement>(step.target) ?? null"
-      :title="step.title"
-      :description="step.description"
-      :prevButtonProps="{ children: '上一步' }"
-      :nextButtonProps="{ children: index === steps.length - 1 ? '开始使用' : '下一步' }" />
-    <template #indicators="{ current, total }">{{ current + 1 }} / {{ total }}</template>
-  </el-tour>
+  <uiTour v-model="open" :steps="tourSteps" finishText="开始使用" @close="complete" @complete="complete" />
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { ElTour, ElTourStep } from "element-plus";
+import { computed, ref } from "vue";
+import { uiTour } from "@toonflow/ui";
 
-defineProps<{ root?: HTMLElement }>();
+const props = defineProps<{ root?: HTMLElement }>();
 const storageKey = "toonflow.director3dTour";
 const open = ref(localStorage.getItem(storageKey) !== "true");
 const steps = [
@@ -51,6 +41,8 @@ const steps = [
     description: "选中方案后，点击这里导出视频节点。关键帧缩略图上的导出按钮可以生成图片节点。视频导出期间请保持窗口可见，完成后回到画布查看结果。",
   },
 ];
+
+const tourSteps = computed(() => steps.map(step => ({ ...step, target: () => props.root?.querySelector<HTMLElement>(step.target) ?? null })));
 
 function complete() {
   localStorage.setItem(storageKey, "true");

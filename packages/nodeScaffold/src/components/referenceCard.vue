@@ -1,16 +1,13 @@
 <template>
-  <div class="referenceItem" role="group" :title="title" :aria-label="title" @keydown.enter.self.stop.prevent="imageRef?.showPreview()" @keydown.space.self.stop.prevent="imageRef?.showPreview()">
-    <el-image
+  <div class="referenceItem" role="group" :title="title" :aria-label="title" @keydown.enter.self.stop.prevent="openImagePreview()" @keydown.space.self.stop.prevent="openImagePreview()">
+    <uiImage
       v-if="item.dataType === 'IMAGE' && previewUrl && !previewError"
-      ref="imageRef"
       class="preview"
       :src="previewUrl"
-      :previewSrcList="[previewUrl]"
-      previewTeleported
       fit="cover"
       :alt="`预览引用 ${index}`"
       draggable="false"
-      @click.stop
+      @click.stop="openImagePreview"
       @error="mediaError" />
     <video
       v-else-if="item.dataType === 'VIDEO' && previewUrl && !previewError"
@@ -24,34 +21,27 @@
       @loadeddata="readVideoPreview"
       @error="mediaError" />
     <component v-else :is="itemIcon" class="typeIcon" :size="21" aria-hidden="true" />
-    <el-button
-      class="removeButton nodrag nopan"
-      :icon="IconX"
-      circle
-      :aria-label="`删除引用 ${index}`"
-      title="删除引用"
-      @pointerdown.stop
-      @mousedown.stop
-      @dblclick.stop
-      @click.stop="emit('remove')" />
+    <uiIconButton class="removeButton nodrag nopan" size="small" variant="danger" :icon="IconX" :label="`删除引用 ${index}`" title="删除引用" @pointerdown.stop @mousedown.stop @dblclick.stop @click.stop="emit('remove')" />
     <span class="indexBadge" aria-hidden="true">{{ index }}</span>
     <div v-if="item.dataType === 'VIDEO' && previewUrl && !previewError" class="videoInfo" aria-hidden="true">
       <icon-player-play :size="12" />
       <span v-if="duration">{{ duration }}</span>
     </div>
   </div>
+  <uiImageViewer v-if="previewUrl" v-model="previewVisible" :urls="[previewUrl]" :title="`预览引用 ${index}`" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { ElButton, ElImage } from "element-plus";
+import { uiImage, uiImageViewer, uiIconButton } from "@toonflow/ui";
 import { IconX, IconFileText, IconPhoto, IconVideo, IconMusic, IconPlayerPlay } from "@tabler/icons-vue";
 import { useNodeFiles } from "../workspaceFiles";
 import type { NodeInputValue } from "../values";
 
 const props = defineProps<{ item: NodeInputValue; index: number }>();
 const emit = defineEmits<{ remove: []; preview: [url: string] }>();
-const imageRef = ref<InstanceType<typeof ElImage>>();
+const previewVisible = ref(false);
+function openImagePreview() { if (props.item.dataType === "IMAGE" && previewUrl.value && !previewError.value) previewVisible.value = true; }
 const previewError = ref("");
 const duration = ref("");
 const videoThumbnail = ref("");
@@ -63,6 +53,7 @@ const title = computed(() => {
 });
 
 watch(media, () => {
+  previewVisible.value = false;
   previewError.value = "";
   duration.value = "";
   videoThumbnail.value = "";
@@ -101,20 +92,20 @@ function readDuration(event: Event) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .referenceItem {
   position: relative;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   box-sizing: border-box;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   overflow: hidden;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-border-radius-base, 8px);
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
+  border: 1px solid var(--uiBorderDefault);
+  border-radius: var(--uiRadiusControl);
+  background: var(--uiBackgroundSubtle);
+  color: var(--uiTextMuted);
   cursor: grab;
   user-select: none;
 
@@ -127,7 +118,7 @@ function readDuration(event: Event) {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--el-color-primary);
+    outline: 2px solid var(--uiActionPrimary);
     outline-offset: -2px;
   }
 
@@ -141,8 +132,9 @@ function readDuration(event: Event) {
     position: absolute;
     top: 2px;
     right: 2px;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
     padding: 0;
     margin: 0;
   }
@@ -154,8 +146,8 @@ function readDuration(event: Event) {
     min-width: 13px;
     padding: 0 2px;
     border-radius: 3px;
-    background: var(--el-bg-color-overlay);
-    color: var(--el-text-color-primary);
+    background: var(--uiSurfaceRaised);
+    color: var(--uiTextPrimary);
     font-size: 9px;
     line-height: 13px;
     text-align: center;
@@ -171,8 +163,8 @@ function readDuration(event: Event) {
     justify-content: space-between;
     gap: 2px;
     padding: 2px 3px;
-    background: color-mix(in srgb, var(--el-bg-color-overlay) 85%, transparent);
-    color: var(--el-text-color-primary);
+    background: color-mix(in srgb, var(--uiSurfaceRaised) 85%, transparent);
+    color: var(--uiTextPrimary);
     font-size: 9px;
     line-height: 12px;
   }

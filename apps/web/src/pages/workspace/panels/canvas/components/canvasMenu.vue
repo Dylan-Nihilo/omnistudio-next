@@ -1,39 +1,24 @@
 <template>
   <panel class="canvasMenuPanel" position="top-left">
-    <el-card class="canvasMenu" shadow="never" :bodyStyle="{ padding: '5px 10px' }">
-      <div class="menuContent">
-        <el-input v-model="projectNameDraft" class="workspaceNameInput" :style="{ '--workspaceName': JSON.stringify(projectNameDraft || ' ') }" size="small" :title="directory" :disabled="!workspaceStore.project" aria-label="项目名称"
-          @keydown.stop @keydown.enter="saveProjectName" @keydown.esc.prevent="projectNameDraft = workspaceName" @blur="saveProjectName" />
-        <el-divider direction="vertical" />
-        <el-popover v-model:visible="canvasListVisible" trigger="click" placement="bottom-start" :width="214" :showArrow="false" :disabled="!directory">
-          <template #reference>
-            <el-button class="canvasTrigger" text :loading="busy" :disabled="busy || !directory" aria-label="切换画布" :aria-expanded="canvasListVisible">
-              <span>{{ activeCanvasName }}</span><icon-chevron-down :size="14" />
-            </el-button>
-          </template>
-          <div class="canvasPicker" @keydown.esc="canvasListVisible = false">
-            <div class="pickerHeader">
-              <span>画布</span>
-              <el-button class="iconButton" text :icon="IconPlus" :disabled="busy || editingId !== null" aria-label="新增画布" @click="handleAddCanvas" />
+    <div class="canvasMenu nodrag nopan nowheel">
+      <uiPopover v-model:visible="canvasListVisible" placement="bottom-start" :width="320" :disabled="!directory">
+        <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" class="canvasTrigger" variant="secondary" :icon="IconLayoutDashboard" :loading="busy" :disabled="busy || !directory" aria-label="切换画布"><span class="canvasName">{{ activeCanvasName }}</span><icon-chevron-down :size="16" /></uiButton></template>
+        <div class="canvasPicker">
+          <uiField label="项目名称"><uiInput v-model="projectNameDraft" size="small" :title="directory" :disabled="!workspaceStore.project" aria-label="项目名称" @keydown.stop @keydown.enter="saveProjectName" @keydown.esc.prevent="projectNameDraft = workspaceName" @blur="saveProjectName" /></uiField>
+          <div class="pickerHeader"><span>画布</span><uiIconButton size="small" :icon="IconPlus" label="新增画布" :disabled="busy || editingId !== null" @click="handleAddCanvas" /></div>
+          <div class="canvasList">
+            <div v-for="canvas in canvases" :key="canvas.id" class="canvasItem" :class="{ isSelected: activeCanvasId === canvas.id }">
+              <div v-if="editingId === canvas.id" class="nameEditor"><uiInput ref="nameInputs" v-model="canvasName" size="small" :disabled="busy" :maxlength="120" :aria-label="newCanvasId === canvas.id ? '新画布名称' : '画布名称'" @keydown.stop @keydown.enter="saveCanvas" @blur="saveCanvas" /></div>
+              <template v-else>
+                <button class="canvasChoice" type="button" :disabled="busy || editingId !== null" :aria-pressed="activeCanvasId === canvas.id" :title="canvas.name" @click="handleSwitchCanvas(canvas.id)"><icon-check v-if="activeCanvasId === canvas.id" :size="16" aria-hidden="true" /><icon-layout-dashboard v-else :size="16" aria-hidden="true" /><span>{{ canvas.name }}</span></button>
+                <div class="itemActions"><uiIconButton size="small" :icon="IconEdit" :disabled="busy || editingId !== null" :label="`编辑 ${canvas.name}`" title="编辑" @click="editCanvas(canvas)" /><uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="busy || editingId !== null || canvases.length <= 1" :label="`删除 ${canvas.name}`" :title="canvases.length <= 1 ? '至少保留一个画布' : '删除画布'" @click="removeCanvas(canvas)" /></div>
+              </template>
             </div>
-            <el-scrollbar maxHeight="280px">
-              <div v-for="canvas in canvases" :key="canvas.id" class="canvasItem">
-                <el-input v-if="editingId === canvas.id" ref="nameInputs" v-model="canvasName" class="nameEditor" size="small" :disabled="busy" :maxlength="120" :aria-label="newCanvasId === canvas.id ? '新画布名称' : '画布名称'" @keydown.stop @keydown.enter="saveCanvas" @blur="saveCanvas" />
-                <template v-else>
-                  <button class="canvasChoice" type="button" :disabled="busy || editingId !== null" :aria-pressed="activeCanvasId === canvas.id" :title="canvas.name" @click="handleSwitchCanvas(canvas.id)">{{ canvas.name }}</button>
-                  <div class="itemAction">
-                    <icon-check v-if="activeCanvasId === canvas.id" class="selectedIcon" :size="18" aria-hidden="true" />
-                    <el-button class="iconButton renameButton" text :icon="IconEdit" :disabled="busy || editingId !== null" :aria-label="`编辑 ${canvas.name}`" title="编辑" @click="editCanvas(canvas)" />
-                    <el-button class="iconButton deleteButton" text type="danger" :icon="IconTrash" :disabled="busy || editingId !== null || canvases.length <= 1" :aria-label="`删除 ${canvas.name}`" :title="canvases.length <= 1 ? '至少保留一个画布' : '删除画布'" @click="removeCanvas(canvas)" />
-                  </div>
-                </template>
-              </div>
-            </el-scrollbar>
-            <el-text v-if="renameError" type="danger" role="alert">{{ renameError }}</el-text>
           </div>
-        </el-popover>
-      </div>
-    </el-card>
+          <uiAlert v-if="renameError" :title="renameError" tone="error" />
+        </div>
+      </uiPopover>
+    </div>
     <div class="menuExtension"><slot /></div>
   </panel>
 </template>
@@ -42,12 +27,13 @@
 import axios from "axios";
 import { computed, inject, nextTick, ref, shallowRef, watch, type ShallowRef } from "vue";
 import { Panel, useVueFlow, type FlowExportObject } from "@vue-flow/core";
-import { ElMessage, ElMessageBox, type InputInstance } from "element-plus";
-import { IconEdit, IconCheck, IconChevronDown, IconPlus, IconTrash } from "@tabler/icons-vue";
+import { uiPopover, uiButton, uiIconButton, uiField, uiInput, uiAlert, useUiFeedback } from "@toonflow/ui";
+import { IconEdit, IconCheck, IconChevronDown, IconPlus, IconTrash, IconLayoutDashboard } from "@tabler/icons-vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { getCanvasAssetDirectories, isCanvasFile } from "@/pages/workspace/canvasFile";
 
+const feedback = useUiFeedback();
 const props = defineProps<{
   directory?: string;
   initialCanvasId?: string;
@@ -82,7 +68,7 @@ const busy = ref(false);
 const loadError = ref("");
 const editingId = ref<string | null>(null);
 const newCanvasId = ref<string | null>(null);
-const nameInputs = ref<InputInstance[]>([]);
+const nameInputs = ref<InstanceType<typeof uiInput>[]>([]);
 const canvasName = ref("");
 const renameError = ref("");
 const { toObject, setNodes, setEdges, setViewport } = useVueFlow();
@@ -123,7 +109,7 @@ watch(() => props.directory, async (directory, _previous, onCleanup) => {
   } catch (err) {
     if (!cancelled) {
       loadError.value = errorMessage(err, "读取画布失败");
-      if (!props.initialCanvasId) ElMessage.error(loadError.value);
+      if (!props.initialCanvasId) feedback.message({ tone: "error", message: loadError.value });
     }
   } finally {
     if (!cancelled) busy.value = false;
@@ -204,7 +190,7 @@ async function handleSwitchCanvas(canvasId: string) {
   try {
     await switchCanvas(canvasId);
   } catch (err) {
-    if (props.directory === directory) ElMessage.error(errorMessage(err, "切换画布失败"));
+    if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "切换画布失败") });
   }
 }
 
@@ -215,8 +201,8 @@ async function removeCanvas(canvas: Canvas) {
   busy.value = true;
   canvasListVisible.value = false;
   try {
-    const confirmed = await ElMessageBox.confirm(`确定删除“${canvas.name}”？对应的 ${id} 文件及独占的节点素材也会被删除，其他画布共用的素材会保留。此操作不可撤销。`, "删除画布", {
-      type: "warning", confirmButtonText: "删除", cancelButtonText: "取消", closeOnClickModal: false,
+    const confirmed = await feedback.confirm(`确定删除“${canvas.name}”？对应的 ${id} 文件及独占的节点素材也会被删除，其他画布共用的素材会保留。此操作不可撤销。`, "删除画布", {
+      danger: true, confirmButtonText: "删除", cancelButtonText: "取消", closeOnClickModal: false,
     }).then(() => true, () => false);
     if (!confirmed) return;
     checkCanvasDirectory(directory);
@@ -251,9 +237,9 @@ async function removeCanvas(canvas: Canvas) {
       const failed = results.flatMap((result, index) => result.status === "rejected" ? [assetDirectories[index]] : []);
       if (failed.length) throw new Error(`画布已删除，但 ${failed.length} 个素材目录清理失败：${failed.join("、")}`);
     });
-    if (props.directory === directory) ElMessage.success("画布已删除");
+    if (props.directory === directory) feedback.message({ tone: "success", message: "画布已删除" });
   } catch (err) {
-    if (props.directory === directory) ElMessage.error(errorMessage(err, "删除画布失败"));
+    if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "删除画布失败") });
   } finally {
     if (props.directory === directory) busy.value = false;
   }
@@ -314,7 +300,7 @@ async function handleAddCanvas() {
     busy.value = false;
     await editCanvas(canvas);
   } catch (err) {
-    if (props.directory === directory) ElMessage.error(errorMessage(err, "新增画布失败"));
+    if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "新增画布失败") });
   } finally {
     if (props.directory === directory) busy.value = false;
   }
@@ -419,124 +405,12 @@ defineExpose({ getCanvases, addCanvas, switchCanvas, renameCanvas, syncDocumentN
 </script>
 
 <style lang="scss" scoped>
-.canvasMenuPanel.vue-flow__panel {
-  left: 0;
-}
-
+.canvasMenuPanel.vue-flow__panel { left: 0; max-width: calc(100% - 24px); }
+.canvasMenu { .canvasTrigger { max-width: min(320px, calc(100vw - 48px)); box-shadow: var(--uiShadowPopover); :deep(.buttonLabel) { min-width: 0; } .canvasName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } } }
 .canvasPicker {
-  .iconButton { width: 28px; height: 28px; padding: 0; margin: 0; }
-
-  .pickerHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 4px 8px 8px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .canvasItem {
-    display: flex;
-    align-items: center;
-    border-radius: var(--el-border-radius-base);
-
-    .nameEditor {
-      width: 100%;
-      padding: 2px 0;
-    }
-
-    &:hover, &:focus-within {
-      background: var(--el-fill-color);
-      .itemAction {
-        .renameButton, .deleteButton { opacity: 1; }
-        .selectedIcon { visibility: hidden; }
-      }
-    }
-
-    .canvasChoice {
-      flex: 1;
-      min-width: 0;
-      padding: 6px 8px;
-      border: 0;
-      background: transparent;
-      color: var(--el-text-color-primary);
-      font: inherit;
-      text-align: left;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-
-      &:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: -2px; border-radius: inherit; }
-    }
-
-    .itemAction {
-      position: relative;
-      display: flex;
-      flex-shrink: 0;
-      width: 56px;
-      height: 28px;
-      margin-right: 2px;
-
-      .selectedIcon { position: absolute; top: 5px; left: 5px; pointer-events: none; }
-      .renameButton, .deleteButton { opacity: 0; }
-    }
-  }
-
-  @media (hover: none) {
-    .canvasItem .itemAction {
-      display: flex;
-      width: auto;
-      align-items: center;
-      .selectedIcon { position: static; visibility: visible; }
-      .renameButton, .deleteButton { opacity: 1; }
-    }
-  }
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  .pickerHeader { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); }
+  .canvasList { max-height: min(320px, 45dvh); overflow-y: auto; .canvasItem { display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: var(--uiRadiusControl); &.isSelected { background: var(--uiActionSoft); .canvasChoice { color: var(--uiActionPrimary); } } &:hover { background: var(--uiSurfaceHover); } .nameEditor { width: 100%; padding-block: 4px; } .canvasChoice { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; padding: 8px; border: 0; border-radius: inherit; background: transparent; color: var(--uiTextPrimary); font: inherit; text-align: left; cursor: pointer; svg { flex-shrink: 0; } span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } &:disabled { cursor: not-allowed; color: var(--uiStateDisabledText); } &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: -2px; } } .itemActions { display: flex; flex-shrink: 0; gap: 2px; } } }
 }
-
-.menuExtension {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-}
-
-.canvasMenu {
-  margin-left: 100px;
-
-  .menuContent {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    .workspaceNameInput {
-      width: auto;
-      min-width: 2em;
-
-      &::after {
-        content: var(--workspaceName);
-        padding: 0 7px;
-        white-space: pre;
-        visibility: hidden;
-      }
-
-      :deep(.el-input__wrapper) {
-        position: absolute;
-        inset: 0;
-        box-shadow: none;
-      }
-
-      :deep(.el-input__inner) {
-        font-family: inherit;
-        font-weight: inherit;
-        letter-spacing: inherit;
-      }
-    }
-
-    .canvasTrigger {
-      padding: 0 4px;
-      :deep(> span) { display: flex; align-items: center; gap: 6px; }
-      span { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-    }
-  }
-}
+.menuExtension { position: absolute; top: calc(100% + 12px); left: 0; }
 </style>

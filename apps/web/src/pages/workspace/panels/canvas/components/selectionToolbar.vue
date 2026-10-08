@@ -1,32 +1,19 @@
 <template>
-  <el-card
-    v-if="visible"
-    class="selectionToolbar nodrag nopan nowheel"
-    shadow="never"
-    :bodyStyle="{ padding: '4px' }"
-    :style="toolbarStyle"
-    @pointerdown.stop
-    @mousedown.stop
-    @click.stop
-    @dblclick.stop
-    @contextmenu.stop
-    @keydown.stop>
-    <div class="toolbarActions">
-      <el-button text :icon="IconCopyPlus" :disabled="busy || disabled" @click="operate('duplicate')">创建副本</el-button>
-      <el-button text :icon="IconBoxMultiple" :disabled="busy || disabled" @click="operate('group')">打组</el-button>
-      <el-button text :icon="IconDeselect" :disabled="busy || disabled || !hasGroup" @click="operate('ungroup')">解组</el-button>
-    </div>
-  </el-card>
+  <nav v-if="visible" class="selectionToolbar nodrag nopan nowheel" :style="toolbarStyle" aria-label="选区操作" @pointerdown.stop @mousedown.stop @click.stop @dblclick.stop @contextmenu.stop @keydown.stop>
+    <div class="toolbarGroup"><uiButton size="small" variant="ghost" :icon="IconCopyPlus" :disabled="busy || disabled" @click="operate('duplicate')">创建副本</uiButton></div>
+    <div class="toolbarGroup"><uiButton size="small" variant="ghost" :icon="IconBoxMultiple" :disabled="busy || disabled" @click="operate('group')">打组</uiButton><uiButton size="small" variant="ghost" :icon="IconDeselect" :disabled="busy || disabled || !hasGroup" @click="operate('ungroup')">解组</uiButton></div>
+  </nav>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { getRectOfNodes, useVueFlow, type GraphNode, type Node, type XYPosition } from "@vue-flow/core";
-import { ElButton, ElCard, ElMessage } from "element-plus";
+import { uiButton, useUiFeedback } from "@toonflow/ui";
 import { IconCopyPlus, IconBoxMultiple, IconDeselect } from "@tabler/icons-vue";
 import { useNodeEvent } from "@toonflow/nodes-scaffold/nodeEvent";
 import { finishGroupDrag, getSelectionRoots, getSelectionTree } from "../selectionNodes";
 
+const feedback = useUiFeedback();
 const props = defineProps<{
   batchHistory: (action: () => Promise<void>) => Promise<void>;
   getSignal: () => AbortSignal;
@@ -40,7 +27,7 @@ const visible = computed(() => !props.disabled && !flow.userSelectionActive.valu
 const toolbarStyle = computed(() => {
   const bounds = getRectOfNodes(flow.getSelectedNodes.value);
   const { x, y, zoom } = flow.viewport.value;
-  return { left: `${x + (bounds.x + bounds.width / 2) * zoom}px`, top: `${y + bounds.y * zoom - 12 - (hasGroup.value ? 30 * zoom : 0)}px` };
+  return { "--toolbarX": `${x + (bounds.x + bounds.width / 2) * zoom}px`, "--toolbarY": `${y + bounds.y * zoom - 12 - (hasGroup.value ? 30 * zoom : 0)}px`, "--canvasWidth": `${flow.dimensions.value.width}px`, "--canvasHeight": `${flow.dimensions.value.height}px` };
 });
 
 async function duplicateNodes(selection: GraphNode[], signal: AbortSignal, withEdges = true, positions?: Map<string, XYPosition>) {
@@ -217,7 +204,7 @@ function startDragCopy(selection: GraphNode[], withEdges: boolean) {
         finishGroupDrag(flow.getNodes.value, created);
       });
     } catch (error) {
-      if (!signal.aborted) ElMessage.error(error instanceof Error ? error.message : "拖动复制失败");
+      if (!signal.aborted) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "拖动复制失败" });
     } finally {
       signal.removeEventListener("abort", finish);
       busy.value = false;
@@ -259,7 +246,7 @@ async function operate(command: "duplicate" | "group" | "ungroup" | "mergeGroup"
       await selectNodes(ids, signal);
     });
   } catch (error) {
-    if (!signal.aborted) ElMessage.error(error instanceof Error ? error.message : "选区操作失败");
+    if (!signal.aborted) feedback.message({ tone: "error", message: error instanceof Error ? error.message : "选区操作失败" });
   } finally {
     busy.value = false;
   }
@@ -270,21 +257,9 @@ defineExpose({ operate, startDragCopy, busy });
 
 <style scoped lang="scss">
 .selectionToolbar {
-  position: absolute;
-  z-index: 6;
-  width: max-content;
-  transform: translate(-50%, -100%);
-
-  .toolbarActions {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-
-    .el-button {
-      height: 28px;
-      margin: 0;
-      padding: 0 8px;
-    }
-  }
+  position: absolute; left: 0; top: 0; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: calc(100% - 24px); padding: 6px;
+  transform: translate(clamp(12px, calc(var(--toolbarX) - 50%), calc(var(--canvasWidth) - 100% - 12px)), clamp(12px, calc(var(--toolbarY) - 100%), calc(var(--canvasHeight) - 100% - 12px)));
+  border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover);
+  .toolbarGroup { display: flex; align-items: center; gap: 4px; &:not(:last-child) { padding-right: 8px; border-right: 1px solid var(--uiBorderDefault); } }
 }
 </style>

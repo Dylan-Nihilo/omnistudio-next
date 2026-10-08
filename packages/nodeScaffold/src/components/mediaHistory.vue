@@ -1,9 +1,9 @@
 <template>
-  <el-button :icon="IconHistory" :disabled="disabled" text title="历史记录" aria-label="历史记录" @click.stop="visible = true" />
-  <el-dialog v-model="visible" :title="`${mediaType === 'image' ? '图片' : '视频'}历史记录`" width="min(760px, calc(100vw - 32px))" appendToBody destroyOnClose>
-    <div v-loading="loading" class="mediaHistory nodrag nopan nowheel" @pointerdown.stop @mousedown.stop @dblclick.stop @keydown.stop>
-      <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" />
-      <el-empty v-else-if="!loading && !items.length" description="暂无历史记录" />
+  <uiIconButton :icon="IconHistory" :disabled="disabled" title="历史记录" label="历史记录" @click.stop="visible = true" />
+  <uiDialog v-model="visible" :title="`${mediaType === 'image' ? '图片' : '视频'}历史记录`" :width="960" destroyOnClose>
+    <div class="mediaHistory nodrag nopan nowheel" @pointerdown.stop @mousedown.stop @dblclick.stop @keydown.stop>
+      <uiLoading v-if="loading" loading label="读取历史记录" /><uiAlert v-else-if="loadError" :title="loadError" tone="error" />
+      <uiEmpty v-else-if="!items.length" description="暂无历史记录" />
       <template v-else-if="items.length">
         <div class="historyContent">
           <div class="historyList" aria-label="历史文件">
@@ -20,33 +20,32 @@
               <span v-if="item.url === current?.url.replaceAll('\\', '/')" class="currentLabel">当前结果</span>
             </button>
           </div>
-          <div class="historyPreview" v-loading="!!selected && !previewReady && !previewError">
-            <el-alert v-if="previewError" :title="previewError" type="error" :closable="false" />
+          <div class="historyPreview"><uiLoading v-if="selected && !previewReady && !previewError" loading class="previewLoading" label="加载预览" />
+            <uiAlert v-if="previewError" :title="previewError" tone="error" />
             <img v-else-if="previewUrl && mediaType === 'image'" :src="previewUrl" alt="历史图片预览" @load="previewReady = true" @error="previewError = '无法预览该图片'" />
-            <video v-else-if="previewUrl" :src="previewUrl" controls playsinline preload="auto" aria-label="历史视频预览" @loadeddata="previewReady = true" @error="previewError = '无法预览该视频'" />
+            <uiMediaPlayer v-else-if="previewUrl" :src="previewUrl" label="历史视频预览" @loadeddata="previewReady = true" @error="previewError = '无法预览该视频'" />
           </div>
         </div>
-        <el-pagination v-model:currentPage="page" :pageSize="pageSize" :total="items.length" layout="prev, pager, next" hideOnSinglePage />
+        <uiPagination v-model:currentPage="page" :pageSize="pageSize" :total="items.length" hideOnSinglePage label="历史记录分页" />
       </template>
     </div>
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
-      <el-button type="primary" :disabled="disabled || loading || !selected || !previewUrl || !previewReady || !!previewError" @click="selectOutput">设为当前结果</el-button>
+      <uiButton variant="secondary" @click="visible = false">关闭</uiButton>
+      <uiButton :disabled="disabled || loading || !selected || !previewUrl || !previewReady || !!previewError" @click="selectOutput">设为当前结果</uiButton>
     </template>
-  </el-dialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useNode } from "@vue-flow/core";
-import { ElAlert, ElButton, ElDialog, ElEmpty, ElLoading, ElPagination } from "element-plus";
+import { uiIconButton, uiDialog, uiButton, uiLoading, uiAlert, uiEmpty, uiPagination, uiMediaPlayer } from "@toonflow/ui";
 import { IconHistory } from "@tabler/icons-vue";
 import { useNodeFiles } from "../workspaceFiles";
 import type { NodeMediaValue } from "../values";
 
 const props = defineProps<{ mediaType: "image" | "video"; current?: NodeMediaValue; disabled?: boolean }>();
 const emit = defineEmits<{ select: [value: NodeMediaValue] }>();
-const vLoading = ElLoading.directive;
 const { id } = useNode();
 const files = useNodeFiles();
 const visible = ref(false);
@@ -118,50 +117,5 @@ function selectOutput() {
 </script>
 
 <style scoped lang="scss">
-.mediaHistory {
-  min-height: 300px;
-
-  .historyContent {
-    display: grid;
-    grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
-    gap: 16px;
-
-    .historyList {
-      height: 360px;
-      overflow: auto;
-
-      .historyItem {
-        display: block;
-        width: 100%;
-        padding: 10px;
-        border: 1px solid transparent;
-        border-radius: var(--el-border-radius-base);
-        background: transparent;
-        color: var(--el-text-color-primary);
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-
-        &:hover { background: var(--el-fill-color-light); }
-        &.selected { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
-        &:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: -2px; }
-        .fileName { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .currentLabel { color: var(--el-color-primary); font-size: 12px; }
-      }
-    }
-
-    .historyPreview {
-      display: grid;
-      place-items: center;
-      height: 360px;
-      min-width: 0;
-      background: var(--el-fill-color-light);
-      border-radius: var(--el-border-radius-base);
-
-      img, video { width: 100%; max-height: 360px; object-fit: contain; }
-    }
-  }
-
-  .el-pagination { justify-content: center; margin-top: 16px; }
-}
+.mediaHistory { min-height: 300px; .historyContent { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 24px; .historyList { max-height: min(400px, 50dvh); overflow: auto; padding-right: 12px; border-right: 1px solid var(--uiBorderDefault); .historyItem { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 12px; border: 1px solid transparent; border-radius: var(--uiRadiusControl); background: transparent; color: var(--uiTextBody); font: inherit; font-size: var(--uiFontControl); text-align: left; cursor: pointer; &:hover { background: var(--uiSurfaceHover); } &.selected { border-color: var(--uiActionPrimary); background: var(--uiActionSoft); color: var(--uiTextPrimary); } &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: -2px; } .fileName { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .currentLabel { color: var(--uiActionPrimary); font-size: var(--uiFontControl); } } } .historyPreview { position: relative; display: grid; place-items: center; min-height: 300px; min-width: 0; background: var(--uiBackgroundCanvas); border-radius: var(--uiRadiusControl); img { width: 100%; max-height: min(400px, 50dvh); object-fit: contain; } :deep(.uiMediaPlayer) { width: 100%; } .previewLoading { position: absolute; inset: 0; z-index: 1; pointer-events: none; } } } :deep(.uiPagination) { justify-content: center; margin-top: 24px; } @media (max-width: 700px) { .historyContent { grid-template-columns: minmax(0, 1fr); .historyList { max-height: 180px; padding-right: 0; padding-bottom: 12px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); } .historyPreview { min-height: 220px; } } } }
 </style>

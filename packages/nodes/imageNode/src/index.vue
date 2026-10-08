@@ -8,12 +8,11 @@
     @fullscreen="previewVisible = true"
     :style="{ width: previewUrl && imageWidth ? `${imageWidth + 18}px` : undefined }">
     <template #topActions>
-      <el-button
+      <uiIconButton
         :icon="IconTransfer"
         :loading="uploading"
-        text
         title="替换图片"
-        aria-label="替换图片"
+        label="替换图片"
         @click.stop="fileInput?.click()" />
     </template>
     <div class="imageContent nopan">
@@ -24,33 +23,30 @@
         draggable="false"
         alt="节点图片"
         @load="resizeImage"
-        @error="ElMessage.error('无法预览该图片')" />
+        @error="feedback.message({ tone: 'error', message: '无法预览该图片' })" />
       <input ref="fileInput" class="fileInput" type="file" accept="image/*" aria-label="选择图片" :disabled="uploading" @change="uploadImage" />
-      <el-button
+      <uiButton variant="ghost"
         v-if="!outputFile"
         class="uploadButton"
-        text
         :loading="uploading"
         title="上传图片"
         aria-label="上传图片"
         @dblclick.stop
         @click="fileInput?.click()">
         <icon-upload v-if="!uploading" :size="48" stroke="1.5" />
-      </el-button>
+      </uiButton>
     </div>
   </nodeSkeleton>
-  <el-image-viewer
-    v-if="previewVisible && previewUrl"
-    :urlList="[previewUrl]"
-    teleported
-    @close="previewVisible = false" />
+  <uiImageViewer v-if="previewUrl" v-model="previewVisible" :urls="[previewUrl]" title="节点图片" />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { IconPhoto, IconUpload, IconTransfer } from "@tabler/icons-vue";
-import { ElButton, ElImageViewer, ElMessage } from "element-plus";
+import { uiButton, uiIconButton, uiImageViewer, useUiFeedback } from "@toonflow/ui";
 import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
+
+const feedback = useUiFeedback();
 
 defineOptions({
   inheritAttrs: false,
@@ -118,8 +114,8 @@ async function uploadImage(event: Event) {
   const file = input.files?.[0];
   input.value = "";
   if (!file || uploading.value) return;
-  if (!file.type.startsWith("image/")) return void ElMessage.error("请选择图片文件");
-  if (!file.size || file.size > 100 * 1024 * 1024) return void ElMessage.error("图片不能为空且不能超过 100 MB");
+  if (!file.type.startsWith("image/")) return void feedback.message({ tone: "error", message: "请选择图片文件" });
+  if (!file.size || file.size > 100 * 1024 * 1024) return void feedback.message({ tone: "error", message: "图片不能为空且不能超过 100 MB" });
   uploading.value = true;
   try {
     const url = await files.uploadFile(file);
@@ -134,7 +130,7 @@ async function uploadImage(event: Event) {
 
 function showError(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  ElMessage.error(message || (error instanceof Error ? error.message : fallback));
+  feedback.message({ tone: "error", message: message || (error instanceof Error ? error.message : fallback) });
 }
 </script>
 
@@ -147,7 +143,7 @@ function showError(error: unknown, fallback: string) {
     width: 100%;
     max-height: 240px;
     object-fit: contain;
-    border-radius: var(--el-border-radius-base);
+    border-radius: var(--uiRadiusControl);
   }
 
   .fileInput {
@@ -158,10 +154,10 @@ function showError(error: unknown, fallback: string) {
     width: 100%;
     height: 144px;
     padding: 0;
-    color: var(--el-text-color-placeholder);
+    color: var(--uiTextMuted);
 
     &:hover {
-      color: var(--el-color-primary);
+      color: var(--uiActionPrimary);
     }
   }
 }

@@ -1,0 +1,8 @@
+.uiTheme {
+  .uiRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--uiSpace12); min-width: 0; }
+  .uiStack { display: flex; flex-direction: column; gap: var(--uiSpace16); min-width: 0; }
+  .uiGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: var(--uiSpace24); min-width: 0; }
+  .uiDivider { width: 100%; margin: var(--uiSpace24) 0; border: 0; border-top: 1px solid var(--uiBorderDefault); }
+  .uiTextMuted { color: var(--uiTextMuted); }
+  .uiScrollArea { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+}

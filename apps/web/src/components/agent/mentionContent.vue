@@ -1,21 +1,22 @@
 <template>
-  <span class="mentionContent"><template v-for="(part, index) in parts" :key="index"><el-tooltip v-if="part.mention" :content="sourceLabel(part.mention)" :showArrow="false"><button class="mentionTag" type="button" :aria-label="`预览 ${mentionName(part.mention)}`" @click="preview(part.mention.id)"><mentionThumbnail v-if="mentionThumbnailProps(part.mention).thumbnail" class="inlineMentionThumbnail" v-bind="mentionThumbnailProps(part.mention)" :directory="directory"><icon-at :size="13" /></mentionThumbnail><icon-at v-else :size="13" /><span class="mentionLabel">{{ mentionName(part.mention) }}</span></button></el-tooltip><template v-else>{{ part.text }}</template></template></span>
-  <el-dialog v-model="previewVisible" :title="selected?.label || '提及内容'" width="min(720px, 90vw)" alignCenter appendToBody destroyOnClose>
+  <span class="mentionContent"><template v-for="(part, index) in parts" :key="index"><uiTooltip v-if="part.mention" :content="sourceLabel(part.mention)" ><button class="mentionTag" type="button" :aria-label="`预览 ${mentionName(part.mention)}`" @click="preview(part.mention.id)"><mentionThumbnail v-if="mentionThumbnailProps(part.mention).thumbnail" class="inlineMentionThumbnail" v-bind="mentionThumbnailProps(part.mention)" :directory="directory"><icon-at :size="13" /></mentionThumbnail><icon-at v-else :size="13" /><span class="mentionLabel">{{ mentionName(part.mention) }}</span></button></uiTooltip><template v-else>{{ part.text }}</template></template></span>
+  <uiDialog v-model="previewVisible" :title="selected?.label || '提及内容'" width="min(720px, 90vw)" destroyOnClose>
     <div v-if="selected" class="mentionPreview">
       <p class="mentionSource">{{ sourceLabel(selected) }}</p>
       <p v-if="loading || error" :role="error ? 'alert' : 'status'">{{ loading ? '正在读取…' : error }}</p>
       <img v-else-if="previewUrl && ['IMAGE', 'MASK'].includes(selected.dataType)" :src="previewUrl" :alt="selected.label" @error="error = '无法预览该图片'" />
-      <video v-else-if="previewUrl && selected.dataType === 'VIDEO'" :src="previewUrl" controls playsinline preload="metadata" @error="error = '无法预览该视频'" />
-      <audio v-else-if="previewUrl && selected.dataType === 'AUDIO'" :src="previewUrl" controls preload="metadata" @error="error = '无法预览该音频'" />
+      <uiMediaPlayer v-else-if="previewUrl && selected.dataType === 'VIDEO'" :src="previewUrl" kind="video" :label="selected.label" @error="error = '无法预览该视频'" />
+      <uiMediaPlayer v-else-if="previewUrl && selected.dataType === 'AUDIO'" :src="previewUrl" kind="audio" :label="selected.label" @error="error = '无法预览该音频'" />
       <p v-else-if="selected.dataType === 'FILE'" class="fileName"><icon-file :size="20" />{{ selected.label }}</p>
       <pre v-else>{{ textValue }}</pre>
-      <el-button v-if="removable" text type="danger" @click="removeSelected">移除此引用</el-button>
+      <uiButton v-if="removable" variant="danger" @click="removeSelected">移除此引用</uiButton>
     </div>
-  </el-dialog>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { uiButton, uiDialog, uiMediaPlayer, uiTooltip } from "@toonflow/ui";
 import axios from "axios";
 import { IconAt, IconFile } from "@tabler/icons-vue";
 import type { AgentMention } from "@toonflow/server/agent/types";
@@ -99,9 +100,9 @@ defineExpose({ preview });
     margin: 1px 2px;
     padding: 1px 5px;
     border: none;
-    border-radius: var(--el-border-radius-small);
-    background: var(--el-color-primary-light-9);
-    color: var(--el-color-primary);
+    border-radius: var(--uiRadiusControl);
+    background: var(--uiActionSoft);
+    color: var(--uiActionPrimary);
     font: inherit;
     text-align: left;
     vertical-align: middle;
@@ -115,7 +116,7 @@ defineExpose({ preview });
 }
 
 .mentionPreview {
-  .mentionSource { color: var(--el-text-color-secondary); overflow-wrap: anywhere; }
+  .mentionSource { color: var(--uiTextMuted); overflow-wrap: anywhere; }
   img, video { display: block; max-width: 100%; max-height: 60vh; margin: auto; }
   audio { width: 100%; }
   pre { max-height: 55vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }

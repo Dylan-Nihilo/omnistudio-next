@@ -1,0 +1,55 @@
+{
+  "name": "OmniStudio | 漫象工坊",
+  "figmaFileKey": "zJMnhlJ5Kvs4SIM6uG13d1",
+  "direction": "黑色主题 + 高亮橙 + 漫画泼墨与手绘笔触",
+  "accent": "#FF6B35",
+  "pages": {
+    "screens": "39:613",
+    "components": "39:614",
+    "sharedLibrary": "21:183"
+  },
+  "frames": {
+    "home": "41:2",
+    "workspace": "45:132",
+    "settings": "45:1734",
+    "components": "46:649"
+  },
+  "scope": "Figma 视觉设计与预览文件；未修改 Toonflow 或 OmniStudio 应用源码。",
+  "brand": {
+    "english": "OmniStudio",
+    "chinese": "漫象工坊",
+    "logoSource": "/Users/dylanthomas/Desktop/projects/OmniStudio/frontend/public/omni-studio-logo.png",
+    "markSource": "/Users/dylanthomas/Desktop/projects/OmniStudio/frontend/public/auth/omnistudio-mark.png",
+    "nameSource": "/Users/dylanthomas/Desktop/projects/OmniStudio/frontend/src/app/layout.tsx",
+    "originalColorsPreserved": true
+  },
+  "assets": {
+    "heroInk": {
+      "path": "assets/heroInk.png",
+      "method": "built-in image_gen",
+      "prompt": "Use case: illustration-story. Create an original decorative artwork asset for a dark Chinese AI comic-drama creation studio interface, not a UI mockup. A striking hand-inked manga collage: a close-up determined eye and the windswept hair of an original young adult comic heroine, loose diagonal storyboard-panel fragments, raw brush strokes, expressive ink splashes, a few spray-paint dots and halftone textures. The artwork should feel like an independent animation studio poster or a street-art manga zine, mature, confident and artistic. Strict two-ink palette: warm off-white ink and vivid vermilion-orange #FF6B35 against a uniform near-black #101010 background. Mostly black and white, orange used for one powerful brush swipe and small energetic marks. Keep all focal shapes centered with ample black margins, naturally ragged edges fading into the black; horizontal 3:2 composition. Crisp illustrative black outlines, tactile screenprinted ink, elegant spatial hierarchy, no glows, no gradients, no photorealistic skin, no 3D, no game HUD, no text, no lettering, no logos, no labels, no app chrome. This is a standalone artwork asset to place beside editable headline and controls in Figma; do not depict any interface."
+    }
+  },
+  "components": {
+    "families": 149,
+    "variants": 653,
+    "colorMode": "Dark / Orange",
+    "alternativeMode": "Dark / Green",
+    "collection": "VariableCollectionId:21:184",
+    "modeId": "38:0",
+    "alternativeModeId": "56:1",
+    "coveragePage": "191:2446",
+    "coverageStates": 82,
+    "currentIndex": "libraryProgress.json",
+    "completionAudit": "completionAudit.json",
+    "oldComponentPreviewArchived": true
+  },
+  "validation": {
+    "nativeLayers": true,
+    "originalBrandHashesMatch": true,
+    "oldBrandVisibleInCurrentFrames": false,
+    "imagesUploadedAtOriginalResolution": true,
+    "appSourceModified": false
+  },
+  "sampleData": "项目名、目录及节点内容为设计示例。"
+}

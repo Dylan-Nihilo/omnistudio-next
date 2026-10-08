@@ -1,291 +1,95 @@
 <template>
   <div class="pluginMarket">
     <div class="marketToolbar">
-      <nav class="marketNav" aria-label="插件列表">
-        <button class="navButton" type="button" :aria-pressed="isMarketTab" @click="activeTab = 'discover'">发现插件</button>
-        <button class="navButton" type="button" :aria-pressed="activeTab === 'installed'" @click="activeTab = 'installed'">已安装</button>
-        <button class="navButton" type="button" :aria-pressed="activeTab === 'ffmpeg'" @click="activeTab = 'ffmpeg'">FFmpeg</button>
-      </nav>
-      <div class="marketActions">
-        <el-button tag="a" href="https://api.toonflow.net/console/plugIn" target="_blank" rel="noopener noreferrer" size="small" text :icon="IconExternalLink">
-          网页版市场
-        </el-button>
-        <el-button tag="a" href="https://qcn7xdsqgc4z.feishu.cn/docx/KNBNd9naqolsy6xjAOCcEAkqnRd" target="_blank" rel="noopener noreferrer" size="small" text :icon="IconBook">
-          开发者文档
-        </el-button>
-        <template v-if="activeTab === 'installed'">
-          <el-button size="small" type="primary" :icon="IconUpload" :loading="installing" aria-label="安装本地插件" @click="pluginFileInput?.click()">
-            安装插件
-          </el-button>
-          <input ref="pluginFileInput" type="file" :accept="agentMarketEnabled ? '.umd.js,.tool.js,.agent.zip,.zip,.md,.tar,.tar.gz,.tgz' : '.umd.js,.tool.js,.zip,.md,.tar,.tar.gz,.tgz'" hidden @change="installFile" />
-          <template v-if="agentMarketEnabled && selectedType === 'agent'">
-            <el-button size="small" :icon="IconLink" :disabled="loading || !canManageAgents" @click="agentConnectVisible = true">连接远程 Agent</el-button>
-            <el-button size="small" :icon="IconSettings" :disabled="loading || !canManageAgents" @click="a2aSettingsVisible = true">A2A 服务</el-button>
-          </template>
-        </template>
-      </div>
-      <div v-if="activeTab !== 'ffmpeg'" class="typeFilters" role="group" aria-label="插件类型">
-        <button class="filterButton" type="button" :aria-pressed="selectedType === 'all'" @click="selectedType = 'all'">
-          全部
-          <span v-if="activeTab === 'installed' && installedCounts.all !== undefined" class="filterCount">{{ installedCounts.all }}</span>
-        </button>
-        <button
-          v-for="(category, type) in pluginTypes"
-          :key="type"
-          class="filterButton"
-          type="button"
-          :disabled="type === 'agent' && !agentMarketEnabled"
-          :title="type === 'agent' && !agentMarketEnabled ? '测试阶段，暂未开放' : undefined"
-          :aria-pressed="selectedType === type"
-          @click="selectedType = type">
-          {{ category.label }}
-          <span v-if="activeTab === 'installed' && installedCounts[type] !== undefined" class="filterCount">{{ installedCounts[type] }}</span>
-        </button>
-        <div class="personalFilters" role="group" aria-label="我的插件">
-          <button class="filterButton" type="button" :aria-pressed="selectedType === 'collection'" @click="selectedType = 'collection'">收藏</button>
-          <button class="filterButton" type="button" :aria-pressed="selectedType === 'my'" @click="selectedType = 'my'">我的</button>
+      <div class="marketHeader">
+        <uiTabs class="marketNav" :modelValue="activeTab" :options="tabOptions" label="插件列表" @update:modelValue="value => (value === 'discover' || value === 'installed' || value === 'ffmpeg') && (activeTab = value)" />
+        <div class="marketActions">
+          <uiButton tag="a" href="https://api.toonflow.net/console/plugIn" target="_blank" rel="noopener noreferrer" size="small" variant="ghost" :icon="IconExternalLink">网页版市场</uiButton>
+          <uiButton tag="a" href="https://qcn7xdsqgc4z.feishu.cn/docx/KNBNd9naqolsy6xjAOCcEAkqnRd" target="_blank" rel="noopener noreferrer" size="small" variant="ghost" :icon="IconBook">开发者文档</uiButton>
         </div>
       </div>
-      <form v-if="activeTab !== 'ffmpeg'" class="marketSearch" role="search" @submit.prevent="applySearch">
-        <el-input v-model="searchQuery" size="small" placeholder="搜索插件" aria-label="搜索插件" clearable @clear="applySearch" />
-        <el-button size="small" type="primary" nativeType="submit">搜索</el-button>
-      </form>
+      <div v-if="activeTab !== 'ffmpeg'" class="marketFilters">
+        <div class="typeFilters" role="group" aria-label="插件类型">
+          <uiButton variant="ghost" size="small" class="filterButton" :aria-pressed="selectedType === 'all'" @click="selectedType = 'all'">全部<span v-if="activeTab === 'installed' && installedCounts.all !== undefined" class="filterCount">{{ installedCounts.all }}</span></uiButton>
+          <uiButton v-for="(category, type) in pluginTypes" :key="type" variant="ghost" size="small" class="filterButton" :disabled="type === 'agent' && !agentMarketEnabled" :title="type === 'agent' && !agentMarketEnabled ? '测试阶段，暂未开放' : undefined" :aria-pressed="selectedType === type" @click="selectedType = type">{{ category.label }}<span v-if="activeTab === 'installed' && installedCounts[type] !== undefined" class="filterCount">{{ installedCounts[type] }}</span></uiButton>
+        </div>
+        <form class="marketSearch" role="search" @submit.prevent="applySearch">
+          <uiInput v-model="searchQuery" size="small" placeholder="搜索插件" aria-label="搜索插件" clearable @clear="applySearch"><template #prefix><icon-search :size="16" aria-hidden="true" /></template></uiInput>
+          <uiButton size="small" variant="secondary" htmlType="submit">搜索</uiButton>
+        </form>
+      </div>
+      <div v-if="activeTab !== 'ffmpeg'" class="marketManagement">
+        <div class="personalFilters" role="group" aria-label="我的插件">
+          <uiButton variant="ghost" size="small" class="filterButton" :icon="IconStar" :aria-pressed="selectedType === 'collection'" @click="selectedType = 'collection'">收藏</uiButton>
+          <uiButton variant="ghost" size="small" class="filterButton" :aria-pressed="selectedType === 'my'" @click="selectedType = 'my'">我的</uiButton>
+        </div>
+        <div v-if="activeTab === 'installed'" class="installActions">
+          <uiButton size="small" :icon="IconUpload" :loading="installing" aria-label="安装本地插件" @click="pluginFileInput?.click()">安装插件</uiButton>
+          <input ref="pluginFileInput" type="file" :accept="agentMarketEnabled ? '.umd.js,.tool.js,.agent.zip,.zip,.md,.tar,.tar.gz,.tgz' : '.umd.js,.tool.js,.zip,.md,.tar,.tar.gz,.tgz'" hidden @change="installFile" />
+          <template v-if="agentMarketEnabled && selectedType === 'agent'">
+            <uiButton size="small" variant="secondary" :icon="IconLink" :disabled="loading || !canManageAgents" @click="agentConnectVisible = true">连接远程 Agent</uiButton>
+            <uiButton size="small" variant="secondary" :icon="IconSettings" :disabled="loading || !canManageAgents" @click="a2aSettingsVisible = true">A2A 服务</uiButton>
+          </template>
+        </div>
+      </div>
     </div>
 
     <ffmpeg v-if="activeTab === 'ffmpeg'" :visible />
     <template v-else>
-      <template v-if="activeTab === 'installed'">
-        <el-alert v-for="message in visibleLoadErrors" :key="message" class="loadError" :title="message" type="error" :closable="false" showIcon />
-      </template>
-      <el-card v-else-if="marketNeedsKey" class="marketKey" shadow="never">
-        <el-text size="small">{{ marketError }}</el-text>
-        <form class="keyForm" @submit.prevent="saveMarketKey">
-          <el-input
-            v-model="draftKey"
-            type="password"
-            showPassword
-            autocomplete="off"
-            :maxlength="8192"
-            placeholder="填写 TF-Router API Key"
-            aria-label="TF-Router API Key"
-            :disabled="savingKey" />
-          <el-button type="primary" nativeType="submit" :loading="savingKey" :disabled="!draftKey.trim()">保存并继续</el-button>
-        </form>
-        <el-text v-if="keyError" type="danger" size="small" role="alert">{{ keyError }}</el-text>
-        <el-link href="https://api.toonflow.net/" target="_blank" rel="noopener noreferrer" type="primary">前往 TF-Router 获取 API Key</el-link>
-      </el-card>
-      <el-alert v-else-if="marketError" class="loadError" :title="marketError" type="error" :closable="false" showIcon>
-        <el-button size="small" @click="marketRefreshKey++">重试</el-button>
-      </el-alert>
+      <template v-if="activeTab === 'installed'"><uiAlert v-for="message in visibleLoadErrors" :key="message" class="loadError" :title="message" tone="error" /></template>
+      <section v-else-if="marketNeedsKey" class="marketKey" aria-label="插件市场连接配置">
+        <p>{{ marketError }}</p>
+        <form class="keyForm" @submit.prevent="saveMarketKey"><uiInput v-model="draftKey" type="password" showPassword autocomplete="off" :maxlength="8192" placeholder="填写 TF-Router API Key" aria-label="TF-Router API Key" :disabled="savingKey" /><uiButton htmlType="submit" :loading="savingKey" :disabled="!draftKey.trim()">保存并继续</uiButton></form>
+        <uiAlert v-if="keyError" :title="keyError" tone="error" />
+        <uiButton variant="ghost" size="small" tag="a" href="https://api.toonflow.net/" target="_blank" rel="noopener noreferrer" :icon="IconExternalLink">前往 TF-Router 获取 API Key</uiButton>
+      </section>
+      <uiAlert v-else-if="marketError" class="loadError" :title="marketError" tone="error"><uiButton size="small" variant="secondary" @click="marketRefreshKey++">重试</uiButton></uiAlert>
 
-      <div
-        class="pluginList"
-        :aria-label="`${selectedType === 'collection' ? '收藏' : selectedType === 'my' ? '我的' : tabs[activeTab]}列表`"
-        :aria-busy="activeTab === 'installed' ? loading : marketLoading">
-        <el-card
-          v-for="plugin in visiblePlugins"
-          :key="plugin.key"
-          class="pluginCard"
-          :class="{ viewable: canViewPlugin(plugin) }"
-          shadow="never"
-          role="group"
-          :aria-label="plugin.displayName"
-          :aria-haspopup="canViewPlugin(plugin) ? 'dialog' : undefined"
-          :tabindex="canViewPlugin(plugin) ? 0 : undefined"
-          @click="openPlugin(plugin)"
-          @keydown.enter.self.prevent="openPlugin(plugin)"
-          @keydown.space.self.prevent="openPlugin(plugin)">
-          <div class="pluginHeader">
-            <div class="pluginHeading">
-              <h3 class="pluginName">
-                <component :is="pluginTypes[plugin.type].icon" :size="18" aria-hidden="true" />
-                <span class="pluginTitle">{{ plugin.displayName }}</span>
-                <a
-                  v-if="plugin.github"
-                  class="repoLink"
-                  :href="plugin.github"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  :aria-label="`${plugin.displayName} 的 GitHub`"
-                  title="GitHub"
-                  @click.stop>
-                  <icon-external-link :size="14" aria-hidden="true" />
-                </a>
-              </h3>
-              <span class="pluginId" :title="plugin.name">{{ plugin.name }}</span>
+      <div class="pluginList" :class="{ isInstalled: activeTab === 'installed' }" :aria-label="`${selectedType === 'collection' ? '收藏' : selectedType === 'my' ? '我的' : tabs[activeTab]}列表`" :aria-busy="activeTab === 'installed' ? loading : marketLoading">
+        <article v-for="plugin in visiblePlugins" :key="plugin.key" class="pluginCard" :class="{ viewable: canViewPlugin(plugin) }" role="group" :aria-label="plugin.displayName" :aria-haspopup="canViewPlugin(plugin) ? 'dialog' : undefined" :tabindex="canViewPlugin(plugin) ? 0 : undefined" @click="openPlugin(plugin)" @keydown.enter.self.prevent="openPlugin(plugin)" @keydown.space.self.prevent="openPlugin(plugin)">
+          <div class="pluginSummary">
+            <div class="pluginHeader">
+              <div class="pluginHeading"><h3 class="pluginName"><component :is="pluginTypes[plugin.type].icon" :size="18" aria-hidden="true" /><span class="pluginTitle">{{ plugin.displayName }}</span><a v-if="plugin.github" class="repoLink" :href="plugin.github" target="_blank" rel="noopener noreferrer" :aria-label="`${plugin.displayName} 的 GitHub`" title="GitHub" @click.stop><icon-external-link :size="14" aria-hidden="true" /></a></h3><span class="pluginId" :title="plugin.name">{{ plugin.name }}</span></div>
+              <uiTag :tone="pluginTypes[plugin.type].tone">{{ pluginTypes[plugin.type].label }}</uiTag>
             </div>
-            <el-tag :type="pluginTypes[plugin.type].tagType" size="small">{{ pluginTypes[plugin.type].label }}</el-tag>
-          </div>
-          <p v-if="plugin.description" class="pluginDescription">{{ plugin.description }}</p>
-          <el-text v-if="plugin.loadError" type="danger" size="small">{{ plugin.loadError }}</el-text>
-          <div v-if="plugin.author || plugin.version" class="pluginMeta">
-            <span v-if="plugin.author" class="pluginAuthor">{{ plugin.author }}</span>
-            <span v-if="plugin.version" class="pluginVersion" type="info" size="small" effect="plain">v{{ plugin.version }}</span>
+            <p v-if="plugin.description" class="pluginDescription">{{ plugin.description }}</p>
+            <uiAlert v-if="plugin.loadError" class="pluginError" :title="plugin.loadError" tone="error" />
+            <div v-if="plugin.author || plugin.version" class="pluginMeta"><span v-if="plugin.author" class="pluginAuthor">{{ plugin.author }}</span><span v-if="plugin.version" class="pluginVersion">v{{ plugin.version }}</span></div>
           </div>
           <div v-if="isMarketTab" class="pluginFooter" @click.stop>
-            <el-text v-if="installLabel(plugin) === '已安装'" type="info" size="small">已安装</el-text>
-            <el-popconfirm
-              v-else-if="pluginTypes[plugin.type].path"
-              :title="`${installLabel(plugin)}${pluginTypes[plugin.type].label}“${plugin.displayName}”（${plugin.fileName}）？`"
-              width="280"
-              :confirmButtonText="installLabel(plugin)"
-              cancelButtonText="取消"
-              @confirm="installMarketPlugin(plugin)">
-              <template #reference>
-                <el-button
-                  size="small"
-                  type="primary"
-                  :loading="pendingPlugins.has(plugin.key)"
-                  :disabled="loading || pendingPlugins.has(plugin.key)"
-                  :aria-label="`${installLabel(plugin)} ${plugin.displayName}`">
-                  {{ installLabel(plugin) }}
-                </el-button>
-              </template>
-            </el-popconfirm>
-            <el-text v-else type="info" size="small">{{ plugin.type === 'agent' && !agentMarketEnabled ? '测试阶段，暂未开放' : '暂不支持安装' }}</el-text>
-            <div class="pluginActions">
-              <component
-                :is="plugin.isCollected ? IconStarFilled : IconStar"
-                class="collectionIcon"
-                :size="18"
-                role="button"
-                tabindex="0"
-                :aria-disabled="collectingPlugins.has(plugin.key)"
-                :aria-pressed="plugin.isCollected === true"
-                :aria-label="`${plugin.isCollected ? '取消收藏' : '收藏'} ${plugin.displayName}`"
-                :title="plugin.isCollected ? '取消收藏' : '收藏'"
-                @click="toggleCollection(plugin)"
-                @keydown.enter.prevent="toggleCollection(plugin)"
-                @keydown.space.prevent="toggleCollection(plugin)" />
-            </div>
+            <span v-if="installLabel(plugin) === '已安装'" class="pluginState">已安装</span>
+            <uiPopconfirm v-else-if="pluginTypes[plugin.type].path" :title="`${installLabel(plugin)}${pluginTypes[plugin.type].label}“${plugin.displayName}”（${plugin.fileName}）？`" :confirmButtonText="installLabel(plugin)" cancelButtonText="取消" @confirm="installMarketPlugin(plugin)"><template #reference><uiButton size="small" :loading="pendingPlugins.has(plugin.key)" :disabled="loading || pendingPlugins.has(plugin.key)" :aria-label="`${installLabel(plugin)} ${plugin.displayName}`">{{ installLabel(plugin) }}</uiButton></template></uiPopconfirm>
+            <span v-else class="pluginState">{{ plugin.type === 'agent' && !agentMarketEnabled ? '测试阶段，暂未开放' : '暂不支持安装' }}</span>
+            <div class="pluginActions"><uiIconButton class="collectionButton" :class="{ isCollected: plugin.isCollected }" size="small" variant="ghost" :icon="plugin.isCollected ? IconStarFilled : IconStar" :loading="collectingPlugins.has(plugin.key)" :aria-pressed="plugin.isCollected === true" :label="`${plugin.isCollected ? '取消收藏' : '收藏'} ${plugin.displayName}`" @click="toggleCollection(plugin)" /></div>
           </div>
           <div v-else-if="plugin.type === 'skill'" class="pluginFooter" @click.stop>
             <div class="pluginActions">
-              <el-button
-                size="small"
-                :icon="IconShare"
-                :loading="exportingPlugins.has(plugin.key)"
-                :disabled="loading || pendingPlugins.has(plugin.key)"
-                :aria-label="`导出分享 ${plugin.displayName}`"
-                title="导出分享"
-                @click="exportPlugin(plugin)" />
-              <el-popconfirm
-                v-if="plugin.author !== 'Toonflow'"
-                :title="`确定卸载“${plugin.displayName}”及其附属文件吗？`"
-                width="280"
-                confirmButtonText="卸载"
-                cancelButtonText="取消"
-                confirmButtonType="danger"
-                hideIcon
-                @confirm="updatePlugin(plugin, 'uninstall')">
-                <template #reference>
-                  <el-button
-                    size="small"
-                    :loading="pendingPlugins.has(plugin.key)"
-                    :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key) || exportingPlugins.has(plugin.key)"
-                    :aria-label="`卸载 ${plugin.displayName}`">
-                    卸载
-                  </el-button>
-                </template>
-              </el-popconfirm>
+              <uiIconButton size="small" variant="ghost" :icon="IconShare" :loading="exportingPlugins.has(plugin.key)" :disabled="loading || pendingPlugins.has(plugin.key)" :label="`导出分享 ${plugin.displayName}`" title="导出分享" @click="exportPlugin(plugin)" />
+              <uiPopconfirm v-if="plugin.author !== 'Toonflow'" :title="`确定卸载“${plugin.displayName}”及其附属文件吗？`" danger confirmButtonText="卸载" cancelButtonText="取消" @confirm="updatePlugin(plugin, 'uninstall')"><template #reference><uiButton size="small" variant="danger" :loading="pendingPlugins.has(plugin.key)" :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key) || exportingPlugins.has(plugin.key)" :aria-label="`卸载 ${plugin.displayName}`">卸载</uiButton></template></uiPopconfirm>
             </div>
           </div>
-
           <div v-else class="pluginFooter" :class="{ pluginControls: plugin.author !== 'Toonflow' || plugin.type === 'agent' }" @click.stop>
-            <label v-if="plugin.author !== 'Toonflow' || plugin.type === 'agent'" class="pluginToggle">
-              <span>{{ plugin.enabled === false ? "已禁用" : "已启用" }}</span>
-              <el-switch
-                :modelValue="plugin.enabled !== false"
-                size="small"
-                :loading="pendingPlugins.has(plugin.key)"
-                :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key)"
-                :aria-label="`启用 ${plugin.displayName}`"
-                @change="updatePlugin(plugin, 'setEnabled', $event === true)" />
-            </label>
-            <el-text v-else type="info" size="small">已安装</el-text>
+            <div v-if="plugin.author !== 'Toonflow' || plugin.type === 'agent'" class="pluginToggle"><span>{{ plugin.enabled === false ? "已禁用" : "已启用" }}</span><uiSwitch :modelValue="plugin.enabled !== false" :loading="pendingPlugins.has(plugin.key)" :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key)" :aria-label="`启用 ${plugin.displayName}`" @change="updatePlugin(plugin, 'setEnabled', $event)" /></div>
+            <span v-else class="pluginState">已安装</span>
             <div class="pluginActions">
-              <el-button
-                v-if="plugin.type === 'node' || plugin.type === 'tool' || (plugin.type === 'agent' && plugin.kind === 'local')"
-                size="small"
-                :icon="IconShare"
-                :loading="exportingPlugins.has(plugin.key)"
-                :disabled="loading || pendingPlugins.has(plugin.key) || (plugin.type === 'tool' && !canManageTools) || (plugin.type === 'agent' && !canManageAgents)"
-                :aria-label="`导出分享 ${plugin.displayName}`"
-                title="导出分享"
-                @click="exportPlugin(plugin)" />
-              <el-button v-if="plugin.type === 'agent' && plugin.kind === 'local'" size="small" :disabled="!canManageAgents || loading || pendingPlugins.has(plugin.key)" @click="selectedAgent = plugin">编辑</el-button>
-              <el-button v-if="plugin.type === 'agent' && plugin.cardUrl" size="small" :icon="IconCopy" @click="copyCard(plugin.cardUrl)">Card</el-button>
-              <el-badge v-if="(plugin.type === 'tool' || plugin.type === 'node') && plugin.configRules?.length" isDot :hidden="!hasMissingConfig(plugin)">
-                <el-button
-                  size="small"
-                  :disabled="!canConfigurePlugin(plugin) || loading || pendingPlugins.has(plugin.key)"
-                  :aria-label="`配置 ${plugin.displayName}${hasMissingConfig(plugin) ? '，有必填配置未填写' : ''}`"
-                  @click="
-                    selectedConfigPlugin = plugin;
-                    configVisible = true;
-                  ">
-                  配置
-                </el-button>
-              </el-badge>
-              <el-popconfirm
-                v-if="plugin.author !== 'Toonflow' || plugin.type === 'agent'"
-                :title="`确定卸载“${plugin.displayName}”吗？`"
-                width="240"
-                confirmButtonText="卸载"
-                cancelButtonText="取消"
-                confirmButtonType="danger"
-                hideIcon
-                @confirm="updatePlugin(plugin, 'uninstall')">
-                <template #reference>
-                  <el-button
-                    size="small"
-                    :loading="pendingPlugins.has(plugin.key)"
-                    :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key) || exportingPlugins.has(plugin.key)"
-                    :aria-label="`卸载 ${plugin.displayName}`">
-                    卸载
-                  </el-button>
-                </template>
-              </el-popconfirm>
+              <uiIconButton v-if="plugin.type === 'node' || plugin.type === 'tool' || (plugin.type === 'agent' && plugin.kind === 'local')" size="small" variant="ghost" :icon="IconShare" :loading="exportingPlugins.has(plugin.key)" :disabled="loading || pendingPlugins.has(plugin.key) || (plugin.type === 'tool' && !canManageTools) || (plugin.type === 'agent' && !canManageAgents)" :label="`导出分享 ${plugin.displayName}`" title="导出分享" @click="exportPlugin(plugin)" />
+              <uiButton v-if="plugin.type === 'agent' && plugin.kind === 'local'" size="small" variant="secondary" :disabled="!canManageAgents || loading || pendingPlugins.has(plugin.key)" @click="selectedAgent = plugin">编辑</uiButton>
+              <uiButton v-if="plugin.type === 'agent' && plugin.cardUrl" size="small" variant="ghost" :icon="IconCopy" @click="copyCard(plugin.cardUrl)">Card</uiButton>
+              <uiBadge v-if="(plugin.type === 'tool' || plugin.type === 'node') && plugin.configRules?.length" dot :hidden="!hasMissingConfig(plugin)" label="有必填配置未填写"><uiButton size="small" variant="secondary" :disabled="!canConfigurePlugin(plugin) || loading || pendingPlugins.has(plugin.key)" :aria-label="`配置 ${plugin.displayName}${hasMissingConfig(plugin) ? '，有必填配置未填写' : ''}`" @click="selectedConfigPlugin = plugin; configVisible = true">配置</uiButton></uiBadge>
+              <uiPopconfirm v-if="plugin.author !== 'Toonflow' || plugin.type === 'agent'" :title="`确定卸载“${plugin.displayName}”吗？`" danger confirmButtonText="卸载" cancelButtonText="取消" @confirm="updatePlugin(plugin, 'uninstall')"><template #reference><uiButton size="small" variant="danger" :loading="pendingPlugins.has(plugin.key)" :disabled="!canEditPlugin(plugin) || loading || pendingPlugins.has(plugin.key) || exportingPlugins.has(plugin.key)" :aria-label="`卸载 ${plugin.displayName}`">卸载</uiButton></template></uiPopconfirm>
             </div>
           </div>
-        </el-card>
+        </article>
       </div>
       <p v-if="activeTab === 'installed' ? loading : marketLoading" class="listStatus" role="status">正在加载插件…</p>
-      <p v-else-if="!visiblePlugins.length && (isMarketTab ? !marketError : !visibleLoadErrors.length)" class="listStatus">
-        {{ activeTab === "installed" ? "暂无符合条件的已安装插件" : selectedType === "collection" ? "暂无符合条件的收藏插件" : selectedType === "my" ? "暂无符合条件的已发布插件" : "未找到相关插件" }}
-      </p>
-      <el-pagination
-        v-if="isMarketTab && !marketError"
-        v-model:currentPage="marketPage"
-        class="marketPagination"
-        :pageSize="marketPageSize"
-        :total="marketTotal"
-        :disabled="marketLoading"
-        :pagerCount="5"
-        layout="total, prev, pager, next"
-        size="small" />
+      <p v-else-if="!visiblePlugins.length && (isMarketTab ? !marketError : !visibleLoadErrors.length)" class="listStatus">{{ activeTab === "installed" ? "暂无符合条件的已安装插件" : selectedType === "collection" ? "暂无符合条件的收藏插件" : selectedType === "my" ? "暂无符合条件的已发布插件" : "未找到相关插件" }}</p>
+      <uiPagination v-if="isMarketTab && !marketError" v-model:currentPage="marketPage" class="marketPagination" :pageSize="marketPageSize" :total="marketTotal" :disabled="marketLoading" :pagerCount="5" showTotal label="插件市场分页" />
       <pluginConfigDialog v-if="selectedConfigPlugin" v-model="configVisible" :plugin="selectedConfigPlugin" :canManage="canConfigurePlugin(selectedConfigPlugin)" />
       <agentEditorDialog v-if="selectedAgent" :key="selectedAgent.key" :agent="selectedAgent" :canManage="canManageAgents" @saved="refreshInstalled" @closed="selectedAgent = undefined" />
       <agentConnectDialog v-if="agentConnectVisible" @saved="refreshInstalled" @closed="agentConnectVisible = false" />
       <a2aSettingsDialog v-if="a2aSettingsVisible" @saved="refreshInstalled" @closed="a2aSettingsVisible = false" />
-      <skillEditorDialog
-        v-if="selectedSkill"
-        :key="selectedSkill.key"
-        :skill="selectedSkill"
-        @saved="refreshInstalled"
-        @closed="selectedSkill = undefined" />
-      <el-dialog
-        v-if="selectedPlugin"
-        v-model="detailsVisible"
-        :title="selectedPlugin.displayName"
-        width="min(800px, calc(100vw - 32px))"
-        alignCenter
-        appendToBody
-        destroyOnClose>
-        <div class="pluginContent" tabindex="0" aria-label="插件说明">
-          <messageMarkdown :content="selectedPlugin.readme ?? ''" />
-        </div>
-      </el-dialog>
+      <skillEditorDialog v-if="selectedSkill" :key="selectedSkill.key" :skill="selectedSkill" @saved="refreshInstalled" @closed="selectedSkill = undefined" />
+      <uiDialog v-if="selectedPlugin" v-model="detailsVisible" :title="selectedPlugin.displayName" :width="800" destroyOnClose><div class="pluginContent" tabindex="0" aria-label="插件说明"><messageMarkdown :content="selectedPlugin.readme ?? ''" /></div></uiDialog>
     </template>
   </div>
 </template>
@@ -295,7 +99,7 @@ import axios from "axios";
 import parse from "semver/functions/parse";
 import { computed, defineAsyncComponent, markRaw, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { IconBox, IconBook, IconTool, IconExternalLink, IconSparkles2, IconUpload, IconShare, IconStar, IconStarFilled, IconLink, IconSettings, IconCopy } from "@tabler/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { uiTabs, uiButton, uiIconButton, uiInput, uiAlert, uiTag, uiSwitch, uiBadge, uiPopconfirm, uiPagination, uiDialog, useUiFeedback } from "@toonflow/ui";
 import tf, { getTfApiKey, isTfRouterProvider } from "@/lib/tf";
 import { saveSettings } from "@/stores/settings";
 import tfRouter from "@toonflow/providers/language/tfRouter";
@@ -312,15 +116,17 @@ import type { Plugin, PluginType } from "./types";
 import { installPluginFile } from "../../installPluginFile";
 
 const { visible = true } = defineProps<{ visible?: boolean }>();
+const feedback = useUiFeedback();
 // ACT: Agent 插件市场仍在测试，暂时关闭入口。
 const agentMarketEnabled = false;
 const pluginTypes = {
-  node: { label: "节点", path: "nodes", icon: IconBox, tagType: "primary" },
-  skill: { label: "技能", path: "skills", icon: IconBook, tagType: "success" },
-  tool: { label: "工具", path: "tools", icon: IconTool, tagType: "warning" },
-  agent: { label: "Agent", path: agentMarketEnabled ? "agents" : null, icon: IconSparkles2, tagType: "danger" },
+  node: { label: "节点", path: "nodes", icon: IconBox, tone: "neutral" },
+  skill: { label: "技能", path: "skills", icon: IconBook, tone: "success" },
+  tool: { label: "工具", path: "tools", icon: IconTool, tone: "warning" },
+  agent: { label: "Agent", path: agentMarketEnabled ? "agents" : null, icon: IconSparkles2, tone: "error" },
 } as const;
 const tabs = { discover: "发现插件", installed: "已安装", ffmpeg: "FFmpeg" } as const;
+const tabOptions = Object.entries(tabs).map(([value, label]) => ({ value, label }));
 const activeTab = ref<keyof typeof tabs>("discover");
 const isMarketTab = computed(() => activeTab.value === "discover");
 const marketPage = ref(1);
@@ -639,9 +445,9 @@ function errorMessage(error: unknown, fallback: string) {
 async function copyCard(url: string) {
   try {
     await writeClipboardText(url);
-    ElMessage.success("Agent Card 地址已复制");
+    feedback.message({ tone: "success", message: "Agent Card 地址已复制" });
   } catch {
-    await ElMessageBox.alert(url, "Agent Card 地址", { confirmButtonText: "关闭" }).catch(() => {});
+    await feedback.alert(url, "Agent Card 地址", { confirmButtonText: "关闭" }).catch(() => {});
   }
 }
 
@@ -675,9 +481,9 @@ async function toggleCollection(plugin: Plugin) {
     const current = marketPlugins.value.find(item => item.id === plugin.id);
     if (current) current.isCollected = collected;
     if (selectedType.value === "collection" || marketLoading.value) marketRefreshKey.value++;
-    ElMessage.success(collected ? "收藏成功" : "已取消收藏");
+    feedback.message({ tone: "success", message: collected ? "收藏成功" : "已取消收藏" });
   } catch (error) {
-    if (apiKey.value === key) ElMessage.error(errorMessage(error, "修改收藏失败，请重试"));
+    if (apiKey.value === key) feedback.message({ tone: "error", message: errorMessage(error, "修改收藏失败，请重试") });
   } finally {
     collectingPlugins.value.delete(plugin.key);
   }
@@ -693,9 +499,9 @@ async function installMarketPlugin(plugin: Plugin) {
     const { data } = await axios.post(`/api/${path}/install`, { url: plugin.url, fileName: plugin.fileName }, { headers: requestHeaders });
     if (data.code !== 200) throw new Error(data.message || "安装插件失败");
     window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type: plugin.type, name: data.data.name } }));
-    ElMessage.success(`${plugin.displayName}已${action}`);
+    feedback.message({ tone: "success", message: `${plugin.displayName}已${action}` });
   } catch (error) {
-    ElMessage.error(errorMessage(error, "安装插件失败，请重试"));
+    feedback.message({ tone: "error", message: errorMessage(error, "安装插件失败，请重试") });
   } finally {
     pendingPlugins.value.delete(plugin.key);
   }
@@ -720,9 +526,9 @@ async function installFile(event: Event) {
     if (!type) throw new Error("请选择 Agent .agent.zip、节点 .umd.js、工具 .tool.js 或技能 .zip、.md、.tar、.tar.gz、.tgz 文件");
     if (type === "agent" && !agentMarketEnabled) throw new Error("Agent 功能处于测试阶段，暂未开放安装");
     await installPluginFile(type, file);
-    ElMessage.success(`${pluginTypes[type].label}已安装`);
+    feedback.message({ tone: "success", message: `${pluginTypes[type].label}已安装` });
   } catch (error) {
-    ElMessage.error(errorMessage(error, "安装插件失败，请重试"));
+    feedback.message({ tone: "error", message: errorMessage(error, "安装插件失败，请重试") });
   } finally {
     installing.value = false;
   }
@@ -757,7 +563,7 @@ async function exportPlugin(plugin: Plugin) {
         .catch(() => null);
       if (typeof data?.message === "string") message = data.message;
     }
-    ElMessage.error(message);
+    feedback.message({ tone: "error", message: message });
   } finally {
     exportingPlugins.value.delete(plugin.key);
   }
@@ -793,12 +599,12 @@ async function updatePlugin(plugin: Plugin, action: "setEnabled" | "uninstall", 
         detailsVisible.value = false;
         selectedPlugin.value = undefined;
       }
-      ElMessage.success("插件已卸载");
+      feedback.message({ tone: "success", message: "插件已卸载" });
     } else plugin.enabled = enabled;
     if (plugin.type === "node")
       window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type: plugin.type, name: plugin.name } }));
   } catch (error) {
-    ElMessage.error(errorMessage(error, `${actionLabel}失败，请重试`));
+    feedback.message({ tone: "error", message: errorMessage(error, `${actionLabel}失败，请重试`) });
   } finally {
     pendingPlugins.value.delete(plugin.key);
   }
@@ -807,347 +613,35 @@ async function updatePlugin(plugin: Plugin, action: "setEnabled" | "uninstall", 
 
 <style lang="scss" scoped>
 .pluginMarket {
-  .marketKey {
-    margin-bottom: 12px;
-
-    :deep(.el-card__body) {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .keyForm {
-      display: flex;
-      width: 100%;
-      gap: 8px;
-    }
-  }
-
+  min-width: 0;
   .marketToolbar {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding-bottom: 12px;
-    background: var(--el-bg-color);
-
-    .marketNav {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 20px;
-
-      .navButton {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 30px;
-        padding: 0 0 6px;
-        border: 0;
-        background: transparent;
-        color: var(--el-text-color-secondary);
-        font: inherit;
-        cursor: pointer;
-
-        &[aria-pressed="true"] {
-          color: var(--el-text-color-primary);
-          font-weight: 600;
-          &::after {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            height: 2px;
-            border-radius: 2px;
-            background: currentColor;
-            content: "";
-          }
-        }
-        &:hover {
-          color: var(--el-text-color-primary);
-        }
-        &:focus-visible {
-          outline: 2px solid var(--el-color-primary);
-          outline-offset: 3px;
-        }
-      }
-    }
-
-    .marketActions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-left: auto;
-
-      .el-button { margin-left: 0; }
-    }
-
-    .typeFilters {
-      display: flex;
-      flex-basis: 100%;
-      flex-wrap: wrap;
-      gap: 6px;
-
-      .personalFilters {
-        display: flex;
-        gap: 6px;
-        margin-left: auto;
-      }
-
-      .filterButton {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        border: 0;
-        border-radius: var(--el-border-radius-base);
-        background: transparent;
-        color: var(--el-text-color-secondary);
-        font: inherit;
-        font-size: 12px;
-        cursor: pointer;
-
-        .filterCount {
-          padding: 1px 6px;
-          border-radius: 6px;
-          background: var(--el-fill-color);
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        &:hover:not(:disabled) {
-          background: var(--el-fill-color-light);
-        }
-        &:disabled {
-          color: var(--el-text-color-disabled);
-          cursor: not-allowed;
-        }
-        &[aria-pressed="true"] {
-          background: var(--el-color-primary-light-9);
-          color: var(--el-color-primary);
-        }
-        &:focus-visible {
-          outline: 2px solid var(--el-color-primary);
-          outline-offset: 2px;
-        }
-      }
-    }
-
-    .marketSearch {
-      display: flex;
-      flex-basis: 100%;
-      min-width: 0;
-      gap: 8px;
-    }
+    display: flex; flex-direction: column; gap: 16px; min-width: 0; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--uiBorderDefault);
+    .marketHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; .marketNav { min-width: 0; } .marketActions { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; } }
+    .marketFilters { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; .typeFilters { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; } .marketSearch { display: flex; flex: 1 1 240px; gap: 8px; min-width: 0; :deep(.uiInput) { flex: 1; min-width: 0; } } }
+    .marketManagement { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; .personalFilters, .installActions { display: flex; flex-wrap: wrap; gap: 8px; } }
+    .filterButton { &[aria-pressed="true"] { color: var(--uiActionPrimary); background: var(--uiActionSoft); } :deep(.buttonLabel) { display: flex; align-items: center; gap: 8px; } .filterCount { color: var(--uiTextMuted); font-variant-numeric: tabular-nums; } }
   }
-
-  .loadError {
-    margin-bottom: 12px;
-  }
-
+  .marketKey { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 24px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); p { margin: 0; color: var(--uiTextBody); font-size: var(--uiFontBody); line-height: 1.7; } .keyForm { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; :deep(.uiInput) { flex: 1 1 240px; min-width: 0; } } }
+  .loadError { margin-bottom: 16px; }
   .pluginList {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-    gap: 10px;
-    padding-bottom: 4px;
-
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; min-width: 0;
     .pluginCard {
-      min-width: 0;
-
-      &.viewable {
-        cursor: pointer;
-
-        &:focus-visible {
-          outline: 2px solid var(--el-color-primary);
-          outline-offset: 2px;
-        }
+      display: flex; flex-direction: column; gap: 20px; min-width: 0; padding: 20px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle);
+      &.viewable { cursor: pointer; &:hover { border-color: var(--uiBorderControl); } &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; } }
+      .pluginSummary {
+        min-width: 0;
+        .pluginHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; :deep(.uiTag) { flex-shrink: 0; } .pluginHeading { min-width: 0; .pluginName { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; font-size: var(--uiFontLabel); font-weight: 600; overflow-wrap: anywhere; svg { flex-shrink: 0; } .pluginTitle { min-width: 0; } .repoLink { display: inline-flex; flex-shrink: 0; color: var(--uiTextMuted); &:hover { color: var(--uiActionPrimary); } } } .pluginId { display: block; margin-top: 8px; color: var(--uiTextMuted); font-size: var(--uiFontControl); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } } }
+        .pluginDescription { margin: 16px 0 0; color: var(--uiTextBody); font-size: var(--uiFontControl); line-height: 1.7; overflow-wrap: anywhere; }
+        .pluginError { margin-top: 16px; }
+        .pluginMeta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; color: var(--uiTextMuted); font-size: var(--uiFontControl); overflow-wrap: anywhere; .pluginAuthor { flex: 1; min-width: 0; } .pluginVersion { flex-shrink: 0; font-variant-numeric: tabular-nums; } }
       }
-
-      :deep(.el-card__body) {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        padding: 12px;
-        box-sizing: border-box;
-      }
-
-      .pluginHeader {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-
-        > .el-tag {
-          flex-shrink: 0;
-        }
-
-        .pluginHeading {
-          min-width: 0;
-
-          .pluginName {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-            overflow-wrap: anywhere;
-
-            .pluginTitle {
-              min-width: 0;
-            }
-
-            svg {
-              flex-shrink: 0;
-            }
-            .repoLink {
-              display: inline-flex;
-              flex-shrink: 0;
-              color: var(--el-text-color-secondary);
-              &:hover {
-                color: var(--el-color-primary);
-              }
-              &:focus-visible {
-                outline: 2px solid var(--el-color-primary);
-                outline-offset: 2px;
-              }
-            }
-          }
-
-          .pluginId {
-            display: block;
-            margin-top: 6px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 12px;
-            line-height: 1.5;
-            color: var(--el-text-color-placeholder);
-          }
-        }
-      }
-
-      .pluginMeta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 8px 12px;
-        margin-top: 12px;
-        font-size: 12px;
-        line-height: 1.5;
-        color: var(--el-text-color-secondary);
-        overflow-wrap: anywhere;
-
-        .pluginAuthor {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .pluginVersion {
-          flex-shrink: 0;
-          margin-left: auto;
-        }
-      }
-      .pluginDescription {
-        margin: 10px 0 0;
-        font-size: 13px;
-        line-height: 1.6;
-        color: var(--el-text-color-regular);
-        overflow-wrap: anywhere;
-      }
-
-      .pluginFooter {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: auto;
-        padding-top: 12px;
-
-        &.pluginControls {
-          align-items: stretch;
-          flex-direction: column;
-          gap: 12px;
-
-          &::before {
-            border-top: 1px solid var(--el-border-color-lighter);
-            content: "";
-          }
-        }
-
-        .pluginToggle {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          color: var(--el-text-color-secondary);
-          font-size: 12px;
-          cursor: pointer;
-
-          > .el-switch {
-            flex-shrink: 0;
-          }
-        }
-        .pluginActions {
-          display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          gap: 8px;
-          max-width: 100%;
-          min-width: 0;
-          margin-left: auto;
-          .el-button {
-            margin-left: 0;
-          }
-          .collectionIcon {
-            color: var(--el-text-color-secondary);
-            cursor: pointer;
-
-            &[aria-pressed="true"] {
-              color: #f5c518;
-            }
-            &[aria-disabled="true"] {
-              opacity: 0.5;
-              cursor: wait;
-            }
-            &:focus-visible {
-              outline: 2px solid currentColor;
-              outline-offset: 3px;
-            }
-          }
-        }
-      }
+      .pluginFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault); .pluginState { color: var(--uiTextMuted); font-size: var(--uiFontControl); } .pluginToggle { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--uiTextMuted); font-size: var(--uiFontControl); } .pluginActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; margin-left: auto; .collectionButton.isCollected { color: var(--uiActionPrimary); } } &.pluginControls { align-items: stretch; flex-direction: column; } }
     }
+    &.isInstalled { grid-template-columns: minmax(0, 1fr); .pluginCard { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; .pluginSummary .pluginHeader { justify-content: flex-start; .pluginHeading { flex: 1; } } .pluginFooter { min-width: 180px; margin-top: 0; padding-top: 0; border-top: 0; flex-direction: column; align-items: stretch; } } }
   }
-
-  .marketPagination {
-    justify-content: center;
-    margin-top: 16px;
-  }
-
-  .listStatus {
-    margin: 24px 0;
-    color: var(--el-text-color-secondary);
-    text-align: center;
-  }
+  .marketPagination { justify-content: center; margin-top: 24px; }
+  .listStatus { margin: 24px 0; color: var(--uiTextMuted); text-align: center; font-size: var(--uiFontControl); }
+  @media (max-width: 1100px) { .pluginList.isInstalled .pluginCard { grid-template-columns: minmax(0, 1fr); gap: 16px; .pluginFooter { min-width: 0; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault); } } }
 }
-
-.pluginContent {
-  max-height: min(65vh, calc(100dvh - 160px));
-  overflow: auto;
-  overflow-wrap: anywhere;
-  padding: 0 4px;
-  font-size: 14px;
-  line-height: 1.7;
-}
+.pluginContent { min-width: 0; overflow-wrap: anywhere; font-size: var(--uiFontBody); line-height: 1.7; }
 </style>
