@@ -1,8 +1,8 @@
 <template>
   <authShell title="登录 OmniStudio" description="登录后继续你的漫剧创作，Workspace、项目和平台积分会保持在同一个账户体系中。">
     <form class="authForm" @submit.prevent="submit">
-      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
-      <uiField label="密码" required><template #default="{ id, required }"><uiInput :id="id" v-model="password" type="password" autocomplete="current-password" :required="required" showPassword /></template></uiField>
+      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
+      <uiField label="密码" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model="password" type="password" autocomplete="current-password" :required="required" showPassword /></template></uiField>
       <p v-if="errorMessage" class="errorMessage" role="alert">{{ errorMessage }}</p>
       <uiButton class="loginButton" htmlType="submit" :loading="submitting" :disabled="submitting">{{ submitting ? "登录中…" : "登录" }}</uiButton>
     </form>

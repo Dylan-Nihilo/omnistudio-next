@@ -1,10 +1,10 @@
 <template>
   <authShell title="初始化 OmniStudio" description="创建平台管理员和第一个 Workspace，之后即可开始创作并使用平台统一的模型与积分。">
     <form class="authForm" @submit.prevent="submit">
-      <uiField label="管理员名称" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="displayName" type="text" autocomplete="name" :required="required" /></template></uiField>
-      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
-      <uiField label="密码" required><template #default="{ id, required }"><uiInput :id="id" v-model="password" type="password" minlength="12" autocomplete="new-password" :required="required" showPassword /></template></uiField>
-      <uiField label="Workspace 名称" required><template #default="{ id, required }"><uiInput :id="id" v-model.trim="workspaceName" type="text" :required="required" /></template></uiField>
+      <uiField label="管理员名称" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model.trim="displayName" type="text" autocomplete="name" :required="required" /></template></uiField>
+      <uiField label="邮箱" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model.trim="email" type="email" autocomplete="email" :required="required" /></template></uiField>
+      <uiField label="密码" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model="password" type="password" minlength="12" autocomplete="new-password" :required="required" showPassword /></template></uiField>
+      <uiField label="Workspace 名称" required><template #default="{ id, required }"><uiInput class="authInput" :id="id" v-model.trim="workspaceName" type="text" :required="required" /></template></uiField>
       <p v-if="errorMessage" class="errorMessage" role="alert">{{ errorMessage }}</p>
       <uiButton class="loginButton" htmlType="submit" :loading="submitting" :disabled="submitting">{{ submitting ? "初始化中…" : "完成初始化" }}</uiButton>
     </form>
