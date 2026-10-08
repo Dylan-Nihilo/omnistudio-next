@@ -2,14 +2,16 @@
 
 本规划将项目所有可控的可见 UI 迁移到自有 Vue 组件、Token 和基础样式体系。不是给 Element Plus 换颜色，也不是给旧组件套一层薄包装；原业务规则、后端服务、存储格式、工作区文件和关键生命周期保持不变。
 
-当前基础 UI 包已完成封装：独立工作树 `toonflowUi`（`uiRefactor` 分支）中，`packages/ui` 提供 44 个公开组件、主题、反馈与表单 API、CSS 与类型声明；`apps/uiPreview` 提供五类完整预览。入口/首页及首批设置内容已开始实际迁移；当前进展见 [UI 迁移断点](uiMigration/progress.md)。原生平台及旧插件兼容继续在接入阶段验证。主工作区的未提交 `AGENTS.md`、设计资料、应用源码和运行数据保持原样。
+当前基础 UI 包已完成封装：独立工作树 `toonflowUi`（`uiRefactor` 分支）中，`packages/ui` 提供 44 个公开组件、主题、反馈与表单 API、CSS 与类型声明；`apps/uiPreview` 提供五类完整预览。入口/首页及首批设置内容已开始实际迁移；当前进展见 [UI 迁移断点](progress.md)。原生平台及旧插件兼容继续在接入阶段验证。主工作区的未提交 `AGENTS.md`、设计资料、应用源码和运行数据保持原样。
+
+本文件保留实施前规划与阶段记录；当前 Web 完成状态以 [progress.md](progress.md) 和 [acceptance.json](acceptance.json) 为准。参考资料独立归档到本目录，避免覆盖主工作区的同名未提交资料。`figmaStyleV3/componentCoverage.json` 中的 `preview` 保留原设计导出的历史路径，图片仍在主工作区 `Toonflow-app/docs/figmaStyleV3/statePreviews/`；本分支未重复收录，也不将这些设计图当作重构后截图。
 
 ## 盘点依据
 
 - 当前代码基线：`ec8f54597bf6e6114ed56b832f9052cd6f735311`，2026-10-05 重新检查。
 - 实际源码文件、导入关系、模板控件、关键调用链是工程范围的依据。
-- [文件盘点](uiRefactorInventory.json) 记录全部 UI 源文件、行数、依赖、风险标记、保护边界与拟迁移阶段。静态正则标记只用于发现线索，不等于运行行为验证。
-- [原界面盘点](uiInventory20260930/inventory.json) 的 82 项状态作为初始功能验收清单，不能替代新增启动错误页、插件兼容及真实尺寸检查。
+- [文件盘点](sourceInventory.json) 记录全部 UI 源文件、行数、依赖、风险标记、保护边界与拟迁移阶段。静态正则标记只用于发现线索，不等于运行行为验证。
+- [原状态验收对照](acceptance.json) 的 82 项状态作为初始功能验收清单，不能替代新增启动错误页、插件兼容及真实尺寸检查。
 - Figma 文件 `zJMnhlJ5Kvs4SIM6uG13d1`、[设计覆盖索引](figmaStyleV3/componentCoverage.json) 与 [设计终验](figmaStyleV3/completionAudit.json) 是视觉参考。149 个设计组件族不等于要新增 149 个 Vue 基础组件。
 
 ## 重构目标和范围
@@ -225,7 +227,7 @@ projects/
 
 接续 Pi 线程 `01a10a96-6593-75fe-baa6-8da8cbca3c11`。该线程后续已明确授权在独立树重建自有 UI；Figma 终验中的 `implementationAuthorized: false` 仅记录此前设计阶段的边界，不是后续实施授权的状态。
 
-阶段 0 的独立工作树与组件预览已建立。本节首批记录保留为历史断点；当前 44 组件完整包、API 合约与验收证据以 [组件库说明](../packages/ui/readme.md) 和 [覆盖清单](uiLibraryCoverage.json) 为准。基础库封装不等于全盘业务 UI 重构完成。
+阶段 0 的独立工作树与组件预览已建立。本节首批记录保留为历史断点；当前 44 组件完整包、API 合约与验收证据以 [组件库说明](../../packages/ui/readme.md) 和 [覆盖清单](../uiLibraryCoverage.json) 为准。基础库封装不等于全盘业务 UI 重构完成。
 
 ### 首批组件与合约
 
@@ -261,7 +263,7 @@ bun run build
 - 主题验证使用控件实际渲染颜色，不只检查 CSS 变量；系统深浅切换、reduced motion、1280×960 与 1024×768/125% 字体通过，后者无横向溢出。
 - 弹窗验证通过：ESC 与遮罩、嵌套焦点与仅关闭顶层、内部向外拖动不误关、禁止关闭、异步 beforeClose、销毁与解锁、长标题/长内容滚动、重新打开后不被旧确认误关。
 - 深色次要文字/输入背景对比度 5.18；橙/绿主按钮文字对比度 6.50/14.08；浅色次要文字对比度 4.72。禁用控件不计入普通文字对比度判定。
-- 已导出并查看 [组件预览](uiRefactorPreviews/baseControls.png)、[绿色](uiRefactorPreviews/greenControls.png)、[浅色兼容](uiRefactorPreviews/lightControls.png)、[窄窗口与大字体](uiRefactorPreviews/narrowFont125.png)、[弹窗外壳](uiRefactorPreviews/dialogShell.png) 和 [长弹窗](uiRefactorPreviews/longDialogFont125.png)。截图等待主题实际完成切换，避免把过渡中间色当成最终状态。
+- 已导出并查看 [组件预览](../uiRefactorPreviews/baseControls.png)、[绿色](../uiRefactorPreviews/greenControls.png)、[浅色兼容](../uiRefactorPreviews/lightControls.png)、[窄窗口与大字体](../uiRefactorPreviews/narrowFont125.png)、[弹窗外壳](../uiRefactorPreviews/dialogShell.png) 和 [长弹窗](../uiRefactorPreviews/longDialogFont125.png)。截图等待主题实际完成切换，避免把过渡中间色当成最终状态。
 - 浏览器检查未产生页面异常或业务 `/api/` 请求。Figma 在线截图回读返回 `fetch failed`；本轮使用已导出的本地设计参考，没有修改远端设计。
 
 预览启动：在独立树执行 `bun run --cwd apps/uiPreview dev`，使用独立端口 `127.0.0.1:5175`。不隐式安装依赖或启动业务后端。

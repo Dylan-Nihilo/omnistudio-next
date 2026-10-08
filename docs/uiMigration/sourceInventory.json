@@ -3287,8 +3287,8 @@
   ],
   "designReferences": {
     "figmaFileKey": "zJMnhlJ5Kvs4SIM6uG13d1",
-    "completion": "docs/figmaStyleV3/completionAudit.json",
-    "stateCoverage": "docs/figmaStyleV3/componentCoverage.json",
+    "completion": "docs/uiMigration/figmaStyleV3/completionAudit.json",
+    "stateCoverage": "docs/uiMigration/figmaStyleV3/componentCoverage.json",
     "sourceScreenInventory": "docs/uiInventory20260930/inventory.json"
   },
   "validationPolicy": {
