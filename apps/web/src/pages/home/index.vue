@@ -247,7 +247,7 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
       h1 { position: relative; width: fit-content; margin: 28px 0 4px; font-size: clamp(38px, 4vw, 60px); line-height: 1.27; font-weight: 900; letter-spacing: -1.5px; }
       .titleUnderline { display: block; width: min(340px, 64%); height: auto; margin-bottom: 34px; }
       .composer { padding: 22px 20px 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); &:focus-within { border-color: var(--uiBorderFocus); } .promptInput { min-height: 112px; padding: 0; border: 0; background: transparent; font-size: var(--uiFontBody); outline: none; } }
-      .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; .sendActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; .modelSelect { max-width: 190px; } } }
+      .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; .sendActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; .modelSelect { width: 240px; max-width: min(240px, 100%); } } }
       .workspaceHint { margin: 12px 4px 0; max-width: 65ch; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.6; }
     }
     .projectList {

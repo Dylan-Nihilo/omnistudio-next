@@ -7,7 +7,9 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
   const mediaModels = platformMediaModels;
   const loading = ref(false);
   const errorMessage = ref("");
-  const modelChoices = computed(() => textModels.value.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined })));
+  const modelChoices = computed(() => [...textModels.value]
+    .sort((left, right) => Number(!isGptModel(left)) - Number(!isGptModel(right)))
+    .map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined })));
 
   async function load() {
     if (loading.value) return;
@@ -22,3 +24,7 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
 
   return { textModels, mediaModels, loading, errorMessage, modelChoices, load };
 });
+
+function isGptModel(model: PlatformModel) {
+  return /gpt/i.test([model.modelId, model.label].join(" "));
+}
