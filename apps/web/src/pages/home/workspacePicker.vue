@@ -1,5 +1,5 @@
 <template>
-  <uiButton v-if="!hideTrigger" class="workspaceButton" variant="ghost" :icon="IconFolder" :loading="selecting" :disabled="loading || disabled" :title="selectedDirectory || '选择工作目录'" aria-label="选择工作目录" @click="chooseDirectory"><span class="directoryName">{{ selectedDirectory ? selectedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || selectedDirectory : '工作目录' }}</span><icon-chevron-down :size="14" aria-hidden="true" /></uiButton>
+  <uiButton v-if="!hideTrigger" class="workspaceButton" variant="ghost" :icon="IconFolder" :loading="selecting" :disabled="loading || disabled" :title="selectedDirectory || '选择工作目录'" aria-label="选择工作目录" @click="chooseDirectory"><span class="directoryName">{{ selectedDirectoryName }}</span><icon-chevron-down :size="14" aria-hidden="true" /></uiButton>
   <uiDialog v-model="dialogVisible" title="选择服务器工作目录" :width="680" :closeOnClickModal="!editing" :closeOnPressEscape="!editing" :showClose="!editing" @close="finishSelection?.(null)">
     <div class="workspaceBrowser">
       <header class="directoryHeader"><uiIconButton :icon="IconArrowLeft" :disabled="loading || editing || !listing?.path" label="上一级目录" @click="loadDirectory(listing?.parent ?? '')" /><span class="directoryPath" :title="listing?.absolutePath">服务器工作区{{ listing?.path ? ` / ${listing.path}` : '' }}</span><uiButton variant="secondary" :icon="IconFolderPlus" :disabled="loading || editing || !listing || !!browseError" @click="manageEntry('mkdir')">新建文件夹</uiButton></header>
@@ -13,13 +13,13 @@
         </uiTable>
       </uiLoading>
     </div>
-    <template #footer><uiButton variant="secondary" :disabled="editing" @click="dialogVisible = false">取消</uiButton><uiButton :disabled="loading || editing || !listing || !!browseError" @click="confirmDirectory">选择此目录</uiButton></template>
+    <template #footer><uiButton variant="secondary" :disabled="editing" @click="dialogVisible = false">取消</uiButton><uiButton :disabled="loading || editing || !listing?.path || !!browseError" @click="confirmDirectory">选择此目录</uiButton></template>
   </uiDialog>
 </template>
 
 <script setup lang="ts">
 import axios from "axios";
-import { onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { uiButton, uiIconButton, uiDialog, uiAlert, uiLoading, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@toonflow/ui";
 import { IconFolder, IconFolderPlus, IconFile, IconChevronDown, IconArrowLeft } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
@@ -43,6 +43,12 @@ const loading = ref(false);
 const editing = ref(false);
 const listing = ref<DirectoryListing>();
 const browseError = ref("");
+const serverWorkspaceRoot = ref("");
+const selectedDirectoryName = computed(() => {
+  if (!selectedDirectory.value) return "工作目录";
+  if (serverWorkspaceRoot.value && selectedDirectory.value === serverWorkspaceRoot.value) return "服务器工作区";
+  return selectedDirectory.value.split(/[\\/]/).filter(Boolean).at(-1) || selectedDirectory.value;
+});
 let finishSelection: ((directory: string | null) => void) | undefined;
 onBeforeUnmount(() => finishSelection?.(null));
 defineExpose({ chooseDirectory });
@@ -79,6 +85,7 @@ async function loadDirectory(path: string) {
   try {
     const { data } = await axios.get<{ code: number; data: Omit<DirectoryListing, "entries">; message: string }>("/api/workspaces/list", { params: { path } });
     if (data.code !== 200) throw new Error(data.message);
+    if (!data.data.path) serverWorkspaceRoot.value = data.data.absolutePath;
     listing.value = { ...data.data, entries: [] };
     const { entries } = await useWorkspaceFiles(data.data.absolutePath).list();
     listing.value = { ...data.data, entries: entries.sort((a, b) => Number(b.type === "directory") - Number(a.type === "directory") || a.name.localeCompare(b.name, "zh-CN", { numeric: true })) };
@@ -127,7 +134,7 @@ async function manageEntry(action: "mkdir" | "rename" | "remove", entry?: Worksp
 }
 
 function confirmDirectory() {
-  if (loading.value || editing.value || !listing.value || browseError.value) return;
+  if (loading.value || editing.value || !listing.value?.path || browseError.value) return;
   selectedDirectory.value = listing.value.absolutePath;
   finishSelection?.(listing.value.absolutePath);
   dialogVisible.value = false;
