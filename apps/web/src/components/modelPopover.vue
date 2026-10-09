@@ -3,7 +3,7 @@
     <uiPopover v-model:visible="visible" placement="top-start" :width="340" :offset="10" :disabled="disabled">
       <template #reference="{ triggerAttrs }">
         <uiButton class="modelButton" variant="ghost" size="small" :disabled="disabled" v-bind="triggerAttrs" aria-label="模型与推理设置">
-          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="14" /><span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span v-if="reasoningEffort" class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
+          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="14" /><span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
         </uiButton>
       </template>
       <div class="modelOptions">
