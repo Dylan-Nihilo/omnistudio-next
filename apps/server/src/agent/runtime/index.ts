@@ -89,7 +89,9 @@ export async function run(
     send({ type: "accepted" });
     return;
   }
-  const { provider, runtime } = await createAgentModel(providerId, modelId, thinkingLevel);
+  const configured = await createAgentModel(providerId, modelId, thinkingLevel);
+  const { provider, runtime } = configured;
+  const runtimeModelId = configured.model.id;
   if (sessionPath) {
     const file = await stat(sessionPath).catch((error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") throw Object.assign(new Error("会话不存在，请重新打开对话"), { status: 404 });
@@ -138,7 +140,7 @@ export async function run(
       tools.push(createReportTool(cwd, parentFile, file, child.name, send));
     }
     tools.push(await createSubAgentTool({
-      cwd, tools, canvas, modelRuntime: runtime, model: runtime.getModel(providerId, modelId), thinkingLevel,
+      cwd, tools, canvas, modelRuntime: runtime, model: runtime.getModel(providerId, runtimeModelId), thinkingLevel,
       runTask: (name, task, taskSignal, onProgress) => runDelegatedAgent({
         cwd, parentFile: file, name, task, providerId, modelId, thinkingLevel, canvas, signal: taskSignal, send, onProgress, billing,
       }),
@@ -156,14 +158,14 @@ export async function run(
     mentionFiles = snapshots.created;
     mentions = agentMentionsSchema.parse(snapshots.mentions);
     const previous = history.buildSessionContext();
-    if (previous.model && (previous.model.provider !== providerId || previous.model.modelId !== modelId))
-      history.appendModelChange(providerId, modelId);
+    if (previous.model && (previous.model.provider !== providerId || previous.model.modelId !== runtimeModelId))
+      history.appendModelChange(providerId, runtimeModelId);
     if (previous.messages.length && previous.thinkingLevel !== thinkingLevel) history.appendThinkingLevelChange(thinkingLevel);
     const { session } = await createAgentSession({
       cwd,
       ...resources,
       modelRuntime: runtime,
-      model: runtime.getModel(providerId, modelId),
+      model: runtime.getModel(providerId, runtimeModelId),
       thinkingLevel,
       sessionManager: history,
       tools: tools.map((tool) => tool.name),
