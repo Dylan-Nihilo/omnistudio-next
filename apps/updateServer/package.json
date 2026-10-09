@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/updateServer",
+  "name": "@omnistudio-next/updateServer",
   "private": true,
   "type": "module",
   "scripts": {

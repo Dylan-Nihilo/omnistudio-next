@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { listPlatformMediaModels, listPlatformTextModels, platformMediaModels, platformTextModels, type PlatformModel } from "@/lib/platformModels";
+import { getSessionSnapshot } from "@/lib/sessionState";
 
 export const usePlatformModelsStore = defineStore("platformModels", () => {
   const textModels = platformTextModels;
@@ -12,13 +13,17 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
   async function load() {
     if (loading.value) return;
     loading.value = true;
+    const session = getSessionSnapshot();
     errorMessage.value = "";
     try {
-      [textModels.value, mediaModels.value] = await Promise.all([listPlatformTextModels(), listPlatformMediaModels()]);
+      const models = await Promise.all([listPlatformTextModels(), listPlatformMediaModels()]);
+      if (getSessionSnapshot().revision === session.revision) [textModels.value, mediaModels.value] = models;
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : "读取平台模型失败";
-    } finally { loading.value = false; }
+      if (getSessionSnapshot().revision === session.revision) errorMessage.value = error instanceof Error ? error.message : "读取平台模型失败";
+    } finally { if (getSessionSnapshot().revision === session.revision) loading.value = false; }
   }
 
-  return { textModels, mediaModels, loading, errorMessage, modelChoices, load };
+  function resetModels() { textModels.value = []; mediaModels.value = []; loading.value = false; errorMessage.value = ""; }
+
+  return { textModels, mediaModels, loading, errorMessage, modelChoices, load, resetModels };
 });

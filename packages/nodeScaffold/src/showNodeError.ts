@@ -1,6 +1,6 @@
 import { h } from "vue";
 import { ElNotification } from "element-plus";
-import { useUiFeedback, type UiFeedback } from "@toonflow/ui";
+import { useUiFeedback, type UiFeedback } from "@omnistudio-next/ui";
 import nodeError from "./components/nodeError.vue";
 
 export function showNodeError(error: unknown, title: string, feedback?: UiFeedback) {

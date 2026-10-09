@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
-import { uiAlert, uiIconButton, uiLoading, uiTree, useUiFeedback, type UiTreeNode } from "@toonflow/ui";
+import { uiAlert, uiIconButton, uiLoading, uiTree, useUiFeedback, type UiTreeNode } from "@omnistudio-next/ui";
 import { IconFile, IconFilePlus, IconFileText, IconFolder, IconFolderOpen, IconLayoutDashboard, IconRefresh } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { isCanvasFile } from "@/pages/workspace/canvasFile";

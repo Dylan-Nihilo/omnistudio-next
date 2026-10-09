@@ -1,6 +1,11 @@
 import { z } from "zod";
-import { toolNameSchema } from "@toonflow/tools-scaffold/runtime";
+import { toolNameSchema } from "@omnistudio-next/tools-scaffold/runtime";
 import { getMcpRuntime } from "@/utils/mcp/runtime";
+import { eq } from "drizzle-orm";
+import { getDatabase } from "@/db/database";
+import { sessions } from "@/db/schema";
+import { createSession, csrfCookieName, sessionCookieName } from "@/services/authService";
+import { requireActiveAccount } from "@/utils/accountContext";
 
 const maxBytes = 20 * 1024 * 1024;
 const directory = z.string().min(1).max(4096);
@@ -26,6 +31,15 @@ export const appOperations: {
   parameters: z.ZodType;
   refresh?: { type: "node" | "tool" | "skill"; nameField?: string };
 }[] = [
+  { name: "getPersonalWallet", description: "读取调用者自己的可用与冻结积分。", method: "GET", path: "/api/billing/wallet", parameters: z.strictObject({}) },
+  { name: "getPersonalLedger", description: "读取调用者自己的积分流水。", method: "GET", path: "/api/billing/ledger", parameters: z.strictObject({}) },
+  { name: "listUserTeams", description: "列出调用者可以访问的团队。", method: "GET", path: "/api/account/teams/list", parameters: z.strictObject({}) },
+  { name: "listTeamMembers", description: "读取自己所属团队的成员。", method: "GET", path: "/api/account/teams/members", parameters: z.strictObject({ teamId: z.uuid() }) },
+  { name: "listTeamAssets", description: "读取自己所属团队主动共享的资产，不收集个人资产。", method: "GET", path: "/api/account/teamAssets/list", parameters: z.strictObject({ teamId: z.uuid() }) },
+  { name: "createUserTeam", description: "为调用者创建团队并成为 owner，不创建团队钱包。", method: "POST", path: "/api/account/teams/create", parameters: z.strictObject({ name: z.string().trim().min(1).max(160) }) },
+  { name: "shareTeamAsset", description: "把已授权个人项目中的文件复制到团队空间，原件保留；仅在用户明确要求共享时调用。", method: "POST", path: "/api/account/teamAssets/copy", parameters: z.strictObject({ teamId: z.uuid(), directory, path, mimeType: z.string().max(150) }) },
+  { name: "importTeamAsset", description: "将可访问的团队资产复制到个人项目。", method: "POST", path: "/api/account/teamAssets/import", parameters: z.strictObject({ id: z.uuid(), directory }) },
+  { name: "transferPersonalCredits", description: "按用户明确指定的接收成员和数量划转个人可用积分，仅限同团队成员。结果不可自行撤回，重试必须复用同一 idempotencyKey。", method: "POST", path: "/api/billing/transfer", parameters: z.strictObject({ teamId: z.uuid(), recipientUserId: z.uuid(), amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), reason: z.string().trim().min(1).max(500), idempotencyKey: z.string().min(1).max(160) }) },
   {
     name: "listNodes", description: "列出已安装节点的元数据、说明和启用状态。", method: "GET", path: "/api/nodes/get", parameters: z.strictObject({}),
   },
@@ -126,11 +140,13 @@ export const appOperations: {
 export async function runAppOperation(name: string, parameters: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
   const operation = appOperations.find(item => item.name === name);
   if (!operation) throw new Error(`未知应用操作：${name}`);
-  const args = operation.parameters.parse(parameters) as Record<string, unknown>;
+  const parsed = operation.parameters.parse(parameters) as Record<string, unknown>;
+  const { idempotencyKey, ...args } = parsed;
   const origin = getMcpRuntime().appOrigin;
-  if (!origin) throw new Error("Toonflow 服务尚未就绪");
+  if (!origin) throw new Error("omnistudio-next 服务尚未就绪");
   const url = new URL(operation.path, origin);
-  const headers: Record<string, string> = { "x-toonflow-workspace": "1", Origin: origin, Referer: `${origin}/` };
+  const headers: Record<string, string> = { "x-omnistudio-next-workspace": "1", Origin: origin, Referer: `${origin}/` };
+  if (typeof idempotencyKey === "string") headers["Idempotency-Key"] = idempotencyKey;
   let body: string | ArrayBuffer | undefined;
   if (operation.name === "saveAsset") {
     url.searchParams.set("path", args.path as string);
@@ -146,17 +162,22 @@ export async function runAppOperation(name: string, parameters: Record<string, u
     });
     headers["Content-Type"] = "application/json";
   }
-  const response = await fetch(url, { method: operation.method, headers, body, signal, redirect: "error" });
-  if (operation.name === "readAsset" && response.ok) {
-    if (Number(response.headers.get("content-length")) > maxBytes) {
-      await response.body?.cancel();
-      throw new Error("素材文件不能超过 20 MB");
+  const session = await createSession(requireActiveAccount().userId);
+  headers.Cookie = `${sessionCookieName}=${session.sessionToken}; ${csrfCookieName}=${session.csrfToken}`;
+  headers["X-CSRF-Token"] = session.csrfToken;
+  try {
+    const response = await fetch(url, { method: operation.method, headers, body, signal, redirect: "error" });
+    if (operation.name === "readAsset" && response.ok) {
+      if (Number(response.headers.get("content-length")) > maxBytes) {
+        await response.body?.cancel();
+        throw new Error("素材文件不能超过 20 MB");
+      }
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.byteLength > maxBytes) throw new Error("素材文件不能超过 20 MB");
+      return { path: args.path, mimeType: response.headers.get("content-type"), base64: bytes.toString("base64") };
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.byteLength > maxBytes) throw new Error("素材文件不能超过 20 MB");
-    return { path: args.path, mimeType: response.headers.get("content-type"), base64: bytes.toString("base64") };
-  }
-  const result = await response.json() as { code?: number; data?: unknown; message?: string };
-  if (!response.ok || result.code !== 200) throw new Error(result.message || `应用操作失败（${response.status}）`);
-  return result.data ?? null;
+    const result = await response.json() as { code?: number; data?: unknown; message?: string };
+    if (!response.ok || result.code !== 200) throw new Error(result.message || `应用操作失败（${response.status}）`);
+    return result.data ?? null;
+  } finally { await getDatabase().delete(sessions).where(eq(sessions.id, session.id)); }
 }

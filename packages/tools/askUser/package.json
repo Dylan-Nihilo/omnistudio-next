@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/tool-ask-user",
+  "name": "@omnistudio-next/tool-ask-user",
   "version": "2.0.0",
   "private": true,
   "type": "module",
@@ -16,10 +16,10 @@
     "element-plus": "^2.14.5",
     "axios": "^1.20.0",
     "@form-create/element-ui": "^3",
-    "@toonflow/ui": "workspace:*"
+    "@omnistudio-next/ui": "workspace:*"
   },
   "devDependencies": {
-    "@toonflow/tools-scaffold": "workspace:*",
+    "@omnistudio-next/tools-scaffold": "workspace:*",
     "typescript": "~6.0.3",
     "vue-tsc": "^3.3.11"
   }

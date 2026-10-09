@@ -1,13 +1,13 @@
-# @toonflow/ui
+# @omnistudio-next/ui
 
-OmniStudio 自有 Vue UI 组件库。控件使用自己的 DOM、样式、状态与交互，不依赖 Element Plus、TDesign、XSender、Pinia、Axios 或业务接口。当前包含 44 个公开 Vue 组件；公共 TS 类型从包入口导出。
+omnistudio-next 自有 Vue UI 组件库。控件使用自己的 DOM、样式、状态与交互，不依赖 Element Plus、TDesign、XSender、Pinia、Axios 或业务接口。当前包含 44 个公开 Vue 组件；公共 TS 类型从包入口导出。
 
 ## 构建与引入
 
 依赖准备与构建分别执行，不启动业务服务或同步 data/：
 
 ```sh
-# 在 toonflowUi 工作树根目录，依赖已声明且锁定
+# 在 omnistudio-next-ui 工作树根目录，依赖已声明且锁定
 bun install --frozen-lockfile --ignore-scripts
 bun run --cwd packages/ui build
 bun run --cwd apps/uiPreview build
@@ -16,7 +16,7 @@ bun run --cwd apps/uiPreview dev
 
 `build` 输出 `dist/index.js`、`dist/index.css`、组件与公共 API 的 `.d.ts`。声明生成是构建的一部分，不新增测试或自定义检查入口。显式类型检查：在对应包执行 `./node_modules/.bin/vue-tsc --project tsconfig.json --noEmit`。
 
-包 exports 在开发模式指向源文件，生产模式指向构建产物；类型始终指向声明文件。消费者构建前先构建 UI 包。Vue 为 peer dependency，保持同一个 Vue runtime。插件宿主后续应 externalize `@toonflow/ui`，不将多个 UI runtime 打入不同插件。
+包 exports 在开发模式指向源文件，生产模式指向构建产物；类型始终指向声明文件。消费者构建前先构建 UI 包。Vue 为 peer dependency，保持同一个 Vue runtime。插件宿主后续应 externalize `@omnistudio-next/ui`，不将多个 UI runtime 打入不同插件。
 
 ```vue
 <template>
@@ -33,8 +33,8 @@ bun run --cwd apps/uiPreview dev
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { uiThemeProvider, uiFeedbackProvider, uiField, uiInput } from "@toonflow/ui";
-import "@toonflow/ui/styles";
+import { uiThemeProvider, uiFeedbackProvider, uiField, uiInput } from "@omnistudio-next/ui";
+import "@omnistudio-next/ui/styles";
 
 const name = ref("");
 </script>
@@ -144,7 +144,7 @@ confirm/alert 返回 Promise<"confirm">；prompt 返回 `{ value, action: "confi
 
 ## 品牌资源与验收边界
 
-当前新 Logo 为 `@toonflow/assets/omniStudioLogo.svg`，来自 Downloads/omnistudio.svg，原文件字形、色值、viewBox 和 hash 保持不变。预览头部及媒体示例使用此资源；旧蓝色 PNG 仅作为历史设计资料保留。不要随强调色改变 Logo，也不修改包 identifier、scheme、原生安装图标或远端 Figma。
+当前新 Logo 为 `@omnistudio-next/assets/omniStudioNextLogo.svg`，来自 Downloads/omnistudio.svg，原文件字形、色值、viewBox 和 hash 保持不变。预览头部及媒体示例使用此资源；旧蓝色 PNG 仅作为历史设计资料保留。不要随强调色改变 Logo，也不修改包 identifier、scheme、原生安装图标或远端 Figma。
 
 当前完成组件库包、类型与组件预览，不等于已替换 88 个业务 Vue 文件、149 个 Figma 业务组件族或验收 82 个应用状态。真实设置保存、文件队列、插件宿主、3D/画布/Agent 引擎和主应用仍保持原实现，后续按模块迁移。
 

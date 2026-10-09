@@ -17,8 +17,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, type Component } from "vue";
 import { useVueFlow, type ConnectingHandle, type GraphNode, type HandleType } from "@vue-flow/core";
-import { isTypeCompatible, useNodeEvent, validateConnection, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import { uiDropdown, useUiFeedback, type UiMenuItem } from "@toonflow/ui";
+import { isTypeCompatible, useNodeEvent, validateConnection, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import { uiDropdown, useUiFeedback, type UiMenuItem } from "@omnistudio-next/ui";
 import selectionHandle from "./selectionHandle.vue";
 import { getSelectionConnections } from "../selectionConnections";
 import { getSelectionRoots, getSelectionTree } from "../selectionNodes";

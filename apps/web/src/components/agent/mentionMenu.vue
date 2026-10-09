@@ -40,11 +40,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch, type CSSProperties } from "vue";
-import { uiButton, uiInput, uiPopover } from "@toonflow/ui";
+import { uiButton, uiInput, uiPopover } from "@omnistudio-next/ui";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { IconAt, IconBox, IconCheck, IconChevronLeft, IconChevronRight, IconFileText, IconFolder, IconLayoutGrid, IconMovie, IconMusic, IconPhoto, IconSearch, IconX } from "@tabler/icons-vue";
-import type { AgentMention } from "@toonflow/server/agent/types";
-import { mentionAssetType } from "@toonflow/server/agent/mentionSources";
+import type { AgentMention } from "@omnistudio-next/server/agent/types";
+import { mentionAssetType } from "@omnistudio-next/server/agent/mentionSources";
 import { useMentionSources, type MentionAsset, type MentionNode, type MentionOutput } from "./mentionSources";
 import mentionThumbnail from "./mentionThumbnail.vue";
 

@@ -23,7 +23,7 @@
         <uiField label="运行方式"><uiRadioGroup :modelValue="config.mode" :options="modeOptions" :disabled="loading || saving || busy || submitting" variant="segmented" aria-label="FFmpeg 运行方式" @change="mode => (mode === 'auto' || mode === 'download' || mode === 'system') && updateConfig({ mode })" /></uiField>
         <p class="description">{{ modeDescriptions[config.mode] }}</p>
         <template v-if="status">
-          <div class="runtimeInfo"><p class="description">运行环境：{{ status.platform }} / {{ status.arch }}</p><p class="description">下载版本：{{ status.version }} · {{ status.target }}</p><p class="description">保存在当前 Toonflow 服务的数据目录，下载后自动复用。</p><code class="toolPath">{{ status.directory }}</code></div>
+          <div class="runtimeInfo"><p class="description">运行环境：{{ status.platform }} / {{ status.arch }}</p><p class="description">下载版本：{{ status.version }} · {{ status.target }}</p><p class="description">保存在当前 omnistudio-next 服务的数据目录，下载后自动复用。</p><code class="toolPath">{{ status.directory }}</code></div>
           <div v-for="name in toolNames" :key="name" class="toolInfo"><header><strong>{{ name }}</strong><uiTag :tone="status.tools[name].version ? 'success' : 'neutral'">{{ status.tools[name].version ? (status.tools[name].origin === 'download' ? '下载版' : '系统安装版') : '不可用' }}</uiTag></header><p v-if="status.tools[name].version" class="description">{{ status.tools[name].version }}</p><code v-if="status.tools[name].path" class="toolPath">{{ status.tools[name].path }}</code><p v-if="status.tools[name].error" class="description">{{ status.tools[name].error }}</p></div>
         </template>
       </div>
@@ -34,7 +34,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
-import { uiTag, uiButton, uiAlert, uiSelect, uiProgress, uiField, uiRadioGroup, useUiFeedback } from "@toonflow/ui";
+import { uiTag, uiButton, uiAlert, uiSelect, uiProgress, uiField, uiRadioGroup, useUiFeedback } from "@omnistudio-next/ui";
 import { IconDownload, IconRefresh } from "@tabler/icons-vue";
 import { saveSettings, settings } from "@/stores/settings";
 
@@ -49,13 +49,13 @@ type FfmpegStatus = {
 
 const props = withDefaults(defineProps<{ visible?: boolean; downloadOnOpen?: boolean }>(), { visible: true, downloadOnOpen: false });
 const feedback = useUiFeedback();
-const headers = { "x-toonflow-workspace": "1" };
+const headers = { "x-omnistudio-next-workspace": "1" };
 const modeOptions = [{ value: "auto", label: "自动选择" }, { value: "download", label: "使用下载版" }, { value: "system", label: "使用系统安装版" }];
 const toolNames = ["ffmpeg", "ffprobe"] as const;
 const modeDescriptions = {
-  auto: "优先使用已下载的版本；未下载时，从当前 Toonflow 服务的系统 PATH 查找。",
+  auto: "优先使用已下载的版本；未下载时，从当前 omnistudio-next 服务的系统 PATH 查找。",
   download: "仅使用此页面下载的版本。",
-  system: "仅从当前 Toonflow 服务的系统 PATH 查找 FFmpeg 与 ffprobe。",
+  system: "仅从当前 omnistudio-next 服务的系统 PATH 查找 FFmpeg 与 ffprobe。",
 };
 const phaseLabels = { idle: "等待下载", downloading: "正在下载", verifying: "正在校验", installing: "正在安装", completed: "下载完成", error: "下载失败", cancelled: "已取消" };
 const config = computed<FfmpegConfig>(() => {

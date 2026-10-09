@@ -5,7 +5,7 @@ import {
   defineTool, createReadToolDefinition, createWriteToolDefinition, createEditToolDefinition, createLsToolDefinition,
   detectSupportedImageMimeTypeFromFile, type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import type { CanvasContext, QuestionContext, ToolContext } from "@toonflow/tools-scaffold/runtime";
+import type { CanvasContext, QuestionContext, ToolContext } from "@omnistudio-next/tools-scaffold/runtime";
 import conf from "@/utils/conf";
 import { isWithin, resolveWorkspacePath, writeWorkspaceFile, lockWorkspaceFiles } from "@/utils/workspace/files";
 import { listTools, loadTool, validateToolConfig } from "@/utils/plugins/tools";

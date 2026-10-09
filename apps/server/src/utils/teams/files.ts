@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { teamLimits, teamNameSchema, teamSchema, validateTeamResources } from "@toonflow/teams-scaffold/runtime";
+import { teamLimits, teamNameSchema, teamSchema, validateTeamResources } from "@omnistudio-next/teams-scaffold/runtime";
 import conf from "@/utils/conf";
 import { decodeText, skillPath } from "@/utils/plugins/install";
 import { parseTool } from "@/utils/plugins/tools";
@@ -9,7 +9,7 @@ import { isWithin, lockWorkspaceFiles } from "@/utils/workspace/files";
 
 export const agentsDirectory = resolve(dirname(conf.path), "agents");
 export const maxBytes = teamLimits.maxTotalBytes;
-export const installRecord = ".toonflowInstall.json";
+export const installRecord = ".omniStudioNextInstall.json";
 export const teamNamePattern = /^[a-z][a-zA-Z0-9]{0,95}$/;
 
 let pending = Promise.resolve();

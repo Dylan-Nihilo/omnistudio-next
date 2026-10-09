@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "toonflow",
+      "name": "omnistudio-next",
       "devDependencies": {
         "@types/bun": "^1.4.2",
         "@types/postcss-pxtorem": "^6.1.0",
@@ -13,30 +13,30 @@
       },
     },
     "apps/desktop": {
-      "name": "@toonflow/desktop",
+      "name": "@omnistudio-next/desktop",
       "dependencies": {
-        "@toonflow/server": "workspace:*",
-        "@toonflow/startup": "workspace:*",
+        "@omnistudio-next/server": "workspace:*",
+        "@omnistudio-next/startup": "workspace:*",
       },
       "devDependencies": {
         "electrobun": "2.0.1",
       },
     },
     "apps/server": {
-      "name": "@toonflow/server",
+      "name": "@omnistudio-next/server",
       "dependencies": {
         "@babel/parser": "^7.29.8",
         "@breezystack/lamejs": "^1.2.7",
         "@earendil-works/pi-ai": "0.85.1",
         "@earendil-works/pi-coding-agent": "^0.85.1",
         "@node-rs/argon2": "^2.2.2",
-        "@toonflow/ffmpeg": "workspace:*",
-        "@toonflow/mcp": "workspace:*",
-        "@toonflow/providers": "workspace:*",
-        "@toonflow/teams-scaffold": "workspace:*",
-        "@toonflow/tool-canvas": "workspace:*",
-        "@toonflow/tool-media-generation": "workspace:*",
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/ffmpeg": "workspace:*",
+        "@omnistudio-next/mcp": "workspace:*",
+        "@omnistudio-next/providers": "workspace:*",
+        "@omnistudio-next/teams-scaffold": "workspace:*",
+        "@omnistudio-next/tool-canvas": "workspace:*",
+        "@omnistudio-next/tool-media-generation": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
         "conf": "^15.1.0",
         "cors": "^2.8.6",
         "drizzle-orm": "^0.45.4",
@@ -56,12 +56,12 @@
       },
     },
     "apps/uiPreview": {
-      "name": "@toonflow/uiPreview",
+      "name": "@omnistudio-next/uiPreview",
       "version": "0.1.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
-        "@toonflow/assets": "workspace:*",
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/assets": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "vue": "^3.5.42",
       },
       "devDependencies": {
@@ -73,7 +73,7 @@
       },
     },
     "apps/updateServer": {
-      "name": "@toonflow/updateServer",
+      "name": "@omnistudio-next/updateServer",
       "dependencies": {
         "express": "^5.2.1",
       },
@@ -84,7 +84,7 @@
       },
     },
     "apps/web": {
-      "name": "@toonflow/web",
+      "name": "@omnistudio-next/web",
       "dependencies": {
         "@dagrejs/dagre": "^3.1.1",
         "@earendil-works/pi-agent-core": "0.85.1",
@@ -107,14 +107,14 @@
         "@tiptap/pm": "3.31.3",
         "@tiptap/starter-kit": "3.31.3",
         "@tiptap/vue-3": "3.31.3",
-        "@toonflow/assets": "workspace:*",
-        "@toonflow/model-icons": "workspace:*",
-        "@toonflow/nodes-scaffold": "workspace:*",
-        "@toonflow/providers": "workspace:*",
-        "@toonflow/server": "workspace:*",
-        "@toonflow/tool-canvas": "workspace:*",
-        "@toonflow/tools-scaffold": "workspace:*",
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/assets": "workspace:*",
+        "@omnistudio-next/model-icons": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/providers": "workspace:*",
+        "@omnistudio-next/server": "workspace:*",
+        "@omnistudio-next/tool-canvas": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/background": "^1.3.2",
         "@vue-flow/core": "^1.48.2",
         "@vue-flow/minimap": "^1.5.4",
@@ -143,11 +143,11 @@
       },
     },
     "packages/assets": {
-      "name": "@toonflow/assets",
+      "name": "@omnistudio-next/assets",
       "version": "0.0.0",
     },
     "packages/ffmpeg": {
-      "name": "@toonflow/ffmpeg",
+      "name": "@omnistudio-next/ffmpeg",
       "version": "0.0.0",
       "dependencies": {
         "@renmu/fluent-ffmpeg": "2.3.3",
@@ -155,10 +155,10 @@
       },
     },
     "packages/mcp": {
-      "name": "@toonflow/mcp",
+      "name": "@omnistudio-next/mcp",
       "version": "0.0.0",
       "bin": {
-        "toonflow-mcp": "./src/stdio.ts",
+        "omnistudio-next-mcp": "./src/stdio.ts",
       },
       "dependencies": {
         "@modelcontextprotocol/client": "^2.0.0",
@@ -175,7 +175,7 @@
       },
     },
     "packages/modelIcons": {
-      "name": "@toonflow/model-icons",
+      "name": "@omnistudio-next/model-icons",
       "version": "0.0.0",
       "dependencies": {
         "@lobehub/icons-static-svg": "^1.95.0",
@@ -185,13 +185,13 @@
       },
     },
     "packages/nodeScaffold": {
-      "name": "@toonflow/nodes-scaffold",
+      "name": "@omnistudio-next/nodes-scaffold",
       "version": "0.0.0",
       "dependencies": {
         "@earendil-works/pi-agent-core": "0.85.1",
         "@earendil-works/pi-ai": "0.85.1",
         "@tabler/icons-vue": "^3.46.0",
-        "@toonflow/ffmpeg": "workspace:*",
+        "@omnistudio-next/ffmpeg": "workspace:*",
         "@vitejs/plugin-vue": "^6.0.8",
         "eventsource-parser": "3.1.1",
         "vite": "^8.2.2",
@@ -201,40 +201,40 @@
       },
       "devDependencies": {
         "@form-create/element-ui": "^3",
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
         "@tiptap/core": "3.31.3",
         "@tiptap/starter-kit": "3.31.3",
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/audioNode": {
-      "name": "@toonflow/node-audio",
+      "name": "@omnistudio-next/node-audio",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/director3dNode": {
-      "name": "@toonflow/node-director3d",
+      "name": "@omnistudio-next/node-director3d",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
@@ -245,127 +245,127 @@
         "vue-draggable-plus": "^0.6.1",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "@types/three": "0.184.0",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/imageGenerationNode": {
-      "name": "@toonflow/node-image-generation",
+      "name": "@omnistudio-next/node-image-generation",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/imageNode": {
-      "name": "@toonflow/node-image",
+      "name": "@omnistudio-next/node-image",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/textNode": {
-      "name": "@toonflow/node-text",
+      "name": "@omnistudio-next/node-text",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/videoGenerationNode": {
-      "name": "@toonflow/node-video-generation",
+      "name": "@omnistudio-next/node-video-generation",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/nodes/videoNode": {
-      "name": "@toonflow/node-video",
+      "name": "@omnistudio-next/node-video",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
       },
       "devDependencies": {
-        "@toonflow/nodes-scaffold": "workspace:*",
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vite": "^8.2.2",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "@vue-flow/core": "^1.48.2",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/providers": {
-      "name": "@toonflow/providers",
+      "name": "@omnistudio-next/providers",
       "version": "2.0.0",
       "dependencies": {
-        "@toonflow/ffmpeg": "workspace:*",
+        "@omnistudio-next/ffmpeg": "workspace:*",
       },
     },
     "packages/startup": {
-      "name": "@toonflow/startup",
+      "name": "@omnistudio-next/startup",
       "version": "0.0.0",
     },
     "packages/teamScaffold": {
-      "name": "@toonflow/teams-scaffold",
+      "name": "@omnistudio-next/teams-scaffold",
       "version": "0.0.0",
       "dependencies": {
         "@a2a-js/sdk": "1.2.0",
@@ -380,18 +380,18 @@
       },
     },
     "packages/teams/storyboardTeam": {
-      "name": "@toonflow/team-storyboard",
+      "name": "@omnistudio-next/team-storyboard",
       "version": "2.0.0",
       "devDependencies": {
-        "@toonflow/teams-scaffold": "workspace:*",
+        "@omnistudio-next/teams-scaffold": "workspace:*",
       },
     },
     "packages/toolScaffold": {
-      "name": "@toonflow/tools-scaffold",
+      "name": "@omnistudio-next/tools-scaffold",
       "version": "0.0.0",
       "dependencies": {
-        "@toonflow/ffmpeg": "workspace:*",
-        "@toonflow/providers": "workspace:*",
+        "@omnistudio-next/ffmpeg": "workspace:*",
+        "@omnistudio-next/providers": "workspace:*",
         "@vitejs/plugin-vue": "^6.0.8",
         "vite": "^8.2.2",
         "zod": "^4.6.2",
@@ -401,82 +401,82 @@
       },
       "peerDependencies": {
         "@form-create/element-ui": "^3",
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "axios": "^1.20.0",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/tools/askUser": {
-      "name": "@toonflow/tool-ask-user",
+      "name": "@omnistudio-next/tool-ask-user",
       "version": "2.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
         "@form-create/element-ui": "^3",
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "axios": "^1.20.0",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/tools/canvas": {
-      "name": "@toonflow/tool-canvas",
+      "name": "@omnistudio-next/tool-canvas",
       "version": "3.0.0",
       "dependencies": {
         "@tabler/icons-vue": "^3.46.0",
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
         "typescript": "~6.0.3",
         "vue-tsc": "^3.3.11",
       },
       "peerDependencies": {
-        "@toonflow/ui": "workspace:*",
+        "@omnistudio-next/ui": "workspace:*",
         "element-plus": "^2.14.5",
         "vue": "^3.5.42",
       },
     },
     "packages/tools/mediaGeneration": {
-      "name": "@toonflow/tool-media-generation",
+      "name": "@omnistudio-next/tool-media-generation",
       "version": "2.0.0",
       "dependencies": {
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
       },
     },
     "packages/tools/skillOperator": {
-      "name": "@toonflow/tool-skill-operator",
+      "name": "@omnistudio-next/tool-skill-operator",
       "version": "2.0.0",
       "dependencies": {
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
       },
     },
     "packages/tools/webFetch": {
-      "name": "@toonflow/tool-web-fetch",
+      "name": "@omnistudio-next/tool-web-fetch",
       "version": "2.0.0",
       "dependencies": {
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
       },
     },
     "packages/tools/webSearch": {
-      "name": "@toonflow/tool-web-search",
+      "name": "@omnistudio-next/tool-web-search",
       "version": "2.0.0",
       "dependencies": {
         "@deepseek-ai/dsh-web-search-deepseek": "0.1.5-rc.2",
@@ -484,21 +484,21 @@
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
       },
     },
     "packages/tools/workspace": {
-      "name": "@toonflow/tool-workspace",
+      "name": "@omnistudio-next/tool-workspace",
       "version": "2.0.0",
       "dependencies": {
         "zod": "^4.6.2",
       },
       "devDependencies": {
-        "@toonflow/tools-scaffold": "workspace:*",
+        "@omnistudio-next/tools-scaffold": "workspace:*",
       },
     },
     "packages/ui": {
-      "name": "@toonflow/ui",
+      "name": "@omnistudio-next/ui",
       "version": "0.1.0",
       "dependencies": {
         "@floating-ui/dom": "1.8.0",
@@ -1091,65 +1091,65 @@
 
     "@tiptap/vue-3": ["@tiptap/vue-3@3.31.3", "https://registry.npmmirror.com/@tiptap/vue-3/-/vue-3-3.31.3.tgz", { "optionalDependencies": { "@tiptap/extension-bubble-menu": "^3.31.3", "@tiptap/extension-floating-menu": "^3.31.3" }, "peerDependencies": { "@floating-ui/dom": "^1.0.0", "@tiptap/core": "3.31.3", "@tiptap/pm": "3.31.3", "vue": "^3.0.0" } }, "sha512-PNt0+rm7BXzhe/U+xlNnXBeJ6t9x2mE3902VXeIeEBxu5CrYLCJ0a5yHrof1jU3KwJrLOe/BtlGWjbq4qnTTfQ=="],
 
-    "@toonflow/assets": ["@toonflow/assets@workspace:packages/assets"],
+    "@omnistudio-next/assets": ["@omnistudio-next/assets@workspace:packages/assets"],
 
-    "@toonflow/desktop": ["@toonflow/desktop@workspace:apps/desktop"],
+    "@omnistudio-next/desktop": ["@omnistudio-next/desktop@workspace:apps/desktop"],
 
-    "@toonflow/ffmpeg": ["@toonflow/ffmpeg@workspace:packages/ffmpeg"],
+    "@omnistudio-next/ffmpeg": ["@omnistudio-next/ffmpeg@workspace:packages/ffmpeg"],
 
-    "@toonflow/mcp": ["@toonflow/mcp@workspace:packages/mcp"],
+    "@omnistudio-next/mcp": ["@omnistudio-next/mcp@workspace:packages/mcp"],
 
-    "@toonflow/model-icons": ["@toonflow/model-icons@workspace:packages/modelIcons"],
+    "@omnistudio-next/model-icons": ["@omnistudio-next/model-icons@workspace:packages/modelIcons"],
 
-    "@toonflow/node-audio": ["@toonflow/node-audio@workspace:packages/nodes/audioNode"],
+    "@omnistudio-next/node-audio": ["@omnistudio-next/node-audio@workspace:packages/nodes/audioNode"],
 
-    "@toonflow/node-director3d": ["@toonflow/node-director3d@workspace:packages/nodes/director3dNode"],
+    "@omnistudio-next/node-director3d": ["@omnistudio-next/node-director3d@workspace:packages/nodes/director3dNode"],
 
-    "@toonflow/node-image": ["@toonflow/node-image@workspace:packages/nodes/imageNode"],
+    "@omnistudio-next/node-image": ["@omnistudio-next/node-image@workspace:packages/nodes/imageNode"],
 
-    "@toonflow/node-image-generation": ["@toonflow/node-image-generation@workspace:packages/nodes/imageGenerationNode"],
+    "@omnistudio-next/node-image-generation": ["@omnistudio-next/node-image-generation@workspace:packages/nodes/imageGenerationNode"],
 
-    "@toonflow/node-text": ["@toonflow/node-text@workspace:packages/nodes/textNode"],
+    "@omnistudio-next/node-text": ["@omnistudio-next/node-text@workspace:packages/nodes/textNode"],
 
-    "@toonflow/node-video": ["@toonflow/node-video@workspace:packages/nodes/videoNode"],
+    "@omnistudio-next/node-video": ["@omnistudio-next/node-video@workspace:packages/nodes/videoNode"],
 
-    "@toonflow/node-video-generation": ["@toonflow/node-video-generation@workspace:packages/nodes/videoGenerationNode"],
+    "@omnistudio-next/node-video-generation": ["@omnistudio-next/node-video-generation@workspace:packages/nodes/videoGenerationNode"],
 
-    "@toonflow/nodes-scaffold": ["@toonflow/nodes-scaffold@workspace:packages/nodeScaffold"],
+    "@omnistudio-next/nodes-scaffold": ["@omnistudio-next/nodes-scaffold@workspace:packages/nodeScaffold"],
 
-    "@toonflow/providers": ["@toonflow/providers@workspace:packages/providers"],
+    "@omnistudio-next/providers": ["@omnistudio-next/providers@workspace:packages/providers"],
 
-    "@toonflow/server": ["@toonflow/server@workspace:apps/server"],
+    "@omnistudio-next/server": ["@omnistudio-next/server@workspace:apps/server"],
 
-    "@toonflow/startup": ["@toonflow/startup@workspace:packages/startup"],
+    "@omnistudio-next/startup": ["@omnistudio-next/startup@workspace:packages/startup"],
 
-    "@toonflow/team-storyboard": ["@toonflow/team-storyboard@workspace:packages/teams/storyboardTeam"],
+    "@omnistudio-next/team-storyboard": ["@omnistudio-next/team-storyboard@workspace:packages/teams/storyboardTeam"],
 
-    "@toonflow/teams-scaffold": ["@toonflow/teams-scaffold@workspace:packages/teamScaffold"],
+    "@omnistudio-next/teams-scaffold": ["@omnistudio-next/teams-scaffold@workspace:packages/teamScaffold"],
 
-    "@toonflow/tool-ask-user": ["@toonflow/tool-ask-user@workspace:packages/tools/askUser"],
+    "@omnistudio-next/tool-ask-user": ["@omnistudio-next/tool-ask-user@workspace:packages/tools/askUser"],
 
-    "@toonflow/tool-canvas": ["@toonflow/tool-canvas@workspace:packages/tools/canvas"],
+    "@omnistudio-next/tool-canvas": ["@omnistudio-next/tool-canvas@workspace:packages/tools/canvas"],
 
-    "@toonflow/tool-media-generation": ["@toonflow/tool-media-generation@workspace:packages/tools/mediaGeneration"],
+    "@omnistudio-next/tool-media-generation": ["@omnistudio-next/tool-media-generation@workspace:packages/tools/mediaGeneration"],
 
-    "@toonflow/tool-skill-operator": ["@toonflow/tool-skill-operator@workspace:packages/tools/skillOperator"],
+    "@omnistudio-next/tool-skill-operator": ["@omnistudio-next/tool-skill-operator@workspace:packages/tools/skillOperator"],
 
-    "@toonflow/tool-web-fetch": ["@toonflow/tool-web-fetch@workspace:packages/tools/webFetch"],
+    "@omnistudio-next/tool-web-fetch": ["@omnistudio-next/tool-web-fetch@workspace:packages/tools/webFetch"],
 
-    "@toonflow/tool-web-search": ["@toonflow/tool-web-search@workspace:packages/tools/webSearch"],
+    "@omnistudio-next/tool-web-search": ["@omnistudio-next/tool-web-search@workspace:packages/tools/webSearch"],
 
-    "@toonflow/tool-workspace": ["@toonflow/tool-workspace@workspace:packages/tools/workspace"],
+    "@omnistudio-next/tool-workspace": ["@omnistudio-next/tool-workspace@workspace:packages/tools/workspace"],
 
-    "@toonflow/tools-scaffold": ["@toonflow/tools-scaffold@workspace:packages/toolScaffold"],
+    "@omnistudio-next/tools-scaffold": ["@omnistudio-next/tools-scaffold@workspace:packages/toolScaffold"],
 
-    "@toonflow/ui": ["@toonflow/ui@workspace:packages/ui"],
+    "@omnistudio-next/ui": ["@omnistudio-next/ui@workspace:packages/ui"],
 
-    "@toonflow/uiPreview": ["@toonflow/uiPreview@workspace:apps/uiPreview"],
+    "@omnistudio-next/uiPreview": ["@omnistudio-next/uiPreview@workspace:apps/uiPreview"],
 
-    "@toonflow/updateServer": ["@toonflow/updateServer@workspace:apps/updateServer"],
+    "@omnistudio-next/updateServer": ["@omnistudio-next/updateServer@workspace:apps/updateServer"],
 
-    "@toonflow/web": ["@toonflow/web@workspace:apps/web"],
+    "@omnistudio-next/web": ["@omnistudio-next/web@workspace:apps/web"],
 
     "@tootallnate/once": ["@tootallnate/once@2.0.1", "https://registry.npmmirror.com/@tootallnate/once/-/once-2.0.1.tgz", {}, "sha512-HqmEUIGRJ5fSXchkVgR5F7qn48bDBzv0kWj/Kfu5e6uci4UlEeng4331LnBkWffb++Ei3FOVLxo8JJWMFBDMeQ=="],
 
@@ -2479,31 +2479,31 @@
 
     "@tiptap/markdown/marked": ["marked@17.0.6", "https://registry.npmmirror.com/marked/-/marked-17.0.6.tgz", { "bin": { "marked": "bin/marked.js" } }, "sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA=="],
 
-    "@toonflow/node-audio/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-audio/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-director3d/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-director3d/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-image/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-image/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-image-generation/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-image-generation/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-text/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-text/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-video/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-video/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/node-video-generation/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/node-video-generation/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/nodes-scaffold/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/nodes-scaffold/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/tool-ask-user/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/tool-ask-user/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/tool-canvas/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/tool-canvas/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/ui/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/ui/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/uiPreview/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/uiPreview/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
-    "@toonflow/web/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+    "@omnistudio-next/web/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@types/three/@tweenjs/tween.js": ["@tweenjs/tween.js@23.1.3", "https://registry.npmmirror.com/@tweenjs/tween.js/-/tween.js-23.1.3.tgz", {}, "sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA=="],
 

@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase } from "@/db/database";
 import { platformModels, platformProviderConfigs } from "@/db/schema";
+import { readPlatformSecret } from "@/utils/platformSecrets";
 
 export const platformProviderSchema = z.object({
   apiUrl: z.url({ protocol: /^https?$/ }),
@@ -23,10 +24,13 @@ function providerConfig(value: unknown) {
 export async function listPlatformModels(mediaType?: PlatformModel["mediaType"]) {
   const filters = [eq(platformModels.enabled, 1)];
   if (mediaType) filters.push(eq(platformModels.mediaType, mediaType));
-  return getDatabase().select({
+  const rows = await getDatabase().select({
     providerId: platformModels.providerId, modelId: platformModels.modelId, label: platformModels.label,
     mediaType: platformModels.mediaType, apiModelId: platformModels.apiModelId, capabilities: platformModels.capabilities,
-  }).from(platformModels).where(and(...filters)).orderBy(asc(platformModels.sortOrder), asc(platformModels.label));
+    protocolConfig: platformProviderConfigs.config,
+  }).from(platformModels).innerJoin(platformProviderConfigs, eq(platformProviderConfigs.providerId, platformModels.providerId))
+    .where(and(...filters, eq(platformProviderConfigs.enabled, 1))).orderBy(asc(platformModels.sortOrder), asc(platformModels.label));
+  return rows.map(({ protocolConfig, ...model }) => ({ ...model, protocol: providerConfig(protocolConfig).protocol }));
 }
 
 export async function getPlatformModel(providerId: string, modelId: string, mediaType: PlatformModel["mediaType"]) {
@@ -36,7 +40,7 @@ export async function getPlatformModel(providerId: string, modelId: string, medi
   if (!provider) invalid("模型供应商当前不可用", 503);
   const config = providerConfig(provider.config);
   const secretRef = provider.secretRef?.trim();
-  const apiKey = secretRef ? process.env[secretRef]?.trim() : "";
+  const apiKey = await readPlatformSecret(providerId) ?? (secretRef ? process.env[secretRef]?.trim() : "");
   if (!apiKey) invalid("平台模型凭证未配置", 503);
   const baseUrl = new URL(config.apiUrl);
   if (baseUrl.pathname === "/") baseUrl.pathname = "/v1";
@@ -69,7 +73,7 @@ export async function getPlatformProviderRuntimeConfig(providerId: string) {
   const [provider] = await getDatabase().select().from(platformProviderConfigs).where(and(eq(platformProviderConfigs.providerId, providerId), eq(platformProviderConfigs.enabled, 1))).limit(1);
   if (!provider) invalid("模型供应商当前不可用", 503);
   const config = provider.config && typeof provider.config === "object" && !Array.isArray(provider.config) ? provider.config as Record<string, unknown> : {};
-  const apiKey = provider.secretRef?.trim() ? process.env[provider.secretRef.trim()]?.trim() : "";
-  if (provider.secretRef?.trim() && !apiKey) invalid("平台模型凭证未配置", 503);
+  const apiKey = await readPlatformSecret(providerId) ?? (provider.secretRef?.trim() ? process.env[provider.secretRef.trim()]?.trim() : "");
+  if (!apiKey) invalid("平台模型凭证未配置", 503);
   return { ...structuredClone(config), ...(apiKey ? { apiKey } : {}) };
 }

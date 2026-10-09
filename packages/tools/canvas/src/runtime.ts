@@ -1,5 +1,5 @@
 import { z } from "zod";
-export type { CanvasToolCall, CanvasInfo, CanvasContext } from "@toonflow/tools-scaffold/runtime";
+export type { CanvasToolCall, CanvasInfo, CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
 
 const nodeId = z.string().min(1).max(256);
 const position = z.strictObject({ x: z.number().finite(), y: z.number().finite() });

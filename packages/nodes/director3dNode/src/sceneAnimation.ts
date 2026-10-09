@@ -1,4 +1,4 @@
-import { z } from "@toonflow/nodes-scaffold/runtime";
+import { z } from "@omnistudio-next/nodes-scaffold/runtime";
 import { AnimationClip, AnimationMixer, Euler, LoopOnce, Quaternion, QuaternionKeyframeTrack, VectorKeyframeTrack } from "three";
 import { getObjectByThreeJsonId, type SceneRuntime } from "threejson/core";
 import { sceneSchema, updateSunShadow } from "./scene";

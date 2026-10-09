@@ -25,10 +25,10 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useVueFlow } from "@vue-flow/core";
 import { IconCube3dSphere } from "@tabler/icons-vue";
-import { uiLoading, useUiFeedback } from "@toonflow/ui";
-import { nodeSkeleton, useNode, useNodeFiles, useNodeReferences, z, type NodeHandle, type NodeData, type NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
-import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
+import { uiLoading, useUiFeedback } from "@omnistudio-next/ui";
+import { nodeSkeleton, useNode, useNodeFiles, useNodeReferences, z, type NodeHandle, type NodeData, type NodeAiModel } from "@omnistudio-next/nodes-scaffold/runtime";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
 import sceneEditor from "./sceneEditor.vue";
 import { capturePreview, sceneSchema, createEmptyScene, createMannequinObject, createStage, disposeStage, getSceneLighting, type LightingSettings, type SceneDocument, type SceneSettings } from "./scene";
 import { createDirectorDraft } from "./agentTools";

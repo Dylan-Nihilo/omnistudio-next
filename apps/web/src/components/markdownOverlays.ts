@@ -1,5 +1,5 @@
 import { defineComponent, h, type CSSProperties, type PropType } from "vue";
-import { uiButton, uiDialog } from "@toonflow/ui";
+import { uiButton, uiDialog } from "@omnistudio-next/ui";
 
 function createOverlay(isAlert = false) {
   return defineComponent({

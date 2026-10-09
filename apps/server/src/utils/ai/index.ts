@@ -7,6 +7,7 @@ import { z } from "zod";
 import { readReference } from "@/utils/media/generation";
 import modelContextLimits from "@/utils/ai/modelContextLimits";
 import { getPlatformModel, listPlatformModels } from "@/services/modelService";
+import { createChargedStream } from "@/services/generationService";
 
 export { fetchProviderModels } from "@/utils/ai/models";
 
@@ -51,7 +52,7 @@ export async function getConfiguredModel(providerId: string, modelId: string) {
 export async function listAiModels() {
   const models = await listPlatformModels("text");
   return models.map(model => ({
-    providerId: model.providerId, providerLabel: model.providerId, protocol: "openai-completions", modelId: model.modelId, label: model.label,
+    providerId: model.providerId, providerLabel: model.providerId, protocol: model.protocol, modelId: model.modelId, label: model.label,
     contextWindow: 262144, maxOutputTokens: 32768, capabilities: model.capabilities,
   }));
 }
@@ -108,19 +109,20 @@ export function streamAi(
   context: Context,
   signal: AbortSignal,
   references: Awaited<ReturnType<typeof readAiReferences>> = [],
+  idempotencyKey?: string,
 ) {
   const { provider, model: configuredModel, baseUrl } = configured;
   const model: Model<typeof provider.protocol> = {
-    id: configuredModel.id, name: configuredModel.label, provider: "toonflow", api: provider.protocol, baseUrl,
+    id: configuredModel.id, name: configuredModel.label, provider: "omnistudio-next", api: provider.protocol, baseUrl,
     reasoning: false, input: ["text", "image"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: configuredModel.contextWindow,
     maxTokens: configuredModel.maxOutputTokens,
   };
   // ACT: 不按模型名预判附件能力；按供应商协议传递，是否支持由上游接口决定。
-  return aiApis[provider.protocol].streamSimple(model, context, {
+  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, signal, idempotencyKey }, streamSignal => aiApis[provider.protocol].streamSimple(model, context, {
     apiKey: provider.apiKey,
-    signal,
+    signal: streamSignal,
     onPayload: references.length ? (payload) => {
       const body = payload as Record<string, unknown>;
       const field = provider.protocol === "openai-responses" ? "input" : "messages";
@@ -135,5 +137,5 @@ export function streamAi(
         ] }
         : message) };
     } : undefined,
-  });
+  }));
 }

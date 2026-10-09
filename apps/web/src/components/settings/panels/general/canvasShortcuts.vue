@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { uiButton, uiDropdown, uiField } from "@toonflow/ui";
+import { uiButton, uiDropdown, uiField } from "@omnistudio-next/ui";
 import { ref } from "vue";
 import { IconRestore, IconChevronDown, IconKeyboard, IconEdit, IconHandTwoFingers, IconMouse } from "@tabler/icons-vue";
 import { generalSettings, updateGeneralSettings } from "@/stores/settings";

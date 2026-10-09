@@ -5,8 +5,8 @@ import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { dlopen, ptr } from "bun:ffi";
-import type { DesktopRuntime, PluginInstallRequest } from "@toonflow/server/desktop";
-import { showNativeSplash } from "@toonflow/startup";
+import type { DesktopRuntime, PluginInstallRequest } from "@omnistudio-next/server/desktop";
+import { showNativeSplash } from "@omnistudio-next/startup";
 import Electrobun, { BrowserWindow, PATHS, Screen, Utils, Updater } from "electrobun/main";
 import { parseInstallUrl } from "./protocol";
 import saveFile, { selectSaveFile } from "./saveFile";
@@ -43,7 +43,7 @@ async function restoreInstallRegistration(installDirectory: string) {
       }
       const protocolLauncher = resolve(PATHS.RESOURCES_FOLDER, "app/protocolLauncher.exe");
       if (existsSync(protocolLauncher)) {
-        const protocolKey = "HKCU\\Software\\Classes\\toonflow";
+        const protocolKey = "HKCU\\Software\\Classes\\omnistudio-next";
         const commandKey = `${protocolKey}\\shell\\open\\command`;
         const command = `"${protocolLauncher}" "%1"`;
         let protocolExists = true;
@@ -55,7 +55,7 @@ async function restoreInstallRegistration(installDirectory: string) {
         }
         // ACT: 自动更新不经过 NSIS；仅补全缺失协议，已有注册（包括其他安装）保持不动。
         if (!protocolExists) {
-          for (const [key, value] of [[protocolKey, "URL:Toonflow Protocol"], [`${protocolKey}\\DefaultIcon`, `"${resolve(PATHS.RESOURCES_FOLDER, "app.ico")}",0`], [commandKey, command]]) {
+          for (const [key, value] of [[protocolKey, "URL:omnistudio-next Protocol"], [`${protocolKey}\\DefaultIcon`, `"${resolve(PATHS.RESOURCES_FOLDER, "app.ico")}",0`], [commandKey, command]]) {
             await execFileAsync("reg.exe", ["add", key, "/ve", "/t", "REG_SZ", "/d", value, "/f"], { windowsHide: true });
           }
           await execFileAsync("reg.exe", ["add", protocolKey, "/v", "URL Protocol", "/t", "REG_SZ", "/d", "", "/f"], { windowsHide: true });
@@ -74,7 +74,7 @@ async function start() {
   try {
     // Windows 的 data 与 app 同级；macOS 的 data 与 .app 同级，避免随程序更新被替换。
     const installDirectory = resolve(PATHS.RESOURCES_FOLDER, process.platform === "darwin" ? "../../.." : "../..");
-    const dataDirectory = process.env.TOONFLOW_DATA_DIR ?? resolve(installDirectory, "data");
+    const dataDirectory = process.env.OMNISTUDIO_NEXT_DATA_DIR ?? process.env.TOONFLOW_DATA_DIR ?? resolve(installDirectory, "data");
     // ACT: 先显示原生动画，再加载服务，避免初始化期间没有反馈。
     const startupSettings = await Bun.file(resolve(dataDirectory, "settings.json")).json().catch((error) => {
       if (error.code !== "ENOENT") console.error("读取启动设置失败，使用默认启动动画：", error);
@@ -95,8 +95,8 @@ async function start() {
       splash?.close();
       return;
     }
-    process.env.toonflowDesktop = "1";
-    const { createApp } = await import("@toonflow/server/app");
+    process.env.omniStudioNextDesktop = "1";
+    const { createApp } = await import("@omnistudio-next/server/app");
     const { hash } = await Bun.file(resolve(PATHS.RESOURCES_FOLDER, "version.json")).json();
     if (typeof hash !== "string" || !hash) throw new Error("应用构建标识缺失，无法同步内置插件");
     const app = await createApp({
@@ -115,7 +115,7 @@ async function start() {
     await once(server, "listening");
     if (isClosing) return;
     const address = server.address() as AddressInfo;
-    const { initializeMcpRuntime } = await import("@toonflow/server/mcp");
+    const { initializeMcpRuntime } = await import("@omnistudio-next/server/mcp");
     await initializeMcpRuntime(app, `http://127.0.0.1:${address.port}`, resolve(PATHS.VIEWS_FOLDER, "../mcp/stdio.js"));
     console.log(`桌面服务：http://127.0.0.1:${address.port}`);
 
@@ -124,7 +124,7 @@ async function start() {
     const width = Math.min(1280, workArea.width - 64);
     const height = Math.min(960, workArea.height - 64);
     const mainWindow = new BrowserWindow({
-      title: "Toonflow",
+      title: "omnistudio-next",
       url: `http://127.0.0.1:${address.port}/?desktop=1`,
       hidden: Boolean(splash),
       frame: {
@@ -184,7 +184,7 @@ async function start() {
           mainWindow.unminimize();
           mainWindow.show();
           mainWindow.activate();
-          mainWindow.webview.executeJavascript(`window.dispatchEvent(new CustomEvent("toonflow:install-plugin", { detail: ${JSON.stringify(request)} }));`);
+          mainWindow.webview.executeJavascript(`window.dispatchEvent(new CustomEvent("omnistudio-next:install-plugin", { detail: ${JSON.stringify(request)} }));`);
         };
         while (pendingInstalls.length) {
           deliverInstall(pendingInstalls[0]!);

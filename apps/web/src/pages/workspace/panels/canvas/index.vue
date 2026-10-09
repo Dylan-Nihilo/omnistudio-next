@@ -118,11 +118,11 @@ import feedback from "@/lib/uiFeedback";
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, onScopeDispose, provide, ref, shallowReactive, shallowRef, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash-es";
-import { uiIconButton } from "@toonflow/ui";
+import { uiIconButton } from "@omnistudio-next/ui";
 import { storeToRefs } from "pinia";
 import { IconUnlink } from "@tabler/icons-vue";
 import * as vueRuntime from "vue";
-import * as uiRuntime from "@toonflow/ui";
+import * as uiRuntime from "@omnistudio-next/ui";
 import * as tiptapRuntime from "@tiptap/core";
 import * as starterKitRuntime from "@tiptap/starter-kit";
 import * as vueFlowRuntime from "@vue-flow/core";
@@ -147,7 +147,7 @@ import {
 } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { useCanvasTools } from "./useCanvasTools";
-import type { CanvasContext } from "@toonflow/tool-canvas/runtime";
+import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
 import { loadNodeComponent } from "./loadNodeComponent";
 import { useCanvasHistory } from "./useCanvasHistory";
 import { copyNodeToClipboard, nodeClipboardCommand, readClipboardNode } from "./nodeClipboard";
@@ -161,10 +161,10 @@ import groupNode from "./components/groupNode.vue";
 import selectionToolbar from "./components/selectionToolbar.vue";
 import nodeSearch from "./components/nodeSearch.vue";
 import { finishGroupDrag } from "./selectionNodes";
-import type { NodeOutput } from "@toonflow/nodes-scaffold/values";
-import type { NodeConnectionFeedback, NodeHandle } from "@toonflow/nodes-scaffold/connection";
-import { useNodeEvent } from "@toonflow/nodes-scaffold/nodeEvent";
-import { useNodeToolsContext } from "@toonflow/nodes-scaffold/nodeTools";
+import type { NodeOutput } from "@omnistudio-next/nodes-scaffold/values";
+import type { NodeConnectionFeedback, NodeHandle } from "@omnistudio-next/nodes-scaffold/connection";
+import { useNodeEvent } from "@omnistudio-next/nodes-scaffold/nodeEvent";
+import { useNodeToolsContext } from "@omnistudio-next/nodes-scaffold/nodeTools";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { generalSettings } from "@/stores/settings";
 import { getShortcutBindings, shortcutLabel, shortcutMatches, shortcutPressed } from "@/lib/canvasShortcuts";
@@ -757,7 +757,7 @@ function resetCanvasKeys() {
 
 watch([() => props.settingsVisible, () => generalSettings.value.canvasShortcuts], resetCanvasKeys, { deep: true, flush: "sync" });
 
-function refreshInstalled(event: WindowEventMap["toonflow:plugin-installed"]) {
+function refreshInstalled(event: WindowEventMap["omnistudio-next:plugin-installed"]) {
   if (event.detail.type === "node") void loadRemoteNodes(event.detail.name);
 }
 
@@ -768,8 +768,8 @@ onMounted(() => {
   window.addEventListener("keydown", updateCanvasKeys, true);
   window.addEventListener("keyup", updateCanvasKeys, true);
   window.addEventListener("blur", resetCanvasKeys);
-  window.addEventListener("toonflow:plugin-installed", refreshInstalled);
-  window.addEventListener("toonflow:node-config-updated", refreshNodeConfig);
+  window.addEventListener("omnistudio-next:plugin-installed", refreshInstalled);
+  window.addEventListener("omnistudio-next:node-config-updated", refreshNodeConfig);
   document.addEventListener("paste", pasteNode);
   void loadRemoteNodes();
 });
@@ -777,8 +777,8 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", updateCanvasKeys, true);
   window.removeEventListener("keyup", updateCanvasKeys, true);
   window.removeEventListener("blur", resetCanvasKeys);
-  window.removeEventListener("toonflow:plugin-installed", refreshInstalled);
-  window.removeEventListener("toonflow:node-config-updated", refreshNodeConfig);
+  window.removeEventListener("omnistudio-next:plugin-installed", refreshInstalled);
+  window.removeEventListener("omnistudio-next:node-config-updated", refreshNodeConfig);
   document.removeEventListener("paste", pasteNode);
   workspaceController.abort(new Error("工作区已关闭"));
   canvasController.abort(new Error("画布已关闭"));
@@ -853,7 +853,7 @@ async function loadRemoteNodes(reloadName?: string) {
   try {
     const { data } = await axios.get<{ code: number; data: { name: string; displayName: string; url: string; enabled?: boolean; config?: Record<string, unknown> }[] }>(
       "/api/nodes/get",
-      { headers: { "Cache-Control": "no-cache", "x-toonflow-workspace": "1" } }
+      { headers: { "Cache-Control": "no-cache", "x-omnistudio-next-workspace": "1" } }
     );
     if (requestId !== loadRequest) return;
     if (data.code !== 200 || !Array.isArray(data.data)) throw new Error("节点列表格式错误");

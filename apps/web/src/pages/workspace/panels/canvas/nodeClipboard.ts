@@ -1,8 +1,8 @@
 import type { Node } from "@vue-flow/core";
-import { isNodeOutput } from "@toonflow/nodes-scaffold/values";
+import { isNodeOutput } from "@omnistudio-next/nodes-scaffold/values";
 import { writeClipboardText } from "@/lib/clipboard";
 
-export const nodeClipboardCommand = /^toonflow:paste-node:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const nodeClipboardCommand = /^omnistudio-next:paste-node:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 type ClipboardNode = { type: string; data: Record<string, unknown> };
 type ClipboardEntry = { command: string; directory: string; node: ClipboardNode };
@@ -35,7 +35,7 @@ async function accessClipboard(entry?: ClipboardEntry) {
 export async function copyNodeToClipboard(node: Pick<Node, "type" | "data">, directory: string) {
   if (!node.type) throw new Error("节点类型无效");
   if (!directory) throw new Error("请先打开项目");
-  const command = `toonflow:paste-node:${crypto.randomUUID()}`;
+  const command = `omnistudio-next:paste-node:${crypto.randomUUID()}`;
   const snapshot: ClipboardNode = { type: node.type, data: JSON.parse(JSON.stringify(node.data ?? {})) };
   await accessClipboard({ command, directory, node: snapshot });
   await writeClipboardText(command);

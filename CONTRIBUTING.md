@@ -1,12 +1,12 @@
 # Contributing · 贡献指南
 
-欢迎参与 Toonflow。无论是反馈问题、改进文档、开发插件，还是修复代码，都可以帮助创作者更顺畅地完成作品。
+欢迎参与 omnistudio-next。无论是反馈问题、改进文档、开发插件，还是修复代码，都可以帮助创作者更顺畅地完成作品。
 
 参与讨论和协作前，请阅读 [社区行为准则](./CODE_OF_CONDUCT.md)。项目介绍和使用方法见 [README](./README.md)，完整开发说明见 [开发与扩展指南](./docs/development.md)，代码修改以 [开发规范](./AGENTS.md) 为准。
 
 ## 从哪里开始
 
-- **报告问题**：在 [GitHub Issues](https://github.com/HBAI-Ltd/Toonflow-app/issues) 搜索已有记录，再补充信息或提交新问题。
+- **报告问题**：在 [GitHub Issues](https://github.com/Dylan-Nihilo/omnistudio-next/issues) 搜索已有记录，再补充信息或提交新问题。
 - **提出建议**：说明创作场景、遇到的限制和期望结果；较大的功能或架构调整建议先讨论范围与影响。
 - **改进文档**：修正错误、补全步骤，或提供能够复现的操作说明。
 - **开发扩展**：参考 [节点脚手架](./packages/nodeScaffold/readme.md)、[工具脚手架](./packages/toolScaffold/readme.md) 和现有实现。
@@ -18,7 +18,7 @@
 
 一个 Issue 尽量只描述一个问题，标题直接说明出错位置或期望行为。请提供：
 
-1. Toonflow 版本；从源码运行时附上相关提交或分支信息。
+1. omnistudio-next 版本；从源码运行时附上相关提交或分支信息。
 2. 操作系统、处理器架构，以及桌面端或浏览器运行方式。
 3. 从初始状态开始的最短复现步骤，注明是否每次都出现。
 4. 期望结果与实际结果，必要时附截图或短视频。
@@ -40,8 +40,8 @@
 需要提交 PR 时，可以先 Fork 仓库，再克隆自己的 Fork；下面演示从项目仓库开始：
 
 ```sh
-git clone https://github.com/HBAI-Ltd/Toonflow-app.git
-cd Toonflow-app
+git clone https://github.com/Dylan-Nihilo/omnistudio-next.git
+cd omnistudio-next
 bun install
 ```
 
@@ -116,7 +116,7 @@ bun run dev:desktop
 ## 数据与工作区边界
 
 - Web/Server 开发默认使用仓库根目录的 `data/`，桌面开发脚本也显式使用该目录。这里包含设置、插件等本机数据，必须保持 Git 忽略；不要与日常使用的数据混用，也不要让多个服务进程同时写同一数据目录或工作区。
-- 验证配置或文件写入时，使用独立的临时数据目录和工作区。独立 Server 可在启动前设置 `TOONFLOW_DATA_DIR`；复用 `createApp` 时通过 `dataDirectory` 传入，且必须在动态加载路由前确定目录。先确认实际读写位置，再执行保存、覆盖或删除操作。
+- 验证配置或文件写入时，使用独立的临时数据目录和工作区。独立 Server 可在启动前设置 `OMNISTUDIO_NEXT_DATA_DIR`；复用 `createApp` 时通过 `dataDirectory` 传入，且必须在动态加载路由前确定目录。先确认实际读写位置，再执行保存、覆盖或删除操作。
 - 前端工作区文件操作统一复用 `apps/web/src/lib/workspaceFiles.ts` 默认导出的 `useWorkspaceFiles`，不要重复封装 Axios 或拼接文件接口。文件 `path`、`target` 使用工作区内相对路径，目录参数使用绝对路径。
 - 防抖、保存队列或跨 `await` 的多步操作先获取目录字符串快照，再使用固定目录实例，避免切换项目后写错目录。`readJson<T>` 不校验业务结构，调用方仍须检查文件标记与内容。
 - 全局设置继续使用设置接口及 `u.conf`，不重复创建配置实例；未经需求不要把完整覆盖保存改成部分合并。项目列表由 Pinia 持久化，移除列表项不等于删除工作区文件。写入失败必须向调用方反馈，不能吞掉异常后返回成功。
@@ -144,7 +144,7 @@ bun run dev:desktop
 
 ### Server 接口约定
 
-- 沿用 Bun、TypeScript、ES Modules 和 Express。独立入口 `src/index.ts` 单进程监听；桌面通过 `@toonflow/server/app` 复用 `createApp`，不导入独立启动入口，不增加 cluster。
+- 沿用 Bun、TypeScript、ES Modules 和 Express。独立入口 `src/index.ts` 单进程监听；桌面通过 `@omnistudio-next/server/app` 复用 `createApp`，不导入独立启动入口，不增加 cluster。
 - **一个接口一个文件**：`src/routes/` 下的每个 `.ts` 都会被扫描为路由，文件默认导出 Router，只注册一个 HTTP 方法与路径，接口内使用 `"/"`。工具、类型和配置不要放进路由目录，也不为简单接口增加 controller、service、repository 层。
 - 路由按文件相对路径生成 `/api` 前缀，大小写与路径一致，`index.ts` 对应所在目录。例如 `routes/settings/get.ts` 对应 `/api/settings/get`，HTTP 方法由文件内的注册语句决定。
 - 新增、移动、重命名或删除路由后，执行 `bun run --cwd apps/server routes`。**不要手改 `src/router.ts` 的 imports、注册项或 hash**，也不要依赖构建或文件监听自动补齐；更改 URL 或 HTTP 方法前搜索并同步所有调用方。
@@ -206,6 +206,6 @@ PR 标题直接说明解决的问题，正文建议包含：
 
 ## 许可与素材
 
-Toonflow 采用 [MIT 许可证](./LICENSE)。提交代码、文档、图片、字体或其他素材前，请确认你有权将其用于本项目，并保留需要保留的版权与许可证声明。
+omnistudio-next 采用 [MIT 许可证](./LICENSE)。提交代码、文档、图片、字体或其他素材前，请确认你有权将其用于本项目，并保留需要保留的版权与许可证声明。
 
 第三方依赖和素材遵循各自的许可。请勿提交来源不明、未经授权或含有个人敏感信息的内容。

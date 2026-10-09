@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { uiTour } from "@toonflow/ui";
+import { uiTour } from "@omnistudio-next/ui";
 
 const props = defineProps<{ root?: HTMLElement }>();
 const storageKey = "toonflow.director3dTour";

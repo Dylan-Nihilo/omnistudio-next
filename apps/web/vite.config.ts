@@ -6,16 +6,24 @@ import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import desktopConfig from "../../electrobun.config.ts";
 import postcssConfig from "../../postcss.config.ts";
 
-const serverOrigin = process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3000";
+const serverOrigin = process.env.OMNISTUDIO_NEXT_UI_SERVER_ORIGIN ?? process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3000";
 
 export default defineConfig({
-  cacheDir: process.env.TOONFLOW_UI_CACHE_DIR,
+  cacheDir: process.env.OMNISTUDIO_NEXT_UI_CACHE_DIR ?? process.env.TOONFLOW_UI_CACHE_DIR,
   css: { postcss: postcssConfig },
   define: {
     "import.meta.env.appVersion": JSON.stringify(desktopConfig.app.version),
   },
   server: {
     host: "127.0.0.1",
+    fs: {
+      allow: [
+        fileURLToPath(new URL("./", import.meta.url)),
+        fileURLToPath(new URL("../../packages", import.meta.url)),
+        fileURLToPath(new URL("../../node_modules", import.meta.url)),
+      ],
+      deny: [".env", ".env.*", "**/.git/**", "**/*.key", "**/data/**", "**/backup/**", "**/work/**"],
+    },
     proxy: {
       "/mcp": { target: serverOrigin, changeOrigin: false },
       "/a2a": { target: serverOrigin, changeOrigin: false },
@@ -24,7 +32,7 @@ export default defineConfig({
         changeOrigin: false,
         configure(proxy) {
           proxy.on("proxyReq", (request, incoming) => {
-            request.setHeader("x-toonflow-local-client", ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(incoming.socket.remoteAddress ?? "") ? "1" : "0");
+            request.setHeader("x-omnistudio-next-local-client", ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(incoming.socket.remoteAddress ?? "") ? "1" : "0");
           });
         },
       },

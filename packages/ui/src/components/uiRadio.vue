@@ -26,7 +26,11 @@ async function select(event: Event) {
   .radioMark { width: 18px; height: 18px; flex-shrink: 0; border: 1px solid var(--uiBorderControl); border-radius: 50%; background: var(--uiBackgroundSubtle); }
   input:checked + .radioMark { border: 5px solid var(--uiActionPrimary); }
   input:focus-visible + .radioMark { outline: 2px solid var(--uiBorderFocus); outline-offset: 3px; }
-  .radioLabel { min-width: 0; overflow-wrap: anywhere; }
+  .radioLabel {
+    min-width: 0; overflow-wrap: anywhere;
+    &:has(> svg) { display: inline-flex; align-items: center; gap: 6px; }
+    :deep(> svg) { display: block; flex-shrink: 0; }
+  }
   &.isDisabled { color: var(--uiStateDisabledText); cursor: not-allowed; input + .radioMark { border-color: var(--uiStateDisabledText); } }
 }
 </style>

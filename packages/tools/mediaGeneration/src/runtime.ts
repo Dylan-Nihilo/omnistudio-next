@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type { MediaModel, MediaReference, MediaGenerationRequest, GeneratedMedia, MediaContext } from "@toonflow/tools-scaffold/runtime";
+export type { MediaModel, MediaReference, MediaGenerationRequest, GeneratedMedia, MediaContext } from "@omnistudio-next/tools-scaffold/runtime";
 
 const relativePath = z.string().min(1).max(2048).refine(
   path => !/^[\\/]|[:\u0000-\u001f]/.test(path) && path.split(/[\\/]/).every(part => part && part !== "." && part !== ".."),

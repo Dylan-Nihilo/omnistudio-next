@@ -185,9 +185,9 @@ jobs:
           : "${notarizationIssuerId:?请配置 MACOS_NOTARIZATION_ISSUER_ID Secret}"
           : "${notarizationKeyBase64:?请配置 MACOS_NOTARIZATION_KEY_BASE64 Secret}"
           umask 077
-          certificatePath="$RUNNER_TEMP/toonflowSigning.p12"
-          keychainPath="$RUNNER_TEMP/toonflowSigning.keychain-db"
-          notarizationKeyPath="$RUNNER_TEMP/toonflowNotarization.p8"
+          certificatePath="$RUNNER_TEMP/omniStudioNextSigning.p12"
+          keychainPath="$RUNNER_TEMP/omniStudioNextSigning.keychain-db"
+          notarizationKeyPath="$RUNNER_TEMP/omniStudioNextNotarization.p8"
           trap 'rm -f "$certificatePath"' EXIT
           printf '%s' "$notarizationKeyBase64" | base64 --decode > "$notarizationKeyPath"
           openssl pkey -in "$notarizationKeyPath" -passin pass: -check -noout > /dev/null
@@ -231,8 +231,8 @@ jobs:
       - name: 清理 ARM 签名与公证凭据
         if: always() && matrix.target == 'macArm64'
         run: |
-          rm -f "$RUNNER_TEMP/toonflowSigning.p12" "$RUNNER_TEMP/toonflowNotarization.p8"
-          keychainPath="$RUNNER_TEMP/toonflowSigning.keychain-db"
+          rm -f "$RUNNER_TEMP/omniStudioNextSigning.p12" "$RUNNER_TEMP/omniStudioNextNotarization.p8"
+          keychainPath="$RUNNER_TEMP/omniStudioNextSigning.keychain-db"
           if [[ -f "$keychainPath" ]]; then
             security delete-keychain "$keychainPath"
           fi
@@ -249,7 +249,7 @@ jobs:
               xcrun stapler validate "$1"
             fi
           }
-          inspectionDirectory="$RUNNER_TEMP/toonflowPackageCheck"
+          inspectionDirectory="$RUNNER_TEMP/omniStudioNextPackageCheck"
           mkdir -p "$inspectionDirectory"
           export inspectionDirectory
           bun -e '
@@ -261,7 +261,7 @@ jobs:
           await Bun.write(join(process.env.inspectionDirectory, "app.tar"), Bun.zstdDecompressSync(await Bun.file(join(directory, archives[0])).arrayBuffer()));
           '
           tar -xf "$inspectionDirectory/app.tar" -C "$inspectionDirectory"
-          app="$inspectionDirectory/toonflow.app"
+          app="$inspectionDirectory/omnistudio-next.app"
           test -s "$app/Contents/Resources/AppIcon.icns"
           test -s "$app/Contents/Resources/app/bun/index.js"
           test -x "$app/Contents/MacOS/bun"
@@ -273,8 +273,8 @@ jobs:
             verifyMacArtifact "$dmg"
             hdiutil attach "$dmg" -readonly -nobrowse -mountpoint "$mountDirectory"
             trap 'hdiutil detach "$mountDirectory"' EXIT
-            test -x "$mountDirectory/toonflow.app/Contents/MacOS/launcher"
-            verifyMacArtifact "$mountDirectory/toonflow.app"
+            test -x "$mountDirectory/omnistudio-next.app/Contents/MacOS/launcher"
+            verifyMacArtifact "$mountDirectory/omnistudio-next.app"
             hdiutil detach "$mountDirectory"
             trap - EXIT
           done
@@ -282,7 +282,7 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v7
         with:
-          name: toonflow-${{ needs.prepare.outputs.version }}-${{ matrix.target }}
+          name: omnistudio-next-${{ needs.prepare.outputs.version }}-${{ matrix.target }}
           path: ${{ matrix.releaseFolder }}/${{ needs.prepare.outputs.version }}/
           if-no-files-found: error
           compression-level: 0
@@ -292,4 +292,4 @@ jobs:
           artifactUrl: ${{ steps.artifact.outputs.artifact-url }}
           artifactTarget: ${{ matrix.target }}
         run: |
-          printf '[下载 Toonflow %s · %s](%s)\n' "$appVersion" "$artifactTarget" "$artifactUrl" >> "$GITHUB_STEP_SUMMARY"
+          printf '[下载 omnistudio-next %s · %s](%s)\n' "$appVersion" "$artifactTarget" "$artifactUrl" >> "$GITHUB_STEP_SUMMARY"

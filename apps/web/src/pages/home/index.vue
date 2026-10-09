@@ -1,15 +1,17 @@
 <template>
   <div class="home">
     <aside class="homeSidebar" aria-label="主导航">
-      <a class="homeBrand" href="#/home" aria-label="OmniStudio 首页"><img :src="logoUrl" alt="OmniStudio" /></a>
+      <a class="homeBrand" href="#/home" aria-label="omnistudio-next 首页"><img :src="logoUrl" alt="omnistudio-next" /></a>
       <nav class="mainNavigation">
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'create' }" :icon="IconFolderPlus" @click="focusCreation">开始创作</uiButton>
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" @click="focusProjects">我的项目</uiButton>
       </nav>
       <nav class="secondaryNavigation">
         <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" @click="router.push('/account')">账户与积分</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :icon="IconUsersGroup" @click="router.push('/teams')">团队空间</uiButton>
+        <uiButton v-if="auth.isRoot" class="navigationItem" variant="ghost" :icon="IconShieldLock" @click="router.push('/admin')">平台管理</uiButton>
         <uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton class="navigationItem" variant="ghost" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</uiButton></uiBadge>
-        <uiButton class="navigationItem" variant="ghost" :icon="IconBrandGithub" tag="a" href="https://github.com/HBAI-Ltd/Toonflow-app" target="_blank" rel="noopener noreferrer">GitHub</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :icon="IconBrandGithub" tag="a" href="https://github.com/Dylan-Nihilo/omnistudio-next" target="_blank" rel="noopener noreferrer">GitHub</uiButton>
       </nav>
     </aside>
     <main class="homeContent">
@@ -72,22 +74,23 @@ import axios from "axios";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, useUiFeedback } from "@toonflow/ui";
+import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, useUiFeedback } from "@omnistudio-next/ui";
 import {
-  IconSettings, IconBrandGithub, IconUserCircle,
+  IconSettings, IconBrandGithub, IconUserCircle, IconUsersGroup, IconShieldLock,
   IconArrowUp, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
   IconTrash, IconFolderPlus, IconFolderOpen,
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import { useWorkspaceStore, type Project } from "@/stores/workspace";
+import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import settings from "@/components/settings/index.vue";
-import heroInk from "@toonflow/assets/illustrations/heroInk.png";
-import inkUnderline from "@toonflow/assets/illustrations/inkUnderline.svg";
+import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
+import inkUnderline from "@omnistudio-next/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
 
 const feedback = useUiFeedback();
@@ -103,6 +106,7 @@ const promptWorkspacePicker = ref<InstanceType<typeof workspacePicker>>();
 const relocationPicker = ref<InstanceType<typeof workspacePicker>>();
 const prompt = ref("");
 const workspaceStore = useWorkspaceStore();
+const auth = useAuthStore();
 const { project, projectList } = storeToRefs(workspaceStore);
 const workspaceDirectory = ref(project.value?.directory ?? "");
 const placeholderPhrases = [
@@ -230,7 +234,7 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
   display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
   .homeSidebar {
     position: sticky; top: 0; display: flex; flex-direction: column; gap: 36px; height: 100dvh; min-width: 0; padding: 20px 16px 28px; border-right: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle);
-    .homeBrand { display: block; margin: 0 4px; img { display: block; width: 100%; height: auto; border-radius: 8px; background: #101010; } }
+    .homeBrand { display: block; margin: 0 4px; img { display: block; width: 100%; height: auto; border-radius: 8px; } }
     .mainNavigation, .secondaryNavigation { display: flex; flex-direction: column; gap: 10px; }
     .secondaryNavigation { margin-top: auto; :deep(.uiBadge) { width: 100%; } }
     .navigationItem { width: 100%; justify-content: flex-start; min-height: 40px; padding-inline: 12px; &.isSelected { color: var(--uiActionPrimary); background: var(--uiActionSoft); } }

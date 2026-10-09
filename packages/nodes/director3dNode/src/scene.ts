@@ -1,4 +1,4 @@
-import { z } from "@toonflow/nodes-scaffold/runtime";
+import { z } from "@omnistudio-next/nodes-scaffold/runtime";
 import { createJsonScene, registerObject, type SceneRuntime } from "threejson/core";
 import { AmbientLight, Box3, DirectionalLight, GridHelper, HemisphereLight, Mesh, PCFSoftShadowMap, PlaneGeometry, ShadowMaterial, Sphere, Vector3 } from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";

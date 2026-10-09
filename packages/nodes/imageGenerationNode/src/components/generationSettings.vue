@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { uiButton, uiPopover, uiField, uiRadioGroup } from "@toonflow/ui";
+import { uiButton, uiPopover, uiField, uiRadioGroup } from "@omnistudio-next/ui";
 import { IconChevronUp } from "@tabler/icons-vue";
 
 defineProps<{ sizes: string[]; ratios: string[]; disabled?: boolean }>();

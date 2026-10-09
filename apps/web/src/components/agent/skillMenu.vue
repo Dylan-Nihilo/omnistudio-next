@@ -21,7 +21,7 @@
 import { computed, nextTick, ref, useId, watch } from "vue";
 import axios from "axios";
 import { IconBook } from "@tabler/icons-vue";
-import { uiButton, uiPopover } from "@toonflow/ui";
+import { uiButton, uiPopover } from "@omnistudio-next/ui";
 
 const props = defineProps<{ directory?: string; active: boolean; disabled: boolean; query?: string; editor?: HTMLElement }>();
 const emit = defineEmits<{ select: [name: string]; dismiss: [] }>();
@@ -85,7 +85,7 @@ watch(visible, async (open, _previous, onCleanup) => {
   try {
     const { data } = await axios.get("/api/agent/skills", {
       params: { directory: props.directory }, signal: controller.signal,
-      headers: { "x-toonflow-workspace": "1" },
+      headers: { "x-omnistudio-next-workspace": "1" },
     });
     if (data.code !== 200) throw new Error(data.message || "加载技能失败");
     skills.value = data.data;

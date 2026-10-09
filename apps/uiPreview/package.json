@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/uiPreview",
+  "name": "@omnistudio-next/uiPreview",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,8 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@toonflow/ui": "workspace:*",
-    "@toonflow/assets": "workspace:*",
+    "@omnistudio-next/ui": "workspace:*",
+    "@omnistudio-next/assets": "workspace:*",
     "vue": "^3.5.42",
     "@tabler/icons-vue": "^3.46.0"
   },

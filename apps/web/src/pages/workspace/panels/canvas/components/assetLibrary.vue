@@ -1,6 +1,6 @@
 <template>
   <aside v-if="visible" class="assetLibrary nodrag nopan nowheel" aria-label="素材库" @dblclick.stop>
-    <header class="libraryHeader"><h3>素材库</h3><div class="libraryActions"><uiIconButton size="small" :icon="IconFolderPlus" label="新建文件夹" title="新建文件夹" :disabled="newFolderParent !== undefined" @click="startFolder" /><uiIconButton size="small" :icon="IconX" label="关闭素材库" title="关闭素材库" @click="visible = false" /></div></header>
+    <header class="libraryHeader"><h3>素材库</h3><div class="libraryActions"><uiIconButton size="small" :icon="IconUsersGroup" label="团队共享资产" title="团队共享资产" tag="a" href="#/teams" /><uiIconButton size="small" :icon="IconFolderPlus" label="新建文件夹" title="新建文件夹" :disabled="newFolderParent !== undefined" @click="startFolder" /><uiIconButton size="small" :icon="IconX" label="关闭素材库" title="关闭素材库" @click="visible = false" /></div></header>
     <uiInput v-model="searchQuery" size="small" placeholder="搜索素材" aria-label="搜索素材" clearable @keydown.esc.stop="searchQuery = ''"><template #prefix><icon-search :size="16" /></template></uiInput>
     <div class="libraryScroll">
       <uiTree ref="assetTree" :data="assetNodes" :currentNodeKey="folder === '.' ? undefined : folder" :filterNodeMethod="filterEntry" defaultExpandAll label="素材文件" @nodeClick="node => selectFolder(assetEntry(node))">
@@ -35,17 +35,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
-import { uiIconButton, uiInput, uiTree, uiImage, uiImageViewer, uiDialog, uiAlert, uiMediaPlayer, uiField, uiSelect, uiButton, useUiFeedback, type UiTreeNode } from "@toonflow/ui";
-import { IconDots, IconEye, IconFile, IconFolderFilled, IconFolderPlus, IconMusic, IconPhoto, IconSearch, IconVideo, IconX } from "@tabler/icons-vue";
-import type { NodeOutput } from "@toonflow/nodes-scaffold/values";
+import { uiIconButton, uiInput, uiTree, uiImage, uiImageViewer, uiDialog, uiAlert, uiMediaPlayer, uiField, uiSelect, uiButton, useUiFeedback, type UiTreeNode } from "@omnistudio-next/ui";
+import { IconDots, IconEye, IconFile, IconFolderFilled, IconFolderPlus, IconMusic, IconPhoto, IconSearch, IconVideo, IconUsersGroup, IconX } from "@tabler/icons-vue";
+import type { NodeOutput } from "@omnistudio-next/nodes-scaffold/values";
 import { startAssetDrag } from "../canvasDrop";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import assetMenu from "./assetMenu.vue";
+import { useAuthStore } from "@/stores/auth";
 
 type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[]; draft?: boolean };
 type AssetOutput = { label: string; output: NodeOutput };
 
 const feedback = useUiFeedback();
+const auth = useAuthStore();
 const props = defineProps<{ directory?: string }>();
 const visible = defineModel<boolean>({ default: false });
 const saveVisible = ref(false);
@@ -71,7 +73,7 @@ let loadRequest = 0;
 onBeforeUnmount(() => { loadRequest++; });
 
 function assetUrl(path: string) {
-  return `/api/assets/read?path=${encodeURIComponent(path)}`;
+  return `/api/assets/read?path=${encodeURIComponent(path)}&accountId=${encodeURIComponent(auth.user?.id ?? '')}`;
 }
 
 function mediaKind(entry: AssetEntry) {

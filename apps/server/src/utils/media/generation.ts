@@ -1,10 +1,12 @@
 import { mkdir, readFile, realpath, stat, unlink } from "node:fs/promises";
 import { join, relative } from "node:path";
-import type { GeneratedMedia, MediaGenerationRequest, MediaModel, MediaReference } from "@toonflow/tools-scaffold/runtime";
+import type { GeneratedMedia, MediaGenerationRequest, MediaModel, MediaReference } from "@omnistudio-next/tools-scaffold/runtime";
 import { getMediaProvider, listMediaProviders, loadMediaProviderSource } from "@/utils/media/provider";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformModels } from "@/services/modelService";
 import { reserveGeneration, settleGeneration } from "@/services/billingService";
+import { authorizeProjectDirectory } from "@/services/accountService";
+import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
 
 const maxMediaSize = 100 * 1024 * 1024;
 const mediaExtensions: Record<string, string> = {
@@ -15,7 +17,7 @@ const mediaExtensions: Record<string, string> = {
   "audio/flac": "flac", "audio/aac": "aac", "audio/mp4": "m4a", "audio/opus": "opus", "audio/pcm": "pcm",
 };
 
-export type GenerationBillingContext = { workspaceId: string; userId: string; idempotencyKey?: string };
+export type GenerationBillingContext = { userId: string; idempotencyKey?: string };
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -138,7 +140,11 @@ export async function generateMedia(
 ): Promise<GeneratedMedia[]> {
   signal?.throwIfAborted();
   if (!request.prompt.trim()) invalid("请输入生成提示词");
-  const directory = await realpath(cwd);
+  const account = requireAccount();
+  if (account.signal) signal = AbortSignal.any([account.signal, ...(signal ? [signal] : [])]);
+  signal?.throwIfAborted();
+  if (billing && billing.userId !== account.userId) invalid("媒体生成只能使用调用者自己的积分", 403);
+  const directory = await authorizeProjectDirectory(cwd);
   const outputDirectory = request.outputDirectory ?? "assets/generated";
   await resolveWorkspacePath(directory, outputDirectory, true);
   const platformModel = await getPlatformMediaModel(request.providerId, request.modelId, mediaType);
@@ -150,14 +156,14 @@ export async function generateMedia(
   if (typeof generate !== "function") invalid(`此供应商不支持${{ image: "图片", video: "视频", audio: "音频" }[mediaType]}生成`);
   const rules = Array.isArray(provider.rules) ? provider.rules : [];
   if (rules.some(rule => rule.field === "apiKey") && (typeof provider.config.apiKey !== "string" || !provider.config.apiKey.trim())) invalid("平台供应商凭证未配置", 503);
-  const reserved = billing ? await reserveGeneration({
-    workspaceId: billing.workspaceId, userId: billing.userId, modelId: request.modelId, mediaType,
+  const reserved = await reserveGeneration({
+    userId: account.userId, providerId: request.providerId, modelId: request.modelId, mediaType,
     units: mediaType === "video" ? Math.max(1, request.duration ?? 1) : mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1,
-    // Agent 顶层请求已经为文本轮次预留积分；每个媒体工具调用都使用独立键，避免与顶层任务或同轮其它媒体调用冲突。
-    idempotencyKey: `${billing.idempotencyKey ?? "agent-media"}:media:${crypto.randomUUID()}`,
+    idempotencyKey: nextGenerationKey(billing?.idempotencyKey),
     requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, request },
-  }) : undefined;
+  });
   const written: string[] = [];
+  let outputCompleted = false;
   const result: GeneratedMedia[] = [];
   try {
     const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal))) : undefined;
@@ -196,12 +202,13 @@ export async function generateMedia(
       } finally { release(); }
     }
     signal?.throwIfAborted();
-    if (reserved) await settleGeneration(reserved.job.id, true, { files: result });
+    outputCompleted = true;
+    await settleGeneration(reserved.job.id, true, { directory, files: result });
     return result;
   } catch (err) {
     // ACT: 只回滚本次创建的文件，保留目录中已有的节点资源。
-    await Promise.all(written.map(path => unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; })));
-    if (reserved) await settleGeneration(reserved.job.id, false, { error: err instanceof Error ? err.message : "媒体生成失败" });
+    if (!outputCompleted) await Promise.all(written.map(path => unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; })));
+    await settleGeneration(reserved.job.id, false, { error: err instanceof Error ? err.message : "媒体生成失败" });
     throw err;
   }
 }

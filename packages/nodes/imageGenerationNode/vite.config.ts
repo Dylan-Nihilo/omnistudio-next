@@ -1,8 +1,8 @@
-import { createNodeConfig } from "@toonflow/nodes-scaffold";
+import { createNodeConfig } from "@omnistudio-next/nodes-scaffold";
 
 export default createNodeConfig({
   name: "imageGenerationNode",
   displayName: "图片生成",
-  author: "Toonflow",
-  github: "https://github.com/HBAI-Ltd/Toonflow-app",
+  author: "omnistudio-next",
+  github: "https://github.com/Dylan-Nihilo/omnistudio-next",
 }, import.meta.url);

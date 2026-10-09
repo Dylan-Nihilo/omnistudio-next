@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
-import type { CanvasContext } from "@toonflow/tools-scaffold/runtime";
-import { teamNameSchema } from "@toonflow/teams-scaffold/runtime";
+import type { CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
+import { teamNameSchema } from "@omnistudio-next/teams-scaffold/runtime";
 import { addUsage, emptyUsage, type SubAgentModel, type SubAgentResult } from "@/agent/runtime/subAgent";
 import { createTeamRunner } from "@/agent/teams";
 import { runRemoteTeam } from "@/agent/teams/remote";

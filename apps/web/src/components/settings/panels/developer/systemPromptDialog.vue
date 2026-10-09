@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import axios from "axios";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { uiDialog, uiAlert, uiButton, uiTextarea, useUiFeedback } from "@toonflow/ui";
+import { uiDialog, uiAlert, uiButton, uiTextarea, useUiFeedback } from "@omnistudio-next/ui";
 import { saveSettings, settings } from "@/stores/settings";
 
 const feedback = useUiFeedback();
@@ -32,7 +32,7 @@ async function loadPrompt() {
   loadError.value = "";
   try {
     const { data } = await axios.get<{ code: number; data: { defaultSystemPrompt: string; maxLength: number }; message?: string }>("/api/settings/systemPrompt", {
-      headers: { "x-toonflow-workspace": "1", "Cache-Control": "no-cache" }, signal: controller.signal,
+      headers: { "x-omnistudio-next-workspace": "1", "Cache-Control": "no-cache" }, signal: controller.signal,
     });
     if (data.code !== 200) throw new Error(data.message || "读取系统提示词失败");
     if (typeof data.data?.defaultSystemPrompt !== "string" || !Number.isSafeInteger(data.data.maxLength) || data.data.maxLength <= 0) {

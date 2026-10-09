@@ -93,8 +93,8 @@
 **验收命令：**
 
 ```powershell
-bun run --filter '@toonflow/server' typecheck
-bun run --filter '@toonflow/server' build
+bun run --filter '@omnistudio-next/server' typecheck
+bun run --filter '@omnistudio-next/server' build
 ```
 
 ## 任务 3：接入完整登录页、初始化页和 Workspace 前端状态
@@ -123,8 +123,8 @@ bun run --filter '@toonflow/server' build
 **验收命令：**
 
 ```powershell
-bun run --filter '@toonflow/web' typecheck
-bun run --filter '@toonflow/web' build
+bun run --filter '@omnistudio-next/web' typecheck
+bun run --filter '@omnistudio-next/web' build
 ```
 
 ## 任务 4：接入钱包、价格和积分流水 UI
@@ -189,8 +189,8 @@ bun run --filter '@toonflow/web' build
 **验收命令：**
 
 ```powershell
-bun run --filter '@toonflow/server' typecheck
-bun run --filter '@toonflow/web' typecheck
+bun run --filter '@omnistudio-next/server' typecheck
+bun run --filter '@omnistudio-next/web' typecheck
 ```
 
 并用浏览器实际发送一次 Agent 文本请求和一次节点文本请求，确认账本记录了正确的 Workspace、模型和用量。
@@ -232,10 +232,10 @@ bun run --filter '@toonflow/web' typecheck
 
 ```powershell
 docker compose up -d mysql
-bun run --filter '@toonflow/server' db:migrate
-bun run --filter '@toonflow/server' db:seed:development
-bun run --filter '@toonflow/server' typecheck
-bun run --filter '@toonflow/server' build
+bun run --filter '@omnistudio-next/server' db:migrate
+bun run --filter '@omnistudio-next/server' db:seed:development
+bun run --filter '@omnistudio-next/server' typecheck
+bun run --filter '@omnistudio-next/server' build
 ```
 
 再用一次新的 MySQL schema 重复执行 migration 和 development seed，确认结构、测试账号、钱包和账本不会重复创建或重复发放。

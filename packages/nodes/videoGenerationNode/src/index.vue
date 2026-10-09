@@ -64,13 +64,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
-import { uiIconButton, uiSelect, uiLoading } from "@toonflow/ui";
+import { uiIconButton, uiSelect, uiLoading } from "@omnistudio-next/ui";
 import { IconCameraAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
-import videoPlayer from "@toonflow/nodes-scaffold/videoPlayer";
-import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
-import mediaHistory from "@toonflow/nodes-scaffold/mediaHistory";
+import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import videoPlayer from "@omnistudio-next/nodes-scaffold/videoPlayer";
+import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
+import mediaHistory from "@omnistudio-next/nodes-scaffold/mediaHistory";
 import generationSettings from "./components/generationSettings.vue";
 
 defineOptions({

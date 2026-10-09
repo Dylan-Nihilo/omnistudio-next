@@ -36,10 +36,10 @@
           </div>
           <div class="toolbarGroup">
             <uiDropdown :items="insertItems" @command="insertContent">
-              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" :icon="IconPhoto" aria-label="插入内容">添加<icon-chevron-down :size="12" /></uiButton></template>
+              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" :icon="IconPhoto" aria-label="插入内容"><span>添加</span><icon-chevron-down :size="12" /></uiButton></template>
             </uiDropdown>
             <uiDropdown v-if="editor.isActive('table')" :items="tableItems" @command="editTable">
-              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" aria-label="编辑表格">表格<icon-chevron-down :size="12" /></uiButton></template>
+              <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" variant="ghost" size="small" aria-label="编辑表格"><span>表格</span><icon-chevron-down :size="12" /></uiButton></template>
             </uiDropdown>
           </div>
           <div class="toolbarGroup">
@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onDeactivated, ref } from "vue";
 import { debounce } from "lodash-es";
-import { uiButton, uiDropdown, uiIconButton, uiInput, uiLoading, uiPopover, uiSelect, useUiFeedback, type UiValue } from "@toonflow/ui";
+import { uiButton, uiDropdown, uiIconButton, uiInput, uiLoading, uiPopover, uiSelect, useUiFeedback, type UiValue } from "@omnistudio-next/ui";
 import { Editor, EditorContent, useEditor } from "@tiptap/vue-3";
 import type { ChainedCommands, EditorOptions } from "@tiptap/core";
 import { useWorkspaceStore } from "@/stores/workspace";

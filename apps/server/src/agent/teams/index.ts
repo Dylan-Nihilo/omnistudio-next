@@ -1,11 +1,11 @@
 import { join } from "node:path";
 import { z } from "zod";
 import { SessionManager, type ToolDefinition } from "@earendil-works/pi-coding-agent";
-import type { CanvasContext } from "@toonflow/tools-scaffold/runtime";
-import { teamResourcePathSchema } from "@toonflow/teams-scaffold/runtime";
+import type { CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
+import { teamResourcePathSchema } from "@omnistudio-next/teams-scaffold/runtime";
 import { createAgentToolContext } from "@/agent/tools";
 import { addUsage, emptyUsage, runSubAgent, type SubAgentModel } from "@/agent/runtime/subAgent";
-import { readTeam, saveTeamFile } from "@/utils/teams";
+import { readTeam, saveUserTeamResource } from "@/utils/teams";
 import { loadTool, validateToolConfig } from "@/utils/plugins/tools";
 
 const resourceSchema = z.strictObject({
@@ -74,7 +74,7 @@ export async function createTeamRunner(options: SubAgentModel & {
             if (action !== "list" && (!path || !allowed(path))) throw new Error("资料不属于当前成员的授权范围");
             if (action === "write") {
               if (content === undefined) throw new Error("写入资料需要 content");
-              await saveTeamFile(name, path!, content);
+              await saveUserTeamResource(name, path!, content);
               return { content: [{ type: "text", text: JSON.stringify({ path, saved: true }) }], details: {} };
             }
             const current = await readTeam(name);

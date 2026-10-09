@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { uiSwitch } from "@toonflow/ui";
+import { uiSwitch } from "@omnistudio-next/ui";
 import { privacySettings, settings } from "@/stores/settings";
 
 const metrics = [

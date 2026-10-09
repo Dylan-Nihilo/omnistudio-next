@@ -1,18 +1,18 @@
-# @toonflow/mcp
+# @omnistudio-next/mcp
 
-Toonflow 的独立 MCP 适配包。宿主提供独立的本机 HTTP 监听端口，同时保留现有 Server 的 `/mcp` 路径；stdio 入口只连接正在运行的 Toonflow，不创建第二个应用进程。使用官方 MCP TypeScript SDK v2 的 Streamable HTTP 会话传输，兼容 2025 年版客户端协议并支持取消工具调用。
+omnistudio-next 的独立 MCP 适配包。宿主提供独立的本机 HTTP 监听端口，同时保留现有 Server 的 `/mcp` 路径；stdio 入口只连接正在运行的 omnistudio-next，不创建第二个应用进程。使用官方 MCP TypeScript SDK v2 的 Streamable HTTP 会话传输，兼容 2025 年版客户端协议并支持取消工具调用。
 
 已验证 `2025-03-26`、`2025-06-18`、`2025-11-25` 初始化、SDK v2 自动协商回退、HTTP/stdio 工具调用与取消。未启用 2026 年版无会话 HTTP 协议。
 
 ## 开启
 
-1. 启动 Toonflow，进入 **设置 → MCP**。
+1. 启动 omnistudio-next，进入 **设置 → MCP**。
 2. 打开 MCP 开关，复制连接地址和客户端配置。
 3. 在外部 Coding 工具中添加 MCP 服务，重新连接后调用 `getAppState`。
 
-开关默认关闭。访问凭证由设置管理；关闭或更换凭证会取消进行中的控制调用。画布、节点、当前文档和切换项目等界面操作需要打开的 Toonflow 窗口或网页。服务端文件、技能和媒体能力可以在没有前端连接时使用指定的工作区目录；Linux 部署的目录必须位于 `data/workspaces` 内。
+开关默认关闭。访问凭证由设置管理；关闭或更换凭证会取消进行中的控制调用。画布、节点、当前文档和切换项目等界面操作需要打开的 omnistudio-next 窗口或网页。服务端文件、技能和媒体能力可以在没有前端连接时使用指定的工作区目录；Linux 部署的目录必须位于 `data/workspaces` 内。
 
-本机 MCP 默认地址为 `http://127.0.0.1:10588/mcp`，仅监听本机回环地址。可在 **设置 → MCP** 手动修改首选端口，保存后自动切换 MCP 服务，无需重启 Toonflow。MCP 端口独立于桌面页面的随机端口，切换只影响 MCP 监听服务。
+本机 MCP 默认地址为 `http://127.0.0.1:10588/mcp`，仅监听本机回环地址。可在 **设置 → MCP** 手动修改首选端口，保存后自动切换 MCP 服务，无需重启 omnistudio-next。MCP 端口独立于桌面页面的随机端口，切换只影响 MCP 监听服务。
 
 首选端口已被占用时，实例会向后顺延尝试端口；达到重试上限仍无法监听时报告失败。切换端口时先监听新地址，成功后再关闭旧地址；切换失败时保留原地址，并在设置中显示错误。多开时每个实例使用自己的实际地址，例如 `10588`、`3002`，请从目标实例的设置中复制配置。实际顺延端口不会覆盖保存的首选端口，已有实例也不会因较低端口空闲而自动迁移。共用同一 `data` 目录的实例共用首选端口、MCP 开关和访问凭证；保存新的首选端口后，各实例会自动应用并分别顺延。这些配置不是各窗口独立设置。
 
@@ -31,7 +31,7 @@ Authorization: Bearer <设置中的访问凭证>
 ```json
 {
   "mcpServers": {
-    "toonflow": {
+    "omnistudio-next": {
       "url": "http://127.0.0.1:<实际端口>/mcp",
       "headers": { "Authorization": "Bearer <访问凭证>" }
     }
@@ -50,7 +50,7 @@ MCP 凭证只保护 MCP 入口。现有 Web 页面及其接口本身就是管理
 ```json
 {
   "mcpServers": {
-    "toonflow": {
+    "omnistudio-next": {
       "command": "node",
       "args": ["<build/mcp/stdio.js 绝对路径>", "--runtime", "<运行信息文件绝对路径>"]
     }
@@ -69,10 +69,10 @@ stdio 配置绑定所选数据目录内的实际端口，不会自动跟随某�
 ```json
 {
   "mcpServers": {
-    "toonflow": {
+    "omnistudio-next": {
       "command": "node",
-      "args": ["<build/mcp/stdio.js 绝对路径>", "--url", "https://<服务域名>/mcp", "--token-env", "TOONFLOW_MCP_TOKEN"],
-      "env": { "TOONFLOW_MCP_TOKEN": "<访问凭证>" }
+      "args": ["<build/mcp/stdio.js 绝对路径>", "--url", "https://<服务域名>/mcp", "--token-env", "OMNISTUDIO_NEXT_MCP_TOKEN"],
+      "env": { "OMNISTUDIO_NEXT_MCP_TOKEN": "<访问凭证>" }
     }
   }
 }
@@ -82,7 +82,7 @@ Node.js 需要 20 或更新版本，也支持 Bun。源码开发可使用 `bun p
 
 ## Skill
 
-`skills/toonflow/SKILL.md` 面向外部 Agent，随包打包到 `build/mcp/skills/toonflow/SKILL.md`，也可以从设置中导出。将整个 `toonflow` 目录放进外部工具支持的 Skill 目录。
+`skills/omniStudioNext/SKILL.md` 面向外部 Agent，随包打包到 `build/mcp/skills/omniStudioNext/SKILL.md`，也可以从设置中导出。将整个 `omnistudio-next` 目录放进外部工具支持的 Skill 目录。
 
 Skill 介绍实时画布、节点参数、媒体引用与生成结果的操作顺序。连接 MCP 不会自动安装 Skill；不安装 Skill 也能根据工具说明调用。
 
@@ -93,7 +93,7 @@ Skill 介绍实时画布、节点参数、媒体引用与生成结果的操作�
 1. 调用 `resources/list` 发现文件及其 URI。
 2. 将返回的 URI 传入 `resources/read`，读取所需技能或附属资料。
 
-URI 结构为 `toonflow://skills/<技能名称编码>/<技能内文件路径分段编码>`。技能名称整体使用 `encodeURIComponent`，文件路径中的每段独立编码并保留 `/` 层级；使用列表返回的 URI 即可，无需猜测磁盘路径。
+URI 结构为 `omnistudio-next://skills/<技能名称编码>/<技能内文件路径分段编码>`。技能名称整体使用 `encodeURIComponent`，文件路径中的每段独立编码并保留 `/` 层级；使用列表返回的 URI 即可，无需猜测磁盘路径。
 
 资源接口和工具共用 MCP 开关及 Bearer 凭证。每次请求读取最新目录或文件，stdio 桥接也会刷新上游资源，不缓存技能内容；不提供资源订阅或变更推送，模板列表为空。资源读取不会执行技能中的脚本，也不会自动安装 Skill 到外部客户端。
 
@@ -127,7 +127,7 @@ URI 结构为 `toonflow://skills/<技能名称编码>/<技能内文件路径分�
 ## 宿主接入
 
 ```ts
-import { createMcpRouter } from "@toonflow/mcp";
+import { createMcpRouter } from "@omnistudio-next/mcp";
 
 const mcp = createMcpRouter({
   getTools: async () => tools,
@@ -142,13 +142,13 @@ app.use("/mcp", mcp);
 
 每项工具包含 `name`、`description`、`inputSchema`（JSON Schema）与 `execute(args, signal)`。SDK 校验工具输入，普通结果转换为文本与结构化结果，已有工具的 content 保留为 MCP 内容块；执行异常返回 `isError: true`。`mcp.close()` 释放协议资源，业务任务的取消由宿主同时处理。
 
-`resources` 可选，提供时声明 MCP 资源能力。`list(signal)` 返回 `Promise<Resource[]>`，`read(uri, signal)` 返回 `Promise<ReadResourceResult>`；这两个官方 SDK 类型可从 `@toonflow/mcp` 导入。目录扫描、URI 校验、文件读取和权限检查由宿主实现，包负责协议转发与取消信号传递。
+`resources` 可选，提供时声明 MCP 资源能力。`list(signal)` 返回 `Promise<Resource[]>`，`read(uri, signal)` 返回 `Promise<ReadResourceResult>`；这两个官方 SDK 类型可从 `@omnistudio-next/mcp` 导入。目录扫描、URI 校验、文件读取和权限检查由宿主实现，包负责协议转发与取消信号传递。
 
 宿主负责 MCP 开关、Bearer 凭证、Host/Origin 校验和工作区权限。包不依赖 `apps/server/src` 或前端组件，也不自行创建 HTTP 监听端口。
 
 ```sh
-bun run --filter @toonflow/mcp typecheck
-bun run --filter @toonflow/mcp build
+bun run --filter @omnistudio-next/mcp typecheck
+bun run --filter @omnistudio-next/mcp build
 ```
 
 产物位于 `build/mcp/`，包括 HTTP 模块、stdio 入口、README 和 Skill。stdio 所需 SDK 已打包，可直接使用 Node.js/Bun 运行；独立导入 HTTP 模块时宿主需提供 Express 5。

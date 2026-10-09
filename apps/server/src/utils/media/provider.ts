@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, readdir, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createContext, SourceTextModule } from "node:vm";
-import type { AudioConvertOptions, Provider, ProviderTools } from "@toonflow/providers";
+import type { AudioConvertOptions, Provider, ProviderTools } from "@omnistudio-next/providers";
 import { parse, parseExpression } from "@babel/parser";
 import { z } from "zod";
 import conf from "@/utils/conf";
@@ -136,7 +136,7 @@ function parseProvider(source: string) {
         : target.computed && target.property.type === "StringLiteral" ? target.property.value : "";
       return ["vendor", "textRequest", "imageRequest", "videoRequest", "ttsRequest"].includes(name);
     });
-    if (legacy) invalid("检测到旧版 Toonflow 供应商 TS，无法在 Toonflow 2.0 中使用。请在「添加自定义媒体供应商」中点击「一键复制提示词」，结合旧代码和接口资料重新生成新版代码后再导入。");
+    if (legacy) invalid("检测到旧版 omnistudio-next 供应商 TS，无法在 omnistudio-next 2.0 中使用。请在「添加自定义媒体供应商」中点击「一键复制提示词」，结合旧代码和接口资料重新生成新版代码后再导入。");
     invalid("供应商须通过 export default 导出对象");
   }
   const object = unwrap(exported.declaration as Expression);
@@ -182,8 +182,8 @@ function metadata(fileName: string, source: string) {
 }
 
 async function directory(create = false) {
-  const path = process.env.TOONFLOW_PROVIDERS_DIR?.trim() || join(dirname(conf.path), "providers");
-  if (process.env.TOONFLOW_PROVIDERS_DIR?.trim()) {
+  const path = process.env.OMNISTUDIO_NEXT_PROVIDERS_DIR?.trim() || join(dirname(conf.path), "providers");
+  if (process.env.OMNISTUDIO_NEXT_PROVIDERS_DIR?.trim()) {
     const info = await lstat(path).catch((err: NodeJS.ErrnoException) => { if (err.code === "ENOENT") return null; throw err; });
     if (!info || !info.isDirectory() || info.isSymbolicLink()) invalid("平台供应商目录不存在或无效", 503);
     return path;

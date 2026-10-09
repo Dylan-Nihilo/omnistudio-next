@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { uiSwitch, uiSelect, uiColorPicker } from "@toonflow/ui";
+import { uiSwitch, uiSelect, uiColorPicker } from "@omnistudio-next/ui";
 import { defaultUiSettings, generalSettings, uiSettings, updateGeneralSettings, updateUiSettings } from "@/stores/settings";
 import canvasShortcuts from "./canvasShortcuts.vue";
 const edgeColorOptions = [{ value: "none", label: "关闭" }, { value: "theme", label: "跟随主题色" }, { value: "custom", label: "自选颜色" }];

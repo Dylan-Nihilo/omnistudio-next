@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from "vue";
-import { uiField, uiSelect, uiTagInput, uiNumberInput, uiRadioGroup, uiCheckboxGroup, uiCheckbox, uiSwitch, uiColorPicker, uiForm, uiFormField, uiInput, uiButton, uiAlert, uiRuleForm, useUiFeedback, type UiOption, type UiValue, type UiFormRules, type UiFieldRule } from "@toonflow/ui";
+import { uiField, uiSelect, uiTagInput, uiNumberInput, uiRadioGroup, uiCheckboxGroup, uiCheckbox, uiSwitch, uiColorPicker, uiForm, uiFormField, uiInput, uiButton, uiAlert, uiRuleForm, useUiFeedback, type UiOption, type UiValue, type UiFormRules, type UiFieldRule } from "@omnistudio-next/ui";
 const feedback = useUiFeedback();
 const kinds: UiOption[] = [{ value: "image", label: "图片" }, { value: "video", label: "视频" }, { value: "text", label: "文本" }];
 const ratios: UiOption[] = [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "1:1", label: "1:1" }];

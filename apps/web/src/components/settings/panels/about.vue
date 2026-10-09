@@ -1,11 +1,11 @@
 <template>
   <div class="about">
-    <header class="brand"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="brandInfo"><h3>OmniStudio</h3><div class="brandMeta"><span>v{{ currentVersion }}</span><uiTag v-if="snapshot?.channel">{{ snapshot.channel }}</uiTag></div></div></header>
-    <section class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
+    <header class="brand"><img class="brandLogo" :src="logoUrl" alt="omnistudio-next" /><div class="brandInfo"><h3>omnistudio-next</h3><div class="brandMeta"><span>v{{ currentVersion }}</span><uiTag v-if="snapshot?.channel">{{ snapshot.channel }}</uiTag></div></div></header>
+    <section v-if="auth.isRoot" class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
     <section class="resourceLinks" aria-label="项目">
-      <a class="resourceLink" :href="repositoryUrl" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库：HBAI-Ltd/Toonflow-app"><icon-brand-github :size="22" aria-hidden="true" /><span>GitHub 仓库</span><icon-external-link class="externalIcon" :size="16" aria-hidden="true" /></a>
+      <a class="resourceLink" :href="repositoryUrl" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库：Dylan-Nihilo/omnistudio-next"><icon-brand-github :size="22" aria-hidden="true" /><span>GitHub 仓库</span><icon-external-link class="externalIcon" :size="16" aria-hidden="true" /></a>
     </section>
-    <section class="communitySection" aria-label="微信交流群"><header class="sectionHeader"><h3><icon-brand-wechat :size="20" aria-hidden="true" />微信交流群</h3><uiPopover title="微信扫码加入交流群" :width="236" placement="top"><template #reference="{ triggerAttrs }"><uiButton variant="secondary" size="small" :icon="IconQrcode" v-bind="triggerAttrs">展示二维码</uiButton></template><q-r-code :value="communityUrl" :size="168" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" aria-label="Toonflow 交流群二维码" /><p class="tips">Toonflow 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。</p></uiPopover></header></section>
+    <section class="communitySection" aria-label="微信交流群"><header class="sectionHeader"><h3><icon-brand-wechat :size="20" aria-hidden="true" />微信交流群</h3><uiPopover title="微信扫码加入交流群" :width="236" placement="top"><template #reference="{ triggerAttrs }"><uiButton variant="secondary" size="small" :icon="IconQrcode" v-bind="triggerAttrs">展示二维码</uiButton></template><q-r-code :value="communityUrl" :size="168" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" aria-label="omnistudio-next 交流群二维码" /><p class="tips">omnistudio-next 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。</p></uiPopover></header></section>
     <uiDialog v-model="resultVisible" title="版本更新" :width="520">
       <div class="updateResult" aria-live="polite" :aria-busy="working"><div class="resultHeader"><span class="resultIcon" :class="{ warning: !!updateError, success: !working && !updateError && !snapshot?.updateAvailable }"><icon-refresh v-if="working" class="loadingIcon" :size="24" aria-hidden="true" /><icon-alert-circle v-else-if="updateError" :size="24" aria-hidden="true" /><icon-arrow-up-circle v-else-if="snapshot?.updateAvailable" :size="24" aria-hidden="true" /><icon-circle-check v-else :size="24" aria-hidden="true" /></span><div class="resultCopy"><h3>{{ resultTitle }}</h3><p>{{ resultMessage }}</p></div></div>
         <div v-if="!checking && !updateError && snapshot?.updateAvailable" class="releaseInfo"><div class="versionComparison"><div class="versionItem"><span>当前版本</span><strong>v{{ currentVersion }}</strong></div><icon-arrow-right :size="18" aria-hidden="true" /><div class="versionItem latestVersion"><span>最新版本</span><strong>v{{ snapshot.latestVersion }}</strong></div></div><div v-if="snapshot.channel || snapshot.latestHash" class="releaseMeta"><uiTag v-if="snapshot.channel">{{ snapshot.channel }}</uiTag><code v-if="snapshot.latestHash" :title="snapshot.latestHash">{{ snapshot.latestHash }}</code></div></div>
@@ -16,9 +16,11 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from "@/stores/auth";
+
 import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
-import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@toonflow/ui";
+import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@omnistudio-next/ui";
 import { QRCode } from "tdesign-vue-next";
 import {
   IconRefresh,
@@ -31,8 +33,8 @@ import {
   IconBrandWechat,
   IconQrcode,
 } from "@tabler/icons-vue";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
-import type { updateSnapshot } from "@toonflow/server/desktop";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
+import type { updateSnapshot } from "@omnistudio-next/server/desktop";
 import { saveSettings } from "@/stores/settings";
 import {
   desktopUpdateSource as updateSource,
@@ -47,8 +49,9 @@ import {
 
 const feedback = useUiFeedback();
 const updateSources = computed(() => [{ value: "official", label: "官方源" }, { value: "github", label: "GitHub" }, ...(customUpdateUrl.value ? [{ value: "custom", label: "自定义源" }] : [])]);
-const repositoryUrl = "https://github.com/HBAI-Ltd/Toonflow-app";
+const repositoryUrl = "https://github.com/Dylan-Nihilo/omnistudio-next";
 const communityUrl = "https://work.weixin.qq.com/u/vc36adcc89845edcbe?v=5.0.3.63936&bb=85b8d228e8";
+const auth = useAuthStore();
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
 const currentVersion = computed(() => snapshot.value?.version || import.meta.env.appVersion);
 const action = ref<"check" | "download" | "apply" | null>(null);
@@ -149,7 +152,7 @@ async function runUpdate(nextAction: "check" | "download" | "apply") {
     if (nextAction === "check") await checkDesktopUpdate();
     else {
       const { data } = await axios.post<{ data: updateSnapshot }>(`/api/desktop/update/${nextAction}`, null, {
-        headers: { "x-toonflow-desktop": "1" },
+        headers: { "x-omnistudio-next-desktop": "1" },
         signal: controller.signal,
         timeout: 0,
       });

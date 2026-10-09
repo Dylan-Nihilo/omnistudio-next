@@ -1,14 +1,14 @@
 {
-  "name": "@toonflow/mcp",
+  "name": "@omnistudio-next/mcp",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./skill": { "types": "./src/skill.d.ts", "default": "./skills/toonflow/SKILL.md" }
+    "./skill": { "types": "./src/skill.d.ts", "default": "./skills/omniStudioNext/SKILL.md" }
   },
   "bin": {
-    "toonflow-mcp": "./src/stdio.ts"
+    "omnistudio-next-mcp": "./src/stdio.ts"
   },
   "scripts": {
     "build": "bun scripts/build.ts",

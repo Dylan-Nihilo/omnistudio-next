@@ -1,3 +1,3 @@
-import { createUiFeedback } from "@toonflow/ui";
+import { createUiFeedback } from "@omnistudio-next/ui";
 
 export default createUiFeedback();

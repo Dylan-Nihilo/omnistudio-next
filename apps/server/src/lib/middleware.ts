@@ -7,10 +7,10 @@ import { zhCN } from "zod/locales";
 z.config(zhCN());
 
 export function validateFields(
-  shape: Record<string, z.ZodType>,
+  shape: Record<string, z.ZodType> | z.ZodObject,
   source: "body" | "query" | "params" = "body", // 默认校验 body
 ) {
-  const schema = z.object(shape);
+  const schema = shape instanceof z.ZodObject ? shape : z.object(shape);
 
   return (req: Request, res: Response, next: NextFunction) => {
     const data = req[source];

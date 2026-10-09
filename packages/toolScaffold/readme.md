@@ -22,7 +22,7 @@
 
 配置 `components` 时，构建器使用 Vite 编译 Vue 组件，第二行 `/*! toonflowToolClient:<JSON> */` 保存独立 UMD 代码及 CSS，元数据只保存组件对应的工具名称。组件必须显式导入所用 UI 组件与样式，不依赖 web 自动导入；Vue、Element Plus、Axios 和 form-create 复用 `toonflowToolHost` 的宿主实例。其余客户端依赖随组件打包，不生成安装包外的资源文件。
 
-`/api/tools/renderers` 仅列出已启用的组件映射及内容版本地址，`/api/tools/client` 只下发对应浏览器代码与样式，不执行或暴露服务端入口、配置和密钥。web 使用 `@toonflow/tools-scaffold/client` 的 `loadToolComponent(tool.name)`，统一向组件传入 `{ tool: ToolCall, directory?: string }`；无组件时展示普通工具消息，加载失败时提示用户停止后重试。历史消息可能只有 `args/result`，组件不能假定一定存在实时交互信息。`askUser` 的回答、跳过和历史展示均由包内 `src/questionCard.vue` 维护，web 不导入该组件。
+`/api/tools/renderers` 仅列出已启用的组件映射及内容版本地址，`/api/tools/client` 只下发对应浏览器代码与样式，不执行或暴露服务端入口、配置和密钥。web 使用 `@omnistudio-next/tools-scaffold/client` 的 `loadToolComponent(tool.name)`，统一向组件传入 `{ tool: ToolCall, directory?: string }`；无组件时展示普通工具消息，加载失败时提示用户停止后重试。历史消息可能只有 `args/result`，组件不能假定一定存在实时交互信息。`askUser` 的回答、跳过和历史展示均由包内 `src/questionCard.vue` 维护，web 不导入该组件。
 
 `createTools(context)` 返回 Pi 的工具定义数组，一个插件可提供多个工具。宿主传入当前工作区 `cwd`、仅属于该工具且已校验的配置 `config`、安全路径解析 `resolvePath`、带锁的原子写入 `writeFile`，以及 Pi SDK 工具构造函数。不传入应用全局设置或其他工具的配置；工具需要的密钥通过自身配置项填写。工作区文件插件通过宿主方法限制路径；只读模式只注册 `read` 与 `ls`。
 
@@ -52,7 +52,7 @@ ffmpeg.ffprobe("assets/first.mp4", (error, data) => {
 
 输出覆盖、超时、事件和错误处理沿用原生库，调用方负责使用新文件名保护素材。`signal` 仅取消工厂准备阶段；运行中的命令由调用方监听取消并调用 `command.kill("SIGKILL")`，同时处理启动前已取消的情况和监听器清理。入口按需检查 FFmpeg/FFprobe，缺失时仍通知前端下载并抛出 `FfmpegRequiredError`；不自动安装或重试。
 
-工具不再使用 `convert`、配置回调或 JSON plan。`FfmpegFactory`、`FfmpegCommand`、`FfprobeData` 从 `@toonflow/ffmpeg/types` 和 `@toonflow/tools-scaffold/runtime` 导出，直接复用原生类型。浏览器节点通过 `await useNode().ffmpeg(signal?)` 使用对应的文件型链式 API，由 HTTP 事件流交给同一宿主执行，具体边界见 `packages/nodeScaffold/readme.md`。
+工具不再使用 `convert`、配置回调或 JSON plan。`FfmpegFactory`、`FfmpegCommand`、`FfprobeData` 从 `@omnistudio-next/ffmpeg/types` 和 `@omnistudio-next/tools-scaffold/runtime` 导出，直接复用原生类型。浏览器节点通过 `await useNode().ffmpeg(signal?)` 使用对应的文件型链式 API，由 HTTP 事件流交给同一宿主执行，具体边界见 `packages/nodeScaffold/readme.md`。
 
 工具包的静态提示词在 `build.ts` 的 `createToolConfig({ ..., prompt: "工具操作规则", configRules: [...] }, import.meta.url)` 中声明。`prompt` 为可选字符串，最多 20000 个字符，支持多行文本；随元数据打包，旧插件未声明时按空字符串处理。
 
@@ -64,7 +64,7 @@ ffmpeg.ffprobe("assets/first.mp4", (error, data) => {
 
 - `skillOperator`：通过 `action: list/read/create/update` 聚合技能目录与读写，支持按 `name`、`scope`、技能相对 `path` 操作正文及资料。默认同名工作区技能优先；新建默认工作区，`SKILL.md` 校验名称和描述，新建不覆盖、修改只针对已有文件。启用后由此工具按需查询目录，保留 `/skill:名称` 调用。
 - `askUser`：提问器，通过 `context.question.ask` 一次发送一个或多个问题，等待用户回答或明确跳过后继续执行。简单提问传 `{ title, question, options? }`，返回 `{ answer }`；多个问题传 `{ title, question, fields }`，前端使用 `@form-create/element-ui` 渲染，返回 `{ answer, values }`。`fields` 最多 12 项，每项一个问题，包含唯一 `field`、`title`、`type`，默认可留空，可设置 `required`、`placeholder`；支持 `input`、`textarea`、`radio`、`checkbox`、`select`、`inputNumber`、`switch`，选择类字段必须提供 `options`。动态表单与顶层 `options` 不同时使用。点击“跳过”返回 `{ answer: "用户跳过了本次提问", skipped: true }`，不要求填写必填项，也不停止 Agent；停止或断开对话仍会取消等待。问题、回答和跳过结果沿用 Pi 工具调用历史保存。
-- `canvas`：画布操作工具，通过可选的 `context.canvas` 控制本轮绑定的激活画布。读取工具为概览 `getCanvas`、筛选分页 `findCanvasNodes`、按 ID 投影/分段读取 `getCanvasNodes`、局部连接 `getCanvasEdges`、目标节点函数查询 `getNodeTools`；每次最多 64 KiB，按 `hasMore/nextCursor` 续读，大节点值沿 `path` 配合文本或对象/数组偏移继续读取。`context.canvas` 只需要画布 ID 和调用入口，不注入全部函数清单。变更工具提供 `addNode`、`deleteNodes`、`moveNodes`、`renameNodes`、`connectNodes`、`deleteEdges`、`selectNodes`、`fitCanvas`，以及节点注册函数的统一执行入口 `nodeTools`；`deleteNodes`/`moveNodes`/`renameNodes`/`connectNodes`/`deleteEdges` 均一次接受多个目标进行批量操作。参数规则由 `@toonflow/tool-canvas/runtime` 的 Zod schema 共享。没有激活画布时不提供这些工具；空画布仍可新增节点，再查询并调用新节点的函数。执行走 Agent 流与回传接口，修改由当前 Vue Flow 实例完成并复用画布保存逻辑，读取不触发保存，不通过直接编辑 JSON 控制画布。
+- `canvas`：画布操作工具，通过可选的 `context.canvas` 控制本轮绑定的激活画布。读取工具为概览 `getCanvas`、筛选分页 `findCanvasNodes`、按 ID 投影/分段读取 `getCanvasNodes`、局部连接 `getCanvasEdges`、目标节点函数查询 `getNodeTools`；每次最多 64 KiB，按 `hasMore/nextCursor` 续读，大节点值沿 `path` 配合文本或对象/数组偏移继续读取。`context.canvas` 只需要画布 ID 和调用入口，不注入全部函数清单。变更工具提供 `addNode`、`deleteNodes`、`moveNodes`、`renameNodes`、`connectNodes`、`deleteEdges`、`selectNodes`、`fitCanvas`，以及节点注册函数的统一执行入口 `nodeTools`；`deleteNodes`/`moveNodes`/`renameNodes`/`connectNodes`/`deleteEdges` 均一次接受多个目标进行批量操作。参数规则由 `@omnistudio-next/tool-canvas/runtime` 的 Zod schema 共享。没有激活画布时不提供这些工具；空画布仍可新增节点，再查询并调用新节点的函数。执行走 Agent 流与回传接口，修改由当前 Vue Flow 实例完成并复用画布保存逻辑，读取不触发保存，不通过直接编辑 JSON 控制画布。
 - `workspace`：工作区读取、写入、编辑和目录列表，可开启只读模式。
 - `webSearch`：默认使用免密钥的 DuckDuckGo，可配置切换 DeepSeek 或 Tavily 并填写对应密钥；支持设置结果数量和超时。
 - `webFetch`：使用 Bun 原生 fetch 读取网页，可设置超时与正文长度；最多 5 次重定向和 2 MiB 响应正文，不预判 DNS 公网地址，兼容 Fake-IP，网络隔离由部署环境负责。

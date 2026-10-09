@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { inject, onBeforeUnmount, ref, watch } from "vue";
 import { useNode, useVueFlow } from "@vue-flow/core";
-import { uiIconButton, uiSlider, uiPopover, uiDropdown, useUiFeedback } from "@toonflow/ui";
+import { uiIconButton, uiSlider, uiPopover, uiDropdown, useUiFeedback } from "@omnistudio-next/ui";
 import { IconPlayerPlay, IconPlayerPause, IconVolume, IconVolumeOff, IconPhotoScan, IconPlayerSkipBack, IconPlayerSkipForward } from "@tabler/icons-vue";
 import { useNodeFiles } from "../workspaceFiles";
 

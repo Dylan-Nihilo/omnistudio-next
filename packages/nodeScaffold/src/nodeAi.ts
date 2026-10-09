@@ -2,7 +2,7 @@ import { onScopeDispose } from "vue";
 import { runAgentLoop, type AgentTool, type AgentToolResult } from "@earendil-works/pi-agent-core";
 import { createAssistantMessageEventStream, type AssistantMessage, type Context, type Message, type Model } from "@earendil-works/pi-ai";
 import { EventSourceParserStream } from "eventsource-parser/stream";
-import type { MediaGenerationRequest, MediaModel } from "@toonflow/tools-scaffold/runtime";
+import type { MediaGenerationRequest, MediaModel } from "@omnistudio-next/tools-scaffold/runtime";
 import type { NodeOutput } from "./values";
 
 export type NodeAiModel = {
@@ -63,6 +63,7 @@ export function groupNodeModels<T extends Pick<NodeAiModel, "providerId" | "prov
 
 async function readResult<T>(response: Response): Promise<T> {
   const result = await response.json();
+  if (typeof window !== "undefined" && (response.status === 401 || result.data?.reason === "accountChanged")) window.dispatchEvent(new CustomEvent("omnistudio-next:session-invalid", { detail: { reason: response.status === 401 ? "expired" : "changed" } }));
   if (!response.ok || result.code !== 200) throw new Error(result.message || `AI 请求失败（HTTP ${response.status}）`);
   return result.data;
 }
@@ -72,6 +73,10 @@ const modelCacheKey = Symbol.for("toonflow.nodeModels");
 const modelCacheHost = globalThis as typeof globalThis & { [modelCacheKey]?: Map<string, Promise<unknown[]>> };
 const modelCache = modelCacheHost[modelCacheKey] ??= new Map<string, Promise<unknown[]>>();
 
+function accountSignal() {
+  return (globalThis as typeof globalThis & { omniStudioNextSessionSignal?: AbortSignal }).omniStudioNextSessionSignal;
+}
+
 function platformHeaders(contentType = false) {
   const headers: Record<string, string> = contentType ? { "Content-Type": "application/json" } : {};
   if (typeof document !== "undefined") {
@@ -79,8 +84,8 @@ function platformHeaders(contentType = false) {
     if (csrfToken) headers["x-csrf-token"] = decodeURIComponent(csrfToken);
   }
   if (typeof sessionStorage !== "undefined") {
-    const workspaceId = sessionStorage.getItem("omnistudio_workspace_id");
-    if (workspaceId) headers["x-workspace-id"] = workspaceId;
+    const userId = sessionStorage.getItem("omnistudio_account_id");
+    if (userId) headers["x-account-id"] = userId;
   }
   return headers;
 }
@@ -93,7 +98,7 @@ async function readModels<T>(url: string, signal: AbortSignal): Promise<T[]> {
   signal.throwIfAborted();
   let pending = modelCache.get(url);
   if (!pending) {
-    const request = fetch(url, { cache: "no-store" }).then(readResult<unknown[]>).catch(error => {
+    const request = fetch(url, { cache: "no-store", headers: platformHeaders(), signal: accountSignal() }).then(readResult<unknown[]>).catch(error => {
       if (modelCache.get(url) === request) modelCache.delete(url);
       throw error;
     });
@@ -123,7 +128,7 @@ async function requestModel(input: NodeAiRequest, context: Context, model: Model
   try {
     signal.throwIfAborted();
     const response = await fetch("/api/ai/generate", {
-      method: "POST", headers: { ...platformHeaders(true), "x-toonflow-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
+      method: "POST", headers: { ...platformHeaders(true), "x-omnistudio-next-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ providerId, modelId, context, directory, references }), signal,
     });
     if (!response.ok) await readResult(response);
@@ -165,7 +170,7 @@ async function requestModel(input: NodeAiRequest, context: Context, model: Model
 export function useNodeAi() {
   const controller = new AbortController();
   onScopeDispose(() => controller.abort());
-  const requestSignal = (signal?: AbortSignal) => signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
+  const requestSignal = (signal?: AbortSignal) => AbortSignal.any([controller.signal, ...(signal ? [signal] : []), ...(accountSignal() ? [accountSignal()!] : [])]);
 
   async function getModels(signal?: AbortSignal) {
     return readModels<NodeAiModel>("/api/ai/models", requestSignal(signal));
@@ -178,7 +183,7 @@ export function useNodeAi() {
   async function generateMedia<T extends "image" | "video">(mediaType: T, input: NodeImageRequest | NodeVideoRequest, signal?: AbortSignal) {
     return readResult<{ path: string; mimeType: string; mediaType: T }[]>(await fetch("/api/ai/media/generate", {
       method: "POST",
-      headers: { ...platformHeaders(true), "x-toonflow-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
+      headers: { ...platformHeaders(true), "x-omnistudio-next-workspace": "1", "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ ...input, mediaType }),
       signal: requestSignal(signal),
     }));

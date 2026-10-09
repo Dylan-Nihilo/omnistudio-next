@@ -126,7 +126,7 @@ export default {
   version: "1.0.0",
   apiUrl: "https://video.jojokey.com/v1",
   protocol: "openai-completions",
-  readme: "旧 OmniStudio 使用的 JojoKey Seedance / MiniMax 视频服务。",
+  readme: "旧 omnistudio-next 使用的 JojoKey Seedance / MiniMax 视频服务。",
   rules,
   models: [
     { id: "seedance-2.0-mini", label: "Seedance 2.0 标准", type: "video", mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]] },

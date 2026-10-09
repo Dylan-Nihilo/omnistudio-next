@@ -85,7 +85,7 @@
 projects/
   Toonflow-app/             当前主工作区
   toonflowUi/               已创建的独立工作树，uiRefactor 分支
-    packages/ui/            @toonflow/ui
+    packages/ui/            @omnistudio-next/ui
       src/
         components/         自有基础交互组件
         styles/             Token、基础与布局样式
@@ -281,6 +281,6 @@ bun run build
 - 44 个组件通过包名导入；生产入口为 JS/CSS/d.ts，开发使用源码条件导出。不封装或继续依赖旧 UI 的 DOM。
 - 5 类预览：基础控件、选择与表单、弹层与反馈、数据与导航、媒体与引导。已验证键盘/IME、异步校验、条件字段、取消、虚拟化、树加载、图片与音频等；完整证据与未验证项见覆盖清单。
 - 已修复多 Vue 应用的单选组 ID 碰撞、子菜单焦点与关闭后立即重开、旧异步校验/关闭决定、消息计时器清理等实际问题。
-- 新 Logo 从 `Downloads/omnistudio.svg` 原样保存到 `packages/assets/omniStudioLogo.svg`，SHA-256 为 `27d488f65cde06f7e7fbad5ba56671b8c632bae7f6962b73d9b1d49441988bf6`。预览头部与媒体示例均已切换，448×160 viewBox 保持；头部显示为 168×60。绿色/浅色模式不改变 SVG 色值，浅色用暗底保证原字标可读。
+- 新 Logo 从 `Downloads/omnistudio.svg` 原样保存到 `packages/assets/omniStudioNextLogo.svg`，SHA-256 为 `27d488f65cde06f7e7fbad5ba56671b8c632bae7f6962b73d9b1d49441988bf6`。预览头部与媒体示例均已切换，448×160 viewBox 保持；头部显示为 168×60。绿色/浅色模式不改变 SVG 色值，浅色用暗底保证原字标可读。
 - 新字标为「万象点点 · OmniStudio」；预览标题采用中性的“组件库”，没有顺带改应用 identifier、scheme、原生图标或业务显示名称。旧蓝色 PNG 与设计终验属于历史资料，保留但不再作为当前预览 Logo。
 - 本轮没有修改远端 Figma、真实设置、工作区文件或主应用页面。未知插件规则明确阻止提交，完整旧插件适配、原生平台与真实业务流程仍需下一阶段验证。

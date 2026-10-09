@@ -4,14 +4,15 @@ import { promisify } from "node:util";
 import { realpath } from "node:fs/promises";
 import u from "@/utils";
 import { error, success } from "@/lib/responseFormat";
+import { registerSelectedDirectory } from "@/services/accountService";
 
 const router = Router();
 const runFile = promisify(execFile);
 
 export default router.post("/", async (req, res) => {
-  const localAddress = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "") && req.get("x-toonflow-local-client") !== "0";
+  const localAddress = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "") && req.get("x-omnistudio-next-local-client") !== "0" && req.get("x-toonflow-local-client") !== "0";
   const localHost = ["localhost", "127.0.0.1", "[::1]"].includes(req.hostname);
-  const native = process.env.NODE_ENV === "dev" && ["win32", "darwin"].includes(process.platform) && localAddress && localHost;
+  const native = req.authContext?.user.isRoot && process.env.NODE_ENV === "dev" && ["win32", "darwin"].includes(process.platform) && localAddress && localHost;
   res.set("Cache-Control", "no-store");
   if (!native) return res.json(success({ native: false, directory: null }));
 
@@ -47,7 +48,7 @@ end try`;
       ? await runFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-Command", windowsScript], { windowsHide: true })
       : await runFile("/usr/bin/osascript", ["-e", macScript]);
     const selected = stdout.replace(/\r?\n$/, "");
-    const directory = selected ? await realpath(selected) : null;
+    const directory = selected ? await registerSelectedDirectory(await realpath(selected)) : null;
     res.json(success({ native: true, directory }));
   } catch {
     res.status(500).json(error("无法打开本机文件夹选择器，请重试", null, 500));

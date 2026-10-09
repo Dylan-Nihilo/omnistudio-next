@@ -1,9 +1,9 @@
 import axios from "axios";
 import { inject } from "vue";
-import type { AgentMention } from "@toonflow/server/agent/types";
-import type { MentionAsset, MentionCanvasSource, MentionNode, MentionOutput, MentionPage, MentionQuery } from "@toonflow/server/agent/mentionSources";
+import type { AgentMention } from "@omnistudio-next/server/agent/types";
+import type { MentionAsset, MentionCanvasSource, MentionNode, MentionOutput, MentionPage, MentionQuery } from "@omnistudio-next/server/agent/mentionSources";
 
-export type { MentionAsset, MentionNode, MentionOutput, MentionPage } from "@toonflow/server/agent/mentionSources";
+export type { MentionAsset, MentionNode, MentionOutput, MentionPage } from "@omnistudio-next/server/agent/mentionSources";
 
 export function useMentionSources(getDirectory: () => string | undefined) {
   const getCanvasSource = inject<(() => MentionCanvasSource | undefined) | undefined>("mentionCanvas", undefined);
@@ -12,7 +12,7 @@ export function useMentionSources(getDirectory: () => string | undefined) {
     const directory = getDirectory();
     if (!directory) throw new Error("请先打开工作区");
     const { data } = await axios.get<{ data: T }>("/api/agent/mentionSource", {
-      params: { directory, operation, ...args }, signal, headers: { "x-toonflow-workspace": "1" },
+      params: { directory, operation, ...args }, signal, headers: { "x-omnistudio-next-workspace": "1" },
     }).catch(error => {
       const message = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
       if (message) throw new Error(message, { cause: error });

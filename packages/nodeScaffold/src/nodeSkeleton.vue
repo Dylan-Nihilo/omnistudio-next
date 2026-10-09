@@ -109,7 +109,7 @@ import {
   IconCircleDot,
   IconLoader2,
 } from "@tabler/icons-vue";
-import { uiDropdown, uiIconButton, useUiFeedback, type UiMenuItem } from "@toonflow/ui";
+import { uiDropdown, uiIconButton, useUiFeedback, type UiMenuItem } from "@omnistudio-next/ui";
 import { validateConnection } from "./connection";
 import { useNodeEvent } from "./nodeEvent";
 import type { NodeConnectionFeedback, NodeData, NodeHandle } from "./connection";

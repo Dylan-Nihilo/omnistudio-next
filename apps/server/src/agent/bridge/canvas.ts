@@ -1,5 +1,5 @@
-import { canvasOperations } from "@toonflow/tool-canvas/runtime";
-import type { CanvasInfo, CanvasContext } from "@toonflow/tools-scaffold/runtime";
+import { canvasOperations } from "@omnistudio-next/tool-canvas/runtime";
+import type { CanvasInfo, CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
 import type { AgentEvent } from "@/agent/runtime/types";
 
 type CanvasResult = { result?: unknown; error?: string };

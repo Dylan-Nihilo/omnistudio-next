@@ -1,4 +1,4 @@
-import type { UiFieldRule } from "@toonflow/ui";
+import type { UiFieldRule } from "@omnistudio-next/ui";
 
 const fieldTypes = new Set(["input", "textarea", "inputNumber", "select", "switch", "checkbox", "radio", "slider", "colorPicker", "inputTag"]);
 const ruleKeys = new Set(["type", "field", "title", "info", "value", "props", "options", "validate", "required", "control"]);

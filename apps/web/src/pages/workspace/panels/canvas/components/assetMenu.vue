@@ -1,12 +1,14 @@
 <template>
   <uiDropdown ref="menu" trigger="manual" :anchor="menuAnchor" :items="menuItems" placement="bottom-start" @command="handleCommand" />
+  <shareAssetDialog v-if="activeEntry?.type === 'file'" v-model="shareVisible" :path="activeEntry.path" />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, shallowRef } from "vue";
 import axios from "axios";
 import saveFile from "@/lib/saveFile";
-import { uiDropdown, useUiFeedback, isUiCancelledError, type UiMenuItem, type UiValue } from "@toonflow/ui";
+import shareAssetDialog from "@/components/account/shareAssetDialog.vue";
+import { uiDropdown, useUiFeedback, isUiCancelledError, type UiMenuItem, type UiValue } from "@omnistudio-next/ui";
 import { IconDownload, IconEdit, IconTrash, IconFolder, IconFolderPlus } from "@tabler/icons-vue";
 
 type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[] };
@@ -17,6 +19,7 @@ const menu = ref<InstanceType<typeof uiDropdown>>();
 const menuAnchor = shallowRef({ getBoundingClientRect: () => new DOMRect() });
 const activeEntry = shallowRef<AssetEntry>();
 const busy = ref(false);
+const shareVisible = ref(false);
 const parentPath = computed(() => activeEntry.value?.path.split("/").slice(0, -1).join("/") || ".");
 const moveFolders = computed(() => {
   function flatten(items: AssetEntry[]): { label: string; path: string }[] {
@@ -37,6 +40,7 @@ const menuItems = computed<UiMenuItem[]>(() => {
       ...moveFolders.value.map(item => ({ value: "move:" + item.path, label: item.label, icon: IconFolder, disabled: busy.value || destinationDisabled(item.path) })),
     ] },
     ...(entry.type === "file" ? [{ value: "download", label: "下载", icon: IconDownload, divided: true }] : []),
+    ...(entry.type === "file" ? [{ value: "share", label: "上传到团队空间", disabled: busy.value }] : []),
     { value: "rename", label: "重命名", icon: IconEdit, disabled: busy.value },
     { value: "delete", label: "删除", icon: IconTrash, disabled: busy.value || !!entry.children?.length },
   ];
@@ -109,6 +113,7 @@ async function createMoveFolder() {
 
 async function handleCommand(command: UiValue) {
   if (typeof command !== "string") return;
+  if (command === "share") { closeMenu(); shareVisible.value = true; return; }
   if (command === "newFolder") return createMoveFolder();
   if (command.startsWith("move:")) return moveTo(command.slice(5));
   const entry = activeEntry.value!;

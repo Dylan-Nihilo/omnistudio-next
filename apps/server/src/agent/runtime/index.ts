@@ -5,7 +5,7 @@ import {
   createAgentSession,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import type { CanvasContext, QuestionContext } from "@toonflow/tools-scaffold/runtime";
+import type { CanvasContext, QuestionContext } from "@omnistudio-next/tools-scaffold/runtime";
 import type { AgentEvent, AgentMention, AgentToolCall } from "@/agent/runtime/types";
 import { agentMentionsSchema, mentionPrompt, snapshotMentions, validateMentionTokens } from "@/agent/runtime/mentions";
 import { readAiReferences, referenceContent } from "@/utils/ai";
@@ -24,6 +24,7 @@ import {
 import { isMemoryEnabled } from "@/utils/personalization";
 import { lockWorkspaceFiles, resolveWorkspacePath } from "@/utils/workspace/files";
 import type { GenerationBillingContext } from "@/utils/media/generation";
+import { requireAccount } from "@/utils/accountContext";
 
 type AgentOptions = {
   prompt: string;
@@ -61,6 +62,8 @@ export async function run(
   }: AgentOptions,
   send: (event: AgentEvent) => void
 ) {
+  const account = requireAccount();
+  if (account.signal) signal = AbortSignal.any([account.signal, ...(signal ? [signal] : [])]);
   mentions = agentMentionsSchema.parse(mentions);
   validateMentionTokens(prompt, mentions);
   if (!prompt.trim() && !attachments.length && !mentions.length) throw Object.assign(new Error("请输入消息、提及或添加图片、视频"), { status: 400 });
@@ -76,6 +79,7 @@ export async function run(
   const { path: sessionsDir } = await resolveWorkspacePath(cwd, ".agent/sessions", true);
   const sessionPath = sessionFile ? (await resolveWorkspacePath(sessionsDir, sessionFile)).path : undefined;
   const active = sessionPath ? getActiveAgentSession(sessionPath) : undefined;
+  if (active && active.userId !== requireAccount().userId) throw Object.assign(new Error("这个对话正在由另一账户运行，请等待其结束"), { status: 409 });
   if (active && hasPendingAgentQuestion(active)) {
     // ACT: 新消息结束旧提问，必须等旧执行释放文件锁后再继续，避免并发写入同一会话。
     await active.abort();
@@ -122,7 +126,7 @@ export async function run(
       publish(event);
     };
     const active: ActiveAgentSession = {
-      history, send, tools: liveTools,
+      history, send, tools: liveTools, userId: requireAccount().userId,
       entryOffset: history.getEntries().length,
       abort: () => { controller.abort(); onCancel?.(); return finished.promise; },
     };

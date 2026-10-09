@@ -1,16 +1,16 @@
 <template>
   <uiDialog v-model="visible" title="更新说明" :width="680" destroyOnClose :closeOnClickModal="false" @opened="emit('opened')" @close="emit('close')">
-    <div class="updateBody"><header class="updateHeader"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="versionInfo"><strong>v{{ version }}</strong><div class="buildInfo"><span>构建代码</span><code>{{ buildCode }}</code></div></div></header><img class="buildArtwork" :src="heroInk" alt="" aria-hidden="true" /><section class="releaseSection" aria-label="更新内容"><h3>更新内容</h3><div class="releaseContent" tabindex="0" role="region" aria-label="Markdown 更新说明"><messageMarkdown v-if="markdown.trim()" :content="markdown" /></div></section></div>
+    <div class="updateBody"><header class="updateHeader"><img class="brandLogo" :src="logoUrl" alt="omnistudio-next" /><div class="versionInfo"><strong>v{{ version }}</strong><div class="buildInfo"><span>构建代码</span><code>{{ buildCode }}</code></div></div></header><img class="buildArtwork" :src="heroInk" alt="" aria-hidden="true" /><section class="releaseSection" aria-label="更新内容"><h3>更新内容</h3><div class="releaseContent" tabindex="0" role="region" aria-label="Markdown 更新说明"><messageMarkdown v-if="markdown.trim()" :content="markdown" /></div></section></div>
     <template #footer><uiButton :icon="IconArrowRight" @click="visible = false">开始使用</uiButton></template>
   </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
-import { uiDialog, uiButton } from "@toonflow/ui";
+import { uiDialog, uiButton } from "@omnistudio-next/ui";
 import { IconArrowRight } from "@tabler/icons-vue";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
-import heroInk from "@toonflow/assets/illustrations/heroInk.png";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
+import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
 import updateNotes from "./updateBox.md?raw";
 
 const visible = defineModel<boolean>({ default: false });

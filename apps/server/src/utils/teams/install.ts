@@ -2,6 +2,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, writeFi
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import conf from "@/utils/conf";
+import { requireRootAccount } from "@/utils/accountContext";
 import { decodeText, requireNewerVersion, skillZip } from "@/utils/plugins/install";
 import { isWithin } from "@/utils/workspace/files";
 import { agentsDirectory, checkName, fingerprint, installRecord, maxBytes, readFiles, validateFiles, withTeamFiles } from "./files";
@@ -9,6 +10,7 @@ import { agentsDirectory, checkName, fingerprint, installRecord, maxBytes, readF
 const require = createRequire(import.meta.url);
 
 export async function installTeam(fileName: string, bytes: Uint8Array, force = false) {
+  requireRootAccount();
   if (!/^[a-z][a-zA-Z0-9]*\.agent\.zip$/.test(fileName) || fileName.length > 128) {
     throw Object.assign(new Error("请选择小驼峰命名的 .agent.zip 团队包"), { status: 400 });
   }

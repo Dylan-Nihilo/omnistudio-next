@@ -1,6 +1,8 @@
 import { TextDecoder } from "node:util";
+import { lookup } from "node:dns/promises";
+import { BlockList, isIP } from "node:net";
 import { z } from "zod";
-import type { ToolDefinition, ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import type { ToolDefinition, ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 
 const configSchema = z.object({
   timeoutMs: z.number().int().min(1000).max(60000).default(20000),
@@ -16,15 +18,52 @@ function parseUrl(value: string, base?: URL) {
   return url;
 }
 
+const privateNetworks = new BlockList();
+for (const [address, prefix] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4]] as const) privateNetworks.addSubnet(address, prefix, "ipv4");
+privateNetworks.addSubnet("2001:db8::", 32, "ipv6");
+const publicIpv6 = new BlockList();
+publicIpv6.addSubnet("2000::", 3, "ipv6");
+
+function publicAddress(address: string) {
+  const family = isIP(address);
+  return family === 4 ? !privateNetworks.check(address, "ipv4") : family === 6 && publicIpv6.check(address, "ipv6") && !privateNetworks.check(address, "ipv6");
+}
+
+async function resolvePublicAddress(url: URL, signal: AbortSignal) {
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (isIP(hostname)) {
+    if (!publicAddress(hostname)) throw new Error("只能读取公开网络地址，不能访问本机或内网服务");
+    return { address: hostname, family: isIP(hostname) };
+  }
+  let addresses = await lookup(hostname, { all: true });
+  // Fake-IP is a local DNS transport detail; obtain public answers and pin the connection instead of allowing its private range.
+  if (addresses.some(item => /^198\.(18|19)\./.test(item.address))) {
+    const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`, { headers: { accept: "application/dns-json" }, signal });
+    if (!response.ok) throw new Error("公开 DNS 查询失败，请稍后重试");
+    const value = await response.json() as { Answer?: { type: number; data: string }[] };
+    addresses = (value.Answer ?? []).filter(item => item.type === 1 && isIP(item.data) === 4).map(item => ({ address: item.data, family: 4 }));
+  }
+  if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error("网页地址解析到了本机或内网，已拒绝访问");
+  return addresses.find(item => item.family === 4) ?? addresses[0]!;
+}
+
+async function publicFetch(url: URL, signal: AbortSignal): Promise<Response> {
+  const destination = await resolvePublicAddress(url, signal);
+  signal.throwIfAborted();
+  const pinned = new URL(url);
+  pinned.hostname = destination.family === 6 ? `[${destination.address}]` : destination.address;
+  const proxy = url.protocol === "https:" ? process.env.HTTPS_PROXY ?? process.env.https_proxy : process.env.HTTP_PROXY ?? process.env.http_proxy;
+  return fetch(pinned, {
+    redirect: "manual", signal, proxy,
+    headers: { Host: url.host, "user-agent": "omnistudio-next/2.0", accept: "text/html, text/plain, application/json, application/xml;q=0.9, */*;q=0.5" },
+    tls: url.protocol === "https:" ? { serverName: url.hostname.replace(/^\[|\]$/g, "") } : undefined,
+  });
+}
+
 async function fetchText(value: string, signal: AbortSignal) {
   let url = parseUrl(value);
   for (let redirects = 0; ; redirects++) {
-    // ACT: 交给运行环境处理 DNS/代理以兼容 Fake-IP；本工具不提供内网隔离，需由部署环境限制网络边界。
-    const response = await fetch(url, {
-      redirect: "manual",
-      signal,
-      headers: { "user-agent": "Toonflow/2.0", accept: "text/html, text/plain, application/json, application/xml;q=0.9, */*;q=0.5" },
-    });
+    const response = await publicFetch(url, signal);
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       await response.body?.cancel();
       if (redirects >= 5) throw new Error("网页重定向超过 5 次");

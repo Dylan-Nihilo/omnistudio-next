@@ -1,4 +1,4 @@
-import type { AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention } from "@toonflow/server/agent/types";
+import type { AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention } from "@omnistudio-next/server/agent/types";
 
 export type AgentAttachment = { name: string; path: string; mimeType: string; file?: File };
 

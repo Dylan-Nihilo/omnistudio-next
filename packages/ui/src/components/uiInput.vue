@@ -1,5 +1,5 @@
 <template>
-  <div class="uiInput" :class="[sizeClass, $attrs.class, { isError: error, isDisabled: disabled, isReadonly: readonly }]" :style="$attrs.style as StyleValue">
+  <div class="uiInput" :class="[sizeClass, $attrs.class, { isError: error, isDisabled: disabled, isReadonly: readonly }]" :style="$attrs.style as StyleValue" @click.self="focus">
     <span v-if="$slots.prefix" class="inputPrefix"><slot name="prefix" /></span>
     <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" :value="modelValue ?? ''" :type="type === 'password' && passwordVisible ? 'text' : type" :disabled="disabled" :readonly="readonly" @input="handleInput" @change="emit('change', ($event.target as HTMLInputElement).value)" @focus="emit('focus', $event)" @blur="emit('blur', $event)" @compositionstart="composing = true" @compositionend="handleCompositionEnd" :aria-invalid="error || undefined" />
     <button v-if="clearable && modelValue !== '' && modelValue != null && !disabled && !readonly" class="clearButton" type="button" aria-label="清空内容" @click="clear">×</button>
@@ -42,7 +42,7 @@ defineExpose({ focus, blur, select, clear, input });
 .uiInput {
   display: flex; align-items: center; gap: 8px; --inputHeight: var(--uiControlMedium); min-height: var(--inputHeight);
   padding: 0 12px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl);
-  background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase);
+  background: var(--uiBackgroundSubtle); cursor: text; transition: border-color var(--uiMotionDuration) var(--uiMotionEase);
   &.sizeSmall { --inputHeight: var(--uiControlSmall); }
   &.sizeLarge { --inputHeight: var(--uiControlLarge); }
   &:focus-within { border-color: var(--uiBorderFocus); outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; }

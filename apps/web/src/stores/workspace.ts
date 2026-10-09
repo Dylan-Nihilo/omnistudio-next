@@ -15,7 +15,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
   async function openProject(path: string, previousDirectory = path, signal?: AbortSignal) {
     const { data } = await axios.get<{ code: number; data?: { directory: string }; message?: string }>("/api/workspaces/check", {
-      params: { directory: path }, headers: { "x-toonflow-workspace": "1" }, signal,
+      params: { directory: path }, headers: { "x-omnistudio-next-workspace": "1" }, signal,
     });
     signal?.throwIfAborted();
     if (data.code !== 200 || !data.data?.directory) throw new Error(data.message || "工作目录校验失败");
@@ -42,7 +42,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (project.value?.directory === path) project.value = null;
   }
 
-  return { project, projectList, pendingAgentMessage, openProject, renameProject, removeProject };
+  function resetWorkspace() {
+    project.value = null;
+    projectList.value = [];
+    pendingAgentMessage.value = null;
+  }
+
+  return { project, projectList, pendingAgentMessage, openProject, renameProject, removeProject, resetWorkspace };
 }, {
   persist: {
     key: "toonflow.projectList",

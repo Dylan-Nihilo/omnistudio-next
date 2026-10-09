@@ -42,7 +42,7 @@ const loading = ref(true);
 const loaded = ref(false);
 const saving = ref(false);
 const error = ref("");
-const headers = { "x-toonflow-workspace": "1" };
+const headers = { "x-omnistudio-next-workspace": "1" };
 const platformModels = usePlatformModelsStore();
 const modelChoices = computed(() => platformModels.modelChoices);
 const controller = new AbortController();

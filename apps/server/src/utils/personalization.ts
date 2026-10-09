@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import conf from "@/utils/conf";
+import conf, { getAccountDirectory } from "@/utils/conf";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 
 export type PersonalizationDocument = "memory" | "agents";
@@ -21,7 +21,7 @@ function result(content: string) {
 
 async function documentPath(document: PersonalizationDocument) {
   if (!Object.hasOwn(documents, document)) throw Object.assign(new Error("个性化文档类型无效"), { status: 400 });
-  const directory = dirname(conf.path);
+  const directory = getAccountDirectory();
   await mkdir(directory, { recursive: true });
   const directories = [directory, ...(document === "memory" ? [join(directory, "memories")] : [])];
   for (const path of directories) {

@@ -1,7 +1,7 @@
 import { types } from "node:util";
 import { Mp3Encoder } from "@breezystack/lamejs";
 import { WaveFile } from "wavefile";
-import type { AudioConvertOptions } from "@toonflow/providers";
+import type { AudioConvertOptions } from "@omnistudio-next/providers";
 
 const maxInputBytes = 100 * 1024 * 1024;
 // ACT: 上限按 48kHz 立体声 30 分钟估算，防止畸形 WAV 头声称超长时长耗尽内存。

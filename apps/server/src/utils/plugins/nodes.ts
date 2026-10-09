@@ -37,7 +37,7 @@ export async function readNode(name: string) {
     name,
     displayName: typeof metadata.displayName === "string" && metadata.displayName.trim() ? metadata.displayName : name,
     version: typeof metadata.version === "string" ? metadata.version.trim() : "",
-    author: typeof metadata.author === "string" ? metadata.author : "",
+    author: metadata.author === "Toonflow" ? "omnistudio-next" : typeof metadata.author === "string" ? metadata.author : "",
     readme: typeof metadata.readme === "string" ? metadata.readme : "",
     github,
     configRules: rules.data,

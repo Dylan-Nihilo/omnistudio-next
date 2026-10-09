@@ -44,9 +44,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { IconVideo, IconUpload, IconTransfer } from "@tabler/icons-vue";
-import { uiButton, uiIconButton, uiProgress, useUiFeedback } from "@toonflow/ui";
-import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import videoPlayer from "@toonflow/nodes-scaffold/videoPlayer";
+import { uiButton, uiIconButton, uiProgress, useUiFeedback } from "@omnistudio-next/ui";
+import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import videoPlayer from "@omnistudio-next/nodes-scaffold/videoPlayer";
 
 const feedback = useUiFeedback();
 

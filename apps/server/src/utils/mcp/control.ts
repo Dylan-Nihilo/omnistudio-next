@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import conf from "@/utils/conf";
+import { requireAccount } from "@/utils/accountContext";
+import { getServiceSession } from "@/services/authService";
 
 export const controlStateSchema = z.object({
   directory: z.string().max(4096).nullable(),
@@ -16,7 +18,7 @@ export const controlStateSchema = z.object({
 
 type ControlState = z.infer<typeof controlStateSchema>;
 type ControlResult = { result?: unknown; error?: string };
-type Connection = { id: string; state: ControlState; revision: number; response: Response; pending?: { id: string; finish(result: ControlResult): void } };
+type Connection = { id: string; userId: string; state: ControlState; revision: number; response: Response; pending?: { id: string; finish(result: ControlResult): void } };
 // ACT: 控制连接只属于当前单进程，重连重新注册，不持久化运行中的命令。
 const connections = new Map<string, Connection>();
 
@@ -30,13 +32,13 @@ export function getMcpSettings() {
 }
 
 function allowedHost(req: Request) {
-  const local = process.env.toonflowDesktop === "1" || (process.env.NODE_ENV === "dev" && ["win32", "darwin"].includes(process.platform));
+  const local = process.env.omniStudioNextDesktop === "1" || (process.env.NODE_ENV === "dev" && ["win32", "darwin"].includes(process.platform));
   return !local || ["localhost", "127.0.0.1", "[::1]"].includes(req.hostname);
 }
 
 export function getAppOrigin(req: Request) {
   const source = req.get("origin") ?? req.get("referer");
-  if (!source || !allowedHost(req)) throw Object.assign(new Error("只允许 Toonflow 页面访问控制连接"), { status: 403 });
+  if (!source || !allowedHost(req)) throw Object.assign(new Error("只允许 omnistudio-next 页面访问控制连接"), { status: 403 });
   let url: URL;
   try { url = new URL(source); }
   catch { throw Object.assign(new Error("页面来源无效"), { status: 403 }); }
@@ -57,32 +59,37 @@ export function authorizeMcp(req: Request) {
 
 export function assertAppRequest(req: Request) {
   getAppOrigin(req);
-  if (req.get("x-toonflow-workspace") !== "1") throw Object.assign(new Error("只允许 Toonflow 页面访问控制连接"), { status: 403 });
+  if ((req.get("x-omnistudio-next-workspace") ?? req.get("x-toonflow-workspace")) !== "1") throw Object.assign(new Error("只允许 omnistudio-next 页面访问控制连接"), { status: 403 });
 }
 
-export function assertControlRequest(req: Request) {
+export async function assertControlRequest(req: Request) {
   assertAppRequest(req);
-  if (!authorizeMcp(req)) throw Object.assign(new Error("MCP 未开启或访问凭证无效"), { status: 403 });
+  const service = await getServiceSession(req, "mcp");
+  if (!authorizeMcp(req) || !service || service.user.id !== req.authContext?.user.id) throw Object.assign(new Error("MCP 未开启或访问凭证无效"), { status: 403 });
+  return service;
 }
 
 export function listConnections() {
-  return [...connections.values()].map(({ id, state }) => ({ id, state }));
+  const account = requireAccount();
+  return [...connections.values()].filter(item => item.userId === account.userId || account.isRoot).map(({ id, state }) => ({ id, state }));
 }
 
 export function getConnection(id?: string, directory?: string) {
+  const account = requireAccount();
   if (id) {
     const connection = connections.get(id);
-    if (!connection) throw new Error("Toonflow 页面已断开，请重新调用 getAppState");
+    if (!connection || (connection.userId !== account.userId && !account.isRoot)) throw Object.assign(new Error("控制连接不存在或已断开"), { status: 404 });
     return connection;
   }
-  const matches = [...connections.values()].filter(item => !directory || item.state.directory === directory);
-  if (matches.length > 1) throw new Error("存在多个 Toonflow 页面，请用 target.connectionId 指定操作目标");
+  const matches = [...connections.values()].filter(item => (item.userId === account.userId || account.isRoot) && (!directory || item.state.directory === directory));
+  if (matches.length > 1) throw new Error("存在多个 omnistudio-next 页面，请用 target.connectionId 指定操作目标");
   return matches[0];
 }
 
-export function connectControl(id: string, response: Response) {
+export function connectControl(id: string, response: Response, signal: AbortSignal) {
+  signal.throwIfAborted();
   if (connections.has(id)) throw Object.assign(new Error("控制连接已存在"), { status: 409 });
-  const connection: Connection = { id, response, revision: 0, state: { directory: null, canvasId: null, panel: "home", projectList: [], tools: [] } };
+  const connection: Connection = { id, userId: requireAccount().userId, response, revision: 0, state: { directory: null, canvasId: null, panel: "home", projectList: [], tools: [] } };
   response.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" });
   response.flushHeaders();
   connections.set(id, connection);
@@ -93,11 +100,14 @@ export function connectControl(id: string, response: Response) {
     clearInterval(heartbeat);
     response.off("close", close);
     socket?.off("close", close);
+    signal.removeEventListener("abort", abort);
     if (connections.get(id) === connection) connections.delete(id);
-    connection.pending?.finish({ error: "Toonflow 页面已断开，操作已取消" });
+    connection.pending?.finish({ error: "omnistudio-next 页面已断开，操作已取消" });
   };
+  const abort = () => { close(); response.end(); };
   response.once("close", close);
   socket?.once("close", close);
+  signal.addEventListener("abort", abort, { once: true });
 }
 
 export function updateControlState(id: string, revision: number, state: ControlState) {

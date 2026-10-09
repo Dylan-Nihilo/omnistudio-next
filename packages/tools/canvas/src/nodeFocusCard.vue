@@ -18,9 +18,9 @@
 
 <script setup lang="ts">
 import { computed, inject, nextTick } from "vue";
-import { useUiFeedback } from "@toonflow/ui";
+import { useUiFeedback } from "@omnistudio-next/ui";
 import { IconFocus2 } from "@tabler/icons-vue";
-import type { ToolCall, CanvasContext } from "@toonflow/tools-scaffold/runtime";
+import type { ToolCall, CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
 
 const feedback = useUiFeedback();
 const props = defineProps<{ tool: ToolCall; directory?: string }>();

@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/desktop",
+  "name": "@omnistudio-next/desktop",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "bun scripts/build.ts typecheck"
   },
   "dependencies": {
-    "@toonflow/server": "workspace:*",
-    "@toonflow/startup": "workspace:*"
+    "@omnistudio-next/server": "workspace:*",
+    "@omnistudio-next/startup": "workspace:*"
   },
   "devDependencies": {
     "electrobun": "2.0.1"

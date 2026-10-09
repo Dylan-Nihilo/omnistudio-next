@@ -23,9 +23,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { uiAlert, uiButton, uiCard, uiTag } from "@toonflow/ui";
+import { uiAlert, uiButton, uiCard, uiTag } from "@omnistudio-next/ui";
 import { IconRefresh } from "@tabler/icons-vue";
-import { modelIcon } from "@toonflow/model-icons";
+import { modelIcon } from "@omnistudio-next/model-icons";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 
 defineProps<{ visible?: boolean }>();

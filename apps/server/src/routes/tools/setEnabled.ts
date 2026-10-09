@@ -9,7 +9,7 @@ import { error, success } from "@/lib/responseFormat";
 const router = Router();
 
 export default router.put("/", validateFields({ name: u.plugins.toolNameSchema, enabled: z.boolean() }), async (req, res) => {
-  if (!u.workspace.isLocalWorkspaceRequest(req)) return res.status(403).json(error("请在桌面端或服务器本机管理工具", null, 403));
+  if (req.authContext?.user.isRoot !== true) return res.status(403).json(error("请在桌面端或服务器本机管理工具", null, 403));
   const { name, enabled } = req.body as { name: string; enabled: boolean };
   const release = u.workspaceFile.lockWorkspaceFiles([resolve(u.plugins.toolsDirectory, `${name}.tool.js`)]);
   try {
@@ -22,7 +22,7 @@ export default router.put("/", validateFields({ name: u.plugins.toolNameSchema, 
     if (marker && !marker.isFile()) return res.status(409).json(error("工具状态文件无效", null, 409));
     if (enabled) {
       const { plugin, metadata } = await u.plugins.loadTool(name);
-      u.plugins.validateToolConfig(plugin, u.plugins.getToolConfig(metadata));
+      u.plugins.validateToolConfig(plugin, await u.plugins.getToolConfig(metadata));
       if (marker) await unlink(markerPath);
     } else if (!marker) {
       await writeFile(markerPath, "", { flag: "wx" });

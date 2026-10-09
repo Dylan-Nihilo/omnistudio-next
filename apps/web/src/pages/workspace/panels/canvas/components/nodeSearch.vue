@@ -38,7 +38,7 @@
 import { computed, nextTick, ref, useId, watch } from "vue";
 import { useVueFlow } from "@vue-flow/core";
 import { IconSearch } from "@tabler/icons-vue";
-import { uiDialog, uiInput } from "@toonflow/ui";
+import { uiDialog, uiInput } from "@omnistudio-next/ui";
 
 const props = defineProps<{ disabled?: boolean }>();
 const flow = useVueFlow();

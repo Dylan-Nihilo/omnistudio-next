@@ -4,8 +4,8 @@ import conf from "@/utils/conf";
 import type { DesktopRuntime, updateSnapshot } from "@/types/desktop";
 
 const updateBaseUrls = {
-  official: "https://api.toonflow.net/web/version/desktopUpdates",
-  github: "https://github.com/HBAI-Ltd/Toonflow-app/releases/latest/download",
+  official: "https://github.com/Dylan-Nihilo/omnistudio-next/releases/latest/download",
+  github: "https://github.com/Dylan-Nihilo/omnistudio-next/releases/latest/download",
 };
 
 interface DesktopState {

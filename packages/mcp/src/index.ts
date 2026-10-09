@@ -18,6 +18,7 @@ export type McpTool = {
 export type McpOptions = {
   getTools(): Promise<McpTool[]>;
   authorize(request: Request): boolean | Promise<boolean>;
+  subject(request: Request): string;
   resources?: {
     list(signal: AbortSignal): Promise<Resource[]>;
     read(uri: string, signal: AbortSignal): Promise<ReadResourceResult>;
@@ -43,7 +44,7 @@ function toToolResult(value: unknown): CallToolResult {
 export function createMcpRouter(options: McpOptions) {
   const createServer = () => {
     const resources = options.resources;
-    const server = new McpServer({ name: "toonflow", version: "0.0.0" }, {
+    const server = new McpServer({ name: "omnistudio-next", version: "0.0.0" }, {
       capabilities: { tools: { listChanged: false }, ...(resources ? { resources: { subscribe: false, listChanged: false } } : {}) },
       instructions: "先调用 getAppState 获取连接和工作区；从 tools/list 读取当前工具参数。业务工具使用 {target: {connectionId, directory}, args: {...}}。画布与节点必须使用实时工具，禁止直接修改画布 JSON。"
         + (resources ? "通过 resources/list 发现全局技能和附属资料，再以返回的 URI 调用 resources/read 读取最新内容。" : ""),
@@ -79,21 +80,23 @@ export function createMcpRouter(options: McpOptions) {
     return server;
   };
   // ACT: 使用支持取消通知的 Streamable HTTP 会话；单进程宿主不持久化 MCP 会话。
-  const sessions = new Map<string, NodeStreamableHTTPServerTransport>();
+  const sessions = new Map<string, { subject: string; transport: NodeStreamableHTTPServerTransport }>();
   const router = Router();
   router.use(async (request, response) => {
     try {
       if (!await options.authorize(request)) {
-        response.setHeader("WWW-Authenticate", 'Bearer realm="Toonflow"');
+        response.setHeader("WWW-Authenticate", 'Bearer realm="omnistudio-next"');
         response.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "MCP 未开启或访问凭证无效" } });
         return;
       }
       const sessionId = request.get("mcp-session-id");
-      let transport = sessionId ? sessions.get(sessionId) : undefined;
+      const subject = options.subject(request);
+      const binding = sessionId ? sessions.get(sessionId) : undefined;
+      let transport = binding?.subject === subject ? binding.transport : undefined;
       if (!sessionId && isInitializeRequest(request.body)) {
         transport = new NodeStreamableHTTPServerTransport({
           sessionIdGenerator: randomUUID,
-          onsessioninitialized: id => { sessions.set(id, transport!); },
+          onsessioninitialized: id => { sessions.set(id, { subject, transport: transport! }); },
         });
         transport.onclose = () => {
           if (transport?.sessionId) sessions.delete(transport.sessionId);
@@ -114,6 +117,6 @@ export function createMcpRouter(options: McpOptions) {
     }
   });
   return Object.assign(router, { close: async () => {
-    await Promise.all([...sessions.values()].map(transport => transport.close()));
+    await Promise.all([...sessions.values()].map(({ transport }) => transport.close()));
   } });
 }

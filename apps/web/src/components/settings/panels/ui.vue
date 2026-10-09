@@ -15,7 +15,7 @@
       <section class="settingSection" aria-labelledby="fontTitle"><header class="settingHeader"><h3 id="fontTitle"><icon-text-size :size="18" aria-hidden="true" />字体大小</h3><span class="settingValue">{{ fontScale }}%</span></header><p class="description">统一调整界面、聊天和节点中的文字大小。</p><uiSlider v-model="fontScale" :min="85" :max="125" :step="5" :marks="{ 85: '较小', 100: '默认', 125: '较大' }" aria-label="字体大小" @change="value => updateUiSettings({ fontScale: value })" /></section>
       <section class="settingSection" aria-labelledby="radiusTitle"><header class="settingHeader"><h3 id="radiusTitle"><icon-border-radius :size="18" aria-hidden="true" />界面圆角</h3><span class="settingValue">{{ radius }} px</span></header><uiSlider v-model="radius" :min="0" :max="16" :step="2" :marks="{ 0: '直角', 8: '默认', 16: '圆润' }" aria-label="界面圆角" @change="value => updateUiSettings({ radius: value })" /></section>
     </div>
-    <div class="appearancePreview"><img :src="logoUrl" alt="OmniStudio" /><div class="previewText"><strong>每一个灵感，都值得被看见</strong><uiTag>预览</uiTag></div></div>
+    <div class="appearancePreview"><img :src="logoUrl" alt="omnistudio-next" /><div class="previewText"><strong>每一个灵感，都值得被看见</strong><uiTag>预览</uiTag></div></div>
     <footer class="settingsFooter"><uiButton variant="secondary" :icon="IconRestore" @click="updateUiSettings({ ...defaultUiSettings, startupAnimation: uiSettings.startupAnimation })">恢复界面默认设置</uiButton></footer>
   </div>
 </template>
@@ -32,8 +32,8 @@ import {
   IconCheck,
   IconRestore,
 } from "@tabler/icons-vue";
-import { uiButton, uiRadio, uiColorPicker, uiSlider, uiTag } from "@toonflow/ui";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import { uiButton, uiRadio, uiColorPicker, uiSlider, uiTag } from "@omnistudio-next/ui";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import { defaultUiSettings, uiSettings, updateUiSettings } from "@/stores/settings";
 
 const themeGroupName = "appearanceTheme-" + useId();

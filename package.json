@@ -1,16 +1,15 @@
 {
-  "name": "toonflow",
-  "description": "Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。",
-  "author": "HBAI-Ltd <ltlctools@outlook.com>",
+  "name": "omnistudio-next",
+  "description": "omnistudio-next 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。",
+  "author": "Dylan-Nihilo",
   "license": "MIT",
-  "homepage": "https://github.com/HBAI-Ltd/Toonflow-app#readme",
+  "homepage": "https://github.com/Dylan-Nihilo/omnistudio-next#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HBAI-Ltd/Toonflow-app.git"
+    "url": "git+https://github.com/Dylan-Nihilo/omnistudio-next.git"
   },
   "bugs": {
-    "url": "https://github.com/HBAI-Ltd/Toonflow-app/issues",
-    "email": "ltlctools@outlook.com"
+    "url": "https://github.com/Dylan-Nihilo/omnistudio-next/issues"
   },
   "type": "module",
   "packageManager": "bun@1.3.14",
@@ -25,24 +24,24 @@
     "packages/teams/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '@toonflow/web' --filter '@toonflow/server' dev",
-    "dev:web": "bun run --filter '@toonflow/web' dev",
-    "dev:server": "bun run --filter '@toonflow/server' dev",
-    "dev:desktop": "bun run --filter '@toonflow/desktop' dev",
+    "dev": "bun run --filter '@omnistudio-next/web' --filter '@omnistudio-next/server' dev",
+    "dev:web": "bun run --filter '@omnistudio-next/web' dev",
+    "dev:server": "bun run --filter '@omnistudio-next/server' dev",
+    "dev:desktop": "bun run --filter '@omnistudio-next/desktop' dev",
     "dev:plugins": "NODE_ENV=dev bun run --filter './packages/tools/*' --filter './packages/nodes/*' build",
-    "dev:updateServer": "bun run --filter '@toonflow/updateServer' dev",
-    "start:updateServer": "bun run --filter '@toonflow/updateServer' start",
+    "dev:updateServer": "bun run --filter '@omnistudio-next/updateServer' dev",
+    "start:updateServer": "bun run --filter '@omnistudio-next/updateServer' start",
     "publish:update": "bun run apps/updateServer/scripts/publish.ts",
     "start:server": "bun run --cwd apps/server start",
     "build:server": "bun apps/server/scripts/buildStandalone.ts",
-    "build": "bun run build:ui && bun run build:tools && bun run --filter '@toonflow/web' --filter '@toonflow/server' build",
+    "build": "bun run build:ui && bun run build:tools && bun run --filter '@omnistudio-next/web' --filter '@omnistudio-next/server' build",
     "build:nodes": "bun -e \"import { rmSync } from 'node:fs'; import { resolve } from 'node:path'; rmSync(resolve('build/nodes'), { recursive: true, force: true });\" && NODE_ENV=production bun run --filter './packages/nodes/*' build",
-    "build:desktop": "bun run --filter '@toonflow/desktop' build",
-    "build:mcp": "bun run --filter '@toonflow/mcp' build",
+    "build:desktop": "bun run --filter '@omnistudio-next/desktop' build",
+    "build:mcp": "bun run --filter '@omnistudio-next/mcp' build",
     "build:teams": "NODE_ENV=production bun run --filter './packages/teams/*' build",
-    "package:desktop": "bun run --filter '@toonflow/desktop' package",
+    "package:desktop": "bun run --filter '@omnistudio-next/desktop' package",
     "release:desktop": "bun run apps/desktop/scripts/release.ts",
-    "typecheck": "bun run --filter '@toonflow/*' typecheck",
+    "typecheck": "bun run --filter '@omnistudio-next/*' typecheck",
     "build:tools": "bun -e \"import { rmSync } from 'node:fs'; import { resolve } from 'node:path'; rmSync(resolve('build/tools'), { recursive: true, force: true });\" && NODE_ENV=production bun run --filter './packages/tools/*' build",
     "build:ui": "bun run --cwd packages/ui build"
   },

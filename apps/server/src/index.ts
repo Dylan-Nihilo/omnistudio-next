@@ -2,11 +2,12 @@ import { resolve } from "node:path";
 import { createApp } from "./app";
 
 const startTime = Date.now();
-const realPort = 3000;
+const realPort = Number(process.env.PORT ?? 3000);
+if (!Number.isInteger(realPort) || realPort < 1 || realPort > 65535) throw new Error("PORT 必须为 1 到 65535 的整数");
 // 源码位于 apps/server/src，生产构建位于 build/server，均从文件位置定位根目录。
 const fromSource = import.meta.path.endsWith(".ts");
 const appDirectory = resolve(import.meta.dirname, fromSource ? "../../.." : "../..");
-const dataDirectory = process.env.TOONFLOW_DATA_DIR ?? resolve(appDirectory, "data");
+const dataDirectory = process.env.OMNISTUDIO_NEXT_DATA_DIR ?? process.env.TOONFLOW_DATA_DIR ?? resolve(appDirectory, "data");
 const app = await createApp({
   webRoot: resolve(appDirectory, "build/web"),
   dataDirectory,
@@ -18,7 +19,7 @@ const app = await createApp({
   skillsRoot: resolve(appDirectory, fromSource ? "packages/skills" : "build/skills"),
 });
 const { initializeMcpRuntime } = await import("./utils/mcp/runtime");
-app.listen(realPort, async () => {
+app.listen(realPort, process.env.NODE_ENV === "dev" ? "127.0.0.1" : "0.0.0.0", async () => {
   await initializeMcpRuntime(app, `http://127.0.0.1:${realPort}`, resolve(appDirectory, fromSource ? "packages/mcp/src/stdio.ts" : "build/mcp/stdio.js"));
   console.log(`[服务启动成功]: http://localhost:${realPort}`);
   console.log(`[启动耗时]: ${(Date.now() - startTime).toFixed(2)}ms`);

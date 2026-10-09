@@ -20,9 +20,10 @@
 <script setup lang="ts">
 import axios from "axios";
 import { onBeforeUnmount, ref } from "vue";
-import { uiButton, uiIconButton, uiDialog, uiAlert, uiLoading, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@toonflow/ui";
+import { uiButton, uiIconButton, uiDialog, uiAlert, uiLoading, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@omnistudio-next/ui";
 import { IconFolder, IconFolderPlus, IconFile, IconChevronDown, IconArrowLeft } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
+import { useAuthStore } from "@/stores/auth";
 
 type WorkspaceEntry = { name: string; path: string; type: "file" | "directory" };
 type DirectoryListing = {
@@ -33,6 +34,7 @@ type DirectoryListing = {
 };
 
 const feedback = useUiFeedback();
+const auth = useAuthStore();
 const directoryColumns: UiColumn[] = [{ key: "name", label: "名称" }, { key: "actions", label: "操作", width: 164, align: "right" }];
 const selectedDirectory = defineModel<string>({ default: "" });
 const props = defineProps<{ disabled?: boolean; hideTrigger?: boolean }>();
@@ -51,12 +53,12 @@ async function chooseDirectory(): Promise<string | null> {
   if (selecting.value || loading.value || props.disabled) return null;
   selecting.value = true;
   try {
-    if (isDesktop) {
-      const { data } = await axios.post<{ data: { directory: string | null } }>("/api/desktop/selectDirectory", null, { headers: { "x-toonflow-desktop": "1" } });
+    if (isDesktop && auth.isRoot) {
+      const { data } = await axios.post<{ data: { directory: string | null } }>("/api/desktop/selectDirectory", null, { headers: { "x-omnistudio-next-desktop": "1" } });
       if (data.data.directory) selectedDirectory.value = data.data.directory;
       return data.data.directory;
     }
-    const { data } = await axios.post<{ code: number; data: { native: boolean; directory: string | null } }>("/api/workspaces/selectDirectory", null, { headers: { "x-toonflow-workspace": "1" } });
+    const { data } = await axios.post<{ code: number; data: { native: boolean; directory: string | null } }>("/api/workspaces/selectDirectory", null, { headers: { "x-omnistudio-next-workspace": "1" } });
     if (data.data.native) {
       if (data.data.directory) selectedDirectory.value = data.data.directory;
       return data.data.directory;

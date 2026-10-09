@@ -1,5 +1,5 @@
 <template>
-  <div class="uiFormField" :data-ui-field="prop" @change.capture="validate('change')" @input.capture="validate('input')" @focusout.capture="handleBlur">
+  <div class="uiFormField" :data-ui-field="prop" @change="validate('change')" @input="validate('input')" @focusout.capture="handleBlur">
     <uiField :id="id" :label="label" :error="message" :help="help" :required="isRequired"><template #default="slotProps"><slot v-bind="slotProps" :disabled="context?.disabled.value ?? false" /></template></uiField>
   </div>
 </template>

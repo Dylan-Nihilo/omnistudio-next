@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { uiImage, uiImageViewer, uiIconButton } from "@toonflow/ui";
+import { uiImage, uiImageViewer, uiIconButton } from "@omnistudio-next/ui";
 import { IconX, IconFileText, IconPhoto, IconVideo, IconMusic, IconPlayerPlay } from "@tabler/icons-vue";
 import { useNodeFiles } from "../workspaceFiles";
 import type { NodeInputValue } from "../values";

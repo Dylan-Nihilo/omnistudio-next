@@ -2,7 +2,7 @@
   <uiThemeProvider :mode="mode" :accent="accent" :fontScale="fontScale" :radius="radius" :primaryColor="primaryColor" class="previewRoot">
     <uiFeedbackProvider>
       <main class="previewPage">
-        <header class="previewHeader"><div class="brand"><img :src="logo" alt="OmniStudio" class="brandLogo" /><h1>组件库</h1></div>
+        <header class="previewHeader"><div class="brand"><img :src="logo" alt="omnistudio-next" class="brandLogo" /><h1>组件库</h1></div>
           <div class="themeActions"><uiButton variant="ghost" @click="mode = mode === 'dark' ? 'light' : 'dark'">{{ mode === 'dark' ? '浅色' : '深色' }}</uiButton><uiButton variant="secondary" @click="switchAccent">{{ accent === 'orange' ? '绿色主题' : '橙色主题' }}</uiButton><uiButton variant="ghost" @click="fontScale = fontScale === 100 ? 125 : 100">{{ fontScale }}%</uiButton><uiColorPicker :modelValue="primaryColor || (accent === 'orange' ? '#ff6b35' : '#c3f15a')" aria-label="强调色" @update:modelValue="value => primaryColor = value" /></div>
         </header>
         <uiTabs v-model="active" :options="sections" label="组件分类">
@@ -15,13 +15,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { uiThemeProvider, uiFeedbackProvider, uiButton, uiColorPicker, uiTabs, type UiAccent, type UiMode, type UiValue, type UiOption } from "@toonflow/ui";
+import { uiThemeProvider, uiFeedbackProvider, uiButton, uiColorPicker, uiTabs, type UiAccent, type UiMode, type UiValue, type UiOption } from "@omnistudio-next/ui";
 import basicShowcase from "./components/basicShowcase.vue";
 import formShowcase from "./components/formShowcase.vue";
 import overlayShowcase from "./components/overlayShowcase.vue";
 import dataShowcase from "./components/dataShowcase.vue";
 import mediaShowcase from "./components/mediaShowcase.vue";
-import logo from "@toonflow/assets/omniStudioLogo.svg";
+import logo from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 const mode = ref<UiMode>("dark"), accent = ref<UiAccent>("orange"), active = ref<UiValue>("basic");
 const fontScale = ref(100), radius = ref(8), primaryColor = ref<string>();
 const sections: UiOption[] = [{ value: "basic", label: "基础控件" }, { value: "form", label: "选择与表单" }, { value: "overlay", label: "弹层与反馈" }, { value: "data", label: "数据与导航" }, { value: "media", label: "媒体与引导" }];

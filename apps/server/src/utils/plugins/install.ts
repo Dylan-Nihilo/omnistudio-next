@@ -5,6 +5,7 @@ import { crc32, inflateRawSync } from "node:zlib";
 import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import type { PluginInstallType } from "@/types/desktop";
 import conf from "@/utils/conf";
+import { requireRootAccount } from "@/utils/accountContext";
 import { parseTool, toolsDirectory } from "@/utils/plugins/tools";
 import { isSafeSegment } from "@/utils/skills/files";
 import { isWithin, lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
@@ -106,6 +107,7 @@ export function decodeText(bytes: Uint8Array) {
 }
 
 export async function installNode(fileName: string, source: string, force = false) {
+  requireRootAccount();
   if (!/^[a-z][a-zA-Z0-9]*\.umd\.js$/.test(fileName)) invalid("文件名需为小驼峰格式，例如 imageNode.umd.js");
   if (!source.trim()) invalid("节点文件内容为空，请重新上传节点脚本");
   if (Buffer.byteLength(source, "utf8") > maxBytes) invalid("节点文件不能超过 20 MB", 413);
@@ -114,7 +116,7 @@ export async function installNode(fileName: string, source: string, force = fals
     invalid("节点文件实际是 HTML 网页，不是节点脚本，请重新上传构建生成的 .umd.js 文件");
   }
   // ACT: 仅静态检查脚手架约定和语法，确认安装后由画布加载执行。
-  if (!source.includes("toonflowNodeHost")) invalid("文件不是兼容的 Toonflow 节点，请使用节点脚手架构建生成的 .umd.js 文件");
+  if (!source.includes("toonflowNodeHost")) invalid("文件不是兼容的 omnistudio-next 节点，请使用节点脚手架构建生成的 .umd.js 文件");
   if (!source.includes(`toonflowNodes.${name}`)) invalid(`文件名与节点导出名不一致：${fileName} 需要导出 toonflowNodes.${name}，请按实际节点名修改文件名`);
   try { new Bun.Transpiler({ loader: "js" }).scan(source); }
   catch { invalid("节点脚本语法无效，请重新构建并上传完整的 .umd.js 文件"); }
@@ -133,6 +135,7 @@ export async function installNode(fileName: string, source: string, force = fals
 }
 
 export async function installTool(fileName: string, source: string, force = false) {
+  requireRootAccount();
   if (!/^[a-z][a-zA-Z0-9]*\.tool\.js$/.test(fileName)) invalid("工具文件名无效，请选择小驼峰命名的 .tool.js 文件");
   if (!source.trim()) invalid("工具文件内容为空，请重新上传工具脚本");
   if (Buffer.byteLength(source, "utf8") > maxBytes) invalid("工具文件不能超过 20 MB", 413);
@@ -310,6 +313,7 @@ async function skillArchive(bytes: Uint8Array) {
 }
 
 export async function installSkill(fileName: string, bytes: Uint8Array, force = false) {
+  requireRootAccount();
   if (!fileName || fileName.length > 128 || /[\\/]/.test(fileName) || !/\.(md|zip|tar|tar\.gz|tgz)$/i.test(fileName)) invalid("请选择 .zip、.md、.tar、.tar.gz 或 .tgz 技能文件");
   skillPath(fileName);
   if (!bytes.byteLength) invalid("技能文件不能为空");
@@ -389,6 +393,7 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
 }
 
 export async function installRemotePlugin(type: PluginInstallType, url: string, fileName?: string, force = false) {
+  requireRootAccount();
   const address = remoteAddress(url);
   if (fileName === undefined) {
     try { fileName = decodeURIComponent(address.pathname.split("/").at(-1) ?? ""); }

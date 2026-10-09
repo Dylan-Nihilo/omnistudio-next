@@ -1,6 +1,6 @@
 import { Router } from "express";
 import u from "@/utils";
-import skill from "@toonflow/mcp/skill" with { type: "text" };
+import skill from "@omnistudio-next/mcp/skill" with { type: "text" };
 
 export default Router().get("/", (req, res) => {
   u.mcpControl.assertAppRequest(req);
