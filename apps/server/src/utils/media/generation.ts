@@ -207,6 +207,7 @@ export async function generateMedia(
     await settleGeneration(reserved.job.id, true, { directory, files: result });
     return result;
   } catch (err) {
+    console.error("[generateMedia Error]", err);
     // ACT: 只回滚本次创建的文件，保留目录中已有的节点资源。
     if (!outputCompleted) await Promise.all(written.map(path => unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; })));
     await settleGeneration(reserved.job.id, false, { error: err instanceof Error ? err.message : "媒体生成失败" });

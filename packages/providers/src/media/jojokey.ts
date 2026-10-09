@@ -42,6 +42,12 @@ function fileName(mimeType: string, index: number) {
   return `reference-${index}.${mimeType.split("/")[1] || "bin"}`;
 }
 
+function randomKey() {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : "jojo-" + Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
+}
+
 async function upload(context: ProviderContext<{ apiKey: string; baseUrl: string }>, input: MediaInput, modality: "image" | "video" | "audio", line: JojoRoute["line"], index: number) {
   if (input.type === "url") return input.url;
   const mimeType = input.mimeType || `${modality}/octet-stream`;
@@ -50,9 +56,12 @@ async function upload(context: ProviderContext<{ apiKey: string; baseUrl: string
   if (line === "cn") form.append("asset_name", fileName(mimeType, index));
   form.append("file", new File([inputBytes(input) as unknown as BlobPart], fileName(mimeType, index), { type: mimeType }));
   const response = await context.tool.fetch(`${context.config.baseUrl.replace(/\/$/, "")}${line === "cn" ? "/video-cn/assets" : "/uploads"}`, {
-    method: "POST", headers: { Authorization: `Bearer ${context.config.apiKey}` }, body: form, signal: context.signal,
+    method: "POST", headers: { Authorization: `Bearer ${context.config.apiKey}`, "Idempotency-Key": randomKey() }, body: form, signal: context.signal,
   });
-  if (!response.ok) throw new Error(`JojoKey 素材上传失败：HTTP ${response.status}`);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`JojoKey 素材上传失败（HTTP ${response.status}）：${errorText}`);
+  }
   const result = object(await response.json());
   const url = line === "cn" ? result.source_url : result.url;
   if (typeof url !== "string" || !url.startsWith("https://")) throw new Error("JojoKey 素材上传未返回 HTTPS 地址");
@@ -112,8 +121,16 @@ async function generateVideo(request: VideoRequest, context: ProviderContext<{ a
     if (request.generateAudio !== undefined) payload.generate_audio = request.generateAudio;
     if (route.line === "overseas") payload.metadata = { audit_image: true };
   }
-  const response = await context.tool.fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: context.signal });
-  if (!response.ok) throw new Error(`JojoKey 视频提交失败：HTTP ${response.status}`);
+  const response = await context.tool.fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": randomKey() },
+    body: JSON.stringify(payload),
+    signal: context.signal,
+  });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`JojoKey 视频提交失败（HTTP ${response.status}）：${errorText}`);
+  }
   const result = object(await response.json());
   const taskId = result.id;
   if (typeof taskId !== "string" || !taskId) throw new Error("JojoKey 提交未返回任务 ID");

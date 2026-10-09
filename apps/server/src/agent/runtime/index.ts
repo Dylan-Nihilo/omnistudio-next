@@ -214,22 +214,41 @@ export async function run(
           if (part.type === "text") mediaMessages.set(part.text, { id: entry.id, references });
         }
       }
-      if (!mediaMessages.size) return body;
       const field = provider.protocol === "openai-responses" ? "input" : "messages";
       const textType = provider.protocol === "openai-responses" ? "input_text" : "text";
-      const messages = body[field] as { role?: string; content?: string | { type: string; text?: string }[] }[];
-      return { ...body, [field]: await Promise.all(messages.map(async message => {
-        if (message.role !== "user") return message;
-        const parts = typeof message.content === "string" ? [{ type: textType, text: message.content }] : message.content;
-        if (!parts?.some(part => part.type === textType && mediaMessages.has(part.text ?? ""))) return message;
-        const content = await Promise.all(parts.map(async part => {
-          const source = part.type === textType && part.text ? mediaMessages.get(part.text) : undefined;
-          if (!source) return [part];
-          if (!mediaContents.has(source.id)) mediaContents.set(source.id, readAiReferences(cwd, source.references, signal));
-          return referenceContent(provider.protocol, part.text!, await mediaContents.get(source.id)!);
-        }));
-        return { ...message, content: content.flat() };
-      })) };
+      let updatedBody = body;
+      if (mediaMessages.size) {
+        const messages = body[field] as { role?: string; content?: string | { type: string; text?: string }[] }[];
+        updatedBody = { ...body, [field]: await Promise.all(messages.map(async message => {
+          if (message.role !== "user") return message;
+          const parts = typeof message.content === "string" ? [{ type: textType, text: message.content }] : message.content;
+          if (!parts?.some(part => part.type === textType && mediaMessages.has(part.text ?? ""))) return message;
+          const content = await Promise.all(parts.map(async part => {
+            const source = part.type === textType && part.text ? mediaMessages.get(part.text) : undefined;
+            if (!source) return [part];
+            if (!mediaContents.has(source.id)) mediaContents.set(source.id, readAiReferences(cwd, source.references, signal));
+            return referenceContent(provider.protocol, part.text!, await mediaContents.get(source.id)!);
+          }));
+          return { ...message, content: content.flat() };
+        })) };
+      }
+      // ACT: 历史旧图片随多轮交互累加会导致请求体膨胀至几十兆引发 502/超时；仅保留最新 2 张图片，更早的历史图片降级为紧凑占位。
+      const rawMessages = (updatedBody[field] as { role?: string; content?: unknown }[] | undefined) ?? [];
+      let keptImages = 0;
+      const prunedMessages = [...rawMessages].reverse().map(message => {
+        if (!Array.isArray(message.content)) return message;
+        const newContent = [...message.content].reverse().map(part => {
+          const isImage = part && typeof part === "object" && ("image_url" in part || (part as { type?: string }).type === "image" || (part as { type?: string }).type === "input_image");
+          if (!isImage) return part;
+          if (keptImages < 2) {
+            keptImages++;
+            return part;
+          }
+          return { type: textType, text: "[历史图片已略过以节省上下文]" };
+        }).reverse();
+        return { ...message, content: newContent };
+      }).reverse();
+      return { ...updatedBody, [field]: prunedMessages };
     };
 
     const resumeLeafId = history.getLeafId();

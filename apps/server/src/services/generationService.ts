@@ -41,7 +41,8 @@ export function createChargedStream(input: { providerId: string; modelId: string
       output.push({ type: "done", reason: message.stopReason, message });
       output.end(message);
     } catch (error) {
-      let message = signal?.aborted ? "模型请求已取消" : error instanceof Error && (error as { status?: number }).status ? error.message : "模型服务请求失败，请稍后重试";
+      console.error("[createChargedStream Error]", error);
+      let message = signal?.aborted ? "模型请求已取消" : error instanceof Error ? error.message : "模型服务请求失败，请稍后重试";
       if (jobId) {
         try { await settleGeneration(jobId, false, { error: message }); }
         catch (settlementError) { message += `；积分结算失败：${settlementError instanceof Error ? settlementError.message : "请联系管理员"}`; }

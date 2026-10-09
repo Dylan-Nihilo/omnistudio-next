@@ -114,7 +114,7 @@ export async function createApp({
     if (response.headersSent) return next(err);
     const code = (err as NodeJS.ErrnoException).code ?? (err.cause as NodeJS.ErrnoException | undefined)?.code;
     const status = err.status || ({ ENOENT: 404, ENOTDIR: 404, EEXIST: 409, ENOTEMPTY: 409, EACCES: 403, EPERM: 403, ER_DUP_ENTRY: 409 }[code ?? ""] ?? 500);
-    console.error("请求处理失败", { name: err.name, code, status });
+    console.error("请求处理失败", err);
     const message =
       {
         ENOENT: "找不到这个文件或文件夹，可能已被移动、删除，或者位置选错了。",
@@ -125,7 +125,7 @@ export async function createApp({
         EPERM: "系统不允许这次操作。文件可能正在被其他程序使用，请关闭后重试。",
         EISDIR: "你选中的是文件夹，但这里需要的是文件。请重新选择具体文件。",
         ER_DUP_ENTRY: "这个记录已存在，请刷新后重试。",
-      }[code ?? ""] ?? (status === 413 ? "文件或请求内容过大，请缩小后重试。" : err.status ? err.message : "操作失败，请稍后重试。");
+      }[code ?? ""] ?? (status === 413 ? "文件或请求内容过大，请缩小后重试。" : err.message || "操作失败，请稍后重试。");
     response.status(status).json(error(message, code ? { code } : null, status));
   });
 
