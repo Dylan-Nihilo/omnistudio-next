@@ -39,7 +39,7 @@ const reasoningLabel = computed(() => reasoningOptions.find(item => item.value =
 watch(selectedModel, () => { reasoningEffort.value = ""; });
 void platformModels.load();
 watch(modelChoices, items => {
-  if (!selectedModel.value) selectedModel.value = items[0]?.value ?? "";
+  if (items.length && !items.some(item => item.value === selectedModel.value)) selectedModel.value = items[0]!.value;
 }, { immediate: true });
 watch(() => !props.active || props.disabled, close => { if (close) visible.value = false; });
 </script>
