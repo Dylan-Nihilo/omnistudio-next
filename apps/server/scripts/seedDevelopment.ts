@@ -44,13 +44,15 @@ if (seedWallet) {
   });
 }
 
-// 开发环境提供一套可直接验证登录、模型目录和积分流程的目录。密钥只从服务端环境变量读取，绝不写入数据库。
+// 开发环境提供一套与旧 OmniStudio 目录一致的可直接验证目录。密钥只从服务端环境变量读取，绝不写入数据库。
 const providerConfigs = [
+  { providerId: "kaizoText", apiUrl: "https://www.kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "OPENAI_API_KEY", config: { baseUrl: "https://www.kaizo.top/v1" } },
+  { providerId: "kaizoImage", apiUrl: "https://www.kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "OPENAI_IMAGE_API_KEY", config: { baseUrl: "https://www.kaizo.top/v1" } },
+  { providerId: "jojokey", apiUrl: "https://video.jojokey.com/v1", protocol: "openai-completions" as const, secretRef: "JOJOKEY_API_KEY", config: { baseUrl: "https://video.jojokey.com/v1" } },
   { providerId: "dashscope", apiUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", protocol: "openai-completions" as const, secretRef: "DASHSCOPE_API_KEY", config: {} },
-  { providerId: "deepSeek", apiUrl: "https://api.deepseek.com", protocol: "openai-completions" as const, secretRef: "DEEPSEEK_API_KEY", config: {} },
-  { providerId: "apiMart", apiUrl: "https://api.apib.ai/v1", protocol: "openai-completions" as const, secretRef: "APIMART_API_KEY", config: { isOverseas: "1" } },
-  { providerId: "meta", apiUrl: "https://metaso.cn/api/minimax", protocol: "openai-completions" as const, secretRef: "METASO_API_KEY", config: { baseUrl: "https://metaso.cn/api/minimax" } },
 ];
+await database.update(platformProviderConfigs).set({ enabled: 0, updatedAt: now });
+await database.update(platformModels).set({ enabled: 0, updatedAt: now });
 for (const provider of providerConfigs) {
   await database.insert(platformProviderConfigs).values({
     id: randomUUID(), providerId: provider.providerId, enabled: 1,
@@ -60,21 +62,15 @@ for (const provider of providerConfigs) {
 }
 
 const models: Array<{ providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video"; apiModelId?: string; capabilities?: Record<string, boolean>; sortOrder: number }> = [
-  { providerId: "dashscope", modelId: "qwen-plus", label: "通义千问 Plus", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 10 },
-  { providerId: "dashscope", modelId: "qwen-turbo", label: "通义千问 Turbo", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 11 },
-  { providerId: "deepSeek", modelId: "deepseek-chat", label: "DeepSeek Chat", mediaType: "text", capabilities: { reasoning: true, tools: true }, sortOrder: 20 },
-  { providerId: "apiMart", modelId: "seedance-2.5", label: "Seedance 2.5", mediaType: "video", sortOrder: 100 },
-  { providerId: "apiMart", modelId: "seedance-2.0", label: "Seedance 2.0", mediaType: "video", sortOrder: 101 },
-  { providerId: "apiMart", modelId: "seedance-2.0-fast", label: "Seedance 2.0 Fast", mediaType: "video", sortOrder: 102 },
-  { providerId: "apiMart", modelId: "seedance-2.0-mini", label: "Seedance 2.0 Mini", mediaType: "video", sortOrder: 103 },
-  { providerId: "apiMart", modelId: "wan3.0-video", label: "Wan 3.0", mediaType: "video", sortOrder: 110 },
-  { providerId: "apiMart", modelId: "MiniMax-H3", label: "MiniMax H3", mediaType: "video", sortOrder: 120 },
-  { providerId: "apiMart", modelId: "seedream-5-0-lite", label: "Seedream 5.0 Lite", mediaType: "image", sortOrder: 200 },
-  { providerId: "apiMart", modelId: "seedream-5-0-pro", label: "Seedream 5.0 Pro", mediaType: "image", sortOrder: 201 },
-  { providerId: "apiMart", modelId: "gpt-image-2", label: "GPT Image 2", mediaType: "image", sortOrder: 210 },
-  { providerId: "apiMart", modelId: "gemini-3-pro-image-preview", label: "Nano Banana Pro", mediaType: "image", sortOrder: 220 },
-  { providerId: "apiMart", modelId: "gemini-3.1-flash-image-preview", label: "Nano Banana 2", mediaType: "image", sortOrder: 221 },
-  { providerId: "meta", modelId: "MiniMax-H3", label: "MiniMax H3（秘塔）", mediaType: "video", sortOrder: 300 },
+  { providerId: "kaizoText", modelId: "text/deepseek-v4.1-flash", apiModelId: "DeepSeek-V4.1-Flash", label: "标准 · DeepSeek V4.1 Flash", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 10 },
+  { providerId: "kaizoText", modelId: "text/gpt-5.6-sol", apiModelId: "gpt-5.6-sol", label: "高级 · GPT 5.6 Sol", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 20 },
+  { providerId: "kaizoText", modelId: "text/claude-opus-5", apiModelId: "claude-opus-5", label: "极致 · Claude Opus 5", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 30 },
+  { providerId: "kaizoImage", modelId: "gpt-image-2", label: "GPT Image 2", mediaType: "image", sortOrder: 100 },
+  { providerId: "jojokey", modelId: "seedance-2.0-mini", label: "Seedance 2.0 标准", mediaType: "video", sortOrder: 200 },
+  { providerId: "jojokey", modelId: "seedance-2.0-fast", label: "Seedance 2.0 高级", mediaType: "video", sortOrder: 210 },
+  { providerId: "jojokey", modelId: "seedance-2.0", label: "Seedance 2.0 卓越", mediaType: "video", sortOrder: 220 },
+  { providerId: "jojokey", modelId: "seedance-2.5", label: "Seedance 2.5", mediaType: "video", sortOrder: 230 },
+  { providerId: "jojokey", modelId: "minimax-h3", label: "MiniMax H3", mediaType: "video", sortOrder: 240 },
 ];
 for (const model of models) {
   await database.insert(platformModels).values({ id: randomUUID(), ...model, enabled: 1, createdAt: now, updatedAt: now })
