@@ -9,7 +9,6 @@
       <nav class="secondaryNavigation">
         <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" @click="router.push('/account')">账户与积分</uiButton>
         <uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton class="navigationItem" variant="ghost" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</uiButton></uiBadge>
-        <uiButton class="navigationItem" variant="ghost" :icon="IconBrandGithub" tag="a" href="https://github.com/HBAI-Ltd/Toonflow-app" target="_blank" rel="noopener noreferrer">GitHub</uiButton>
       </nav>
     </aside>
     <main class="homeContent">
@@ -74,7 +73,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, useUiFeedback } from "@toonflow/ui";
 import {
-  IconSettings, IconBrandGithub, IconUserCircle,
+  IconSettings, IconUserCircle,
   IconArrowUp, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
