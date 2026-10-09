@@ -1,11 +1,21 @@
 <template>
   <div class="about">
     <header class="brand"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="brandInfo"><h3>OmniStudio</h3><div class="brandMeta"><span>v{{ currentVersion }}</span><uiTag v-if="snapshot?.channel">{{ snapshot.channel }}</uiTag></div></div></header>
-    <section class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
-    <section class="resourceLinks" aria-label="项目">
-      <a class="resourceLink" :href="repositoryUrl" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库：HBAI-Ltd/Toonflow-app"><icon-brand-github :size="22" aria-hidden="true" /><span>GitHub 仓库</span><icon-external-link class="externalIcon" :size="16" aria-hidden="true" /></a>
+    <section class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect class="updateSourceSelect" inline :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
+    <section class="resourceSection" aria-label="项目">
+      <div class="resourceRow" aria-label="GitHub 仓库，暂未配置">
+        <icon-brand-github :size="22" aria-hidden="true" />
+        <span>GitHub 仓库</span>
+        <span class="resourceStatus">暂未配置</span>
+      </div>
     </section>
-    <section class="communitySection" aria-label="微信交流群"><header class="sectionHeader"><h3><icon-brand-wechat :size="20" aria-hidden="true" />微信交流群</h3><uiPopover title="微信扫码加入交流群" :width="236" placement="top"><template #reference="{ triggerAttrs }"><uiButton variant="secondary" size="small" :icon="IconQrcode" v-bind="triggerAttrs">展示二维码</uiButton></template><q-r-code :value="communityUrl" :size="168" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" aria-label="Toonflow 交流群二维码" /><p class="tips">Toonflow 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。</p></uiPopover></header></section>
+    <section class="communitySection" aria-label="微信交流群">
+      <div class="resourceRow" aria-label="微信交流群，暂未配置">
+        <icon-brand-wechat :size="22" aria-hidden="true" />
+        <span>微信交流群</span>
+        <span class="resourceStatus">暂未配置</span>
+      </div>
+    </section>
     <uiDialog v-model="resultVisible" title="版本更新" :width="520">
       <div class="updateResult" aria-live="polite" :aria-busy="working"><div class="resultHeader"><span class="resultIcon" :class="{ warning: !!updateError, success: !working && !updateError && !snapshot?.updateAvailable }"><icon-refresh v-if="working" class="loadingIcon" :size="24" aria-hidden="true" /><icon-alert-circle v-else-if="updateError" :size="24" aria-hidden="true" /><icon-arrow-up-circle v-else-if="snapshot?.updateAvailable" :size="24" aria-hidden="true" /><icon-circle-check v-else :size="24" aria-hidden="true" /></span><div class="resultCopy"><h3>{{ resultTitle }}</h3><p>{{ resultMessage }}</p></div></div>
         <div v-if="!checking && !updateError && snapshot?.updateAvailable" class="releaseInfo"><div class="versionComparison"><div class="versionItem"><span>当前版本</span><strong>v{{ currentVersion }}</strong></div><icon-arrow-right :size="18" aria-hidden="true" /><div class="versionItem latestVersion"><span>最新版本</span><strong>v{{ snapshot.latestVersion }}</strong></div></div><div v-if="snapshot.channel || snapshot.latestHash" class="releaseMeta"><uiTag v-if="snapshot.channel">{{ snapshot.channel }}</uiTag><code v-if="snapshot.latestHash" :title="snapshot.latestHash">{{ snapshot.latestHash }}</code></div></div>
@@ -19,17 +29,14 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
 import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@toonflow/ui";
-import { QRCode } from "tdesign-vue-next";
 import {
   IconRefresh,
   IconBrandGithub,
-  IconExternalLink,
   IconAlertCircle,
   IconArrowUpCircle,
   IconCircleCheck,
   IconArrowRight,
   IconBrandWechat,
-  IconQrcode,
 } from "@tabler/icons-vue";
 import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
 import type { updateSnapshot } from "@toonflow/server/desktop";
@@ -47,8 +54,6 @@ import {
 
 const feedback = useUiFeedback();
 const updateSources = computed(() => [{ value: "official", label: "官方源" }, { value: "github", label: "GitHub" }, ...(customUpdateUrl.value ? [{ value: "custom", label: "自定义源" }] : [])]);
-const repositoryUrl = "https://github.com/HBAI-Ltd/Toonflow-app";
-const communityUrl = "https://work.weixin.qq.com/u/vc36adcc89845edcbe?v=5.0.3.63936&bb=85b8d228e8";
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
 const currentVersion = computed(() => snapshot.value?.version || import.meta.env.appVersion);
 const action = ref<"check" | "download" | "apply" | null>(null);
@@ -174,14 +179,14 @@ async function runUpdate(nextAction: "check" | "download" | "apply") {
 
 <style lang="scss" scoped>
 .about {
-  display: flex; flex-direction: column; gap: 28px; min-width: 0;
-  .brand { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; .brandLogo { display: block; width: 196px; height: auto; max-width: 100%; border-radius: var(--uiRadiusControl); background: #101010; } .brandInfo { min-width: 0; h3 { margin: 0 0 8px; font-size: var(--uiFontHeading); font-weight: 700; } .brandMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--uiTextMuted); font-size: var(--uiFontControl); } } }
+  display: flex; flex-direction: column; gap: 0; min-width: 0;
+  .brand { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; padding-bottom: 28px; border-bottom: 1px solid var(--uiBorderDefault); .brandLogo { display: block; width: 196px; height: auto; max-width: 100%; border-radius: var(--uiRadiusControl); background: #101010; } .brandInfo { min-width: 0; h3 { margin: 0 0 8px; font-size: var(--uiFontHeading); font-weight: 700; } .brandMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--uiTextMuted); font-size: var(--uiFontControl); } } }
   .sectionHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; font-size: var(--uiFontLabel); font-weight: 600; } }
-  .updatePanel { padding-top: 24px; border-top: 1px solid var(--uiBorderDefault); .updateActions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; :deep(.uiPopover) { width: 150px; } } .buildInfo { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; color: var(--uiTextMuted); font-size: var(--uiFontControl); code { overflow-wrap: anywhere; } } }
-  .resourceLinks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; .resourceLink { display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 72px; padding: 20px; color: var(--uiTextBody); border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); text-decoration: none; font-size: var(--uiFontControl); background: var(--uiBackgroundSubtle); svg { flex-shrink: 0; } span { min-width: 0; overflow-wrap: anywhere; } .externalIcon { margin-left: auto; color: var(--uiTextMuted); } &:hover { border-color: var(--uiBorderControl); } } }
-  .communitySection, .sponsorPanel { padding-top: 24px; border-top: 1px solid var(--uiBorderDefault); }
+  .updatePanel { padding: 24px 0; border-bottom: 1px solid var(--uiBorderDefault); .updateActions { display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; min-width: max-content; :deep(.updateSourceSelect) { flex: 0 0 150px; width: 150px; } :deep(.uiBadge) { flex-shrink: 0; } } .buildInfo { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; color: var(--uiTextMuted); font-size: var(--uiFontControl); code { overflow-wrap: anywhere; } } }
+  .resourceSection, .communitySection, .sponsorPanel { padding: 24px 0; border-bottom: 1px solid var(--uiBorderDefault); }
+  .resourceRow { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 14px 16px; color: var(--uiTextBody); border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); font-size: var(--uiFontControl); svg { flex-shrink: 0; color: var(--uiTextMuted); } > span:not(.resourceStatus) { min-width: 0; overflow-wrap: anywhere; } .resourceStatus { margin-left: auto; color: var(--uiTextMuted); font-size: var(--uiFontControl); } }
   .sponsorPanel { .sponsorHint { color: var(--uiTextMuted); font-size: var(--uiFontControl); font-weight: 400; } .sponsorGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 12px; margin-top: 20px; :deep(.uiPopover), :deep(.popoverReference) { display: block; } .sponsorEntry { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); color: var(--uiTextBody); font: inherit; cursor: pointer; &:hover, &[aria-expanded="true"] { border-color: var(--uiBorderControl); background: var(--uiSurfaceHover); } .sponsorLogo { flex-shrink: 0; width: 32px; height: 32px; padding: 4px; background: #fff; border-radius: 4px; img { display: block; width: 100%; height: 100%; object-fit: contain; } } .sponsorName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--uiFontControl); } } } }
-  @media (max-width: 700px) { .resourceLinks { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 700px) { .resourceLinks { grid-template-columns: minmax(0, 1fr); } .updateActions { min-width: 0; } }
 }
 .tips { margin: 16px 0 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
 .sponsorReadme { max-height: min(360px, 50dvh); overflow: auto; overflow-wrap: anywhere; }

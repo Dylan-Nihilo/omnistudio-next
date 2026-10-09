@@ -1,6 +1,17 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { loadSettings } from "@/stores/settings";
+
+let workspacePrepared = false;
+
+async function prepareWorkspace() {
+  await loadSettings();
+  if (workspacePrepared) return;
+  useWorkspaceStore().$hydrate();
+  workspacePrepared = true;
+}
+
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
@@ -31,7 +42,7 @@ const router = createRouter({
       beforeEnter: async () => {
         const auth = useAuthStore();
         if (!auth.isAuthenticated && !(await auth.restoreSession())) return { path: "/auth/login", replace: true };
-        await loadSettings();
+        await prepareWorkspace();
         return true;
       },
       component: () => import("@/pages/home/index.vue"),
@@ -45,7 +56,7 @@ const router = createRouter({
       beforeEnter: async () => {
         const auth = useAuthStore();
         if (!auth.isAuthenticated && !(await auth.restoreSession())) return { path: "/auth/login", replace: true };
-        await loadSettings();
+        await prepareWorkspace();
         return true;
       },
       component: () => import("@/pages/workspace/index.vue"),

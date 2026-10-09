@@ -28,11 +28,34 @@ function mediaBytes(input: MediaInput) {
   throw new Error("Kaizo 图片编辑只支持本地参考图");
 }
 
+function getImageSize(request: ImageRequest) {
+  const imageSizes: Record<string, Record<string, string>> = {
+    "1K": { "1:1": "1024x1024", "16:9": "1280x720", "9:16": "720x1280" },
+    "2K": { "1:1": "2048x2048", "16:9": "2048x1152", "9:16": "1152x2048" },
+    "4K": { "1:1": "2880x2880", "16:9": "3840x2160", "9:16": "2160x3840" },
+  };
+  // ACT: 1K 长宽图满足最低像素数；4K 方图受 8,294,400 总像素上限约束。
+  const requestedSize = request.size?.trim().toUpperCase() ?? (request.ratio ? "2K" : "1024X1024");
+  const size = Object.hasOwn(imageSizes, requestedSize) ? imageSizes[requestedSize]![request.ratio ?? "1:1"] : requestedSize.toLowerCase();
+  if (typeof size !== "string" || !size) throw new Error(`当前模型不支持比例 ${request.ratio}，可选：1:1、16:9、9:16`);
+  if (size === "auto") return size;
+  const dimensions = /^([1-9]\d{0,3})x([1-9]\d{0,3})$/.exec(size);
+  if (!dimensions) throw new Error("图片分辨率须为 1K、2K、4K 或宽x高像素尺寸");
+  const width = Number(dimensions[1]);
+  const height = Number(dimensions[2]);
+  const pixels = width * height;
+  if (width % 16 || height % 16 || Math.max(width, height) > 3840 || pixels < 655360 || pixels > 8294400 || width > height * 3 || height > width * 3) {
+    throw new Error("图片宽高须为 16 的倍数，单边不超过 3840，总像素在 655360 到 8294400 之间，长短边比例不超过 3:1");
+  }
+  return size;
+}
+
 async function generate(request: ImageRequest, context: ProviderContext<{ apiKey: string; baseUrl: string }>) {
   const apiKey = context.config.apiKey.trim();
   if (!apiKey) throw new Error("平台模型凭证未配置");
   const baseUrl = (context.config.baseUrl.trim() || "https://www.kaizo.top/v1").replace(/\/$/, "");
   const headers = { Authorization: `Bearer ${apiKey}` };
+  const size = getImageSize(request);
   const references = request.images ?? [];
   let response: Response;
   if (references.length) {
@@ -44,7 +67,7 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
     };
     addField("model", request.model);
     addField("prompt", request.prompt);
-    addField("size", request.size ?? "1024x1024");
+    addField("size", size);
     addField("quality", "high");
     for (const [index, image] of references.entries()) {
       const mimeType = image.mimeType || "image/png";
@@ -61,7 +84,7 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
   } else {
     response = await context.tool.fetch(`${baseUrl}/images/generations`, {
       method: "POST", headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: request.model, prompt: request.prompt, size: request.size ?? "1024x1024", quality: "high", n: 1 }),
+      body: JSON.stringify({ model: request.model, prompt: request.prompt, size, quality: "high", n: 1 }),
       signal: context.signal,
     });
   }
@@ -76,12 +99,15 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
 export default {
   id: "kaizoImage",
   label: "Kaizo 图片",
-  version: "1.0.0",
+  version: "1.0.2",
   apiUrl: "https://www.kaizo.top/v1",
   protocol: "openai-completions",
   readme: "旧 OmniStudio 使用的 Kaizo OpenAI 兼容图片服务。",
   rules,
-  models: [{ id: "gpt-image-2", label: "GPT Image 2", type: "image", mode: ["text", "singleImage", "multiReference"] }],
+  models: [{
+    id: "gpt-image-2", label: "GPT Image 2", type: "image", mode: ["text", "singleImage", "multiReference"],
+    imageSizes: ["1K", "2K", "4K"], imageRatios: ["1:1", "16:9", "9:16"],
+  }],
   async generateImage(request: ImageRequest) {
     return generate(request, this);
   },

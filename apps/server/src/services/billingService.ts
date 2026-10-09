@@ -1,13 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { getDatabase } from "@/db/database";
 import { auditEvents, creditLedger, generationJobs, pricingItems, pricingSettings, priceBookVersions, wallets, workspaces } from "@/db/schema";
 
 export type CreditOperation = "reserve" | "capture" | "release";
 export type GenerationMediaType = "text" | "image" | "video" | "audio";
 
+const imageSizePricingSchema = z.object({ sizeTiers: z.record(z.enum(["1K", "2K", "4K"]), z.number().int().positive().safe()) });
+
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
+}
+
+function imageSizeTier(size?: string): "1K" | "2K" | "4K" | undefined {
+  const value = size?.trim().toUpperCase();
+  if (value === "1K" || value === "2K" || value === "4K") return value;
+  const dimensions = /^([1-9]\d{0,4})\s*[X*×]\s*([1-9]\d{0,4})$/.exec(value ?? "");
+  if (!dimensions) return;
+  const longest = Math.max(Number(dimensions[1]), Number(dimensions[2]));
+  return longest <= 1024 ? "1K" : longest <= 2048 ? "2K" : "4K";
 }
 
 export async function getWallet(workspaceId: string) {
@@ -40,23 +52,32 @@ async function activePriceBook() {
   return published?.id ?? null;
 }
 
-export async function quoteCredits(modelId: string, mediaType: GenerationMediaType, units: number) {
+export async function quoteCredits(modelId: string, mediaType: GenerationMediaType, units: number, size?: string) {
   if (!Number.isFinite(units) || units <= 0) invalid("计费单位必须是正数", 422);
   const versionId = await activePriceBook();
   if (!versionId) invalid("平台尚未发布积分价格簿", 503);
   const [item] = await getDatabase().select({ item: pricingItems }).from(pricingItems)
     .where(and(eq(pricingItems.priceBookVersionId, versionId), eq(pricingItems.modelId, modelId), eq(pricingItems.mediaType, mediaType))).limit(1);
   if (!item) invalid("所选模型尚未配置积分价格", 503);
-  const credits = Math.max(1, Math.ceil(units * item.item.creditsPerUnit));
-  return { credits, priceBookVersionId: versionId, unit: item.item.unit, creditsPerUnit: item.item.creditsPerUnit };
+  let creditsPerUnit = item.item.creditsPerUnit;
+  const constraints = item.item.constraints;
+  if (mediaType === "image" && constraints && typeof constraints === "object" && "sizeTiers" in constraints) {
+    const pricing = imageSizePricingSchema.safeParse(constraints);
+    if (!pricing.success) invalid("图片分辨率积分价格配置无效", 503);
+    const tier = imageSizeTier(size);
+    // ACT: 沿用旧项目规则，尺寸未知时按最高档报价。
+    creditsPerUnit = tier ? pricing.data.sizeTiers[tier] : Math.max(...Object.values(pricing.data.sizeTiers));
+  }
+  const credits = Math.max(1, Math.ceil(units * creditsPerUnit));
+  return { credits, priceBookVersionId: versionId, unit: item.item.unit, creditsPerUnit };
 }
 
 export async function reserveGeneration(input: {
   workspaceId: string; userId: string; modelId: string; mediaType: GenerationMediaType;
-  units: number; idempotencyKey: string; requestSnapshot: unknown;
+  units: number; size?: string; idempotencyKey: string; requestSnapshot: unknown;
 }) {
   if (input.idempotencyKey.length > 160) invalid("Idempotency-Key 不能超过 160 个字符", 422);
-  const quote = await quoteCredits(input.modelId, input.mediaType, input.units);
+  const quote = await quoteCredits(input.modelId, input.mediaType, input.units, input.size);
   const database = getDatabase();
   try {
     return await database.transaction(async tx => {

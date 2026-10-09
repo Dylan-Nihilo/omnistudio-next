@@ -25,8 +25,9 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields({
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const duration = mediaType === "video" && "duration" in parsed.data ? parsed.data.duration : undefined;
   const units = mediaType === "video" ? Math.max(1, duration ?? 1) : mediaType === "audio" ? Math.max(1, parsed.data.prompt.length / 1000) : 1;
+  const size = mediaType === "image" && "size" in parsed.data ? parsed.data.size : undefined;
   const cwd = await u.workspace.resolveWorkspace(req, directory);
-  const reserved = await reserveGeneration({ workspaceId, userId: req.authContext!.user.id, modelId: parsed.data.modelId, mediaType, units, idempotencyKey, requestSnapshot: { mediaType, providerId: parsed.data.providerId, modelId: parsed.data.modelId, request } });
+  const reserved = await reserveGeneration({ workspaceId, userId: req.authContext!.user.id, modelId: parsed.data.modelId, mediaType, units, size, idempotencyKey, requestSnapshot: { mediaType, providerId: parsed.data.providerId, modelId: parsed.data.modelId, request } });
   const controller = new AbortController();
   const close = () => controller.abort();
   res.once("close", close);

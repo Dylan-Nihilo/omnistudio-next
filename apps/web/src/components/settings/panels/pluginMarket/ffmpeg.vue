@@ -6,7 +6,7 @@
       <uiAlert v-if="statusError" :title="statusError" tone="error" />
       <div class="downloadHeader"><span>下载线路</span><span v-if="status" class="sourceCount">{{ availableSourceCount }} 条可用线路</span></div>
       <div class="downloadActions">
-        <uiSelect :modelValue="config.source" :options="sourceOptions" :disabled="!status || loading || saving || busy || submitting" filterable placeholder="选择下载线路" aria-label="FFmpeg 下载源" @change="source => typeof source === 'string' && updateConfig({ source })" />
+        <uiSelect class="downloadSourceSelect" inline :modelValue="config.source" :options="sourceOptions" :disabled="!status || loading || saving || busy || submitting" filterable placeholder="选择下载线路" aria-label="FFmpeg 下载源" @change="source => typeof source === 'string' && updateConfig({ source })" />
         <uiButton :icon="IconDownload" :loading="submitting || busy" :disabled="!canDownload" @click="submitDownload('download')">{{ busy ? phaseLabels[download.phase] : download.phase === 'error' ? '重试安装' : downloaded || download.phase === 'completed' ? '重新安装' : '下载并安装' }}</uiButton>
         <uiButton v-if="busy && download.phase !== 'installing'" variant="secondary" :disabled="submitting" @click="submitDownload('cancel')">取消</uiButton>
       </div>
@@ -203,7 +203,7 @@ onBeforeUnmount(stopReading);
     .componentHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; .componentTitle { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--uiFontLabel); font-weight: 600; } } }
     .introduction { max-width: 70ch; margin: 0; color: var(--uiTextBody); font-size: var(--uiFontBody); line-height: 1.7; }
     .downloadHeader { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 20px; border-top: 1px solid var(--uiBorderDefault); font-size: var(--uiFontControl); .sourceCount { color: var(--uiTextMuted); } }
-    .downloadActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; :deep(.uiPopover) { flex: 1 1 260px; min-width: 0; } }
+    .downloadActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; :deep(.downloadSourceSelect) { flex: 1 1 260px; min-width: 0; } }
     .sourceHint { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; a { display: inline-flex; align-items: center; gap: 4px; color: var(--uiActionPrimary); } }
     .downloadProgress { .progressHeader { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--uiTextMuted); font-size: var(--uiFontControl); font-variant-numeric: tabular-nums; } }
   }

@@ -50,7 +50,15 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   const bridge = canvas ? u.canvas.createCanvasContext(cwd, canvas as CanvasInfo, send) : undefined;
   const controller = new AbortController();
   const questions = u.question.createQuestionContext(cwd, send, () => controller.abort());
-  const close = () => { bridge?.dispose(); questions.dispose(); controller.abort(); };
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    bridge?.dispose();
+    questions.dispose();
+    controller.abort();
+  };
+  req.once("aborted", close);
   res.once("close", close);
   try {
     await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { workspaceId, userId: req.authContext!.user.id } }, send);
@@ -60,6 +68,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
     await settleGeneration(reserved.job.id, false, { error: error instanceof Error ? error.message : "Agent 运行失败" });
     send({ type: "error", message: error instanceof Error ? error.message : "Agent 运行失败" });
   } finally {
+    req.off("aborted", close);
     res.off("close", close);
     bridge?.dispose();
     questions.dispose();

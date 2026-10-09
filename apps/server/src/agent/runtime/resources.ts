@@ -7,7 +7,10 @@ import { resolveWorkspacePath } from "@/utils/workspace/files";
 import { isMemoryEnabled, readDocument } from "@/utils/personalization";
 import conf from "@/utils/conf";
 
-export async function createAgentResources(cwd: string, tools: ToolDefinition[], settings = SettingsManager.inMemory(), instructions = "") {
+export async function createAgentResources(cwd: string, tools: ToolDefinition[], settings = SettingsManager.inMemory({
+  // ACT: 失败后交给用户重试；SDK 的整轮重试会把重复错误写入主会话和委派子会话。
+  retry: { enabled: false, provider: { maxRetries: 0 } },
+}), instructions = "") {
   const savedPrompt = conf.get("settings", {}).agentSystemPrompt;
   const systemPrompt = typeof savedPrompt === "string" ? savedPrompt : undefined;
   const agentDir = join(cwd, ".agent");

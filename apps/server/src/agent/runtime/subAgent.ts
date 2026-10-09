@@ -3,6 +3,7 @@ import { createAgentSession, SessionManager, SettingsManager } from "@earendil-w
 import type { AgentSession, CreateAgentSessionOptions, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import type { ToolCall } from "@toonflow/tools-scaffold/runtime";
 import { createAgentResources } from "@/agent/runtime/resources";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 export type SubAgentModel = Pick<CreateAgentSessionOptions, "modelRuntime" | "model" | "thinkingLevel">;
 export type SubAgentResult = {
@@ -87,7 +88,7 @@ export async function runSubAgent(options: SubAgentModel & {
     const question = inputRequired?.();
     const reply = session.messages.findLast(message => message.role === "assistant");
     if (!reply || reply.role !== "assistant") throw new Error("子任务没有返回回复");
-    if (reply.stopReason === "error" || reply.stopReason === "aborted") throw new Error(reply.errorMessage || "子任务执行失败");
+    if (reply.stopReason === "error" || reply.stopReason === "aborted") throw new Error(formatAgentError(reply.errorMessage || "子任务执行失败", reply.provider));
     const text = question ?? reply.content.filter(part => part.type === "text").map(part => part.text).join("\n").trim();
     if (!text) throw new Error("子任务没有返回文本结果");
     result.status = question ? "inputRequired" : reply.stopReason === "length" || text.length > 16000 ? "limited" : "completed";

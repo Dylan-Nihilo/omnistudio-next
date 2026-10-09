@@ -84,10 +84,14 @@ await database.insert(priceBookVersions).values({ id: priceBookId, version: 1, s
 await database.insert(pricingSettings).values({ id: "development-default", activePriceBookVersionId: priceBookId, createdAt: now, updatedAt: now })
   .onDuplicateKeyUpdate({ set: { activePriceBookVersionId: priceBookId, updatedAt: now } });
 for (const model of models) {
-  const creditsPerUnit = model.mediaType === "video" ? 30 : model.mediaType === "image" ? 20 : 2;
+  // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
+  const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
+  const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
+  const creditsPerUnit = imagePricing ? Math.max(...Object.values(imageSizeCredits)) : model.mediaType === "video" ? 30 : model.mediaType === "image" ? 20 : 2;
+  const constraints = imagePricing ? { sizeTiers: imageSizeCredits } : {};
   const unit = model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "1k_chars";
-  await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints: {}, createdAt: now, updatedAt: now })
-    .onDuplicateKeyUpdate({ set: { unit, creditsPerUnit, constraints: {}, updatedAt: now } });
+  await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints, createdAt: now, updatedAt: now })
+    .onDuplicateKeyUpdate({ set: { unit, creditsPerUnit, constraints, updatedAt: now } });
 }
 
 console.log(`开发 seed 完成：${email}，Workspace=${workspaceId}，已写入 ${models.length} 个平台模型和默认价格簿。默认密码来自 SEED_ADMIN_PASSWORD。`);

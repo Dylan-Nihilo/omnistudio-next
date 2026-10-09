@@ -12,6 +12,7 @@ import { readAiReferences, referenceContent } from "@/utils/ai";
 import { createAgentTools } from "@/agent/tools";
 import { createAgentResources } from "@/agent/runtime/resources";
 import { createAgentModel } from "@/agent/runtime/model";
+import { formatAgentError } from "@/agent/runtime/errors";
 import { createSubAgentTool } from "@/agent/tools/subAgent";
 import { createMemoryTool } from "@/agent/tools/memory";
 import { createReportTool } from "@/agent/tools/report";
@@ -336,7 +337,7 @@ export async function run(
           }
         }
         firstTokenAt = undefined;
-        modelError = event.message.stopReason === "error" ? event.message.errorMessage || "模型请求失败"
+        modelError = event.message.stopReason === "error" ? formatAgentError(event.message.errorMessage || "模型请求失败", providerId)
           : event.message.stopReason === "length" ? "模型回复因长度限制被截断，未能完整生成回答。" : undefined;
         limited = event.message.stopReason === "length";
       }

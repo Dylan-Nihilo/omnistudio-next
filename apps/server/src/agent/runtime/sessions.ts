@@ -5,6 +5,7 @@ import { calculateContextTokens, estimateTokens, getLastAssistantUsage, parseSes
 import type { AgentSession, FileEntry, SessionEntry } from "@earendil-works/pi-coding-agent";
 import type { AgentEvent, AgentMention, AgentSubAgent, AgentToolCall } from "@/agent/runtime/types";
 import { agentMentionsSchema } from "@/agent/runtime/mentions";
+import { formatAgentError } from "@/agent/runtime/errors";
 import { getModelLimits } from "@/utils/ai";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 
@@ -330,7 +331,7 @@ export async function getAgentSession(cwd: string, path: string) {
                 .filter((part) => part.type === "text")
                 .map((part) => part.text)
                 .join(""));
-    const error = message.role === "assistant" ? message.errorMessage : undefined;
+    const error = message.role === "assistant" && message.errorMessage ? formatAgentError(message.errorMessage, message.provider) : undefined;
     return [
       {
         id: entry.id,

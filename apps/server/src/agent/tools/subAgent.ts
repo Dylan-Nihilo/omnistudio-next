@@ -11,7 +11,7 @@ const parameters = z.strictObject({
   tasks: z.array(z.strictObject({
     name: z.string().trim().min(1).max(80).describe("本次任务名称"),
     task: z.string().trim().min(1).max(24000).describe("完整任务、必要背景、相对路径、已获授权和预期交付；不继承主对话历史"),
-    team: teamNameSchema.optional().describe("已安装团队或远端 A2A 连接名；省略则创建临时子 Agent"),
+    team: z.union([teamNameSchema, z.literal("")]).optional().describe("已安装团队或远端 A2A 连接名；省略或空字符串则创建临时子 Agent"),
     taskId: z.string().min(1).max(512).optional().describe("继续远端等待补充的 A2A task 时原样传回"),
     contextId: z.string().min(1).max(512).optional().describe("继续远端 A2A 会话时原样传回"),
   })).min(1),
@@ -59,7 +59,7 @@ export async function createSubAgentTool({ cwd, tools, canvas, runTask, ...model
         }
         update();
       }));
-      return { content: content(), details: {}, usage };
+      return { content: content(), details: {}, usage, isError: results.some(item => item.status === "error") };
     },
   };
   const inheritedTools = [...tools, subAgentTool];

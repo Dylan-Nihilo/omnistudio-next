@@ -15,7 +15,7 @@
         <uiAlert v-if="updateUrlError" :title="updateUrlError" tone="error" />
       </section>
       <section class="pluginInstaller" aria-label="手动安装插件">
-        <header class="installerHeader"><h3>手动安装插件</h3><uiSelect :modelValue="installType" :options="installOptions" class="typeSelect" :disabled="!!installing" aria-label="安装插件类型" @update:modelValue="value => (value === 'node' || value === 'skill' || value === 'tool') && (installType = value)" /></header>
+        <header class="installerHeader"><h3>手动安装插件</h3><uiSelect :modelValue="installType" :options="installOptions" class="typeSelect" inline :disabled="!!installing" aria-label="安装插件类型" @update:modelValue="value => (value === 'node' || value === 'skill' || value === 'tool') && (installType = value)" /></header>
         <div class="toolDescription"><p>{{ selectedInstaller.description }}支持本地文件或文件直链，安装后可在插件市场查看。</p></div>
         <uiCheckbox v-model="forceInstall" :disabled="!!installing">强制安装（允许覆盖同版本或降级）</uiCheckbox>
         <input ref="fileInput" type="file" :accept="selectedInstaller.accept" hidden @change="installFile" />

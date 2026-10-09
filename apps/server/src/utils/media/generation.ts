@@ -153,6 +153,7 @@ export async function generateMedia(
   const reserved = billing ? await reserveGeneration({
     workspaceId: billing.workspaceId, userId: billing.userId, modelId: request.modelId, mediaType,
     units: mediaType === "video" ? Math.max(1, request.duration ?? 1) : mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1,
+    size: mediaType === "image" ? request.size : undefined,
     // Agent 顶层请求已经为文本轮次预留积分；每个媒体工具调用都使用独立键，避免与顶层任务或同轮其它媒体调用冲突。
     idempotencyKey: `${billing.idempotencyKey ?? "agent-media"}:media:${crypto.randomUUID()}`,
     requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, request },

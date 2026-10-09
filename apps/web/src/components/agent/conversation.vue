@@ -496,6 +496,7 @@ function stopSenderResize(event: PointerEvent) {
 
 function stopMessage() {
   controller?.abort();
+  remoteRunning.value = false;
 }
 
 async function uploadAttachments(attachments: AgentAttachment[], directory: string, signal: AbortSignal) {

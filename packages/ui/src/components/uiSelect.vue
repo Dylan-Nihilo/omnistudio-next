@@ -1,6 +1,6 @@
 <template>
-  <div class="uiSelectRoot" :class="$attrs.class" :style="$attrs.style as StyleValue">
-  <uiPopover ref="popover" v-model:visible="visible" trigger="manual" role="listbox" block matchWidth :disabled="disabled" @hide="query = ''">
+  <div class="uiSelectRoot" :class="[$attrs.class, { isInline: inline }]" :style="$attrs.style as StyleValue">
+  <uiPopover ref="popover" v-model:visible="visible" trigger="manual" role="listbox" :block="!inline" matchWidth :disabled="disabled" @hide="query = ''">
     <template #reference="{ panelId, open, toggle }">
       <div class="uiSelect" :class="[sizeClass, { isDisabled: disabled, isError: error }]">
         <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" role="combobox" aria-autocomplete="list" :aria-expanded="visible" :aria-controls="panelId" :aria-activedescendant="activeIndex >= 0 && visible ? panelId + '-option-' + activeIndex : undefined" :aria-invalid="error || undefined" :aria-busy="loading || undefined" :value="visible && filterable ? query : selectedLabel" :placeholder="placeholder" :readonly="!filterable" :disabled="disabled" @click="open" @input="search" @compositionend="search" @keydown="handleKeydown" />
@@ -31,7 +31,7 @@ import type { UiOption, UiValue } from "../types";
 import { valueKey } from "../values";
 import { uiFieldKey } from "../form";
 defineOptions({ inheritAttrs: false });
-const props = withDefaults(defineProps<{ modelValue?: UiValue | UiValue[] | null; options: UiOption[]; multiple?: boolean; disabled?: boolean; error?: boolean; loading?: boolean; clearable?: boolean; filterable?: boolean; allowCreate?: boolean; placeholder?: string; noDataText?: string; size?: UiSize }>(), { multiple: false, disabled: false, error: false, loading: false, clearable: false, filterable: false, allowCreate: false, placeholder: "", size: "medium" });
+const props = withDefaults(defineProps<{ modelValue?: UiValue | UiValue[] | null; options: UiOption[]; multiple?: boolean; disabled?: boolean; error?: boolean; loading?: boolean; clearable?: boolean; filterable?: boolean; allowCreate?: boolean; placeholder?: string; noDataText?: string; size?: UiSize; inline?: boolean }>(), { multiple: false, disabled: false, error: false, loading: false, clearable: false, filterable: false, allowCreate: false, placeholder: "", size: "medium", inline: false });
 const emit = defineEmits<{ "update:modelValue": [value: UiValue | UiValue[] | undefined]; change: [value: UiValue | UiValue[] | undefined]; visibleChange: [value: boolean]; create: [value: string] }>();
 const popover = ref<InstanceType<typeof uiPopover>>();
 const validateField = inject(uiFieldKey, undefined);
@@ -82,7 +82,7 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
 </script>
 
 <style scoped lang="scss">
-.uiSelectRoot { min-width: 0; width: 100%; }
+.uiSelectRoot { min-width: 0; width: 100%; &.isInline { width: auto; :deep(.uiPopover), :deep(.popoverReference) { display: flex; width: 100%; } } }
 .uiSelect {
   display: flex; align-items: center; width: 100%; min-width: 0; --controlHeight: var(--uiControlMedium); min-height: var(--controlHeight); padding: 0 10px 0 12px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle);
   &.sizeSmall { --controlHeight: var(--uiControlSmall); }
@@ -90,7 +90,7 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
   &:focus-within { outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; }
   &.isError { border-color: var(--uiStatusError); }
   input { width: 100%; min-width: 0; min-height: calc(var(--controlHeight) - 2px); padding: 0; border: 0; outline: 0; color: var(--uiTextPrimary); background: transparent; font-size: var(--uiFontControl); &::placeholder { color: var(--uiTextMuted); } &[readonly] { cursor: pointer; } }
-  button { flex-shrink: 0; width: 24px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--uiTextBody); font-size: 18px; cursor: pointer; }
+  button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 28px; padding: 0; border: 0; border-radius: calc(var(--uiRadiusControl) / 2); appearance: none; background: transparent; color: var(--uiTextBody); font-size: 18px; line-height: 1; cursor: pointer; }
   &:has(input:disabled) { background: var(--uiStateDisabled); border-color: var(--uiBorderDefault); input, button { color: var(--uiStateDisabledText); cursor: not-allowed; } }
 }
 .selectOption {

@@ -125,11 +125,21 @@ function formatToolData(value: unknown) {
       line-height: 1.5;
 
       :deep([data-stream-markdown="code-block"]) {
+        display: flex;
+        flex-direction: column;
         margin: 0;
+        overflow: hidden;
         border-radius: var(--uiRadiusControl);
       }
 
+      :deep([data-stream-markdown="code-block-header"]) {
+        position: static;
+        flex: 0 0 auto;
+      }
+
       :deep([data-stream-markdown="code-block-content"]) {
+        flex: 0 1 auto;
+        min-height: 0;
         overscroll-behavior: contain;
         pre {
           white-space: pre;

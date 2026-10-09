@@ -69,7 +69,7 @@
             @pointerdown.capture="pausePlayback"
             @update:modelValue="seekTime" />
           <span class="timeLabel">{{ formatTime(currentTime) }} / {{ formatTime(result?.duration ?? 0) }}</span>
-          <uiSelect :modelValue="aspectRatio" class="aspectSelect" :options="['16:9', '9:16', '4:3', '1:1'].map(value => ({ value, label: value }))" aria-label="画面比例" :disabled="!ready" @update:modelValue="value => typeof value === 'string' && (aspectRatio = value)" />
+          <uiSelect :modelValue="aspectRatio" class="aspectSelect" inline :options="['16:9', '9:16', '4:3', '1:1'].map(value => ({ value, label: value }))" aria-label="画面比例" :disabled="!ready" @update:modelValue="value => typeof value === 'string' && (aspectRatio = value)" />
           <uiPopover trigger="click" placement="top" :width="340" @show="captureLightingReference">
             <template #reference="{ triggerAttrs }">
               <uiButton v-bind="triggerAttrs" variant="secondary" :icon="IconSun" :disabled="!ready" aria-label="光照设置">光照</uiButton>

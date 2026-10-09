@@ -43,7 +43,7 @@
           <p class="description">设置选中或拖动节点时，与它直接相连的线条的高亮颜色，立即生效。</p>
         </div>
         <div class="edgeColorControls">
-          <uiSelect class="edgeColorSelect" :modelValue="generalSettings.canvasEdgeColorMode" :options="edgeColorOptions" aria-label="节点连线颜色模式" @change="value => (value === 'none' || value === 'theme' || value === 'custom') && updateGeneralSettings({ canvasEdgeColorMode: value })" />
+          <uiSelect class="edgeColorSelect" inline :modelValue="generalSettings.canvasEdgeColorMode" :options="edgeColorOptions" aria-label="节点连线颜色模式" @change="value => (value === 'none' || value === 'theme' || value === 'custom') && updateGeneralSettings({ canvasEdgeColorMode: value })" />
           <uiColorPicker
             v-if="generalSettings.canvasEdgeColorMode === 'custom'"
             :modelValue="generalSettings.canvasEdgeColor"

@@ -8,7 +8,7 @@
             <span class="documentName">{{ selectedNode.label }}</span>
             <span class="documentPath" :title="selectedPath">{{ selectedPath }}</span>
           </div>
-          <uiSelect v-if="nodeOutputs.length > 1" :modelValue="outputId" :options="outputOptions" class="outputSelect" size="small" aria-label="文本输出" :disabled="opening" @update:modelValue="value => typeof value === 'string' && openOutput(value)" />
+          <uiSelect v-if="nodeOutputs.length > 1" :modelValue="outputId" :options="outputOptions" class="outputSelect" inline size="small" aria-label="文本输出" :disabled="opening" @update:modelValue="value => typeof value === 'string' && openOutput(value)" />
           <uiButton v-if="saveError" variant="danger" size="small" :title="saveError" @click="flushSave().catch(() => {})">保存失败，重试</uiButton>
           <span v-else class="saveStatus" role="status">{{ dirty ? "保存中…" : "已保存" }}</span>
         </header>
