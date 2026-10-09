@@ -19,6 +19,8 @@ export default router.post("/", async (req, res) => {
     return res.status(403).json(error("仅允许本机开发页面选择目录", null, 403));
   }
 
+  const directoryStart = "__TOONFLOW_DIRECTORY_START__";
+  const directoryEnd = "__TOONFLOW_DIRECTORY_END__";
   const windowsScript = `
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
@@ -34,7 +36,9 @@ try {
   $owner.Show()
   $owner.TopMost = $true
   $owner.Activate()
-  if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) }
+  if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
+    [Console]::Write("${directoryStart}$($dialog.SelectedPath)${directoryEnd}")
+  }
 } finally { $dialog.Dispose(); $owner.Dispose() }
 `;
   const macScript = `try
@@ -46,7 +50,13 @@ end try`;
     const { stdout } = process.platform === "win32"
       ? await runFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-Command", windowsScript], { windowsHide: true })
       : await runFile("/usr/bin/osascript", ["-e", macScript]);
-    const selected = stdout.replace(/\r?\n$/, "");
+    const selected = process.platform === "win32"
+      ? (() => {
+        const start = stdout.lastIndexOf(directoryStart);
+        const end = start < 0 ? -1 : stdout.indexOf(directoryEnd, start + directoryStart.length);
+        return start >= 0 && end >= 0 ? stdout.slice(start + directoryStart.length, end) : "";
+      })()
+      : stdout.trim();
     const directory = selected ? await realpath(selected) : null;
     res.json(success({ native: true, directory }));
   } catch {
