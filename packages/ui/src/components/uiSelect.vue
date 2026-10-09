@@ -4,8 +4,12 @@
     <template #reference="{ panelId, open, toggle }">
       <div class="uiSelect" :class="[sizeClass, { isDisabled: disabled, isError: error }]">
         <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" role="combobox" aria-autocomplete="list" :aria-expanded="visible" :aria-controls="panelId" :aria-activedescendant="activeIndex >= 0 && visible ? panelId + '-option-' + activeIndex : undefined" :aria-invalid="error || undefined" :aria-busy="loading || undefined" :value="visible && filterable ? query : selectedLabel" :placeholder="placeholder" :readonly="!filterable" :disabled="disabled" @click="open" @input="search" @compositionend="search" @keydown="handleKeydown" />
-        <button v-if="clearable && hasValue" type="button" class="clearButton" :disabled="disabled" aria-label="清空选择" @click.stop="clear">×</button>
-        <button type="button" class="selectArrow" tabindex="-1" :disabled="disabled" aria-label="展开选项" @click="toggle">⌄</button>
+        <button v-if="clearable && hasValue" type="button" class="clearButton" :disabled="disabled" aria-label="清空选择" @click.stop="clear">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+        <button type="button" class="selectArrow" tabindex="-1" :disabled="disabled" aria-label="展开选项" @click="toggle">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" :class="{ isExpanded: visible }"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
       </div>
     </template>
     <template #default>
@@ -90,7 +94,37 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
   &:focus-within { outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; }
   &.isError { border-color: var(--uiStatusError); }
   input { width: 100%; min-width: 0; min-height: calc(var(--controlHeight) - 2px); padding: 0; border: 0; outline: 0; color: var(--uiTextPrimary); background: transparent; font-size: var(--uiFontControl); &::placeholder { color: var(--uiTextMuted); } &[readonly] { cursor: pointer; } }
-  button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 28px; padding: 0; border: 0; border-radius: calc(var(--uiRadiusControl) / 2); appearance: none; background: transparent; color: var(--uiTextBody); font-size: 18px; line-height: 1; cursor: pointer; }
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--uiRadiusControl) / 2);
+    appearance: none;
+    background: transparent;
+    color: var(--uiTextMuted);
+    cursor: pointer;
+    transition: color var(--uiMotionDuration, 150ms) var(--uiMotionEase, ease);
+    &:hover:not(:disabled) { color: var(--uiTextPrimary); }
+    svg {
+      display: block;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform var(--uiMotionDuration, 150ms) var(--uiMotionEase, ease);
+    }
+    &.selectArrow svg.isExpanded {
+      transform: rotate(180deg);
+    }
+  }
   &:has(input:disabled) { background: var(--uiStateDisabled); border-color: var(--uiBorderDefault); input, button { color: var(--uiStateDisabledText); cursor: not-allowed; } }
 }
 .selectOption {

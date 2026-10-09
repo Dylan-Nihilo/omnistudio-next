@@ -73,9 +73,9 @@ for (const model of platformModelCatalog) {
   // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
   const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
-  const creditsPerUnit = imagePricing ? Math.max(...Object.values(imageSizeCredits)) : model.mediaType === "video" ? 30 : model.mediaType === "image" ? 20 : 2;
+  const creditsPerUnit = imagePricing ? Math.max(...Object.values(imageSizeCredits)) : model.mediaType === "video" ? 30 : model.mediaType === "image" ? 20 : 1;
   const constraints = imagePricing ? { sizeTiers: imageSizeCredits } : {};
-  const unit = model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "1k_chars";
+  const unit = model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "10k_chars";
   await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints, createdAt: now, updatedAt: now })
     .onDuplicateKeyUpdate({ set: { unit, creditsPerUnit, constraints, updatedAt: now } });
 }

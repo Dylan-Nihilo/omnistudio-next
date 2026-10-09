@@ -2,9 +2,9 @@
   <dialog
     ref="dialog"
     class="uiDialog"
-    :class="{ isFullscreen: fullscreen }"
+    :class="{ isFullscreen: fullscreenModel }"
     role="dialog"
-    :style="{ width: fullscreen ? '100dvw' : typeof width === 'number' ? width + 'px' : width }"
+    :style="{ width: fullscreenModel ? '100dvw' : typeof width === 'number' ? width + 'px' : width }"
     :aria-labelledby="titleId"
     @cancel.prevent.stop="handleCancel"
     @close="handleClosed"
@@ -18,7 +18,20 @@
     @gestureend.stop>
     <slot name="header" :titleId="titleId"><header class="dialogHeader">
       <h2 :id="titleId" class="dialogTitle">{{ title }}</h2>
-      <uiButton v-if="showClose" class="closeButton" variant="ghost" size="small" :disabled="closePending" aria-label="关闭弹窗" @click="requestClose">×</uiButton>
+      <div class="dialogHeaderActions">
+        <uiButton
+          v-if="showFullscreen"
+          class="fullscreenButton"
+          variant="ghost"
+          size="small"
+          :aria-label="fullscreenModel ? '退出全屏' : '全屏'"
+          :title="fullscreenModel ? '退出全屏' : '全屏'"
+          @click="fullscreenModel = !fullscreenModel">
+          <svg v-if="!fullscreenModel" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6m0 0v6m0-6-7 7m17-11h-6m0 0V4m0 6 7-7m-7 17v-6m0 0h6m-6 0 7 7M10 4v6m0 0H4m6 0L3 3"/></svg>
+        </uiButton>
+        <uiButton v-if="showClose" class="closeButton" variant="ghost" size="small" :disabled="closePending" aria-label="关闭弹窗" @click="requestClose">×</uiButton>
+      </div>
     </header></slot>
     <div v-if="!destroyOnClose || visible" class="dialogBody"><slot /></div>
     <footer v-if="$slots.footer && (!destroyOnClose || visible)" class="dialogFooter"><slot name="footer" /></footer>
@@ -33,7 +46,7 @@ import uiButton from "./uiButton.vue";
 const props = withDefaults(defineProps<{
   title: string;
   width?: string | number;
-  fullscreen?: boolean;
+  showFullscreen?: boolean;
   showClose?: boolean;
   closeOnClickModal?: boolean;
   closeOnPressEscape?: boolean;
@@ -41,12 +54,13 @@ const props = withDefaults(defineProps<{
   beforeClose?: (done: () => void) => void | Promise<void>;
 }>(), {
   width: 520,
-  fullscreen: false,
+  showFullscreen: false,
   showClose: true,
   closeOnClickModal: true,
   closeOnPressEscape: true,
   destroyOnClose: false,
 });
+const fullscreenModel = defineModel<boolean>("fullscreen", { default: false });
 const visible = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ opened: []; close: []; closed: [] }>();
 const dialog = ref<HTMLDialogElement>();
@@ -169,7 +183,18 @@ html:has(dialog.uiDialog:modal) { overflow: hidden; }
     gap: var(--uiSpace16);
     padding: var(--uiSpace24) var(--uiSpace24) var(--uiSpace16);
     .dialogTitle { flex: 1; min-width: 0; margin: 0; font-size: var(--uiFontHeading); line-height: 1.6; overflow-wrap: anywhere; }
-    .closeButton { flex-shrink: 0; width: 32px; padding: 0; font-size: 24px; }
+    .dialogHeaderActions { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .fullscreenButton {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      svg { display: block; }
+    }
+    .closeButton { flex-shrink: 0; width: 32px; height: 32px; padding: 0; font-size: 24px; line-height: 1; }
   }
   .dialogBody { min-height: 0; padding: 0 var(--uiSpace24); overflow: auto; overscroll-behavior: contain; }
   .dialogFooter {

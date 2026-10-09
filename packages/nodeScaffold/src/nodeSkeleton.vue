@@ -50,7 +50,9 @@
         {{ label }}
       </span>
       <div class="nodeActions nodrag nopan" @pointerdown.stop @mousedown.stop @dblclick.stop>
-        <uiIconButton size="small" :icon="IconRefresh" :loading="loading || reloading" :disabled="loading || !reloadRemoteNode" label="刷新节点" title="刷新节点" @click.stop="reloadNode" /><uiIconButton size="small" variant="danger" :icon="IconX" label="移除节点" title="移除节点" :loading="deleting" @click.stop="deleteNode" />
+        <uiIconButton v-if="downloadUrl" size="small" :icon="IconMaximize" label="全屏" title="全屏" @click.stop="emit('fullscreen')" />
+        <uiIconButton size="small" :icon="IconRefresh" :loading="loading || reloading" :disabled="loading || !reloadRemoteNode" label="刷新节点" title="刷新节点" @click.stop="reloadNode" />
+        <uiIconButton size="small" variant="danger" :icon="IconX" label="移除节点" title="移除节点" :loading="deleting" @click.stop="deleteNode" />
       </div>
     </div>
     <div class="cardContainer">

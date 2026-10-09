@@ -4,6 +4,16 @@ import { requireEnabledPlatformModel } from "@/services/modelService";
 import { reserveGeneration, settleGeneration } from "@/services/billingService";
 import { accountContext, nextGenerationKey, requireAccount } from "@/utils/accountContext";
 
+function estimateTextUnits(messages: unknown): number {
+  const serialized = JSON.stringify(messages, (_key, value) => {
+    if (typeof value === "string" && value.length > 500 && (value.startsWith("data:image/") || value.startsWith("data:video/") || /^[A-Za-z0-9+/=]{500,}$/.test(value.slice(0, 100)))) {
+      return "[media_binary]";
+    }
+    return value;
+  });
+  return Math.max(1, Math.ceil(serialized.length / 10000));
+}
+
 export function createChargedStream(input: { providerId: string; modelId: string; model: Model<Api>; context: Context; signal?: AbortSignal; idempotencyKey?: string }, start: (signal?: AbortSignal) => AssistantMessageEventStream) {
   const account = requireAccount();
   const signal = account.signal ? AbortSignal.any([account.signal, ...(input.signal ? [input.signal] : [])]) : input.signal;
@@ -14,7 +24,7 @@ export function createChargedStream(input: { providerId: string; modelId: string
     try {
       signal?.throwIfAborted();
       await requireEnabledPlatformModel(input.providerId, input.modelId, "text");
-      const reservation = await reserveGeneration({ userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: "text", units: Math.max(1, JSON.stringify(input.context.messages).length / 1000), idempotencyKey: key, requestSnapshot: { providerId: input.providerId, modelId: input.modelId, context: input.context } });
+      const reservation = await reserveGeneration({ userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: "text", units: estimateTextUnits(input.context.messages), idempotencyKey: key, requestSnapshot: { providerId: input.providerId, modelId: input.modelId, context: input.context } });
       jobId = reservation.job.id;
       const stream = start(signal);
       for await (const event of stream) {

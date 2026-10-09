@@ -107,11 +107,12 @@ export async function reserveGeneration(input: { userId: string; providerId: str
         const previous = existing.requestSnapshot as { request?: unknown } | null;
         invalid(fingerprint(previous?.request ?? existing.requestSnapshot) !== fingerprint(input.requestSnapshot) ? "幂等键已用于另一条生成请求" : "相同生成请求已接收，请勿重复提交", 409);
       }
-      if (wallet.balance - wallet.frozen < quote.credits) invalid("个人可用积分不足", 402);
+      if (!account.isRoot && wallet.balance - wallet.frozen < quote.credits) invalid("个人可用积分不足", 402);
+      if (account.isRoot && wallet.balance < 10000000) wallet.balance = 99999999;
       const now = new Date();
       const frozenAfter = wallet.frozen + quote.credits;
       const job = { id: randomUUID(), userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: input.mediaType, status: "reserved" as const, quotedCredits: quote.credits, capturedCredits: 0, priceBookVersionId: quote.priceBookVersionId, idempotencyKey: key, requestSnapshot: { runtimeId: serverInstanceId, request: input.requestSnapshot }, createdAt: now, updatedAt: now };
-      await tx.update(wallets).set({ frozen: frozenAfter, updatedAt: now }).where(eq(wallets.id, wallet.id));
+      await tx.update(wallets).set({ balance: wallet.balance, frozen: frozenAfter, updatedAt: now }).where(eq(wallets.id, wallet.id));
       await tx.insert(generationJobs).values(job);
       await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: account.userId, actorUserId: account.userId, jobId: job.id, kind: "reserve", amount: 0, balanceAfter: wallet.balance, frozenAfter, idempotencyKey: `${job.id}:reserve`, reason: `生成预留：${input.modelId}`, metadata: { modelId: input.modelId, mediaType: input.mediaType, quote }, createdAt: now, updatedAt: now });
       return { job, quote };
@@ -132,12 +133,34 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
     if (!wallet || wallet.frozen < job.quotedCredits || wallet.balance < wallet.frozen) invalid("积分账本状态异常", 409);
     const now = new Date();
     const operation = success ? "capture" : "release";
-    const balance = success ? wallet.balance - job.quotedCredits : wallet.balance;
+
+    let actualCredits = job.quotedCredits;
+    if (success && resultSnapshot && typeof resultSnapshot === "object") {
+      const snapshot = resultSnapshot as { usage?: { totalTokens?: number; input?: number; output?: number } };
+      if (snapshot.usage && (typeof snapshot.usage.totalTokens === "number" || typeof snapshot.usage.input === "number")) {
+        const tokens = snapshot.usage.totalTokens ?? ((snapshot.usage.input ?? 0) + (snapshot.usage.output ?? 0));
+        if (tokens > 0 && job.priceBookVersionId) {
+          const [item] = await tx.select().from(pricingItems).where(and(
+            eq(pricingItems.priceBookVersionId, job.priceBookVersionId),
+            eq(pricingItems.providerId, job.providerId),
+            eq(pricingItems.modelId, job.modelId),
+            eq(pricingItems.mediaType, job.mediaType),
+          )).limit(1);
+          if (item) {
+            const divisor = item.unit === "10k_chars" ? 10000 : 1000;
+            const actualUnits = Math.max(1, Math.ceil(tokens / divisor));
+            actualCredits = Math.min(job.quotedCredits, Math.ceil(actualUnits * item.creditsPerUnit));
+          }
+        }
+      }
+    }
+
+    const balance = success ? wallet.balance - actualCredits : wallet.balance;
     const frozen = wallet.frozen - job.quotedCredits;
     await tx.update(wallets).set({ balance, frozen, updatedAt: now }).where(eq(wallets.id, wallet.id));
-    await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: job.userId, actorUserId: account.userId, jobId: job.id, kind: operation, amount: success ? -job.quotedCredits : 0, balanceAfter: balance, frozenAfter: frozen, idempotencyKey: `${job.id}:${operation}`, reason: success ? "生成完成" : "生成失败或取消，释放预留", createdAt: now, updatedAt: now });
-    await tx.update(generationJobs).set({ status: success ? "succeeded" : "failed", capturedCredits: success ? job.quotedCredits : 0, resultSnapshot: resultSnapshot ?? null, updatedAt: now }).where(eq(generationJobs.id, job.id));
-    return { ...job, status: success ? "succeeded" as const : "failed" as const, capturedCredits: success ? job.quotedCredits : 0 };
+    await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: job.userId, actorUserId: account.userId, jobId: job.id, kind: operation, amount: success ? -actualCredits : 0, balanceAfter: balance, frozenAfter: frozen, idempotencyKey: `${job.id}:${operation}`, reason: success ? "生成完成" : "生成失败或取消，释放预留", createdAt: now, updatedAt: now });
+    await tx.update(generationJobs).set({ status: success ? "succeeded" : "failed", capturedCredits: success ? actualCredits : 0, resultSnapshot: resultSnapshot ?? null, updatedAt: now }).where(eq(generationJobs.id, job.id));
+    return { ...job, status: success ? "succeeded" as const : "failed" as const, capturedCredits: success ? actualCredits : 0 };
   });
 }
 

@@ -1,6 +1,19 @@
 <template>
-  <uiDialog v-model="visible" :title="title" :width="960" @keydown="handleKeydown" @closed="emit('close')">
-    <div class="viewerSurface" @pointerdown="startPan" @pointermove="pan" @pointerup="stopPan" @pointercancel="stopPan">
+  <uiDialog
+    v-model="visible"
+    v-model:fullscreen="fullscreen"
+    :title="title"
+    :width="960"
+    showFullscreen
+    @keydown="handleKeydown"
+    @closed="emit('close')">
+    <div
+      class="viewerSurface"
+      :class="{ isFullscreen: fullscreen }"
+      @pointerdown="startPan"
+      @pointermove="pan"
+      @pointerup="stopPan"
+      @pointercancel="stopPan">
       <img v-if="urls[index]" :src="urls[index]" :alt="title" draggable="false" :style="{ transform: 'translate(' + offset.x + 'px,' + offset.y + 'px) scale(' + zoom + ') rotate(' + rotation + 'deg)' }" @error="emit('error', $event)" />
     </div>
     <template #footer>
@@ -17,11 +30,12 @@ import uiButton from "./uiButton.vue";
 const props = withDefaults(defineProps<{ urls: string[]; initialIndex?: number; title?: string }>(), { initialIndex: 0, title: "图片预览" });
 const visible = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ close: []; error: [event: Event] }>();
+const fullscreen = ref(false);
 const index = ref(Math.max(0, Math.min(props.urls.length - 1, props.initialIndex))), zoom = ref(1), rotation = ref(0);
 const offset = ref({ x: 0, y: 0 });
 let pointer: { id: number; x: number; y: number } | undefined;
 function reset() { zoom.value = 1; rotation.value = 0; offset.value = { x: 0, y: 0 }; }
-watch([visible, () => props.urls, () => props.initialIndex], () => { index.value = Math.max(0, Math.min(props.urls.length - 1, props.initialIndex)); reset(); });
+watch([visible, () => props.urls, () => props.initialIndex], () => { index.value = Math.max(0, Math.min(props.urls.length - 1, props.initialIndex)); reset(); if (!visible.value) fullscreen.value = false; });
 watch(index, reset);
 function handleKeydown(event: KeyboardEvent) { if ((event.target as HTMLElement).closest("input,textarea,select") || event.isComposing) return; if (event.key === "ArrowLeft" && index.value > 0) { event.preventDefault(); index.value--; } else if (event.key === "ArrowRight" && index.value < props.urls.length - 1) { event.preventDefault(); index.value++; } }
 function startPan(event: PointerEvent) { if (event.button !== 0) return; event.preventDefault(); pointer = { id: event.pointerId, x: event.clientX - offset.value.x, y: event.clientY - offset.value.y }; (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); }
@@ -30,6 +44,27 @@ function stopPan() { pointer = undefined; }
 </script>
 
 <style scoped lang="scss">
-.viewerSurface { display: flex; align-items: center; justify-content: center; height: min(58dvh, 640px); overflow: hidden; border-radius: var(--uiRadiusControl); background: var(--uiBackgroundCanvas); touch-action: none; cursor: grab; img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; pointer-events: none; } }
+.viewerSurface {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: min(58dvh, 640px);
+  overflow: hidden;
+  border-radius: var(--uiRadiusControl);
+  background: var(--uiBackgroundCanvas);
+  touch-action: none;
+  cursor: grab;
+  &.isFullscreen {
+    height: calc(100dvh - 160px);
+  }
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+    pointer-events: none;
+  }
+}
 .imageCounter { align-self: center; color: var(--uiTextMuted); font-size: var(--uiFontControl); font-variant-numeric: tabular-nums; }
 </style>

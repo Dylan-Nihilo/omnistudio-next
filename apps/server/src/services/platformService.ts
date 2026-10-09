@@ -110,7 +110,7 @@ export async function publishPlatformPrices(input: z.infer<typeof pricesInputSch
     const id = randomUUID();
     const version = (previous?.version ?? 0) + 1;
     await tx.insert(priceBookVersions).values({ id, version, status: "published", publishedAt: now, createdAt: now, updatedAt: now });
-    for (const item of input.items) await tx.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: id, ...item, unit: item.mediaType === "video" ? "second" : item.mediaType === "image" ? "image" : "1k_chars", constraints: {}, createdAt: now, updatedAt: now });
+    for (const item of input.items) await tx.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: id, ...item, unit: item.mediaType === "video" ? "second" : item.mediaType === "image" ? "image" : "10k_chars", constraints: {}, createdAt: now, updatedAt: now });
     await tx.update(pricingSettings).set({ activePriceBookVersionId: id, updatedAt: now }).where(eq(pricingSettings.id, "platform"));
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.prices.publish", metadata: { version, items: input.items }, createdAt: now, updatedAt: now });
     return { version };
