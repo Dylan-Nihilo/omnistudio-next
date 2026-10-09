@@ -1,7 +1,7 @@
 {
   "status": "packaged",
   "scope": "Foundation UI library in uiRefactor worktree; not application migration",
-  "package": "@toonflow/ui",
+  "package": "@omnistudio-next/ui",
   "componentCount": 44,
   "components": [
     {
@@ -301,7 +301,7 @@
   },
   "brand": {
     "source": "/Users/dylanthomas/Downloads/omnistudio.svg",
-    "asset": "packages/assets/omniStudioLogo.svg",
+    "asset": "packages/assets/omniStudioNextLogo.svg",
     "sha256": "27d488f65cde06f7e7fbad5ba56671b8c632bae7f6962b73d9b1d49441988bf6",
     "viewBox": "0 0 448 160",
     "headerGeometry": {

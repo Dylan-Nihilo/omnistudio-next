@@ -20,12 +20,12 @@
 
 <script setup lang="ts">
 import { computed, onScopeDispose, provide, shallowReactive, shallowRef, ref, watch, type ComponentPublicInstance } from "vue";
-import type { CanvasContext } from "@toonflow/tool-canvas/runtime";
+import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
 import { waitForControlValue } from "@/lib/mcpControl";
 import canvasPanel from "./index.vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { createCanvasMention, mentionNodeOutputs, queryMentionNodes, type MentionCanvasSource } from "@toonflow/server/agent/mentionSources";
+import { createCanvasMention, mentionNodeOutputs, queryMentionNodes, type MentionCanvasSource } from "@omnistudio-next/server/agent/mentionSources";
 
 const props = withDefaults(defineProps<{ active?: boolean; settingsVisible?: boolean }>(), { active: true, settingsVisible: false });
 type CanvasInstance = InstanceType<typeof canvasPanel>;

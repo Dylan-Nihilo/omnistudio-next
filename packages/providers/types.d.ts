@@ -96,7 +96,7 @@ interface ProviderTools {
    * @throws {FfmpegRequiredError} 未安装或当前设置未找到可用的 FFmpeg。
    * @example const ffmpeg = await this.tool.ffmpeg(); const command = ffmpeg("assets/input.mp4").videoCodec("libx264");
    */
-  ffmpeg(): Promise<import("@toonflow/ffmpeg/types").FfmpegFactory>;
+  ffmpeg(): Promise<import("@omnistudio-next/ffmpeg/types").FfmpegFactory>;
 }
 
 interface ImageRequest extends MediaRequest {

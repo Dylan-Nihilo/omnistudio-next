@@ -1,5 +1,5 @@
 import * as vueRuntime from "vue";
-import * as uiRuntime from "@toonflow/ui";
+import * as uiRuntime from "@omnistudio-next/ui";
 import * as elementPlusRuntime from "element-plus";
 import axios from "axios";
 import formCreate from "@form-create/element-ui";

@@ -1,10 +1,10 @@
 import { getCurrentScope, onScopeDispose } from "vue";
 import { z } from "zod";
 import { useNodeId, useVueFlow } from "@vue-flow/core";
-import type { NodeToolInfo, NodeToolsContext } from "@toonflow/tools-scaffold/runtime";
+import type { NodeToolInfo, NodeToolsContext } from "@omnistudio-next/tools-scaffold/runtime";
 
 export { z };
-export type { NodeToolCall, NodeToolInfo, NodeToolsContext } from "@toonflow/tools-scaffold/runtime";
+export type { NodeToolCall, NodeToolInfo, NodeToolsContext } from "@omnistudio-next/tools-scaffold/runtime";
 
 export interface NodeToolDefinition<Schema extends z.ZodType = z.ZodType> {
   name: string;

@@ -8,11 +8,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { uiButton, uiIconButton, uiSelect, uiDialog, uiTextarea, useUiFeedback } from "@toonflow/ui";
+import { uiButton, uiIconButton, uiSelect, uiDialog, uiTextarea, useUiFeedback } from "@omnistudio-next/ui";
 import { IconEdit, IconFileText, IconSparkles, IconArrowUp } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNode, useNodeReferences, z, type NodeAiModel, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
+import { groupNodeModels, nodeSkeleton, nodeTools, useNode, useNodeReferences, z, type NodeAiModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
 
 type PromptModel = NonNullable<InstanceType<typeof promptInput>["$props"]["modelValue"]>;
 

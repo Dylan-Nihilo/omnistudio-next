@@ -41,7 +41,7 @@ export function createTeamAgentCard(manifest: TeamManifest, endpointUrl: string)
     defaultInputModes: ["text/plain"],
     defaultOutputModes: ["text/plain", "application/json"],
     // 团队能力与团队私有 SKILL.md 是不同资源，Card 不发布成员提示词或私有资料。
-    skills: [{ id: team.name, name: team.displayName, description: team.description, tags: ["toonflow", "team"] }],
+    skills: [{ id: team.name, name: team.displayName, description: team.description, tags: ["omnistudio-next", "team"] }],
   });
 }
 

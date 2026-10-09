@@ -8,9 +8,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { getRectOfNodes, useVueFlow, type GraphNode, type Node, type XYPosition } from "@vue-flow/core";
-import { uiButton, useUiFeedback } from "@toonflow/ui";
+import { uiButton, useUiFeedback } from "@omnistudio-next/ui";
 import { IconCopyPlus, IconBoxMultiple, IconDeselect } from "@tabler/icons-vue";
-import { useNodeEvent } from "@toonflow/nodes-scaffold/nodeEvent";
+import { useNodeEvent } from "@omnistudio-next/nodes-scaffold/nodeEvent";
 import { finishGroupDrag, getSelectionRoots, getSelectionTree } from "../selectionNodes";
 
 const feedback = useUiFeedback();

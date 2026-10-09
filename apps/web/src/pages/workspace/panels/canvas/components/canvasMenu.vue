@@ -27,7 +27,7 @@
 import axios from "axios";
 import { computed, inject, nextTick, ref, shallowRef, watch, type ShallowRef } from "vue";
 import { Panel, useVueFlow, type FlowExportObject } from "@vue-flow/core";
-import { uiPopover, uiButton, uiIconButton, uiField, uiInput, uiAlert, useUiFeedback } from "@toonflow/ui";
+import { uiPopover, uiButton, uiIconButton, uiField, uiInput, uiAlert, useUiFeedback } from "@omnistudio-next/ui";
 import { IconEdit, IconCheck, IconChevronDown, IconPlus, IconTrash, IconLayoutDashboard } from "@tabler/icons-vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";

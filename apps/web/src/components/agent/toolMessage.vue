@@ -26,10 +26,10 @@
 
 <script setup lang="ts">
 import { computed, onErrorCaptured, ref, shallowRef, watch, type Component } from "vue";
-import { loadToolComponent } from "@toonflow/tools-scaffold/client";
+import { loadToolComponent } from "@omnistudio-next/tools-scaffold/client";
 import { IconCopy, IconTool } from "@tabler/icons-vue";
-import { uiAlert, uiIconButton } from "@toonflow/ui";
-import type { AgentToolCall } from "@toonflow/server/agent/types";
+import { uiAlert, uiIconButton } from "@omnistudio-next/ui";
+import type { AgentToolCall } from "@omnistudio-next/server/agent/types";
 import messageMarkdown from "@/components/messageMarkdown.vue";
 
 const { tool, directory } = defineProps<{ tool: AgentToolCall; directory?: string }>();

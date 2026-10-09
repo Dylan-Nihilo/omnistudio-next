@@ -61,12 +61,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
-import { uiIconButton, uiSelect, uiLoading, uiImageViewer } from "@toonflow/ui";
+import { uiIconButton, uiSelect, uiLoading, uiImageViewer } from "@omnistudio-next/ui";
 import { IconPhotoAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
-import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
-import mediaHistory from "@toonflow/nodes-scaffold/mediaHistory";
+import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
+import mediaHistory from "@omnistudio-next/nodes-scaffold/mediaHistory";
 import generationSettings from "./components/generationSettings.vue";
 
 defineOptions({

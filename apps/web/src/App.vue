@@ -4,10 +4,11 @@
       <el-config-provider :locale="zhCn">
     <router-view v-slot="{ Component: currentComponent }">
       <transition name="el-fade-in">
-        <component :is="currentComponent" />
+        <component :is="currentComponent" :key="$route.path.startsWith('/auth') ? $route.fullPath : $route.path" />
       </transition>
     </router-view>
     <ffmpegRequired />
+    <sessionGuard />
     <updateBox
       v-if="updateBoxBuild"
       v-model="updateBoxVisible"
@@ -24,13 +25,14 @@
 import feedback from "@/lib/uiFeedback";
 import { onBeforeUnmount, ref, shallowRef, watch, watchEffect } from "vue";
 import { useZIndex } from "element-plus";
-import { uiThemeProvider, uiFeedbackProvider } from "@toonflow/ui";
-import "@toonflow/ui/styles";
+import { uiThemeProvider, uiFeedbackProvider } from "@omnistudio-next/ui";
+import "@omnistudio-next/ui/styles";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { saveSettings, settings, uiSettings } from "@/stores/settings";
 import { desktopUpdateSnapshot } from "@/stores/desktopUpdate";
 import { useMcpControl } from "@/lib/mcpControl";
 import ffmpegRequired from "@/components/settings/ffmpegRequired.vue";
+import sessionGuard from "@/components/auth/sessionGuard.vue";
 import updateBox from "@/components/updateBox.vue";
 import "element-plus/theme-chalk/dark/css-vars.css";
 

@@ -17,7 +17,7 @@ if (mode === "typecheck") {
 if (!(isMac && ["x64", "arm64"].includes(process.arch)) && !(process.platform === "win32" && process.arch === "x64")) {
   throw new Error("桌面构建需要 Windows x64 或 macOS x64/arm64 环境。");
 }
-if (mode === "dev") process.env.TOONFLOW_DATA_DIR = resolve(projectDir, "data");
+if (mode === "dev") process.env.OMNISTUDIO_NEXT_DATA_DIR = resolve(projectDir, "data");
 if (isMac) {
   const startupTarget = isIntelMac ? "macX64" : "macArm64";
   for (const name of ["libthorvg.dylib", "nativeSplash.dylib"]) {
@@ -50,8 +50,8 @@ for (const script of mode === "dev" ? ["dev:plugins"] : [
   await $`${process.execPath} run ${script}`.cwd(projectDir);
 }
 await $`${process.execPath} run build:ui`.cwd(projectDir);
-await $`${process.execPath} run --filter @toonflow/web build`.cwd(projectDir);
-await $`${process.execPath} run --filter @toonflow/mcp build`.cwd(projectDir);
+await $`${process.execPath} run --filter @omnistudio-next/web build`.cwd(projectDir);
+await $`${process.execPath} run --filter @omnistudio-next/mcp build`.cwd(projectDir);
 if (isIntelMac) {
   // ACT: 共用插件和 Web 构建；Intel Mac 仅将 SDK 适配交给独立的 1.18.1。
   await $`${process.execPath} ${resolve(projectDir, "compat/macIntel/build.ts")} ${mode === "package" ? "build" : mode}`.cwd(projectDir);

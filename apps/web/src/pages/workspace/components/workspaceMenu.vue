@@ -8,7 +8,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { IconArrowLeft, IconSettings } from "@tabler/icons-vue";
-import { uiIconButton, uiBadge, uiDialog, uiButton } from "@toonflow/ui";
+import { uiIconButton, uiBadge, uiDialog, uiButton } from "@omnistudio-next/ui";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 
 const emit = defineEmits<{ openSettings: [] }>();

@@ -4,10 +4,10 @@ const startupTarget = process.platform === "darwin" ? (process.arch === "x64" ? 
 
 export default {
   app: {
-    name: "toonflow",
-    identifier: "local.toonflow.desktop",
+    name: "omnistudio-next",
+    identifier: "local.omnistudio-next.desktop",
     version: process.env.appVersion ?? "2.0.0",
-    urlSchemes: ["toonflow"],
+    urlSchemes: ["omnistudio-next"],
   },
   build: {
     mainProcess: "bun",
@@ -45,7 +45,7 @@ export default {
   },
   release: {
     // ACT: 构建基线和补丁固定取 GitHub；客户端更新源由设置单独控制，默认官方源。
-    baseUrl: `${process.env.GITHUB_SERVER_URL || "https://github.com"}/${process.env.GITHUB_REPOSITORY || "HBAI-Ltd/Toonflow-app"}/releases/latest/download`,
+    baseUrl: `${process.env.GITHUB_SERVER_URL || "https://github.com"}/${process.env.GITHUB_REPOSITORY || "Dylan-Nihilo/omnistudio-next"}/releases/latest/download`,
     // ACT: 常规构建不访问更新服务器；release:desktop 显式开启增量构建。
     generatePatch: process.env.generateUpdatePatch === "1",
   },

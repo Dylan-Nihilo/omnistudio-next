@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { BrowserFfmpegRequest } from "@toonflow/ffmpeg";
+import type { BrowserFfmpegRequest } from "@omnistudio-next/ffmpeg";
 import { validateFields } from "@/lib/middleware";
 import { success } from "@/lib/responseFormat";
 import u from "@/utils";
+import { requireAccount } from "@/utils/accountContext";
 
 const callSchema = z.object({
   method: z.string().min(1).max(64), args: z.array(z.json()).max(128),
@@ -42,6 +43,8 @@ export default Router().post("/", validateFields(inputSchema.shape), async (req,
     requests.set(requestKey, controller);
   }
   const close = () => controller.abort();
+  const accountSignal = requireAccount().signal;
+  accountSignal?.addEventListener("abort", close, { once: true });
   res.once("close", close);
   req.once("aborted", close);
   req.socket.once("close", close);
@@ -65,5 +68,6 @@ export default Router().post("/", validateFields(inputSchema.shape), async (req,
     res.off("close", close);
     req.off("aborted", close);
     req.socket.off("close", close);
+    accountSignal?.removeEventListener("abort", close);
   }
 });

@@ -20,6 +20,7 @@ export const agentAttachmentsSchema = z
   .max(20);
 
 export type ActiveAgentSession = {
+  userId: string;
   history: SessionManager; session?: AgentSession; send: (event: AgentEvent) => void;
   entryOffset: number; tools: Map<string, AgentToolCall>;
   abort(): Promise<void>;

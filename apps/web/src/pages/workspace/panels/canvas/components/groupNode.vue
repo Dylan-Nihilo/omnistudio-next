@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { inject, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { useVueFlow, type GraphNode, type NodeProps } from "@vue-flow/core";
-import { useUiFeedback } from "@toonflow/ui";
+import { useUiFeedback } from "@omnistudio-next/ui";
 
 const feedback = useUiFeedback();
 const props = defineProps<NodeProps>();

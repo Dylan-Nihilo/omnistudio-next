@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { uiInput, uiTree, uiTable, uiVirtualTable, uiResizeBox, uiPagination, uiCollapse, uiLoading, uiSwitch, type UiColumn, type UiTreeNode, type UiValue } from "@toonflow/ui";
+import { uiInput, uiTree, uiTable, uiVirtualTable, uiResizeBox, uiPagination, uiCollapse, uiLoading, uiSwitch, type UiColumn, type UiTreeNode, type UiValue } from "@omnistudio-next/ui";
 import { componentNames } from "../inventory";
 const rows = componentNames.map(name => ({ id: name, name: name + ".vue", kind: "Vue" }));
 const columns: UiColumn[] = [{ key: "name", label: "名称" }, { key: "kind", label: "类型", width: 120 }];

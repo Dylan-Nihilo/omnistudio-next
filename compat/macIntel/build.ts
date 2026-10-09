@@ -38,7 +38,7 @@ cpSync(resolve(projectDir, "apps/desktop/src"), sourceDir, { recursive: true });
 for (const target of new Bun.Glob("**/*.ts").scanSync({ cwd: sourceDir, absolute: true })) {
   const code = readFileSync(target, "utf8")
     .replace(/(["'])electrobun\/main\1/g, () => JSON.stringify(modulePath(target, resolve(generatedDir, "electrobun.ts"))))
-    .replace(/(["'])(@toonflow\/[^"']+)\1/g, (_match, _quote, specifier) => JSON.stringify(modulePath(target, Bun.resolveSync(specifier, resolve(projectDir, "apps/desktop")))));
+    .replace(/(["'])(@omnistudio-next\/[^"']+)\1/g, (_match, _quote, specifier) => JSON.stringify(modulePath(target, Bun.resolveSync(specifier, resolve(projectDir, "apps/desktop")))));
   writeFileSync(target, code);
 }
 const cli = resolve(compatDir, "node_modules/electrobun/bin/electrobun.cjs");

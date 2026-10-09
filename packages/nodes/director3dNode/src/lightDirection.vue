@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { uiSlider } from "@toonflow/ui";
+import { uiSlider } from "@omnistudio-next/ui";
 import {
   ArrowHelper,
   BufferGeometry,

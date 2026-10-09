@@ -1,4 +1,4 @@
-import { z } from "@toonflow/nodes-scaffold/runtime";
+import { z } from "@omnistudio-next/nodes-scaffold/runtime";
 import { PerspectiveCamera } from "three";
 import { cameraViewSchema, type CameraView } from "./scene";
 

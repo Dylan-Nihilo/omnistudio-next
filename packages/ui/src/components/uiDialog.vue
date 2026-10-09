@@ -113,7 +113,8 @@ function handleEscape(event: KeyboardEvent) {
   }
 }
 
-function handleFocusOut() {
+function handleFocusOut(event: FocusEvent) {
+  if (event.relatedTarget instanceof Node && dialog.value?.contains(event.relatedTarget)) return;
   queueMicrotask(() => {
     const element = dialog.value;
     if (!visible.value || !element?.matches(":modal")) return;

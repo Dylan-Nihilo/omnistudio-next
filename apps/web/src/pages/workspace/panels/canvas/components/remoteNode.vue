@@ -14,9 +14,9 @@
 <script setup lang="ts">
 import { inject, onErrorCaptured, ref, watch, type Component } from "vue";
 import { useNode, useVueFlow } from "@vue-flow/core";
-import { uiButton, uiIconButton, uiTag } from "@toonflow/ui";
+import { uiButton, uiIconButton, uiTag } from "@omnistudio-next/ui";
 import { IconRefresh, IconX } from "@tabler/icons-vue";
-import { nodeSkeleton, type NodeData } from "@toonflow/nodes-scaffold/runtime";
+import { nodeSkeleton, type NodeData } from "@omnistudio-next/nodes-scaffold/runtime";
 
 defineOptions({ inheritAttrs: false });
 const props = defineProps<{ component?: Component | string; error?: string; loading?: boolean }>();

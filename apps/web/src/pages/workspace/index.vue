@@ -1,9 +1,9 @@
 <template>
   <main class="workspacePage" :style="{ '--agentWidth': `${agentVisible ? agentWidth : 0}px` }">
     <header ref="headerElement" class="workspaceHeader">
-      <div class="projectBrand"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="projectInfo"><strong :title="workspaceStore.project?.name">{{ workspaceStore.project?.name }}</strong><span :title="workspaceStore.project?.directory">{{ workspaceStore.project?.directory }}</span></div></div>
+      <div class="projectBrand"><img class="brandLogo" :src="logoUrl" alt="omnistudio-next" /><div class="projectInfo"><strong :title="workspaceStore.project?.name">{{ workspaceStore.project?.name }}</strong><span :title="workspaceStore.project?.directory">{{ workspaceStore.project?.directory }}</span></div></div>
       <uiRadioGroup :modelValue="activePanel" class="panelSwitcher" :options="panelOptions" variant="segmented" aria-label="切换面板" @change="switchPanel" />
-      <div class="headerActions"><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="Toonflow Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
+      <div class="headerActions"><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="omnistudio-next Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
     </header>
     <div class="workspaceStage">
       <canvasPanel :key="workspaceStore.project?.directory" ref="canvasPanelRef" class="canvasPanel" :class="{ backgroundPanel: activePanel !== 'canvas' }" :inert="activePanel !== 'canvas'" :aria-hidden="activePanel !== 'canvas'" :active="activePanel === 'canvas'" :settingsVisible="settingsVisible" />
@@ -19,8 +19,8 @@ import { defineAsyncComponent, nextTick, onMounted, onScopeDispose, provide, ref
 import { onBeforeRouteLeave } from "vue-router";
 import axios from "axios";
 import { IconLayoutDashboard, IconFileText, IconMessageCircle } from "@tabler/icons-vue";
-import { uiRadioGroup, uiButton, useUiFeedback } from "@toonflow/ui";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import { uiRadioGroup, uiButton, useUiFeedback } from "@omnistudio-next/ui";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import settings from "@/components/settings/index.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";

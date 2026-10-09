@@ -36,12 +36,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from "vue";
 import axios from "axios";
-import { useUiFeedback } from "@toonflow/ui";
+import { useUiFeedback } from "@omnistudio-next/ui";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import type { AgentConversation, AgentHistory } from "./types";
-import type { AgentEvent, AgentSubAgent } from "@toonflow/server/agent/types";
+import type { AgentEvent, AgentSubAgent } from "@omnistudio-next/server/agent/types";
 import agentMenu from "./menu.vue";
 import conversation from "./conversation.vue";
 
@@ -152,7 +152,7 @@ async function newConversation() {
   try {
     const { data } = await axios.post<{ code: number; data: AgentConversation; message?: string }>("/api/agent/create", {
       directory,
-    }, { headers: { "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken } });
+    }, { headers: { "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken } });
     if (data.code !== 200) throw new Error(data.message || "新建对话失败");
     if (currentRequest !== requestId) return;
     const session = data.data;
@@ -170,7 +170,7 @@ async function newConversation() {
 
 async function readConversation(directory: string, file: string) {
   const { data } = await axios.get<{ code: number; data: AgentConversation; message?: string }>("/api/agent/get", {
-    params: { directory, sessionFile: file }, headers: { "x-toonflow-workspace": "1" },
+    params: { directory, sessionFile: file }, headers: { "x-omnistudio-next-workspace": "1" },
   });
   if (data.code !== 200) throw new Error(data.message || "读取对话失败");
   return data.data;
@@ -184,7 +184,7 @@ async function loadHistory(openLatest = false) {
   loading.value = openLatest;
   try {
     const { data } = await axios.get<{ code: number; data: AgentHistory[]; message?: string }>("/api/agent/list", {
-      params: { directory }, headers: { "x-toonflow-workspace": "1" },
+      params: { directory }, headers: { "x-omnistudio-next-workspace": "1" },
     });
     if (data.code !== 200) throw new Error(data.message || "读取历史对话失败");
     if (currentRequest !== requestId) return;
@@ -241,7 +241,7 @@ async function renameConversation(file: string, value: string) {
   try {
     const { data } = await axios.patch<{ code: number; data: { name: string }; message?: string }>("/api/agent/rename", {
       directory, sessionFile: file, name: nextName,
-    }, { headers: { "x-toonflow-workspace": "1" } });
+    }, { headers: { "x-omnistudio-next-workspace": "1" } });
     if (data.code !== 200) throw new Error(data.message || "重命名对话失败");
     if (currentRequest !== requestId) return;
     if (item) item.name = data.data.name;

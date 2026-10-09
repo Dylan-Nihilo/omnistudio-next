@@ -1,6 +1,6 @@
 # Team Scaffold
 
-`@toonflow/teams-scaffold` 负责团队清单校验、目录打包及标准 A2A 接入。模型、会话、工作区权限和成员执行由宿主提供，团队包不启动服务，也不包含模型密钥。
+`@omnistudio-next/teams-scaffold` 负责团队清单校验、目录打包及标准 A2A 接入。模型、会话、工作区权限和成员执行由宿主提供，团队包不启动服务，也不包含模型密钥。
 
 ## 开发团队
 
@@ -21,7 +21,7 @@ tools/example.tool.js
 `tools` 可省略；其中只接受通过现有 toolScaffold 构建的单文件工具，不再打包一套 SDK 或模型运行时。
 
 ```ts
-import { createTeamConfig } from "@toonflow/teams-scaffold";
+import { createTeamConfig } from "@omnistudio-next/teams-scaffold";
 
 await createTeamConfig(import.meta.url, {
   sync: process.argv.includes("--sync") ? "replace" : "missing",
@@ -51,7 +51,7 @@ await createTeamConfig(import.meta.url, {
 
 ## A2A
 
-在 Toonflow 的「设置 → 插件市场 → Agent」中安装 `.agent.zip`，可以启用、禁用、导出、卸载或编辑成员说明、技能、知识与 `team.json`。团队安装在 `data/agents/<name>`；更新发现本地修改时会要求明确覆盖，开发构建也不会默认覆盖它们。团队资料工具允许成员在清单授予的范围内读写文本，不能借此修改工具代码或扩大成员授权。
+在 omnistudio-next 的「设置 → 插件市场 → Agent」中安装 `.agent.zip`，可以启用、禁用、导出、卸载或编辑成员说明、技能、知识与 `team.json`。团队安装在 `data/agents/<name>`；更新发现本地修改时会要求明确覆盖，开发构建也不会默认覆盖它们。团队资料工具允许成员在清单授予的范围内读写文本，不能借此修改工具代码或扩大成员授权。
 
 主 Agent 使用现有 `subAgent` 工具调用团队，例如：
 
@@ -65,10 +65,10 @@ await createTeamConfig(import.meta.url, {
 
 「连接远程 Agent」保存外部服务的完整 Agent Card 地址和可选 Bearer 令牌，连接名也用于 `subAgent` 的 `team` 字段。只有任务文本发送到远端，不传模型密钥、宿主工具或自动上传工作区文件。返回 `inputRequired` 时，将补充内容与原 `taskId`、`contextId` 一起提交同一团队。远端用量不计入本机可核实的模型用量。
 
-`@toonflow/teams-scaffold/a2a` 使用官方 `@a2a-js/sdk` 1.2.0，协议为 A2A 1.0。导出的 `AgentCard`、`Message`、`Task`、`Artifact` 均为 SDK 原始类型；使用 SDK 的 `fromJSON` / `toJSON` 转换线上 JSON，不手工拼接内部 oneof 结构。
+`@omnistudio-next/teams-scaffold/a2a` 使用官方 `@a2a-js/sdk` 1.2.0，协议为 A2A 1.0。导出的 `AgentCard`、`Message`、`Task`、`Artifact` 均为 SDK 原始类型；使用 SDK 的 `fromJSON` / `toJSON` 转换线上 JSON，不手工拼接内部 oneof 结构。
 
 ```ts
-import { createTeamAgentCard, createTeamA2aRouter } from "@toonflow/teams-scaffold/a2a";
+import { createTeamAgentCard, createTeamA2aRouter } from "@omnistudio-next/teams-scaffold/a2a";
 
 app.use("/team", createTeamA2aRouter({
   card: createTeamAgentCard(manifest, "https://example.com/team"),
@@ -88,7 +88,7 @@ Card 位于挂载路径下 `/.well-known/agent-card.json`，公开团队能力�
 任务、事件和身份索引使用 SDK 内存存储，服务重启后不恢复；宿主需自行清理保存的模型会话。首期不提供推送通知或旧版 0.3 兼容层。
 
 ```ts
-import { createTeamA2aClient } from "@toonflow/teams-scaffold/a2a";
+import { createTeamA2aClient } from "@omnistudio-next/teams-scaffold/a2a";
 
 const client = await createTeamA2aClient({
   url: "https://example.com/team/.well-known/agent-card.json",

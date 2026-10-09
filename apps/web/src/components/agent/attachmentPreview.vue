@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { uiDialog, uiIconButton, uiImage, uiImageViewer, uiMediaPlayer } from "@toonflow/ui";
+import { uiDialog, uiIconButton, uiImage, uiImageViewer, uiMediaPlayer } from "@omnistudio-next/ui";
 import { IconPhoto, IconVideo, IconX } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import type { AgentAttachment } from "./types";

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { parseSessionEntries } from "@earendil-works/pi-coding-agent";
-import type { CanvasContext } from "@toonflow/tools-scaffold/runtime";
+import type { CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
 import type { AgentEvent } from "@/agent/runtime/types";
 import { run } from "@/agent/runtime";
 import { createAgentConversation, getToolResultText, trackAgentEvent, updateSubAgent } from "@/agent/runtime/sessions";

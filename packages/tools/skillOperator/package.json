@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/tool-skill-operator",
+  "name": "@omnistudio-next/tool-skill-operator",
   "version": "2.0.0",
   "private": true,
   "type": "module",
@@ -11,6 +11,6 @@
     "zod": "^4.6.2"
   },
   "devDependencies": {
-    "@toonflow/tools-scaffold": "workspace:*"
+    "@omnistudio-next/tools-scaffold": "workspace:*"
   }
 }

@@ -2,19 +2,19 @@
   <div class="personalization">
     <section class="instructionsSection" aria-labelledby="instructionsTitle">
       <header class="sectionHeader">
-        <h3 id="instructionsTitle">Toonflow 说明</h3>
+        <h3 id="instructionsTitle">omnistudio-next 说明</h3>
         <p>为所有聊天提供额外说明和上下文。支持 Markdown，保存后下一次发送消息时生效。</p>
       </header>
       <uiAlert v-if="document.error" :title="document.error" tone="error" />
-      <uiTextarea v-model="document.content" :autosize="{ minRows: 8, maxRows: 14 }" :maxlength="maxLength" :disabled="!document.loaded || document.loading" resize="none" aria-label="Toonflow 说明内容" />
+      <uiTextarea v-model="document.content" :autosize="{ minRows: 8, maxRows: 14 }" :maxlength="maxLength" :disabled="!document.loaded || document.loading" resize="none" aria-label="omnistudio-next 说明内容" />
       <div class="editorFooter">
         <span class="editorStatus" role="status">
           {{ document.loading ? "正在读取…" : isDirty(document) ? "有未保存的修改" : "" }}
           <span>{{ document.content.length }} / {{ maxLength }}</span>
         </span>
         <div class="editorActions">
-          <uiButton variant="secondary" :icon="IconRefresh" :loading="document.loading" :disabled="document.saving" aria-label="重新加载 Toonflow 说明" @click="reloadDocument(document, 'agents')">{{ document.loaded ? "重新加载" : "重试" }}</uiButton>
-          <uiButton :icon="IconDeviceFloppy" :loading="document.saving" :disabled="!document.loaded || document.loading || document.conflict || !isDirty(document) || document.content.length > maxLength" aria-label="保存 Toonflow 说明" @click="saveDocument(document, 'agents')">保存</uiButton>
+          <uiButton variant="secondary" :icon="IconRefresh" :loading="document.loading" :disabled="document.saving" aria-label="重新加载 omnistudio-next 说明" @click="reloadDocument(document, 'agents')">{{ document.loaded ? "重新加载" : "重试" }}</uiButton>
+          <uiButton :icon="IconDeviceFloppy" :loading="document.saving" :disabled="!document.loaded || document.loading || document.conflict || !isDirty(document) || document.content.length > maxLength" aria-label="保存 omnistudio-next 说明" @click="saveDocument(document, 'agents')">保存</uiButton>
         </div>
       </div>
     </section>
@@ -31,7 +31,7 @@
         <uiButton variant="danger" :icon="IconTrash" :loading="memoryAction === 'delete'" :disabled="!!memoryAction || memoryDocument.loading || memoryDocument.saving" aria-label="删除本地记忆" @click="deleteMemory">删除本地记忆</uiButton>
       </div>
     </section>
-    <uiDialog v-model="memoryVisible" title="Toonflow 记忆" :width="760" :closeOnClickModal="false" :closeOnPressEscape="!memoryDocument.saving" :showClose="!memoryDocument.saving">
+    <uiDialog v-model="memoryVisible" title="omnistudio-next 记忆" :width="760" :closeOnClickModal="false" :closeOnPressEscape="!memoryDocument.saving" :showClose="!memoryDocument.saving">
       <div class="memoryContent">
         <uiAlert v-if="memoryDocument.error" :title="memoryDocument.error" tone="error" />
         <uiTextarea v-if="memoryEditing" v-model="memoryDocument.content" :autosize="{ minRows: 10, maxRows: 18 }" :maxlength="maxLength" :disabled="memoryDocument.loading" resize="none" aria-label="本地记忆内容" />
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { computed, onActivated, reactive, ref, watch } from "vue";
 import axios from "axios";
-import { uiAlert, uiTextarea, uiButton, uiSwitch, uiDialog, uiEmpty, useUiFeedback } from "@toonflow/ui";
+import { uiAlert, uiTextarea, uiButton, uiSwitch, uiDialog, uiEmpty, useUiFeedback } from "@omnistudio-next/ui";
 import { IconDeviceFloppy, IconEdit, IconEye, IconRefresh, IconTrash } from "@tabler/icons-vue";
 import { saveSettings, settings } from "@/stores/settings";
 import messageMarkdown from "@/components/messageMarkdown.vue";
@@ -74,7 +74,7 @@ type DocumentResponse = { code: number; data: DocumentContent; message?: string 
 const feedback = useUiFeedback();
 const props = defineProps<{ visible: boolean }>();
 const maxLength = 20000;
-const headers = { "x-toonflow-workspace": "1" };
+const headers = { "x-omnistudio-next-workspace": "1" };
 const document = reactive<DocumentState>({
   content: "",
   revision: "",
@@ -168,7 +168,7 @@ async function saveDocument(document: DocumentState, name: "agents" | "memory") 
     document.savedContent = data.data.content;
     document.revision = data.data.revision;
     if (document.content === content) document.content = data.data.content;
-    feedback.message({ tone: "success", message: `${name === "agents" ? "Toonflow 说明" : "本地记忆"}已保存` });
+    feedback.message({ tone: "success", message: `${name === "agents" ? "omnistudio-next 说明" : "本地记忆"}已保存` });
     return true;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 409) document.conflict = true;
@@ -228,7 +228,7 @@ async function deleteMemory() {
       return;
     }
     try {
-      await feedback.confirm("将删除所有工作区共用的本地记忆及未保存的记忆修改，此操作无法撤销。Toonflow 说明会保留。", "删除本地记忆", {
+      await feedback.confirm("将删除所有工作区共用的本地记忆及未保存的记忆修改，此操作无法撤销。omnistudio-next 说明会保留。", "删除本地记忆", {
         confirmButtonText: "删除",
         cancelButtonText: "取消",
         danger: true,

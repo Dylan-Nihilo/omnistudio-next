@@ -4,10 +4,10 @@
   "baselineCommit": "ec8f54597bf6e6114ed56b832f9052cd6f735311",
   "sourceCodeChanged": false,
   "isolation": {
-    "plannedWorktree": "/Users/dylanthomas/Desktop/projects/toonflowUi",
+    "plannedWorktree": "/Users/dylanthomas/Desktop/projects/omnistudio-next-ui",
     "plannedBranch": "uiRefactor",
     "created": false,
-    "plannedUiPackage": "@toonflow/ui",
+    "plannedUiPackage": "@omnistudio-next/ui",
     "plannedUiPackagePath": "packages/ui",
     "plannedPreviewPath": "apps/uiPreview",
     "sharedNodeModules": false,
@@ -197,9 +197,9 @@
         "@tanstack/vue-virtual",
         "@tdesign-vue-next/chat/es/chat-item",
         "@tdesign-vue-next/chat/es/chat-reasoning",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/server/agent/types",
-        "@toonflow/tool-canvas/runtime",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/server/agent/types",
+        "@omnistudio-next/tool-canvas/runtime",
         "axios",
         "element-plus",
         "vue",
@@ -231,7 +231,7 @@
         "./types",
         "@/lib/workspaceFiles",
         "@/stores/workspace",
-        "@toonflow/server/agent/types",
+        "@omnistudio-next/server/agent/types",
         "axios",
         "element-plus",
         "vue"
@@ -256,7 +256,7 @@
         "./mentionThumbnail.vue",
         "@/lib/workspaceFiles",
         "@tabler/icons-vue",
-        "@toonflow/server/agent/types",
+        "@omnistudio-next/server/agent/types",
         "axios",
         "vue"
       ],
@@ -284,8 +284,8 @@
         "./mentionThumbnail.vue",
         "@tabler/icons-vue",
         "@tanstack/vue-virtual",
-        "@toonflow/server/agent/mentionSources",
-        "@toonflow/server/agent/types",
+        "@omnistudio-next/server/agent/mentionSources",
+        "@omnistudio-next/server/agent/types",
         "element-plus",
         "vue"
       ],
@@ -333,7 +333,7 @@
         "@/components/settings/panels/pluginMarket/pluginConfigDialog.vue",
         "@/components/settings/panels/pluginMarket/types",
         "@tabler/icons-vue",
-        "@toonflow/server/agent/types",
+        "@omnistudio-next/server/agent/types",
         "axios",
         "element-plus",
         "vue"
@@ -386,8 +386,8 @@
         "@/components/messageMarkdown.vue",
         "@tabler/icons-vue",
         "@tdesign-vue-next/chat/es/chat-reasoning",
-        "@toonflow/server/agent/types",
-        "@toonflow/tools-scaffold/client",
+        "@omnistudio-next/server/agent/types",
+        "@omnistudio-next/tools-scaffold/client",
         "vue"
       ],
       "uiTags": {
@@ -453,7 +453,7 @@
       "imports": [
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/model-icons",
+        "@omnistudio-next/model-icons",
         "vue"
       ],
       "uiTags": {
@@ -532,8 +532,8 @@
         "@/stores/desktopUpdate",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/server/desktop",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/server/desktop",
         "axios",
         "element-plus",
         "tdesign-vue-next",
@@ -571,7 +571,7 @@
         "@/stores/hello",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/server/desktop",
+        "@omnistudio-next/server/desktop",
         "axios",
         "element-plus",
         "vue",
@@ -603,8 +603,8 @@
       "imports": [
         "../../formCreate",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/nodeAi",
-        "@toonflow/providers",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
+        "@omnistudio-next/providers",
         "axios",
         "element-plus",
         "vue"
@@ -749,7 +749,7 @@
         "@/lib/tf",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/providers",
+        "@omnistudio-next/providers",
         "axios",
         "element-plus",
         "vue"
@@ -788,9 +788,9 @@
         "@/components/messageMarkdown.vue",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/model-icons",
-        "@toonflow/providers",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/model-icons",
+        "@omnistudio-next/providers",
         "axios",
         "element-plus",
         "vue"
@@ -826,8 +826,8 @@
         "@/lib/tf",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/providers",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/providers",
         "axios",
         "element-plus",
         "vue"
@@ -895,11 +895,11 @@
         "@/lib/clipboard",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/model-icons",
-        "@toonflow/nodes-scaffold/nodeAi",
-        "@toonflow/providers",
-        "@toonflow/providers/media/tfRouter?raw",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/model-icons",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
+        "@omnistudio-next/providers",
+        "@omnistudio-next/providers/media/tfRouter?raw",
         "axios",
         "element-plus",
         "vue"
@@ -939,8 +939,8 @@
         "@/components/messageMarkdown.vue",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/model-icons",
-        "@toonflow/nodes-scaffold/nodeAi",
+        "@omnistudio-next/model-icons",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
         "axios",
         "vue"
       ],
@@ -974,8 +974,8 @@
         "./types",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
-        "@toonflow/nodes-scaffold/nodeAi",
+        "@omnistudio-next/assets/logo.svg",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
         "axios",
         "element-plus",
         "vue"
@@ -1207,8 +1207,8 @@
         "@/lib/tf",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/nodeAi",
-        "@toonflow/providers/language/tfRouter",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
+        "@omnistudio-next/providers/language/tfRouter",
         "axios",
         "element-plus",
         "semver/functions/parse",
@@ -1472,10 +1472,10 @@
         "@/stores/hello",
         "@/stores/settings",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg?raw",
-        "@toonflow/nodes-scaffold/nodeAi",
-        "@toonflow/providers/language/tfRouter",
-        "@toonflow/providers/media/tfRouter?raw",
+        "@omnistudio-next/assets/logo.svg?raw",
+        "@omnistudio-next/nodes-scaffold/nodeAi",
+        "@omnistudio-next/providers/language/tfRouter",
+        "@omnistudio-next/providers/media/tfRouter?raw",
         "axios",
         "element-plus",
         "vue",
@@ -1526,7 +1526,7 @@
         "@/stores/desktopUpdate",
         "@/stores/workspace",
         "@tabler/icons-vue",
-        "@toonflow/assets/logo.svg",
+        "@omnistudio-next/assets/logo.svg",
         "axios",
         "element-plus",
         "pinia",
@@ -1675,8 +1675,8 @@
         "@/lib/mcpControl",
         "@/lib/workspaceFiles",
         "@/stores/workspace",
-        "@toonflow/server/agent/mentionSources",
-        "@toonflow/tool-canvas/runtime",
+        "@omnistudio-next/server/agent/mentionSources",
+        "@omnistudio-next/tool-canvas/runtime",
         "vue"
       ],
       "uiTags": {},
@@ -1699,7 +1699,7 @@
         "./assetMenu.vue",
         "@/lib/workspaceFiles",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/values",
+        "@omnistudio-next/nodes-scaffold/values",
         "axios",
         "element-plus",
         "vue"
@@ -1851,7 +1851,7 @@
         "../selectionNodes",
         "./selectionHandle.vue",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "@vue-flow/core",
         "element-plus",
         "vue"
@@ -1902,7 +1902,7 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "@vue-flow/core",
         "element-plus",
         "vue"
@@ -1929,7 +1929,7 @@
         "../selectionConnections",
         "../selectionNodes",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/connection",
+        "@omnistudio-next/nodes-scaffold/connection",
         "@vue-flow/core",
         "vue"
       ],
@@ -1951,7 +1951,7 @@
       "imports": [
         "../selectionNodes",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/nodeEvent",
+        "@omnistudio-next/nodes-scaffold/nodeEvent",
         "@vue-flow/core",
         "element-plus",
         "vue"
@@ -1998,11 +1998,11 @@
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-ai",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/connection",
-        "@toonflow/nodes-scaffold/nodeEvent",
-        "@toonflow/nodes-scaffold/nodeTools",
-        "@toonflow/nodes-scaffold/values",
-        "@toonflow/tool-canvas/runtime",
+        "@omnistudio-next/nodes-scaffold/connection",
+        "@omnistudio-next/nodes-scaffold/nodeEvent",
+        "@omnistudio-next/nodes-scaffold/nodeTools",
+        "@omnistudio-next/nodes-scaffold/values",
+        "@omnistudio-next/tool-canvas/runtime",
         "@vue-flow/background",
         "@vue-flow/core",
         "axios",
@@ -2273,7 +2273,7 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2297,7 +2297,7 @@
       "imports": [
         "./sceneAnimation",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2352,9 +2352,9 @@
         "./sceneAnimation",
         "./sceneEditor.vue",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/promptInput",
-        "@toonflow/nodes-scaffold/referenceItem",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/promptInput",
+        "@omnistudio-next/nodes-scaffold/referenceItem",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "@vue-flow/core",
         "element-plus",
         "vue"
@@ -2404,7 +2404,7 @@
         "./scene",
         "./sceneAnimation",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "three",
         "three/examples/jsm/controls/PointerLockControls.js",
@@ -2464,10 +2464,10 @@
       "imports": [
         "./components/generationSettings.vue",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/mediaHistory",
-        "@toonflow/nodes-scaffold/promptInput",
-        "@toonflow/nodes-scaffold/referenceItem",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/mediaHistory",
+        "@omnistudio-next/nodes-scaffold/promptInput",
+        "@omnistudio-next/nodes-scaffold/referenceItem",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2495,7 +2495,7 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2519,9 +2519,9 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/promptInput",
-        "@toonflow/nodes-scaffold/referenceItem",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/promptInput",
+        "@omnistudio-next/nodes-scaffold/referenceItem",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2550,7 +2550,7 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/runtime",
         "element-plus",
         "vue"
       ],
@@ -2578,11 +2578,11 @@
       "imports": [
         "./components/generationSettings.vue",
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/mediaHistory",
-        "@toonflow/nodes-scaffold/promptInput",
-        "@toonflow/nodes-scaffold/referenceItem",
-        "@toonflow/nodes-scaffold/runtime",
-        "@toonflow/nodes-scaffold/videoPlayer",
+        "@omnistudio-next/nodes-scaffold/mediaHistory",
+        "@omnistudio-next/nodes-scaffold/promptInput",
+        "@omnistudio-next/nodes-scaffold/referenceItem",
+        "@omnistudio-next/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/videoPlayer",
         "element-plus",
         "vue"
       ],
@@ -2609,8 +2609,8 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/nodes-scaffold/runtime",
-        "@toonflow/nodes-scaffold/videoPlayer",
+        "@omnistudio-next/nodes-scaffold/runtime",
+        "@omnistudio-next/nodes-scaffold/videoPlayer",
         "element-plus",
         "vue"
       ],
@@ -2635,7 +2635,7 @@
       "imports": [
         "@form-create/element-ui",
         "@tabler/icons-vue",
-        "@toonflow/tools-scaffold/runtime",
+        "@omnistudio-next/tools-scaffold/runtime",
         "axios",
         "element-plus",
         "vue"
@@ -2666,7 +2666,7 @@
       "extension": ".vue",
       "imports": [
         "@tabler/icons-vue",
-        "@toonflow/tools-scaffold/runtime",
+        "@omnistudio-next/tools-scaffold/runtime",
         "element-plus",
         "vue"
       ],

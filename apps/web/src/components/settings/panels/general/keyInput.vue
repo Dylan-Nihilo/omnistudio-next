@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { uiInput, uiIconButton } from "@toonflow/ui";
+import { uiInput, uiIconButton } from "@omnistudio-next/ui";
 import { ref, watch } from "vue";
 import { IconX } from "@tabler/icons-vue";
 import { getShortcutBindings, isModifierShortcut, shortcutFromEvent, shortcutLabel } from "@/lib/canvasShortcuts";

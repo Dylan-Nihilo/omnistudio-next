@@ -17,8 +17,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { IconChevronDown } from "@tabler/icons-vue";
-import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@toonflow/ui";
-import { modelIcon } from "@toonflow/model-icons";
+import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@omnistudio-next/ui";
+import { modelIcon } from "@omnistudio-next/model-icons";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 
 const selectedModel = defineModel<string>({ default: "" });

@@ -39,7 +39,7 @@
 import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from "vue";
 import { IconLayoutSidebarRight, IconAppWindowBottomRight } from "@tabler/icons-vue";
 import agent from "@/components/agent/index.vue";
-import { uiThemeProvider, uiIconButton } from "@toonflow/ui";
+import { uiThemeProvider, uiIconButton } from "@omnistudio-next/ui";
 import { uiSettings } from "@/stores/settings";
 
 const { topOffset = 0 } = defineProps<{ topOffset?: number }>();

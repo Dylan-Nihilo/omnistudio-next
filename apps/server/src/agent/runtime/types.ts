@@ -1,4 +1,4 @@
-import type { CanvasToolCall, QuestionRequest, ToolCall } from "@toonflow/tools-scaffold/runtime";
+import type { CanvasToolCall, QuestionRequest, ToolCall } from "@omnistudio-next/tools-scaffold/runtime";
 
 export type AgentToolCall = ToolCall & { question?: QuestionRequest & { callId: string } };
 

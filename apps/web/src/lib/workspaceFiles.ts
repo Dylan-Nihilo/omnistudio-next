@@ -1,11 +1,15 @@
 import axios from "axios";
 import { toValue, type MaybeRefOrGetter } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useAuthStore } from "@/stores/auth";
+import { getSessionSnapshot } from "@/lib/sessionState";
 
 type WorkspaceEntry = { name: string; path: string; type: "file" | "directory" };
-const client = axios.create({ baseURL: "/api/workspaces/files", headers: { "x-toonflow-workspace": "1" } });
+const client = axios.create({ baseURL: "/api/workspaces/files", headers: { "x-omnistudio-next-workspace": "1" } });
 const fileUrls = new Map<string, { directory: string; path: string; url: Promise<string>; users: number }>();
+window.addEventListener("omnistudio-next:account-changed", () => {
+  for (const entry of fileUrls.values()) void entry.url.then(url => URL.revokeObjectURL(url), () => {});
+  fileUrls.clear();
+});
 
 function cachePath(path: string) {
   return path.replaceAll("\\", "/").split("/").filter(part => part && part !== ".").join("/").toLowerCase();
@@ -23,8 +27,14 @@ function invalidateUrls(directory: string, path: string) {
 
 export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | undefined>) {
   const workspace = directory === undefined ? useWorkspaceStore() : undefined;
-  const auth = useAuthStore();
-  function requestConfig() { return { headers: { "x-workspace-id": auth.currentWorkspaceId } }; }
+  let ownerUserId: string | undefined;
+  function requestConfig() {
+    const session = getSessionSnapshot();
+    if (!session.userId) throw new Error("请先登录");
+    if (ownerUserId && ownerUserId !== session.userId) throw new Error("账户已切换，请重新打开项目后操作");
+    ownerUserId = session.userId;
+    return { headers: { "x-account-id": session.userId, "x-csrf-token": session.csrfToken }, signal: session.signal };
+  }
   function getDirectory() {
     const path = directory === undefined ? workspace?.project?.directory : toValue(directory);
     if (!path) throw new Error("请先选择工作目录");
@@ -42,11 +52,12 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
   }
 
   function acquireUrl(path: string, mimeType?: string) {
+    const request = requestConfig();
     const directory = getDirectory();
-    const key = JSON.stringify([directory, path, mimeType]);
+    const key = JSON.stringify([getSessionSnapshot().userId, directory, path, mimeType]);
     let entry = fileUrls.get(key);
     if (!entry) {
-      const url = client.get<Blob>("/read", { params: { directory, path }, responseType: "blob", ...requestConfig() })
+      const url = client.get<Blob>("/read", { params: { directory, path }, responseType: "blob", ...request })
         .then(({ data }) => URL.createObjectURL(mimeType ? new Blob([data], { type: mimeType }) : data));
       entry = { directory, path, url, users: 0 };
       fileUrls.set(key, entry);
@@ -72,9 +83,10 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
   async function readText(path: string, maxBytes?: number) {
     if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1)) throw new Error("读取字节数必须为正整数");
     try {
+      const request = requestConfig();
       const { data } = await client.get<string>("/read", {
         params: { directory: getDirectory(), path }, responseType: "text", transformResponse: [],
-        headers: { ...requestConfig().headers, ...(maxBytes === undefined ? {} : { Range: `bytes=0-${maxBytes - 1}` }) },
+        signal: request.signal, headers: { ...request.headers, ...(maxBytes === undefined ? {} : { Range: `bytes=0-${maxBytes - 1}` }) },
       });
       return data;
     } catch (error) {
@@ -88,8 +100,10 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
   }
 
   async function write(path: string, content: string | Blob | ArrayBuffer, exclusive = false, signal?: AbortSignal) {
+    const request = requestConfig();
+    signal = signal ? AbortSignal.any([signal, request.signal]) : request.signal;
     const directory = getDirectory();
-    await client.put("/write", content, { params: { directory, path, exclusive }, signal, headers: { ...requestConfig().headers, "Content-Type": "application/octet-stream" } });
+    await client.put("/write", content, { params: { directory, path, exclusive }, signal, headers: { ...request.headers, "Content-Type": "application/octet-stream" } });
     invalidateUrls(directory, path);
   }
 

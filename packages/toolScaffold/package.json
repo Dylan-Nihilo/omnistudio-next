@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/tools-scaffold",
+  "name": "@omnistudio-next/tools-scaffold",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@toonflow/ffmpeg": "workspace:*",
-    "@toonflow/providers": "workspace:*",
+    "@omnistudio-next/ffmpeg": "workspace:*",
+    "@omnistudio-next/providers": "workspace:*",
     "@vitejs/plugin-vue": "^6.0.8",
     "vite": "^8.2.2",
     "zod": "^4.6.2"
@@ -23,7 +23,7 @@
     "element-plus": "^2.14.5",
     "axios": "^1.20.0",
     "@form-create/element-ui": "^3",
-    "@toonflow/ui": "workspace:*"
+    "@omnistudio-next/ui": "workspace:*"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1"

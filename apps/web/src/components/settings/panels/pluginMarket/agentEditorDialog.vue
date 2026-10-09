@@ -39,7 +39,7 @@ const readme = ref("");
 const files = ref<{ path: string; content: string; original: string }[]>([]);
 const selectedPath = ref("");
 const selectedFile = computed(() => files.value.find(file => file.path === selectedPath.value));
-const headers = { "x-toonflow-workspace": "1" };
+const headers = { "x-omnistudio-next-workspace": "1" };
 const controller = new AbortController();
 onBeforeUnmount(() => controller.abort());
 onMounted(async () => {

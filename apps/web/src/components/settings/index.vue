@@ -22,10 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, shallowRef } from "vue";
-import { uiThemeProvider, uiBadge, uiButton } from "@toonflow/ui";
+import { computed, defineAsyncComponent, shallowRef, watch } from "vue";
+import { uiThemeProvider, uiBadge, uiButton } from "@omnistudio-next/ui";
 import { uiSettings } from "@/stores/settings";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
+import { useAuthStore } from "@/stores/auth";
 import {
   IconPalette,
   IconSettings,
@@ -39,7 +40,8 @@ import {
 } from "@tabler/icons-vue";
 
 // ACT: keep the legacy overlay while unported child dialogs still teleport to body.
-const settingsPanels = [
+const auth = useAuthStore();
+const allPanels = [
   { id: "ui", label: "界面设置", icon: IconPalette, component: defineAsyncComponent(() => import("./panels/ui.vue")) },
   { id: "general", label: "常规配置", icon: IconSettings, component: defineAsyncComponent(() => import("./panels/general/index.vue")) },
   {
@@ -56,7 +58,9 @@ const settingsPanels = [
   { id: "developer", label: "开发者选项", icon: IconCode, component: defineAsyncComponent(() => import("./panels/developer/index.vue")) },
   { id: "about", label: "关于", icon: IconInfoCircle, component: defineAsyncComponent(() => import("./panels/about.vue")) },
 ];
-const activePanel = shallowRef(settingsPanels[0]!);
+const settingsPanels = computed(() => allPanels.filter(panel => panel.id !== "developer" || auth.isRoot));
+const activePanel = shallowRef(allPanels[0]!);
+watch(() => auth.isRoot, () => { if (!settingsPanels.value.includes(activePanel.value)) activePanel.value = allPanels[0]!; });
 const visible = defineModel<boolean>({ default: false });
 </script>
 

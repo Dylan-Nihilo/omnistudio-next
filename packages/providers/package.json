@@ -1,10 +1,10 @@
 {
-  "name": "@toonflow/providers",
+  "name": "@omnistudio-next/providers",
   "version": "2.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@toonflow/ffmpeg": "workspace:*"
+    "@omnistudio-next/ffmpeg": "workspace:*"
   },
   "exports": {
     ".": "./index.ts",

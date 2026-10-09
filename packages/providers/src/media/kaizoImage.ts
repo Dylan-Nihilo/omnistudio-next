@@ -59,7 +59,7 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
   const references = request.images ?? [];
   let response: Response;
   if (references.length) {
-    const boundary = `----toonflow-kaizo-${Date.now().toString(16)}`;
+    const boundary = `----omnistudio-next-kaizo-${Date.now().toString(16)}`;
     const chunks: BlobPart[] = [];
     const append = (value: string | Uint8Array) => chunks.push(typeof value === "string" ? value : value as unknown as BlobPart);
     const addField = (name: string, value: string) => {
@@ -102,7 +102,7 @@ export default {
   version: "1.0.2",
   apiUrl: "https://www.kaizo.top/v1",
   protocol: "openai-completions",
-  readme: "旧 OmniStudio 使用的 Kaizo OpenAI 兼容图片服务。",
+  readme: "旧 omnistudio-next 使用的 Kaizo OpenAI 兼容图片服务。",
   rules,
   models: [{
     id: "gpt-image-2", label: "GPT Image 2", type: "image", mode: ["text", "singleImage", "multiReference"],

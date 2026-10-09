@@ -48,12 +48,12 @@ import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from "vue
 import axios from "axios";
 import formCreate, { type Api, type Options, type Rule } from "../../formCreate";
 import { ElDialog } from "element-plus";
-import { uiDialog, uiThemeProvider, uiRuleForm, uiField, uiSelect, uiTextarea, uiNumberInput, uiSwitch, uiImage, uiButton, uiIconButton, uiTabs, uiTag, uiAlert, useUiFeedback, type UiRuleFormApi } from "@toonflow/ui";
+import { uiDialog, uiThemeProvider, uiRuleForm, uiField, uiSelect, uiTextarea, uiNumberInput, uiSwitch, uiImage, uiButton, uiIconButton, uiTabs, uiTag, uiAlert, useUiFeedback, type UiRuleFormApi } from "@omnistudio-next/ui";
 import { supportsUiRules } from "../../ruleSupport";
 import { uiSettings } from "@/stores/settings";
 import { IconFolderOpen, IconRefresh, IconPlus, IconX, IconVolume, IconDownload, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-vue";
-import type { Provider } from "@toonflow/providers";
-import { invalidateNodeModels } from "@toonflow/nodes-scaffold/nodeAi";
+import type { Provider } from "@omnistudio-next/providers";
+import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
 
 type DebugProvider = { id: string; label: string; rules: Rule[]; models: Provider["models"] };
 type DebugLog = { id: number; method: string; url: string; state: string; status?: number; duration?: number; request?: string; response?: string; error?: string };
@@ -98,7 +98,7 @@ const resultTabs = computed(() => [{ value: "preview", label: "结果预览" }, 
 const status = ref("");
 const elapsed = ref(0);
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
-const desktopHeaders = { "x-toonflow-desktop": "1" };
+const desktopHeaders = { "x-omnistudio-next-desktop": "1" };
 let controller: AbortController | undefined;
 
 function showError(error: unknown) {

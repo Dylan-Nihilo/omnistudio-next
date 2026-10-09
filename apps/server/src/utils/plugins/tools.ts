@@ -1,12 +1,18 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as zod from "zod";
-import { toolMetadataSchema, toolNameSchema, type ToolMetadata, type ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import { toolMetadataSchema, toolNameSchema, type ToolMetadata, type ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 import conf from "@/utils/conf";
+import { platformConfig } from "@/utils/conf";
+import { getDatabase, hashSecret } from "@/db/database";
+import { auditEvents, platformSecrets } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { encryptPlatformSecret, readPlatformSecret } from "@/utils/platformSecrets";
+import { requireRootAccount } from "@/utils/accountContext";
 
-export { toolNameSchema } from "@toonflow/tools-scaffold/runtime";
+export { toolNameSchema } from "@omnistudio-next/tools-scaffold/runtime";
 
 const { z } = zod;
 
@@ -25,6 +31,7 @@ export function parseTool(source: string, name: string) {
   try {
     const header = source.match(/^\/\*! toonflowTool:([^\r\n]*) \*\/(?:\r?\n|$)/)?.[1];
     metadata = toolMetadataSchema.parse(JSON.parse(header ?? ""));
+    if (metadata.author === "Toonflow") metadata.author = "omnistudio-next";
     if (metadata.name !== name) throw new Error("name");
   } catch {
     throw Object.assign(new Error("工具元数据无效，或文件名与工具名称不一致"), { status: 400 });
@@ -57,12 +64,53 @@ export async function readTool(name: string, directory = toolsDirectory) {
   return { path, source, revision: createHash("sha256").update(source).digest("hex"), ...parseTool(source, name) };
 }
 
-export function getToolConfig(metadata: ToolMetadata): Record<string, unknown> {
+function configSecretId(name: string) { return `tool:${hashSecret(name)}`; }
+
+function secretFields(metadata: ToolMetadata) {
+  return metadata.configRules.filter(rule => typeof rule.field === "string" && (rule.props?.type === "password" || /(?:api.?key|token|password|secret|authorization)$/i.test(rule.field))).map(rule => String(rule.field));
+}
+
+export function publicToolConfig(metadata: ToolMetadata, config: Record<string, unknown>) {
+  const fields = new Set(secretFields(metadata));
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, fields.has(key) && value ? "[REDACTED]" : value]));
+}
+
+export async function getToolConfig(metadata: ToolMetadata): Promise<Record<string, unknown>> {
   const defaults = Object.fromEntries(metadata.configRules
     .filter(rule => typeof rule.field === "string" && rule.value !== undefined)
     .map(rule => [rule.field, rule.value]));
-  const saved = conf.get("toolConfigs", {});
-  return { ...defaults, ...(Object.hasOwn(saved, metadata.name) ? saved[metadata.name] : {}) };
+  const encrypted = await readPlatformSecret(configSecretId(metadata.name));
+  const legacy = platformConfig.get("toolConfigs", {});
+  const saved = encrypted ? JSON.parse(encrypted) as Record<string, unknown> : Object.hasOwn(legacy, metadata.name) ? legacy[metadata.name] : {};
+  return { ...defaults, ...saved };
+}
+
+export async function saveToolConfig(name: string, config: Record<string, unknown>) {
+  const account = requireRootAccount();
+  const { metadata, plugin } = await loadTool(name);
+  const previous = await getToolConfig(metadata);
+  const fields = new Set(secretFields(metadata));
+  const input = { ...config };
+  for (const field of fields) if (input[field] === "[REDACTED]" || input[field] === undefined) input[field] = previous[field];
+  if (Object.entries(input).some(([key, value]) => value === "[REDACTED]" && !fields.has(key))) throw Object.assign(new Error("不能保存脱敏占位符"), { status: 400 });
+  const parsed = validateToolConfig(plugin, input);
+  const ciphertext = encryptPlatformSecret(JSON.stringify(parsed));
+  const now = new Date();
+  await getDatabase().transaction(async tx => {
+    await tx.insert(platformSecrets).values({ id: configSecretId(name), ciphertext, createdAt: now, updatedAt: now }).onDuplicateKeyUpdate({ set: { ciphertext, updatedAt: now } });
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.tool.configure", metadata: { name }, createdAt: now, updatedAt: now });
+  });
+  const legacy = platformConfig.get("toolConfigs", {});
+  if (Object.hasOwn(legacy, name)) { delete legacy[name]; platformConfig.set("toolConfigs", legacy); }
+  return publicToolConfig(metadata, parsed);
+}
+
+export async function removeToolConfig(name: string) {
+  requireRootAccount();
+  await getDatabase().delete(platformSecrets).where(eq(platformSecrets.id, configSecretId(name)));
+  const legacy = platformConfig.get("toolConfigs", {});
+  delete legacy[name];
+  platformConfig.set("toolConfigs", legacy);
 }
 
 export async function listTools() {
@@ -77,7 +125,7 @@ export async function listTools() {
       const enabled = !files.some(entry => entry.name === `${name}.disabled`);
       try {
         const { metadata, revision } = await readTool(name);
-        return { ...metadata, enabled, config: getToolConfig(metadata), revision, loadError: "" };
+        return { ...metadata, enabled, config: await getToolConfig(metadata), revision, loadError: "" };
       } catch (err) {
         const loadError = err instanceof Error ? err.message : "工具文件无法读取";
         return { name, version: "", displayName: name, description: loadError, author: "", github: "", components: [], configRules: [], enabled, config: {}, revision: "", loadError };

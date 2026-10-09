@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import type { ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 import { canvasOperations } from "./runtime";
 
 const plugin: ToolPlugin = {

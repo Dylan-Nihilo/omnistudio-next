@@ -16,10 +16,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { uiButton, uiDialog, uiMediaPlayer, uiTooltip } from "@toonflow/ui";
+import { uiButton, uiDialog, uiMediaPlayer, uiTooltip } from "@omnistudio-next/ui";
 import axios from "axios";
 import { IconAt, IconFile } from "@tabler/icons-vue";
-import type { AgentMention } from "@toonflow/server/agent/types";
+import type { AgentMention } from "@omnistudio-next/server/agent/types";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { mentionName, mentionParts, mentionThumbnailProps } from "./mentionText";
 import mentionThumbnail from "./mentionThumbnail.vue";

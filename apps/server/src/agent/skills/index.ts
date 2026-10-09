@@ -2,9 +2,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { loadSkills, parseFrontmatter } from "@earendil-works/pi-coding-agent";
-import type { SkillContext, SkillLocation, SkillScope } from "@toonflow/tools-scaffold/runtime";
+import type { SkillContext, SkillLocation, SkillScope } from "@omnistudio-next/tools-scaffold/runtime";
 import conf from "@/utils/conf";
 import { isWithin, lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
+import { requireRootAccount } from "@/utils/accountContext";
 
 export function loadAgentSkills(cwd: string, scope?: SkillScope) {
   if (scope !== undefined && scope !== "workspace" && scope !== "global") throw new Error("技能范围无效");
@@ -44,6 +45,7 @@ export function createSkillContext(cwd: string): SkillContext {
   async function write(request: SkillLocation & { content: string }, create: boolean, signal?: AbortSignal) {
     signal?.throwIfAborted();
     const { target, manifest, ...document } = await locate(request, create);
+    if (document.scope === "global") requireRootAccount();
     if (manifest) {
       const { frontmatter } = parseFrontmatter(request.content);
       if (frontmatter.name !== request.name || typeof frontmatter.description !== "string" || !frontmatter.description.trim()) {

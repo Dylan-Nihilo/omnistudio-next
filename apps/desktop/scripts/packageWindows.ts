@@ -12,7 +12,7 @@ const projectDir = realpathSync(resolve(import.meta.dirname, "../../.."));
 process.chdir(projectDir);
 const nsisDir = resolve("build/desktop/nsis");
 const artifactDir = resolve(desktopConfig.build.artifactFolder);
-const outputFile = join(artifactDir, `toonflow-${desktopConfig.app.version}-Setup.exe`);
+const outputFile = join(artifactDir, `omnistudio-next-${desktopConfig.app.version}-Setup.exe`);
 const installerDir = resolve("apps/desktop/installer");
 const appIcon = resolve("packages/assets/logo.ico");
 const makensis = process.env.NSIS_PATH ?? "C:/Program Files (x86)/NSIS/makensis.exe";

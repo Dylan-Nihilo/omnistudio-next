@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { Artifact, createTeamAgentCard, createTeamA2aRouter, type TeamA2aRequest } from "@toonflow/teams-scaffold/a2a";
-import { teamNameSchema } from "@toonflow/teams-scaffold/runtime";
-import type { CanvasContext } from "@toonflow/tools-scaffold/runtime";
+import { Artifact, createTeamAgentCard, createTeamA2aRouter, type TeamA2aRequest } from "@omnistudio-next/teams-scaffold/a2a";
+import { teamNameSchema } from "@omnistudio-next/teams-scaffold/runtime";
+import type { CanvasContext } from "@omnistudio-next/tools-scaffold/runtime";
 import { createAgentModel } from "@/agent/runtime/model";
 import { createAgentTools } from "@/agent/tools";
 import { createTeamRunner } from "@/agent/teams";
 import { readTeam } from "@/utils/teams";
 import { callControl, getConnection } from "@/utils/mcp/control";
 import { authenticateA2a, getA2aSettings, getA2aSignal, getA2aUrl, resolveA2aWorkspace } from "./settings";
+import { requireAccount } from "@/utils/accountContext";
 
 export function createA2aRouter() {
   const router = Router();
@@ -16,8 +17,9 @@ export function createA2aRouter() {
     try {
       if (!getA2aSettings().enabled) { res.sendStatus(404); return; }
       const name = teamNameSchema.parse(req.params.name);
+      const endpointKey = `${requireAccount().userId}:${name}`;
       const configurationSignal = getA2aSignal();
-      let endpoint = endpoints.get(name);
+      let endpoint = endpoints.get(endpointKey);
       // 已接收任务的查询和取消继续交给 SDK；禁用/卸载只阻止 execute 接收新消息。
       if (endpoint?.signal === configurationSignal && req.method === "POST") { endpoint.router(req, res, next); return; }
       const team = await readTeam(name);
@@ -42,8 +44,7 @@ export function createA2aRouter() {
               const cwd = await resolveA2aWorkspace();
               // 保存时已规范化目录；不允许运行前把该目录替换成指向其他位置的链接。
               if (cwd !== settings.directory) throw new Error("A2A 工作目录已变化，请在设置中重新授权");
-              const configured = await createAgentModel(settings.providerId, settings.modelId, settings.thinkingLevel);
-              const { runtime } = configured;
+              const { runtime } = await createAgentModel(settings.providerId, settings.modelId, settings.thinkingLevel);
               const connection = getConnection(undefined, cwd);
               const canvas: CanvasContext | undefined = connection ? {
                 id: connection.state.canvasId ?? "a2a", tools: connection.state.tools,
@@ -52,7 +53,7 @@ export function createA2aRouter() {
               const tools = await createAgentTools(cwd, canvas);
               current = { userId: request.userId, runner: await createTeamRunner({
                 name, cwd, tools, canvas, modelRuntime: runtime,
-                model: runtime.getModel(settings.providerId, configured.model.id), thinkingLevel: settings.thinkingLevel,
+                model: runtime.getModel(settings.providerId, settings.modelId), thinkingLevel: settings.thinkingLevel,
               }) };
               pending.set(request.taskId, current);
             }
@@ -70,8 +71,8 @@ export function createA2aRouter() {
           card, authenticate: authenticateA2a, execute,
           onCancel: taskId => { pending.delete(taskId); },
         }) };
-        endpoints.set(name, endpoint);
-        configurationSignal.addEventListener("abort", () => { pending.clear(); endpoints.delete(name); }, { once: true });
+        endpoints.set(endpointKey, endpoint);
+        configurationSignal.addEventListener("abort", () => { pending.clear(); endpoints.delete(endpointKey); }, { once: true });
       } else Object.assign(endpoint.card, card);
       endpoint.router(req, res, next);
     } catch (error) { next(error); }

@@ -61,7 +61,7 @@ export default async function saveFile(token: string, content: Uint8Array): Prom
   if (!entry || entry.expiresAt <= Date.now()) throw new Error("保存位置已过期，请重新选择保存位置");
   const selected = entry.path;
   try {
-    const temporary = join(dirname(selected), `.toonflow-${crypto.randomUUID()}.tmp`);
+    const temporary = join(dirname(selected), `.omnistudio-next-${crypto.randomUUID()}.tmp`);
     const file = await open(temporary, "wx", 0o600);
     try {
       await file.writeFile(content);

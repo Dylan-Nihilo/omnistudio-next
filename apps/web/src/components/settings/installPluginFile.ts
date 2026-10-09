@@ -10,10 +10,10 @@ export async function installPluginFile(type: "node" | "tool" | "skill" | "agent
         reader.readAsDataURL(file);
       }) }
     : { fileName: file.name, source: await file.text() };
-  const { data } = await axios.post(`/api/${type}s/install`, { ...payload, force }, { headers: { "x-toonflow-workspace": "1" } });
+  const { data } = await axios.post(`/api/${type}s/install`, { ...payload, force }, { headers: { "x-omnistudio-next-workspace": "1" } });
   if (data.code !== 200) throw new Error(data.message || "安装插件失败");
   const name = data.data?.name;
   if (typeof name !== "string" || !name.trim()) throw new Error("安装接口未返回有效的插件名称");
-  window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type, name } }));
+  window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type, name } }));
   return name;
 }

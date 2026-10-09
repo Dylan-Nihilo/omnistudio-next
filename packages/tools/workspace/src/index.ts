@@ -1,6 +1,6 @@
 import { access, mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { z } from "zod";
-import type { ToolDefinition, ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import type { ToolDefinition, ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 
 const configSchema = z.object({ readOnly: z.boolean().default(false) }).strict();
 

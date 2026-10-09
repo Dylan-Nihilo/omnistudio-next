@@ -10,7 +10,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { Editor, Node, getHTMLFromFragment, type JSONContent } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
-import { uiPopover, uiImageViewer } from "@toonflow/ui";
+import { uiPopover, uiImageViewer } from "@omnistudio-next/ui";
 import type { RichInputModel, RichInputReference, RichInputTag } from "../richInputTypes";
 
 const props = withDefaults(defineProps<{ references?: RichInputReference[]; disabled?: boolean; label?: string; placeholder?: string; referenceMenuEnabled?: boolean }>(), { references: () => [], disabled: false, label: "生成提示词", placeholder: "描述一下生成风格提示词，输入 @ 引用参考", referenceMenuEnabled: true });

@@ -1,6 +1,6 @@
 # 节点脚手架
 
-`@toonflow/nodes-scaffold` 提供共享 Vite 配置和节点骨架组件。每个 `packages/nodes/*` 目录是一个独立 Bun workspace，自行维护依赖、Vue 子组件和构建插件。
+`@omnistudio-next/nodes-scaffold` 提供共享 Vite 配置和节点骨架组件。每个 `packages/nodes/*` 目录是一个独立 Bun workspace，自行维护依赖、Vue 子组件和构建插件。
 
 ```text
 packages/nodeScaffold/
@@ -25,16 +25,16 @@ data/nodes/
 
 在 `src/components/` 中封装子组件、在其它目录放工具函数，正常 import 即可；它们不会单独生成节点入口。
 
-节点运行时代码统一从 `@toonflow/nodes-scaffold/runtime` 导入组件、组合式函数、类型和工具。根入口 `@toonflow/nodes-scaffold` 仅供 Vite 配置导入 `createNodeConfig`，不要在浏览器组件中引用；旧的运行时子路径仍兼容。
+节点运行时代码统一从 `@omnistudio-next/nodes-scaffold/runtime` 导入组件、组合式函数、类型和工具。根入口 `@omnistudio-next/nodes-scaffold` 仅供 Vite 配置导入 `createNodeConfig`，不要在浏览器组件中引用；旧的运行时子路径仍兼容。
 
 ## 共享提示词与参考列表
 
 多种节点共用的提示词输入与参考列表放在脚手架中，节点之间不互相依赖。按组件子路径导入，仅使用时才打包对应依赖：
 
 ```ts
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
-import referenceItem from "@toonflow/nodes-scaffold/referenceItem";
-import { useNodeReferences } from "@toonflow/nodes-scaffold/runtime";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
+import { useNodeReferences } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { refList, referenceMentions, setReferencePreview, removeReference } = useNodeReferences("in");
 ```
@@ -45,7 +45,7 @@ const { refList, referenceMentions, setReferencePreview, removeReference } = use
 
 ## 节点骨架
 
-从 `@toonflow/nodes-scaffold/runtime` 导入 `nodeSkeleton` 和 `useNode`，在节点入口用 `<nodeSkeleton v-bind="nodeProps">` 包裹内容。`label` 默认是“未命名节点”，上方标题栏无边框，下方内容使用 Element Plus Card，默认插槽用于节点内容。节点入口保留 `defineOptions({ inheritAttrs: false })`，避免 VueFlow 传入的顶层属性覆盖骨架的 `label` 等参数。
+从 `@omnistudio-next/nodes-scaffold/runtime` 导入 `nodeSkeleton` 和 `useNode`，在节点入口用 `<nodeSkeleton v-bind="nodeProps">` 包裹内容。`label` 默认是“未命名节点”，上方标题栏无边框，下方内容使用 Element Plus Card，默认插槽用于节点内容。节点入口保留 `defineOptions({ inheritAttrs: false })`，避免 VueFlow 传入的顶层属性覆盖骨架的 `label` 等参数。
 
 标题左侧显示 16px 图标，默认使用 `IconBox`；节点入口在 `defineOptions({ icon: IconPhoto })` 声明图标，`useNode()` 和画布节点列表复用同一个组件。单个实例仍可通过 `useNode({ icon })` 或骨架的 `:icon` 覆盖，图标无需写入节点的 `data`。
 
@@ -62,7 +62,7 @@ const { refList, referenceMentions, setReferencePreview, removeReference } = use
 
 <script setup lang="ts">
 import { ElInput as elInput } from "element-plus";
-import { nodeSkeleton, useNode, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
+import { nodeSkeleton, useNode, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 
 defineOptions({
   inheritAttrs: false,
@@ -87,7 +87,7 @@ const { nodeProps, outputs } = useNode({
 
 ### FFmpeg 媒体处理
 
-`await useNode().ffmpeg(signal?)` 获取绑定当前工作区的工厂；在组件 setup 中获取 `ffmpeg`，事件处理函数中再调用。也可以单独使用 `useNodeFfmpeg()`（从 runtime 或 `@toonflow/nodes-scaffold/nodeFfmpeg` 导入）。调用方式与 tools 的 fluent 链一致，支持多输入、多输出、复杂滤镜、截图、拼接、`clone()`、`ffprobe` 和编码器等能力查询。
+`await useNode().ffmpeg(signal?)` 获取绑定当前工作区的工厂；在组件 setup 中获取 `ffmpeg`，事件处理函数中再调用。也可以单独使用 `useNodeFfmpeg()`（从 runtime 或 `@omnistudio-next/nodes-scaffold/nodeFfmpeg` 导入）。调用方式与 tools 的 fluent 链一致，支持多输入、多输出、复杂滤镜、截图、拼接、`clone()`、`ffprobe` 和编码器等能力查询。
 
 ```ts
 const { ffmpeg: loadFfmpeg, id } = useNode();
@@ -111,7 +111,7 @@ async function compose(signal?: AbortSignal) {
 }
 ```
 
-链式调用通过 `/api/ffmpeg/execute` 交给宿主的 `@toonflow/ffmpeg` 执行，节点 UMD 不包含 Node.js 执行库。支持 `start`、`progress`、`stderr`、`codecData`、`filenames`、`end`、`error` 事件及 `on/once/off`；配置在执行前完成，并行使用独立命令或 `clone()`。目录在获取工厂时固定，切换工作区后不会写入新项目。
+链式调用通过 `/api/ffmpeg/execute` 交给宿主的 `@omnistudio-next/ffmpeg` 执行，节点 UMD 不包含 Node.js 执行库。支持 `start`、`progress`、`stderr`、`codecData`、`filenames`、`end`、`error` 事件及 `on/once/off`；配置在执行前完成，并行使用独立命令或 `clone()`。目录在获取工厂时固定，切换工作区后不会写入新项目。
 
 输入输出使用工作区文件路径，上传和读取二进制复用 `files`。浏览器不能传递 Node.js Stream、logger 或子进程，不提供 `.pipe()`、执行程序路径 setter 和服务器预设文件加载；`preset(command => ...)` 可在节点内复用配置。类型使用 `BrowserFfmpegFactory` / `BrowserFfmpegCommand`，不冒充原生 Node.js 对象。
 
@@ -169,7 +169,7 @@ await ai.generate({
 在节点的同步 `setup` 中调用 `nodeTools.register`。可以直接从运行时入口导入 `nodeTools`，也可以从 `useNode()` 返回值取得。方法自动绑定当前节点 ID，返回注销函数，并在组件卸载时自动注销。
 
 ```ts
-import { useNode, z } from "@toonflow/nodes-scaffold/runtime";
+import { useNode, z } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { outputs, nodeTools } = useNode({
   handles: [{ id: "text", type: "source", dataType: "STRING" }],
@@ -225,7 +225,7 @@ nodeTools.register({
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { nodeSkeleton } from "@toonflow/nodes-scaffold/runtime";
+import { nodeSkeleton } from "@omnistudio-next/nodes-scaffold/runtime";
 
 defineOptions({ inheritAttrs: false });
 const topVisible = ref(true);
@@ -247,7 +247,7 @@ const bottomVisible = ref(false);
 </template>
 
 <script setup lang="ts">
-import { nodeSkeleton, useNode } from "@toonflow/nodes-scaffold/runtime";
+import { nodeSkeleton, useNode } from "@omnistudio-next/nodes-scaffold/runtime";
 
 defineOptions({ inheritAttrs: false });
 const { nodeProps, nodeEvent } = useNode({
@@ -266,14 +266,14 @@ nodeEvent.on("canConnect", (connection, { edges }) => {
 
 公共校验先检查端口方向、存在性和类型兼容，通过后才调用 target 的附加回调。未注册回调时允许连接；已注册的回调必须全部同步、严格返回 `true`，返回其它值或抛出异常会拒绝连接，不支持异步校验。node 内无需重复调用 `isTypeCompatible`，也不能通过返回 `true` 绕过类型限制。回调会在拖动过程中重复执行，应保持无副作用。
 
-骨架将端口定义放在 `node.data.handles`，事件按当前 VueFlow 实例和节点 ID 共享，支持独立 UMD 节点互相连接。所有端口使用共享校验入口，以保证从 source 起拖也能调用 target 的回调。`NodeData`、`NodeHandle`、`NodeDataType` 类型以及 `isTypeCompatible`、`validateConnection` 均从 `@toonflow/nodes-scaffold/runtime` 导出；手动调用 `addEdges` 时需要自行调用校验函数，不能绕过拖线流程后仍假定已完成校验。
+骨架将端口定义放在 `node.data.handles`，事件按当前 VueFlow 实例和节点 ID 共享，支持独立 UMD 节点互相连接。所有端口使用共享校验入口，以保证从 source 起拖也能调用 target 的回调。`NodeData`、`NodeHandle`、`NodeDataType` 类型以及 `isTypeCompatible`、`validateConnection` 均从 `@omnistudio-next/nodes-scaffold/runtime` 导出；手动调用 `addEdges` 时需要自行调用校验函数，不能绕过拖线流程后仍假定已完成校验。
 
 ## 节点删除
 
 节点通过 `nodeEvent.on("delete", callback)` 注册删除处理，可以使用异步回调。骨架按注册顺序逐个等待，全部成功后才移除节点及连线；没有处理函数则直接移除，任一处理抛错则停止、提示并保留节点。删除按钮和右键菜单共用此入口，不要在组件卸载时清理文件，否则切换画布或刷新节点也会误删资源。
 
 ```ts
-import { useNode } from "@toonflow/nodes-scaffold/runtime";
+import { useNode } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { nodeEvent, files } = useNode();
 nodeEvent.on("delete", async () => {
@@ -288,7 +288,7 @@ nodeEvent.on("delete", async () => {
 输出由 `useNode` 返回的 `outputs` ref 维护，随 `nodeProps` 传给骨架。对象的 key 是 source handle ID，每个值固定为 `{ dataType, value }`，例如图片节点准备好资源后：
 
 ```ts
-import { useNode } from "@toonflow/nodes-scaffold/runtime";
+import { useNode } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { outputs } = useNode({
   handles: [{ id: "image", type: "source", dataType: "IMAGE" }],
@@ -318,7 +318,7 @@ outputs.value.image = { dataType: "IMAGE", value: { url: "/files/example.png", m
 在节点 `setup` 中取得 `useNode()` 返回的 `files`，无需自行注入或请求接口：
 
 ```ts
-import { useNode } from "@toonflow/nodes-scaffold/runtime";
+import { useNode } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { files } = useNode();
 const path = await files.uploadFile(file); // 创建当前节点目录，使用唯一文件名写入
@@ -336,7 +336,7 @@ const bytes = await workspaceFiles.read(path);
 
 ```ts
 import { computed } from "vue";
-import { useNode, useNodeInputs } from "@toonflow/nodes-scaffold/runtime";
+import { useNode, useNodeInputs } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { id } = useNode();
 const { getTargetSources, getTargetValues } = useNodeInputs();
@@ -351,7 +351,7 @@ const inputValues = computed(() => getTargetValues(id, "in"));
 
 `getTargetSources` 按连线顺序返回该 target handle 的来源，不要求上游已有输出。缺失节点、端口、方向错误或端口类型不兼容的连接不会返回；同一上游不同端口分别保留。只查询连接时使用它，需要实际输出值时使用 `getTargetValues`。
 
-纯函数 `getTargetSources(targetId, targetHandleId, nodes, edges)` 和 `getTargetValues(targetId, targetHandleId, nodes, edges)` 也从 `@toonflow/nodes-scaffold/runtime` 导出，可在已有画布数据的逻辑中直接使用。
+纯函数 `getTargetSources(targetId, targetHandleId, nodes, edges)` 和 `getTargetValues(targetId, targetHandleId, nodes, edges)` 也从 `@omnistudio-next/nodes-scaffold/runtime` 导出，可在已有画布数据的逻辑中直接使用。
 
 ### 节点事件
 
@@ -360,7 +360,7 @@ const inputValues = computed(() => getTargetValues(id, "in"));
 `save` 回调应等待节点文件写入完成；抛错会阻止当前切换或刷新。普通保存不传参数，强制刷新时传入 `"reload"`，生成或导出尚未结束的节点可据此拒绝卸载，避免新实例读到未完成的内容。
 
 ```ts
-import { useNode, useNodeEvent } from "@toonflow/nodes-scaffold/runtime";
+import { useNode, useNodeEvent } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const { nodeEvent } = useNode();
 const stopInput = nodeEvent.on("input:in", values => {
@@ -393,8 +393,8 @@ bun run dev
 只构建或监听一个节点：
 
 ```powershell
-bun run --filter '@toonflow/node-image' build
-bun run --filter '@toonflow/node-image' dev
+bun run --filter '@omnistudio-next/node-image' build
+bun run --filter '@omnistudio-next/node-image' dev
 ```
 
 节点监听命令与根目录 `bun run dev` 分别在两个终端运行；修改源码后刷新宿主页面。默认构建只输出到根目录 `build/nodes`；`dev:plugins` 设置 `NODE_ENV=dev`，节点监听或 Vite `--mode development` 也会同步当前节点到 `data/nodes`。同步先写临时文件，再替换正式文件，避免服务读取到未写完的脚本；同步失败会报告构建错误。
@@ -407,14 +407,14 @@ server 从 `data/nodes` 提供节点列表 `/api/nodes/get`，并通过 `/api/no
 
 ## 新增节点
 
-1. 参考 `packages/nodes/imageNode` 在 `packages/nodes/textNode` 创建源码与配置，按新节点需求编写内容，修改 `package.json` 的包名，例如 `@toonflow/node-text`，并把 `vite.config.ts` 的节点名改为 `textNode`。
+1. 参考 `packages/nodes/imageNode` 在 `packages/nodes/textNode` 创建源码与配置，按新节点需求编写内容，修改 `package.json` 的包名，例如 `@omnistudio-next/node-text`，并把 `vite.config.ts` 的节点名改为 `textNode`。
 2. 修改 `src/index.vue`，在这个子包的 `dependencies` 中声明自己使用的 UI 框架和第三方库。需要 Sass 或其它构建插件时，加入该子包的 `devDependencies`。
 3. 根目录运行 `bun install` 和 `bun run dev:plugins`，得到 `build/nodes/textNode.umd.js` 并同步到 `data/nodes/textNode.umd.js`；启动 `bun run dev` 或刷新已打开的首页即可加载，浏览器导出为 `window.toonflowNodes.textNode`。仅生成发布产物使用 `bun run build:nodes`。
 
 节点名必须唯一且使用小驼峰；显式指定名字可避免 Windows 工具链路径大小写变化影响导出名。各包的 Vite 配置只需：
 
 ```ts
-import { createNodeConfig } from "@toonflow/nodes-scaffold";
+import { createNodeConfig } from "@omnistudio-next/nodes-scaffold";
 
 export default createNodeConfig({
   name: "textNode",

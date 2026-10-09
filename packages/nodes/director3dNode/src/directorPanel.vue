@@ -43,9 +43,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { uiIconButton, uiSelect, uiButton } from "@toonflow/ui";
+import { uiIconButton, uiSelect, uiButton } from "@omnistudio-next/ui";
 import { IconLoader2, IconSparkles, IconMovie, IconCheck, IconAlertCircle, IconArrowBackUp } from "@tabler/icons-vue";
-import { groupNodeModels, type NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
+import { groupNodeModels, type NodeAiModel } from "@omnistudio-next/nodes-scaffold/runtime";
 
 import type { DirectorPlan, DirectorPlanItem, DirectorGeneration } from "./sceneAnimation";
 

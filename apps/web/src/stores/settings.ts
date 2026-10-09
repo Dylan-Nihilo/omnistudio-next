@@ -3,6 +3,8 @@ import axios from "axios";
 import { computed, nextTick, ref, watch } from "vue";
 import { canvasShortcutFields, defaultCanvasShortcuts, getShortcutBindings, isShortcutAllowed, normalizeShortcut, type CanvasShortcuts } from "@/lib/canvasShortcuts";
 import { platformTextModels } from "@/lib/platformModels";
+import { getSessionSnapshot } from "@/lib/sessionState";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 export const settings = ref<Record<string, unknown>>({});
 // ACT: 页面在 loadSettings 完成后才挂载，加载标记仅保留在设置初始化与自动保存内部。
@@ -14,10 +16,7 @@ export const settingsStorage = {
   getItem(key: string) {
     const stores = settings.value.stores as Record<string, unknown> | undefined;
     if (stores && Object.hasOwn(stores, key)) return JSON.stringify(stores[key]);
-    // ACT: 只迁移当前来源可读取的旧缓存，保留原值；不同端口的 localStorage 不能互读。
-    const value = localStorage.getItem(key);
-    if (value !== null) settingsStorage.setItem(key, value);
-    return value;
+    return null;
   },
   setItem(key: string, value: string) {
     settings.value.stores = { ...(settings.value.stores as Record<string, unknown> | undefined), [key]: JSON.parse(value) };
@@ -87,23 +86,29 @@ export const modelChoices = computed(() => platformTextModels.value.map(model =>
 
 export async function loadSettings() {
   if (settingsReady) return;
-  const { data } = await axios.get("/api/settings/get", { headers: { "Cache-Control": "no-cache", "x-toonflow-workspace": "1" } });
+  const session = getSessionSnapshot();
+  const { data } = await axios.get("/api/settings/get", { signal: session.signal, headers: { "Cache-Control": "no-cache", "x-omnistudio-next-workspace": "1", "x-account-id": session.userId } });
+  if (getSessionSnapshot().revision !== session.revision) return;
   if (settingsReady) return;
   if (data.code !== 200 || !data.data || typeof data.data !== "object" || Array.isArray(data.data)) {
     throw new Error("读取设置失败");
   }
   settings.value = data.data;
+  useWorkspaceStore().$hydrate();
   // 等初始化引发的监听执行完，再允许自动保存。
   await nextTick();
   settingsReady = true;
 }
 
 export function saveSettings(update?: (current: Record<string, unknown>) => Record<string, unknown> | undefined) {
+  const session = getSessionSnapshot();
   // ACT: 队列内读取最新配置再计算变更，确认成功后发布；仅协调当前页面的保存。
   const saving = saveQueue.then(async () => {
+    if (!session.userId || getSessionSnapshot().revision !== session.revision) return false;
     const patch = update?.(settings.value);
     if (update && !patch) return false;
-    const { data } = await axios.put("/api/settings/save", { settings: { ...settings.value, ...patch } }, { headers: { "x-toonflow-workspace": "1" } });
+    const { data } = await axios.put("/api/settings/save", { settings: { ...settings.value, ...patch } }, { signal: session.signal, headers: { "x-omnistudio-next-workspace": "1", "x-account-id": session.userId, "x-csrf-token": session.csrfToken } });
+    if (getSessionSnapshot().revision !== session.revision) return false;
     if (data.code !== 200) throw new Error("保存设置失败");
     if (patch) {
       applyingSettings = true;
@@ -114,6 +119,13 @@ export function saveSettings(update?: (current: Record<string, unknown>) => Reco
   });
   saveQueue = saving.then(() => {}, () => {});
   return saving;
+}
+
+export function resetSettings() {
+  settingsReady = false;
+  applyingSettings = true;
+  try { settings.value = {}; saveQueue = Promise.resolve(); }
+  finally { applyingSettings = false; }
 }
 
 watch(settings, () => {

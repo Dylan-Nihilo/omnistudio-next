@@ -1,7 +1,7 @@
 import { createApp, h, nextTick } from "vue";
-import { uiThemeProvider, uiButton } from "@toonflow/ui";
-import "@toonflow/ui/styles";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import { uiThemeProvider, uiButton } from "@omnistudio-next/ui";
+import "@omnistudio-next/ui/styles";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import { createPinia } from "pinia";
 import { createPersistedState } from "pinia-plugin-persistedstate";
 import appRoot from "./App.vue";
@@ -27,7 +27,7 @@ async function notifyDesktopReady(failed = false) {
   if (!isDesktop) return;
   const response = await fetch("/api/desktop/ready", {
     method: "POST",
-    headers: { "x-toonflow-desktop": "1", "Content-Type": "application/json" },
+    headers: { "x-omnistudio-next-desktop": "1", "Content-Type": "application/json" },
     body: JSON.stringify({ failed }),
   });
   if (!response.ok) throw new Error((await response.json()).message || `通知桌面就绪失败（${response.status}）`);
@@ -35,7 +35,7 @@ async function notifyDesktopReady(failed = false) {
 
 // ACT: 已安装客户端的自动更新不经过 NSIS；启动时阻止缺少所需 API 的旧 WebView2 进入业务页面。
 (requiresWebView2Update
-  ? Promise.reject(new Error("当前 Microsoft Edge WebView2 Runtime 版本过旧。请以管理员身份运行微软最新版安装器；若仍提示已安装，请修复 WebView2 或联系管理员检查更新服务。更新完成后，请完全退出 Toonflow 再重新打开。"))
+  ? Promise.reject(new Error("当前 Microsoft Edge WebView2 Runtime 版本过旧。请以管理员身份运行微软最新版安装器；若仍提示已安装，请修复 WebView2 或联系管理员检查更新服务。更新完成后，请完全退出 omnistudio-next 再重新打开。"))
   : requiresUiRuntimeUpdate ? Promise.reject(new Error("当前浏览器或桌面运行时不支持新版界面所需能力，请更新浏览器或系统运行时后重试。")) : Promise.resolve()).then(async () => {
   app.use(createPinia().use(createPersistedState({ storage: settingsStorage })));
   app.use(router);
@@ -59,7 +59,7 @@ async function notifyDesktopReady(failed = false) {
   if (isMounted) app.unmount();
   createApp({
     render: () => h(uiThemeProvider, { mode: "dark", accent: "orange" }, () => h("main", { class: "startupFailure" }, [
-      h("img", { src: logoUrl, alt: "OmniStudio" }),
+      h("img", { src: logoUrl, alt: "omnistudio-next" }),
       h("h1", requiresWebView2Update ? "需要更新 WebView2" : "启动失败"),
       h("p", error instanceof Error ? error.message : "无法加载应用，请重试。"),
       h(uiButton, { onClick: () => requiresWebView2Update

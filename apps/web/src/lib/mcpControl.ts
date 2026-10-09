@@ -1,7 +1,8 @@
 import { onScopeDispose, shallowRef, watch, type WatchSource } from "vue";
 import { useRouter } from "vue-router";
-import type { NodeToolInfo } from "@toonflow/tools-scaffold/runtime";
+import type { NodeToolInfo } from "@omnistudio-next/tools-scaffold/runtime";
 import { saveSettings, settings } from "@/stores/settings";
+import { getSessionSnapshot, sessionInvalidated } from "@/lib/sessionState";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 type ControlCall = { type: "call"; callId: string; name: string; args: Record<string, unknown>; directory?: string };
@@ -54,6 +55,7 @@ export function useMcpControl() {
   }, { flush: "sync" });
 
   watch(() => {
+    if (sessionInvalidated.value) return "";
     const config = settings.value.mcp as { enabled?: boolean; token?: string } | undefined;
     return config?.enabled === true && config.token ? config.token : "";
   }, (token, _previous, onCleanup) => {
@@ -69,8 +71,9 @@ export function useMcpControl() {
     async function connect() {
       const connectionId = crypto.randomUUID();
       const connection = new AbortController();
-      const signal = AbortSignal.any([lifetime.signal, connection.signal]);
-      const headers = { Authorization: `Bearer ${token}`, "x-toonflow-workspace": "1" };
+      const session = getSessionSnapshot();
+      const signal = AbortSignal.any([lifetime.signal, connection.signal, session.signal]);
+      const headers = { Authorization: `Bearer ${token}`, "x-omnistudio-next-workspace": "1", "x-account-id": session.userId, "x-csrf-token": session.csrfToken };
       let revision = 0;
       async function post(path: "state" | "result", body: object, callSignal?: AbortSignal) {
         const response = await fetch(`/api/mcp/control/${path}`, {
@@ -106,7 +109,7 @@ export function useMcpControl() {
           } else if (request.name === "refreshResources") {
             const { type, name } = request.args;
             if (type !== "node" && type !== "tool" && type !== "skill") throw new Error("未知资源类型");
-            window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type, name: typeof name === "string" ? name : "" } }));
+            window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type, name: typeof name === "string" ? name : "" } }));
             result = { refreshed: true };
           } else if (request.name === "openProject") {
             const directory = request.args.directory;

@@ -5,7 +5,7 @@ import deepSeek from "./src/language/deepSeek";
 export type Provider = ProviderDefinition;
 export type ProviderTools = ProviderContext["tool"];
 export type AudioConvertOptions = Parameters<ProviderTools["audio"]["convert"]>[1];
-export type { FfmpegFactory, FfmpegCommand } from "@toonflow/ffmpeg/types";
+export type { FfmpegFactory, FfmpegCommand } from "@omnistudio-next/ffmpeg/types";
 
 export const languageProviders = [deepSeek] as const;
 export const mediaProviders: readonly Provider[] = [];

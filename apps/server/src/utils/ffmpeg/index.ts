@@ -1,27 +1,33 @@
 import { dirname, join } from "node:path";
-import { build, createFfmpeg, downloadSources, getToolStatus, installFfmpeg, target } from "@toonflow/ffmpeg";
-import type { DownloadState, FfmpegMode, SourceId } from "@toonflow/ffmpeg";
+import { build, createFfmpeg, downloadSources, getToolStatus, installFfmpeg, target } from "@omnistudio-next/ffmpeg";
+import type { DownloadState, FfmpegMode, SourceId } from "@omnistudio-next/ffmpeg";
 import conf from "@/utils/conf";
+import { requireAccount } from "@/utils/accountContext";
+import { authorizeProjectDirectory } from "@/services/accountService";
 
-export { executeRemoteFfmpeg } from "@toonflow/ffmpeg";
+export { executeRemoteFfmpeg } from "@omnistudio-next/ffmpeg";
 
 const directory = join(dirname(conf.path), "ffmpeg", target);
 let download: DownloadState = { phase: "idle", received: 0 };
 // ACT: 沿用 server 单进程模型，每次只下载一套程序；不持久化运行中的任务。
 let controller: AbortController | undefined;
-const requiredListeners = new Set<() => void>();
+const requiredListeners = new Set<{ userId: string; listener: () => void }>();
 
 export function onRequired(listener: () => void) {
-  requiredListeners.add(listener);
-  return () => { requiredListeners.delete(listener); };
+  const entry = { userId: requireAccount().userId, listener };
+  requiredListeners.add(entry);
+  return () => { requiredListeners.delete(entry); };
 }
 
 export async function createWorkspaceFfmpeg(cwd: string, signal?: AbortSignal) {
+  const account = requireAccount();
+  cwd = await authorizeProjectDirectory(cwd);
+  if (account.signal) signal = AbortSignal.any([account.signal, ...(signal ? [signal] : [])]);
   signal?.throwIfAborted();
   const { tools } = await getStatus();
   signal?.throwIfAborted();
   if (!tools.ffmpeg.path || tools.ffmpeg.error || !tools.ffprobe.path || tools.ffprobe.error) {
-    for (const listener of requiredListeners) listener();
+    for (const entry of requiredListeners) if (entry.userId === account.userId) entry.listener();
     throw Object.assign(new Error("当前操作需要 FFmpeg，请在插件市场下载安装或配置可用版本后重试。"), {
       name: "FfmpegRequiredError", code: "FFMPEG_REQUIRED", status: 424,
     });

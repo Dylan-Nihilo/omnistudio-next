@@ -86,9 +86,9 @@
 <script setup lang="ts">
 import axios from "axios";
 import { nextTick, ref, shallowRef, watch } from "vue";
-import { uiButton, uiInput, uiPopover, useUiFeedback } from "@toonflow/ui";
+import { uiButton, uiInput, uiPopover, useUiFeedback } from "@omnistudio-next/ui";
 import type { AgentHistory } from "./types";
-import type { AgentSubAgent } from "@toonflow/server/agent/types";
+import type { AgentSubAgent } from "@omnistudio-next/server/agent/types";
 import pluginConfigDialog from "@/components/settings/panels/pluginMarket/pluginConfigDialog.vue";
 import type { Plugin } from "@/components/settings/panels/pluginMarket/types";
 import {
@@ -133,7 +133,7 @@ async function openMediaConfig() {
   configLoading.value = true;
   try {
     const { data } = await axios.get<{ code: number; data: { tools: (Plugin & { loadError?: string })[]; canManage: boolean }; message?: string }>("/api/tools/get", {
-      headers: { "Cache-Control": "no-cache", "x-toonflow-workspace": "1" },
+      headers: { "Cache-Control": "no-cache", "x-omnistudio-next-workspace": "1" },
     });
     if (data.code !== 200) throw new Error(data.message || "读取工具配置失败");
     const tool = data.data.tools.find(tool => tool.name === "mediaGeneration");

@@ -1,5 +1,5 @@
 {
-  "name": "@toonflow/nodes-scaffold",
+  "name": "@omnistudio-next/nodes-scaffold",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -29,12 +29,12 @@
     "vue": "^3.5.42",
     "@vue-flow/core": "^1.48.2",
     "element-plus": "^2.14.5",
-    "@toonflow/ui": "workspace:*",
+    "@omnistudio-next/ui": "workspace:*",
     "@tiptap/core": "3.31.3",
     "@tiptap/starter-kit": "3.31.3"
   },
   "dependencies": {
-    "@toonflow/ffmpeg": "workspace:*",
+    "@omnistudio-next/ffmpeg": "workspace:*",
     "@earendil-works/pi-agent-core": "0.85.1",
     "@earendil-works/pi-ai": "0.85.1",
     "@tabler/icons-vue": "^3.46.0",
@@ -49,6 +49,6 @@
     "@form-create/element-ui": "^3",
     "typescript": "~6.0.3",
     "vue-tsc": "^3.3.11",
-    "@toonflow/tools-scaffold": "workspace:*"
+    "@omnistudio-next/tools-scaffold": "workspace:*"
   }
 }

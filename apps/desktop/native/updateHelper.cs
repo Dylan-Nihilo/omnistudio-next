@@ -59,7 +59,7 @@ internal static class updateHelper
                 throw new InvalidOperationException("安装目录不完整。");
             string identifier = text(plan, "identifier");
             string channel = text(plan, "channel");
-            if (identifier != "local.toonflow.desktop" || (channel != "stable" && channel != "canary"))
+            if (identifier != "local.omnistudio-next.desktop" || (channel != "stable" && channel != "canary"))
                 throw new InvalidOperationException("更新计划的应用标识或通道无效。");
             version = matching(plan, "version", "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$");
             hash = matching(plan, "hash", "^[a-zA-Z0-9]{1,128}$");
@@ -69,7 +69,7 @@ internal static class updateHelper
             var oldInfo = verifyApp(Path.Combine(candidate, "app"), identifier, channel, null, null);
             string mutexName;
             using (var sha = SHA256.Create()) mutexName = BitConverter.ToString(sha.ComputeHash(utf8.GetBytes(candidate.ToUpperInvariant()))).Replace("-", "");
-            mutex = new Mutex(false, "Local\\ToonflowUpdate-" + mutexName);
+            mutex = new Mutex(false, "Local\\omnistudio-nextUpdate-" + mutexName);
             try { locked = mutex.WaitOne(0); }
             catch (AbandonedMutexException) { locked = true; }
             if (!locked) throw new InvalidOperationException("当前安装正在执行另一个更新。");
@@ -89,7 +89,7 @@ internal static class updateHelper
                 // 保持句柄，避免 PID 复用；仅等待当前安装的宿主，不终止其他进程。
                 IntPtr parentHandle = parent.Handle;
                 if (parent.HasExited || !inside(parent.MainModule.FileName, Path.Combine(root, "app", "bin")))
-                    throw new InvalidOperationException("父进程不属于当前 Toonflow 安装。");
+                    throw new InvalidOperationException("父进程不属于当前 omnistudio-next 安装。");
                 using (var sha = SHA256.Create())
                     if (!String.Equals(BitConverter.ToString(sha.ComputeHash(archiveStream)).Replace("-", ""), expectedDigest, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidOperationException("更新包 SHA-256 校验失败。");
@@ -108,7 +108,7 @@ internal static class updateHelper
                 while (!parent.WaitForExit(250))
                 {
                     if (!File.Exists(planPath)) throw new InvalidOperationException("更新已取消。");
-                    if (timer.Elapsed.TotalSeconds >= 60) throw new InvalidOperationException("Toonflow 未在 60 秒内退出，更新已取消。");
+                    if (timer.Elapsed.TotalSeconds >= 60) throw new InvalidOperationException("omnistudio-next 未在 60 秒内退出，更新已取消。");
                 }
                 if (!File.Exists(planPath)) throw new InvalidOperationException("更新已取消。");
                 ensurePlainPath(root);
@@ -127,7 +127,7 @@ internal static class updateHelper
                 catch (Exception stateError) { error = new Exception(error.Message + "\n更新结果无法写入：" + stateError.Message); }
             }
             Console.Error.WriteLine(error.Message);
-            if (!quiet) MessageBox.Show(error.Message, "Toonflow 更新失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            if (!quiet) MessageBox.Show(error.Message, "omnistudio-next 更新失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;
         }
         finally
@@ -141,7 +141,7 @@ internal static class updateHelper
     {
         string name = Path.GetFileNameWithoutExtension(planPath);
         if (!Regex.IsMatch(name, "^update-[a-fA-F0-9]{32}$")) throw new InvalidOperationException("更新计划文件名无效。");
-        return "ToonflowUpdate_" + name.Substring(7).ToLowerInvariant();
+        return "omnistudio-nextUpdate_" + name.Substring(7).ToLowerInvariant();
     }
 
     private static dynamic scheduledTaskFolder()
@@ -239,7 +239,7 @@ internal static class updateHelper
         }))
         {
             if (process == null || (process.WaitForExit(1000) && process.ExitCode != 0))
-                throw new InvalidOperationException("更新后无法启动 Toonflow。");
+                throw new InvalidOperationException("更新后无法启动 omnistudio-next。");
         }
     }
 
@@ -286,7 +286,7 @@ internal static class updateHelper
         {
             if (registry != null)
             {
-                string registered = registry.GetValue("toonflowInstallDirectory") as string ?? registry.GetValue("InstallLocation") as string;
+                string registered = registry.GetValue("omniStudioNextInstallDirectory") as string ?? registry.GetValue("InstallLocation") as string;
                 if (!String.IsNullOrEmpty(registered) && !samePath(registered, root) && !samePath(registered, Path.Combine(root, "app"))
                     && (oldDirectory.Length == 0 || !samePath(registered, oldDirectory.ToString())))
                 {
@@ -298,9 +298,9 @@ internal static class updateHelper
         writeFile(ini, "[application]\r\nidentifier=" + identifier + "\r\ninstallDirectory=" + root + "\r\n");
         using (var registry = Registry.CurrentUser.CreateSubKey(registryPath))
         {
-            registry.SetValue("toonflowInstallDirectory", root);
+            registry.SetValue("omniStudioNextInstallDirectory", root);
             registry.SetValue("InstallLocation", root);
-            registry.SetValue("DisplayName", "Toonflow");
+            registry.SetValue("DisplayName", "omnistudio-next");
             registry.SetValue("DisplayVersion", version);
             registry.SetValue("DisplayIcon", Path.Combine(root, "app", "Resources", "app.ico"));
             registry.SetValue("UninstallString", quote(uninstaller));

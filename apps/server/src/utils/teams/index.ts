@@ -1,8 +1,9 @@
-import { lstat, mkdir, readdir, rm, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import type { AgentCard } from "@toonflow/teams-scaffold/a2a";
-import conf from "@/utils/conf";
+import type { AgentCard } from "@omnistudio-next/teams-scaffold/a2a";
+import conf, { getAccountDirectory } from "@/utils/conf";
+import { accountContext, requireAccount, requireRootAccount } from "@/utils/accountContext";
 import { decodeText, skillPath } from "@/utils/plugins/install";
 import { resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { agentsDirectory, checkName, editablePath, maxBytes, readFiles, validateFiles, withTeamFiles } from "./files";
@@ -29,8 +30,27 @@ async function readSnapshot(name: string) {
   return { directory, manifest, files, readme, enabled };
 }
 
-export function readTeam(name: string) {
-  return withTeamFiles(() => readSnapshot(name));
+export async function readTeam(name: string) {
+  return withTeamFiles(async () => {
+    const snapshot = await readSnapshot(name);
+    if (!accountContext.getStore()) return snapshot;
+    const root = resolve(getAccountDirectory(), "agentResources", name);
+    const info = await lstat(root).catch((error: NodeJS.ErrnoException) => { if (error.code === "ENOENT") return null; throw error; });
+    if (info && (info.isSymbolicLink() || !info.isDirectory() || await realpath(root) !== root)) throw Object.assign(new Error("Agent 个人资料目录无效"), { status: 403 });
+    const entries = await readdir(root, { recursive: true, withFileTypes: true }).catch((error: NodeJS.ErrnoException) => { if (error.code === "ENOENT") return []; throw error; });
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) throw Object.assign(new Error("Agent 个人资料不能使用符号链接"), { status: 403 });
+      if (!entry.isFile()) continue;
+      const path = resolve(entry.parentPath, entry.name);
+      const relativePath = path.slice(root.length + 1).replaceAll("\\", "/");
+      if (!editablePath(relativePath) || relativePath === "team.json") throw new Error("Agent 个人资料路径无效");
+      const target = (await resolveWorkspacePath(root, relativePath)).path;
+      if ((await lstat(target)).size > maxBytes) throw new Error("Agent 个人资料不能超过 20 MB");
+      snapshot.files.set(relativePath, await readFile(target));
+    }
+    validateFiles(name, snapshot.files);
+    return snapshot;
+  });
 }
 
 export async function listTeams() {
@@ -59,6 +79,7 @@ export async function listTeams() {
 }
 
 export async function saveRemoteTeam(record: RemoteTeam) {
+  requireRootAccount();
   checkName(record.name);
   return withTeamFiles(async () => {
     const remotes = conf.get("remoteConnections", {});
@@ -74,6 +95,7 @@ export async function saveRemoteTeam(record: RemoteTeam) {
 }
 
 export async function setEnabled(name: string, enabled: boolean) {
+  requireRootAccount();
   checkName(name);
   return withTeamFiles(async () => {
     const remote = getRemoteTeam(name);
@@ -92,6 +114,7 @@ export async function setEnabled(name: string, enabled: boolean) {
 }
 
 export async function uninstall(name: string) {
+  requireRootAccount();
   checkName(name);
   return withTeamFiles(async () => {
     const remote = getRemoteTeam(name);
@@ -110,7 +133,8 @@ export async function uninstall(name: string) {
 }
 
 export async function readEditableTeam(name: string) {
-  const { manifest, files, readme } = await readTeam(name);
+  requireRootAccount();
+  const { manifest, files, readme } = await withTeamFiles(() => readSnapshot(name));
   return { manifest, readme, files: [...files].filter(([path]) => editablePath(path)).flatMap(([path, bytes]) => {
     try { return bytes.includes(0) ? [] : [{ path, content: decodeText(bytes) }]; }
     catch { return []; }
@@ -118,6 +142,7 @@ export async function readEditableTeam(name: string) {
 }
 
 export async function saveTeamFile(name: string, path: string, content: string) {
+  requireRootAccount();
   path = skillPath(path);
   if (!editablePath(path)) throw Object.assign(new Error("只能编辑团队配置、成员说明、技能或知识文件"), { status: 403 });
   if (content.includes("\0")) throw Object.assign(new Error("文件内容不能包含空字符"), { status: 400 });
@@ -130,4 +155,22 @@ export async function saveTeamFile(name: string, path: string, content: string) 
     await mkdir(dirname(target), { recursive: true });
     await writeWorkspaceFile(target, content);
   });
+}
+
+export async function saveUserTeamResource(name: string, path: string, content: string) {
+  requireAccount();
+  checkName(name);
+  path = skillPath(path);
+  if (!editablePath(path) || path === "team.json") throw Object.assign(new Error("只能维护个人 Agent 资料，不能修改平台 Agent 配置"), { status: 403 });
+  if (content.includes("\0") || Buffer.byteLength(content) > maxBytes) throw Object.assign(new Error("Agent 资料内容无效或超过 20 MB"), { status: 413 });
+  const current = await readTeam(name);
+  const files = new Map(current.files);
+  files.set(path, Buffer.from(content));
+  validateFiles(name, files);
+  const root = resolve(getAccountDirectory(), "agentResources", name);
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  if (await realpath(root) !== root) throw Object.assign(new Error("Agent 个人资料目录不能使用符号链接"), { status: 403 });
+  const { path: target } = await resolveWorkspacePath(root, path, true);
+  await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+  await writeWorkspaceFile((await resolveWorkspacePath(root, path)).path, content);
 }

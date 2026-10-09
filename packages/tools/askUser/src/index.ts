@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import type { ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 
 const optionsSchema = z.array(z.string().trim().min(1).max(300)).max(20)
   .refine(options => new Set(options).size === options.length, "选项不能重复");

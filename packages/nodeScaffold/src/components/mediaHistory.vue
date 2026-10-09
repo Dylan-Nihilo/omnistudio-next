@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useNode } from "@vue-flow/core";
-import { uiIconButton, uiDialog, uiButton, uiLoading, uiAlert, uiEmpty, uiPagination, uiMediaPlayer } from "@toonflow/ui";
+import { uiIconButton, uiDialog, uiButton, uiLoading, uiAlert, uiEmpty, uiPagination, uiMediaPlayer } from "@omnistudio-next/ui";
 import { IconHistory } from "@tabler/icons-vue";
 import { useNodeFiles } from "../workspaceFiles";
 import type { NodeMediaValue } from "../values";

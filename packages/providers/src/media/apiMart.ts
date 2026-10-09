@@ -52,7 +52,7 @@ async function uploadImage(context: ProviderContext, apiKey: string, baseUrl: st
   if (input.type === "url") return input.url;
   const bytes = input.type === "binary" ? input.data : Buffer.from(input.data, "base64");
   const ext = input.mimeType.split("/")[1] || "png";
-  const boundary = `----toonflow${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+  const boundary = `----omnistudio-next${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
   const body = new Blob([
     `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="upload.${ext}"\r\nContent-Type: ${input.mimeType}\r\n\r\n`,
     bytes as unknown as BlobPart,
@@ -78,7 +78,7 @@ async function reviewSeedanceAssets(context: ProviderContext, apiKey: string, ba
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      group: { name: `toonflow-seedance-group-${Date.now()}`, description: "ToonFlow自动创建的Seedance素材组" },
+      group: { name: `omnistudio-next-seedance-group-${Date.now()}`, description: "omnistudio-next自动创建的Seedance素材组" },
       project_name: "default",
       asset_type: "Image",
       assets,

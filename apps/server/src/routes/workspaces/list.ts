@@ -5,11 +5,12 @@ import { z } from "zod";
 import u from "@/utils";
 import { validateFields } from "@/lib/middleware";
 import { error, success } from "@/lib/responseFormat";
+import { getPersonalProjectRoot } from "@/services/accountService";
 
 const router = Router();
 
 export default router.get("/", validateFields({ path: z.string().max(4096).optional() }, "query"), async (req, res) => {
-  const workspaceRoot = resolve(dirname(u.conf.path), "workspaces");
+  const workspaceRoot = await getPersonalProjectRoot();
   await mkdir(workspaceRoot, { recursive: true });
   const root = await realpath(workspaceRoot);
   const target = resolve(root, (req.query.path as string | undefined) ?? "");

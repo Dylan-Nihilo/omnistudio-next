@@ -3,7 +3,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { dirname, resolve } from "node:path";
 import type { Express } from "express";
-import conf from "@/utils/conf";
+import conf, { getAccountDirectory, platformConfig } from "@/utils/conf";
+import { accountContext } from "@/utils/accountContext";
 import { getMcpSettings } from "@/utils/mcp/control";
 
 let runtime: { app: Express; appOrigin: string; server?: Server; url?: string; port?: number; preferredPort?: number; file?: string; command: string; entry: string; error?: string } | undefined;
@@ -20,6 +21,7 @@ function removeRuntime(file?: string) {
 }
 
 function saveRuntime(value = runtime) {
+  if (accountContext.getStore()) return;
   const { enabled, token } = getMcpSettings();
   if (!value?.file) return;
   if (enabled && token.length >= 32) {
@@ -37,7 +39,7 @@ export function reloadMcpRuntime() {
   reloadQueue = reloadQueue.catch(() => {}).then(async () => {
     const current = runtime;
     if (!current) return;
-    const preferredPort = getMcpSettings().port;
+    const preferredPort = Number((platformConfig.get("settings", {}).mcp as { port?: unknown } | undefined)?.port ?? 10588);
     if (current.server && current.preferredPort === preferredPort && !current.error) return;
     const server = createServer((req, res) => {
       // 复用宿主协议和鉴权，但固定端口只暴露 MCP，不开放页面及管理接口。
@@ -86,15 +88,20 @@ export function reloadMcpRuntime() {
 }
 
 export function getMcpRuntime() {
-  const preferredPort = getMcpSettings().port;
+  const preferredPort = Number((platformConfig.get("settings", {}).mcp as { port?: unknown } | undefined)?.port ?? 10588);
+  const account = accountContext.getStore();
+  const { enabled, token } = getMcpSettings();
+  const file = account && runtime?.port ? resolve(getAccountDirectory(), `mcpRuntime${runtime.port}.json`) : undefined;
+  if (file && runtime?.url && enabled && token.length >= 32) writeFileSync(file, JSON.stringify({ pid: process.pid, url: runtime.url, token }), { mode: 0o600 });
+  else if (file) removeRuntime(file);
   return {
     appOrigin: runtime?.appOrigin,
     endpoint: runtime?.url ?? null,
     preferredPort,
     port: runtime?.port ?? null,
     error: runtime?.error ?? null,
-    stdio: runtime?.file && existsSync(runtime.entry)
-      ? { command: runtime.command, args: [runtime.entry, "--runtime", runtime.file] }
+    stdio: file && enabled && token.length >= 32 && runtime && existsSync(runtime.entry)
+      ? { command: runtime.command, args: [runtime.entry, "--runtime", file] }
       : null,
   };
 }

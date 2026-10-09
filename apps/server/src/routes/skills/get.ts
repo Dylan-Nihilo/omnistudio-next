@@ -23,7 +23,7 @@ export default router.get("/", async (_req, res) => {
       version: typeof metadata.version === "string" ? metadata.version.trim() : "",
       displayName: typeof metadata.displayName === "string" && metadata.displayName.trim() ? metadata.displayName : skill.name,
       description: skill.description,
-      author: typeof metadata.author === "string" ? metadata.author : "",
+      author: metadata.author === "Toonflow" ? "omnistudio-next" : typeof metadata.author === "string" ? metadata.author : "",
       github,
     };
   }));

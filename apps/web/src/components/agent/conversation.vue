@@ -5,9 +5,9 @@
         <div v-if="!messages.length && !disabled" class="welcomeArea">
             <section class="welcomeMessage" aria-label="开始新对话">
               <div class="welcomeHeader">
-                <span class="welcomeIcon" aria-hidden="true"><img class="welcomeLogo" :src="logoUrl" alt="OmniStudio" /></span>
+                <span class="welcomeIcon" aria-hidden="true"><img class="welcomeLogo" :src="logoUrl" alt="omnistudio-next" /></span>
                 <div>
-                  <p class="welcomeLabel">你好，我是 Toonflow 助手</p>
+                  <p class="welcomeLabel">你好，我是 omnistudio-next 助手</p>
                   <h3>从一个想法开始</h3>
                 </div>
               </div>
@@ -57,7 +57,7 @@
             </article>
             <div v-if="!item.streaming" class="messageActions">
               <template v-if="editingId === item.id">
-                <uiButton variant="ghost" size="small" :disabled="busy || deletingId !== undefined" @click="cancelEdit"><icon-x :size="14" />取消</uiButton>
+                <uiButton variant="ghost" size="small" :disabled="busy || deletingId !== undefined" :icon="IconX" @click="cancelEdit">取消</uiButton>
                 <span class="editingHint">正在下方编辑</span>
               </template>
               <template v-else>
@@ -157,10 +157,10 @@ import {
   IconCircleDashed, IconPencil, IconPlayerStopFilled, IconX, IconLoader2,
   IconTrash, IconLayoutGrid, IconMovie, IconPhoto, IconArrowUpRight, IconUsersGroup,
 } from "@tabler/icons-vue";
-import { uiButton, uiPopover, uiProgress, useUiFeedback } from "@toonflow/ui";
-import promptInput from "@toonflow/nodes-scaffold/promptInput";
-import type { RichInputModel } from "@toonflow/nodes-scaffold/richInputTypes";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
+import { uiButton, uiPopover, uiProgress, useUiFeedback } from "@omnistudio-next/ui";
+import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import type { RichInputModel } from "@omnistudio-next/nodes-scaffold/richInputTypes";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import modelPopover from "@/components/modelPopover.vue";
 import skillMenu from "./skillMenu.vue";
 import mentionMenu from "./mentionMenu.vue";
@@ -175,10 +175,11 @@ import anonymousData from "@/lib/anonymousData";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
+import { getSessionSnapshot } from "@/lib/sessionState";
 import type { AgentAttachment, AgentConversation, AgentMessage } from "./types";
-import type { AgentEvent, AgentMention } from "@toonflow/server/agent/types";
+import type { AgentEvent, AgentMention } from "@omnistudio-next/server/agent/types";
 import { createConversationStream, readAgentEvents } from "./replyStream";
-import type { CanvasContext } from "@toonflow/tool-canvas/runtime";
+import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
 import messageMarkdown from "@/components/messageMarkdown.vue";
 
 const props = defineProps<{ active: boolean; initialSession: AgentConversation | null; sessionFile?: string; disabled: boolean }>();
@@ -455,7 +456,7 @@ async function deleteMessage(item: AgentMessage) {
           directory, sessionFile: props.sessionFile,
           ...(item.replyTo ? { replyTo: item.replyTo } : { entryIds: [item.entryId!] }),
         },
-        headers: { "x-toonflow-workspace": "1" },
+        headers: { "x-omnistudio-next-workspace": "1" },
       });
       if (data.code !== 200) throw new Error(data.message || "删除消息失败");
       stats.value = data.data.stats;
@@ -532,7 +533,7 @@ async function sendCanvasResult(event: Extract<AgentEvent, { type: "canvasCall" 
   if (cancelled) body = JSON.stringify({ directory, callId: event.callId, error: "画布操作已取消" });
   const response = await fetch("/api/agent/canvasResult", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken },
+    headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
     body,
     keepalive: cancelled,
     signal: cancelled ? AbortSignal.timeout(5000) : signal,
@@ -590,9 +591,9 @@ async function sendMessage(source?: AgentMessage) {
     await uploadAttachments(attachments, directory, requestController.signal);
     const response = await fetch("/api/agent", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
+      headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, tools: canvasContext.tools } : undefined }),
-      signal: requestController.signal,
+      signal: AbortSignal.any([requestController.signal, getSessionSnapshot().signal]),
     });
     for await (const event of readAgentEvents(response, requestController.signal)) {
       // 子任务复用发起委派时的画布与取消通道，界面切换不改变工具执行目标。
@@ -661,7 +662,7 @@ async function sendMessage(source?: AgentMessage) {
     // ACT: Bun 的流断开事件可能不触发；主动结束仍在等待的提问，不依赖断开通知。
     for (const callId of pendingQuestions.values()) {
       void fetch("/api/agent/answer", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-toonflow-workspace": "1", "x-workspace-id": auth.currentWorkspaceId, "x-csrf-token": auth.csrfToken },
+        method: "POST", headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
         body: JSON.stringify({ directory, callId, cancelled: true }), keepalive: true,
       }).catch(() => {});
     }

@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { uiButton, uiTooltip, uiPopover, uiDropdown, uiPopconfirm, uiTag, uiDialog, uiField, uiInput, uiSwitch, useUiFeedback, isUiCancelledError, type UiMenuItem } from "@toonflow/ui";
+import { uiButton, uiTooltip, uiPopover, uiDropdown, uiPopconfirm, uiTag, uiDialog, uiField, uiInput, uiSwitch, useUiFeedback, isUiCancelledError, type UiMenuItem } from "@omnistudio-next/ui";
 const feedback = useUiFeedback();
 const menu: UiMenuItem[] = [{ value: "详情", label: "查看详情" }, { value: "新建", label: "新建", children: [{ value: "文本", label: "文本" }, { value: "图片", label: "图片" }] }, { value: "重命名", label: "重命名" }, { value: "移除", label: "移除", divided: true }, { value: "处理中", label: "正在处理", disabled: true }];
 const chosen = ref(""), name = ref("雾山来信"), draft = ref("雾山来信");

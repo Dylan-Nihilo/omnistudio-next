@@ -9,7 +9,7 @@ import {
 import { search } from "duck-duck-scrape";
 import { COMMON_HEADERS } from "duck-duck-scrape/lib/util";
 import { z } from "zod";
-import type { ToolDefinition, ToolPlugin } from "@toonflow/tools-scaffold/runtime";
+import type { ToolDefinition, ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
 
 const configSchema = z.object({
   provider: z.enum(["duckduckgo", "deepseek", "tavily"]).default("duckduckgo"),

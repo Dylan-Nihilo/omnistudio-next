@@ -45,10 +45,10 @@ import { useDeveloperStore } from "@/stores/developer";
 import { useHelloStore } from "@/stores/hello";
 import { saveSettings, settings } from "@/stores/settings";
 import { desktopUpdateSnapshot } from "@/stores/desktopUpdate";
-import type { updateSnapshot } from "@toonflow/server/desktop";
+import type { updateSnapshot } from "@omnistudio-next/server/desktop";
 import saveFile from "@/lib/saveFile";
 import { installPluginFile } from "../../installPluginFile";
-import { uiButton, uiInput, uiTextarea, uiSelect, uiCheckbox, uiAlert, uiPopconfirm, useUiFeedback } from "@toonflow/ui";
+import { uiButton, uiInput, uiTextarea, uiSelect, uiCheckbox, uiAlert, uiPopconfirm, useUiFeedback } from "@omnistudio-next/ui";
 import axios from "axios";
 import { IconCode, IconTerminal2, IconFileUpload, IconFileText, IconDownload, IconRefresh, IconEdit, IconTrash } from "@tabler/icons-vue";
 
@@ -208,7 +208,7 @@ async function exportStorage() {
   storageMessage.value = "";
   try {
     const data = readStorage();
-    await saveFile(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), "toonflowLocalStorage.json");
+    await saveFile(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), "omniStudioNextLocalStorage.json");
   } catch (err) {
     storageError.value = err instanceof Error ? err.message : "导出缓存失败";
   }
@@ -272,10 +272,10 @@ async function installPlugin(sourceType: "file" | "url", file?: File) {
     if (file) {
       installedName.value = await installPluginFile(type, file, forceInstall.value);
     } else {
-      const { data } = await axios.post(`/api/${type}s/install`, { url: pluginUrl.value.trim(), force: forceInstall.value }, { headers: { "x-toonflow-workspace": "1" } });
+      const { data } = await axios.post(`/api/${type}s/install`, { url: pluginUrl.value.trim(), force: forceInstall.value }, { headers: { "x-omnistudio-next-workspace": "1" } });
       if (data.code !== 200) throw new Error(data.message || "安装失败");
       installedName.value = data.data.name;
-      window.dispatchEvent(new CustomEvent("toonflow:plugin-installed", { detail: { type, name: data.data.name } }));
+      window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type, name: data.data.name } }));
     }
   } catch (err) {
     installError.value = axios.isAxiosError<{ message?: string }>(err) ? err.response?.data.message || "安装失败，请检查网络后重试" : err instanceof Error ? err.message : "安装失败";
@@ -293,7 +293,7 @@ async function openDevTools() {
   opening.value = true;
   requestError.value = "";
   try {
-    const response = await fetch("/api/desktop/devtools", { method: "POST", headers: { "x-toonflow-desktop": "1" } });
+    const response = await fetch("/api/desktop/devtools", { method: "POST", headers: { "x-omnistudio-next-desktop": "1" } });
     if (!response.ok) throw new Error((await response.json()).message || "打开开发者工具失败，请重试。");
   } catch (error) {
     requestError.value = error instanceof Error ? error.message : "打开开发者工具失败，请重试。";

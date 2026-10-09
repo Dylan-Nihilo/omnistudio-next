@@ -72,8 +72,13 @@ function handleClick(event: MouseEvent) {
     width: 14px; height: 14px; border: 1.5px solid currentColor;
     border-right-color: transparent; border-radius: 50%; animation: uiSpin 700ms linear infinite;
   }
-  .buttonIcon { flex-shrink: 0; }
-  .buttonLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .buttonIcon { display: block; flex-shrink: 0; }
+  .buttonLabel {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    &:has(> svg) { display: inline-flex; align-items: center; gap: inherit; }
+    :deep(> svg) { display: block; flex-shrink: 0; }
+    :deep(> span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  }
 }
 @keyframes uiSpin { to { transform: rotate(360deg); } }
 </style>

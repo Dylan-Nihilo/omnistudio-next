@@ -130,7 +130,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { uiDialog, uiButton, uiIconButton, uiSlider, uiSelect, uiPopover, uiSwitch, uiColorPicker, uiNumberInput, uiField, useUiFeedback } from "@toonflow/ui";
+import { uiDialog, uiButton, uiIconButton, uiSlider, uiSelect, uiPopover, uiSwitch, uiColorPicker, uiNumberInput, uiField, useUiFeedback } from "@omnistudio-next/ui";
 import { IconCamera, IconLoader2, IconPlayerPause, IconPlayerPlay, IconPlus, IconX, IconMovie, IconPhotoPlus, IconSun, IconSettings, IconUserPlus } from "@tabler/icons-vue";
 import directorPanel from "./directorPanel.vue";
 import directorTour from "./directorTour.vue";
@@ -139,7 +139,7 @@ import { VueDraggable } from "vue-draggable-plus";
 import { Color, Vector3 } from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import type { SceneRuntime } from "threejson/core";
-import type { NodeAiModel } from "@toonflow/nodes-scaffold/runtime";
+import type { NodeAiModel } from "@omnistudio-next/nodes-scaffold/runtime";
 import { applyLighting, applySceneSettings, captureCamera, createStage, disposeStage, type LightingSettings, type SceneDocument, type SceneSettings } from "./scene";
 import { anchorSchema, applyCamera, prepareMotion, sampleMotion, type CameraAnchor } from "./motion";
 import { prepareSceneAnimation, type DirectorPlan, type DirectorPlanItem, type DirectorGeneration } from "./sceneAnimation";

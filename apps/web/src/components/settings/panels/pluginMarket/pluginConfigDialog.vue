@@ -17,7 +17,7 @@ import axios from "axios";
 import { computed, ref, shallowRef, toRaw, watch } from "vue";
 import formCreate, { type Api, type Options } from "../../formCreate";
 import { ElDialog } from "element-plus";
-import { uiDialog, uiThemeProvider, uiRuleForm, uiAlert, uiButton, useUiFeedback, type UiRuleFormApi } from "@toonflow/ui";
+import { uiDialog, uiThemeProvider, uiRuleForm, uiAlert, uiButton, useUiFeedback, type UiRuleFormApi } from "@omnistudio-next/ui";
 import { uiSettings } from "@/stores/settings";
 import { supportsUiRules } from "../../ruleSupport";
 import type { Plugin } from "./types";
@@ -48,10 +48,10 @@ async function saveConfig() {
   try {
     if (!(await formApi.value.validate().catch(() => false))) return;
     const path = plugin.type === "node" ? "nodes" : "tools";
-    const { data } = await axios.put(`/api/${path}/save`, { name: plugin.name, config: formApi.value.formData() }, { headers: { "x-toonflow-workspace": "1" } });
+    const { data } = await axios.put(`/api/${path}/save`, { name: plugin.name, config: formApi.value.formData() }, { headers: { "x-omnistudio-next-workspace": "1" } });
     if (data.code !== 200) throw new Error(data.message || "保存插件配置失败");
     plugin.config = data.data;
-    if (plugin.type === "node") window.dispatchEvent(new Event("toonflow:node-config-updated"));
+    if (plugin.type === "node") window.dispatchEvent(new Event("omnistudio-next:node-config-updated"));
     visible.value = false;
     feedback.message({ tone: "success", message: "插件配置已保存" });
   } catch (error) {

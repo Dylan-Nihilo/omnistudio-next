@@ -4,8 +4,6 @@ import type { Context, Message } from "@earendil-works/pi-ai";
 import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
-import { requireWorkspaceMembership, workspaceIdFromRequest } from "@/services/workspaceService";
-import { reserveGeneration, settleGeneration } from "@/services/billingService";
 
 const textPart = z.object({ type: z.literal("text"), text: z.string(), textSignature: z.string().optional() });
 const imagePart = z.object({ type: z.literal("image"), data: z.string(), mimeType: z.string().startsWith("image/") });
@@ -62,12 +60,9 @@ const inputSchema = z.object({
 
 export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema.shape), async (req, res) => {
   const input = inputSchema.parse(req.body);
-  const workspaceId = workspaceIdFromRequest(req);
-  await requireWorkspaceMembership(req.authContext!.user.id, workspaceId);
   const configured = await u.ai.getConfiguredModel(input.providerId, input.modelId);
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
-  const units = Math.max(1, input.context.messages.reduce((total, message) => total + JSON.stringify(message).length, 0) / 1000);
   const controller = new AbortController();
   const close = () => controller.abort();
   res.once("close", close);
@@ -77,11 +72,10 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   try {
     const directory = input.references?.some(item => item.dataType !== "STRING")
       ? await u.workspace.resolveWorkspace(req, input.directory ?? "") : undefined;
-    const reserved = await reserveGeneration({ workspaceId, userId: req.authContext!.user.id, modelId: input.modelId, mediaType: "text", units, idempotencyKey, requestSnapshot: { providerId: input.providerId, modelId: input.modelId, context: input.context } });
     let send: ((event: object) => void) | undefined;
     try {
       const references = await u.ai.readAiReferences(directory, input.references ?? [], controller.signal);
-      const stream = u.ai.streamAi(configured, input.context, controller.signal, references);
+      const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey);
       res.set({ "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
       res.flushHeaders();
       send = (event: object) => { if (!res.destroyed) res.write(`data: ${JSON.stringify(event)}\n\n`); };
@@ -92,10 +86,8 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
       }
       const message = await stream.result();
       if (message.stopReason === "error" || message.stopReason === "aborted") throw new Error(message.errorMessage || "模型请求失败");
-      await settleGeneration(reserved.job.id, true, { usage: message.usage });
       send({ type: "done", message });
     } catch (error) {
-      await settleGeneration(reserved.job.id, false, { error: error instanceof Error ? error.message : "模型请求失败" });
       if (!res.headersSent) throw error;
       send?.({ type: "error", message: error instanceof Error ? error.message : "模型请求失败" });
     } finally {

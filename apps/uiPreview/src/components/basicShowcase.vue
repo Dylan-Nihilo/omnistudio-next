@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { IconPlus } from "@tabler/icons-vue";
-import { uiButton, uiIconButton, uiInput, uiTextarea, uiField, uiTag, uiBadge, uiAlert, uiProgress, uiSlider, uiSkeleton, uiCard, uiEmpty, uiDialog } from "@toonflow/ui";
+import { uiButton, uiIconButton, uiInput, uiTextarea, uiField, uiTag, uiBadge, uiAlert, uiProgress, uiSlider, uiSkeleton, uiCard, uiEmpty, uiDialog } from "@omnistudio-next/ui";
 const name = ref("雾山来信"), key = ref(""), description = ref("");
 const dialogVisible = ref(false), progress = ref(42);
 </script>

@@ -35,8 +35,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { IconMusic, IconUpload, IconTransfer } from "@tabler/icons-vue";
-import { uiButton, uiIconButton, uiMediaPlayer, useUiFeedback } from "@toonflow/ui";
-import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@toonflow/nodes-scaffold/runtime";
+import { uiButton, uiIconButton, uiMediaPlayer, useUiFeedback } from "@omnistudio-next/ui";
+import { nodeSkeleton, nodeTools, useNode, z, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const feedback = useUiFeedback();
 

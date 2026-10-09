@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
-const headers = { "x-toonflow-desktop": "1" };
+const headers = { "x-omnistudio-next-desktop": "1" };
 
 export async function readClipboardText(): Promise<string> {
   if (!isDesktop) return navigator.clipboard.readText();

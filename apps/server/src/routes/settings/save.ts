@@ -5,6 +5,8 @@ import { validateFields } from "@/lib/middleware";
 import { success } from "@/lib/responseFormat";
 import { maxSystemPromptLength } from "@/agent/runtime/prompt";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
+import { synchronizeServiceCredentials } from "@/services/accountService";
+import { getAccountConfig, platformConfig } from "@/utils/conf";
 
 const router = Router();
 
@@ -19,8 +21,17 @@ export default router.put("/", requireAuth, requireCsrf, validateFields({ settin
 }) }), async (req, res) => {
   u.mcpControl.assertAppRequest(req);
   const { settings } = req.body;
-  u.removeLegacySettings(settings);
-  u.conf.set("settings", settings);
-  await u.mcpRuntime.reloadMcpRuntime();
-  res.json(success(null, "设置已保存"));
+  const release = u.workspaceFile.lockWorkspaceFiles([getAccountConfig().path]);
+  try {
+    u.removeLegacySettings(settings);
+    const previous = u.conf.get("settings", {});
+    const platformPort = (platformConfig.get("settings", {}).mcp as { port?: number } | undefined)?.port ?? 10588;
+    if (!req.authContext?.user.isRoot && settings.mcp?.port !== undefined && settings.mcp.port !== platformPort) throw Object.assign(new Error("只有 root 可以修改服务监听端口"), { status: 403 });
+    u.conf.set("settings", settings);
+    try { await synchronizeServiceCredentials(); }
+    catch (error) { u.conf.set("settings", previous); throw error; }
+    if (req.authContext?.user.isRoot && settings.mcp?.port !== undefined) platformConfig.set("settings.mcp.port", settings.mcp.port);
+    await u.mcpRuntime.reloadMcpRuntime();
+    res.json(success(null, "设置已保存"));
+  } finally { release(); }
 });

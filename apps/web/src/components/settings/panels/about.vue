@@ -1,7 +1,7 @@
 <template>
   <div class="about">
     <header class="brand"><img class="brandLogo" :src="logoUrl" alt="OmniStudio" /><div class="brandInfo"><h3>OmniStudio</h3><div class="brandMeta"><span>v{{ currentVersion }}</span><uiTag v-if="snapshot?.channel">{{ snapshot.channel }}</uiTag></div></div></header>
-    <section class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect class="updateSourceSelect" inline :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
+    <section v-if="auth.isRoot" class="updatePanel" aria-label="版本更新"><header class="sectionHeader"><h3><icon-refresh :size="18" aria-hidden="true" />版本更新</h3><div class="updateActions"><uiSelect class="updateSourceSelect" inline :modelValue="updateSource" :options="updateSources" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="value => typeof value === 'string' && saveUpdateSource(value)" /><uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton :loading="checking" :disabled="sourceSaving" @click="openUpdate">{{ snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}</uiButton></uiBadge></div></header><div v-if="snapshot?.hash" class="buildInfo"><span>构建标识</span><code>{{ snapshot.hash }}</code></div></section>
     <section class="resourceSection" aria-label="项目">
       <div class="resourceRow" aria-label="GitHub 仓库，暂未配置">
         <icon-brand-github :size="22" aria-hidden="true" />
@@ -26,9 +26,11 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from "@/stores/auth";
+
 import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import axios from "axios";
-import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@toonflow/ui";
+import { uiTag, uiSelect, uiBadge, uiButton, uiPopover, uiDialog, useUiFeedback } from "@omnistudio-next/ui";
 import {
   IconRefresh,
   IconBrandGithub,
@@ -38,8 +40,8 @@ import {
   IconArrowRight,
   IconBrandWechat,
 } from "@tabler/icons-vue";
-import logoUrl from "@toonflow/assets/omniStudioLogo.svg";
-import type { updateSnapshot } from "@toonflow/server/desktop";
+import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
+import type { updateSnapshot } from "@omnistudio-next/server/desktop";
 import { saveSettings } from "@/stores/settings";
 import {
   desktopUpdateSource as updateSource,
@@ -54,6 +56,7 @@ import {
 
 const feedback = useUiFeedback();
 const updateSources = computed(() => [{ value: "official", label: "官方源" }, { value: "github", label: "GitHub" }, ...(customUpdateUrl.value ? [{ value: "custom", label: "自定义源" }] : [])]);
+const auth = useAuthStore();
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
 const currentVersion = computed(() => snapshot.value?.version || import.meta.env.appVersion);
 const action = ref<"check" | "download" | "apply" | null>(null);
@@ -154,7 +157,7 @@ async function runUpdate(nextAction: "check" | "download" | "apply") {
     if (nextAction === "check") await checkDesktopUpdate();
     else {
       const { data } = await axios.post<{ data: updateSnapshot }>(`/api/desktop/update/${nextAction}`, null, {
-        headers: { "x-toonflow-desktop": "1" },
+        headers: { "x-omnistudio-next-desktop": "1" },
         signal: controller.signal,
         timeout: 0,
       });

@@ -12,9 +12,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { uiButton, uiPopover, uiField, uiSelect, uiSwitch } from "@toonflow/ui";
+import { uiButton, uiPopover, uiField, uiSelect, uiSwitch } from "@omnistudio-next/ui";
 import { IconChevronUp } from "@tabler/icons-vue";
-import type { NodeMediaModel } from "@toonflow/nodes-scaffold/runtime";
+import type { NodeMediaModel } from "@omnistudio-next/nodes-scaffold/runtime";
 
 const props = defineProps<{ model?: NodeMediaModel; disabled?: boolean; ratios: string[] }>();
 const duration = defineModel<number | undefined>("duration", { required: true });
