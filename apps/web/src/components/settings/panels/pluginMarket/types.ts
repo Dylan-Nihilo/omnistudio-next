@@ -24,4 +24,5 @@ export interface Plugin {
   kind?: "local" | "remote";
   cardUrl?: string;
   loadError?: string;
+  warnings?: string[];
 }

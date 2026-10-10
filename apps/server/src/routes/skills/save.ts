@@ -1,4 +1,3 @@
-import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Router } from "express";
 import { z } from "zod";
 import u from "@/utils";
@@ -22,13 +21,8 @@ export default router.put("/", validateFields({
     const { target, isMain } = await u.skillFile.locate(name, path);
     if (isMain) {
       try {
-        const normalized = content.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
-        if (!/^---\n[\s\S]*?\n---(?:\n|$)/.test(normalized) || !/^---(?:\n|$)/.test(normalized.slice(normalized.indexOf("\n---", 3) + 1))) {
-          throw new Error("frontmatter");
-        }
-        // SDK 使用 yaml.parse 并向外抛错；不重新序列化，保留原文、注释和换行。
-        const { frontmatter } = parseFrontmatter(content);
-        z.object({ name: z.literal(name), description: z.string().max(1024).refine(value => Boolean(value.trim())) }).parse(frontmatter);
+        const frontmatter = u.skillLoader.parseSkillManifest(content);
+        if (frontmatter.name !== name) throw new Error("name");
       } catch {
         return res.status(400).json(error("SKILL.md 必须包含合法 YAML、与原技能相同的字符串 name，以及非空且不超过 1024 字符的 description", null, 400));
       }
