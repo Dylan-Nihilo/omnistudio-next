@@ -166,7 +166,7 @@ export type SkillLocation = { name: string; scope?: SkillScope; path?: string };
 export type SkillDocument = { name: string; scope: SkillScope; path: string; content: string };
 
 export interface SkillContext {
-  list(scope?: SkillScope): { name: string; description: string; scope: SkillScope; filePath: string; disableModelInvocation: boolean }[];
+  list(scope?: SkillScope): { name: string; description: string; scope: SkillScope; filePath: string; disableModelInvocation: boolean; warnings?: string[] }[];
   read(request: SkillLocation, signal?: AbortSignal): Promise<SkillDocument>;
   create(request: SkillLocation & { content: string }, signal?: AbortSignal): Promise<Omit<SkillDocument, "content">>;
   update(request: SkillLocation & { content: string }, signal?: AbortSignal): Promise<Omit<SkillDocument, "content">>;

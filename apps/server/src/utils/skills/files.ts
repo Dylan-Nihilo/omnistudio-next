@@ -1,8 +1,9 @@
-import { loadSkillsFromDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
+import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { lstat, readdir, readFile, realpath, rm } from "node:fs/promises";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 import conf from "@/utils/conf";
 import { isWithin, writeWorkspaceFile } from "@/utils/workspace/files";
+import { loadSkillDirectory } from "@/utils/skills/loader";
 
 export const maxBytes = 20 * 1024 * 1024;
 // 记录附属文件的手动排序；不改动真实文件名，避免影响 SKILL.md 内部的相对链接。
@@ -54,7 +55,7 @@ function validatePath(path: string) {
 
 async function resolveSkill(name: string) {
   const { root, actualRoot } = await verifyRoot();
-  const skill = loadSkillsFromDir({ dir: root, source: "user" }).skills.find(skill => skill.name === name);
+  const skill = loadSkillDirectory(root).skills.find(skill => skill.name === name);
   if (!skill) throw Object.assign(new Error("技能不存在"), { status: 404 });
   const mainTarget = resolve(skill.filePath);
   if (mainTarget === root || !isWithin(root, mainTarget)) throw Object.assign(new Error("技能文件超出目录范围"), { status: 403 });

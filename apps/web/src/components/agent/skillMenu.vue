@@ -4,11 +4,13 @@
     <template #reference><uiButton class="skillButton" variant="ghost" :disabled="disabled" :aria-expanded="visible" :aria-controls="listId" aria-label="选择技能" title="选择技能" @click="visible ? closeMenu() : buttonVisible = true"><icon-book :size="15" /></uiButton></template>
     <div v-if="visible" class="skillPopup">
       <div class="skillScroll">
+        <details v-if="diagnostics.length" class="skillDiagnostics"><summary>有 {{ diagnostics.length }} 条技能加载提示</summary><ul><li v-for="(item, index) in diagnostics" :key="index">{{ item.path }}：{{ item.message }}</li></ul></details>
         <div :id="listId" role="listbox" aria-label="技能指令" :aria-busy="loading">
           <div v-if="loading || loadError || !filteredSkills.length" class="skillStatus" role="status">{{ loading ? "正在加载技能…" : loadError || (skills.length ? "没有匹配的技能" : "暂无可用技能") }}</div>
           <button v-for="(skill, index) in filteredSkills" v-else :id="`${listId}-${index}`" :key="skill.name" class="skillItem" :class="{ active: index === activeIndex }" type="button" role="option" :aria-selected="index === activeIndex" @mouseenter="activeIndex = index" @mousedown.prevent @click="selectSkill(skill.name)">
             <span class="skillName"><icon-book :size="15" />/skill:{{ skill.name }}</span>
             <span class="skillDescription">{{ skill.description }}</span>
+            <span v-if="skill.warnings?.length" class="skillDescription">{{ skill.warnings.join("；") }}</span>
           </button>
         </div>
       </div>
@@ -28,7 +30,8 @@ const emit = defineEmits<{ select: [name: string]; dismiss: [] }>();
 const listId = useId();
 const buttonVisible = ref(false);
 const visible = computed(() => props.active && !props.disabled && (buttonVisible.value || props.query !== undefined));
-const skills = ref<{ name: string; description: string }[]>([]);
+const skills = ref<{ name: string; description: string; warnings?: string[] }[]>([]);
+const diagnostics = ref<{ path: string; message: string }[]>([]);
 const loading = ref(false);
 const loadError = ref("");
 const activeIndex = ref(0);
@@ -49,6 +52,7 @@ function selectSkill(name: string) {
 
 function handleKeydown(event: KeyboardEvent) {
   if (!visible.value || event.isComposing || event.keyCode === 229) return;
+  if (event.target instanceof Element && event.target.closest(".skillDiagnostics")) return;
   if (event.key === "Tab" && (event.shiftKey || loading.value || loadError.value || !filteredSkills.value.length)) return closeMenu();
   if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
   if (!["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(event.key)) return;
@@ -76,21 +80,25 @@ watch([visible, activeIndex, filteredSkills, loading, loadError], async () => {
   } else editor?.removeAttribute("aria-activedescendant");
 });
 
-watch(visible, async (open, _previous, onCleanup) => {
+watch([visible, () => props.directory], async ([open, directory], _previous, onCleanup) => {
   if (!open) return closeMenu();
   const controller = new AbortController();
   onCleanup(() => controller.abort());
   loading.value = true;
   loadError.value = "";
+  skills.value = [];
+  diagnostics.value = [];
   try {
     const { data } = await axios.get("/api/agent/skills", {
-      params: { directory: props.directory }, signal: controller.signal,
+      params: { directory }, signal: controller.signal,
       headers: { "x-omnistudio-next-workspace": "1" },
     });
     if (data.code !== 200) throw new Error(data.message || "加载技能失败");
-    skills.value = data.data;
+    if (controller.signal.aborted) return;
+    skills.value = data.data.skills;
+    diagnostics.value = data.data.diagnostics;
   } catch (error) {
-    if (!axios.isCancel(error)) loadError.value = "加载技能失败，请重新打开重试";
+    if (!axios.isCancel(error)) loadError.value = axios.isAxiosError(error) ? error.response?.data?.message || "加载技能失败，请重新打开重试" : "加载技能失败，请重新打开重试";
   } finally {
     if (!controller.signal.aborted) loading.value = false;
   }
@@ -111,7 +119,7 @@ defineExpose({ handleKeydown });
 
   .skillPopup {
     min-width: 0;
-    .skillScroll { max-height: 260px; overflow: auto; overscroll-behavior: contain; }
+    .skillScroll { max-height: 260px; overflow: auto; overscroll-behavior: contain; .skillDiagnostics { padding: 10px 12px; color: var(--uiTextMuted); font-size: 12px; overflow-wrap: anywhere; summary { cursor: pointer; } ul { margin: 8px 0 0; padding-left: 18px; } } }
 
     .skillStatus {
       padding: 12px;

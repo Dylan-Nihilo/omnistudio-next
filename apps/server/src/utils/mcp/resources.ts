@@ -1,12 +1,12 @@
-import { loadSkillsFromDir } from "@earendil-works/pi-coding-agent";
 import type { McpOptions } from "@omnistudio-next/mcp";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import * as skillFile from "@/utils/skills/files";
+import { loadSkillDirectory } from "@/utils/skills/loader";
 
 export const skillResources: NonNullable<McpOptions["resources"]> = {
   async list(signal) {
-    const { skills } = loadSkillsFromDir({ dir: skillFile.directory(), source: "user" });
+    const { skills } = loadSkillDirectory(skillFile.directory());
     const resources = [];
     for (const skill of skills) {
       signal.throwIfAborted();

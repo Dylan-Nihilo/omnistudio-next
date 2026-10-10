@@ -14,6 +14,8 @@ export async function installPluginFile(type: "node" | "tool" | "skill" | "agent
   if (data.code !== 200) throw new Error(data.message || "安装插件失败");
   const name = data.data?.name;
   if (typeof name !== "string" || !name.trim()) throw new Error("安装接口未返回有效的插件名称");
-  window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type, name } }));
+  const names: string[] = type === "skill" && Array.isArray(data.data.names) ? data.data.names : [name];
+  if (!names.length || !names.every(value => typeof value === "string" && value.trim())) throw new Error("安装接口未返回有效的技能名称");
+  for (const installedName of names) window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type, name: installedName } }));
   return name;
 }

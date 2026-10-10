@@ -1,13 +1,13 @@
 import { mkdir, mkdtemp, lstat, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { crc32, inflateRawSync } from "node:zlib";
-import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import type { PluginInstallType } from "@/types/desktop";
 import conf from "@/utils/conf";
 import { requireRootAccount } from "@/utils/accountContext";
 import { parseTool, toolsDirectory } from "@/utils/plugins/tools";
 import { isSafeSegment } from "@/utils/skills/files";
+import { getSkillVersion, loadSkillDirectory, parseSkillManifest } from "@/utils/skills/loader";
 import { isWithin, lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
 
 const maxBytes = 20 * 1024 * 1024;
@@ -319,70 +319,111 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
   if (!bytes.byteLength) invalid("技能文件不能为空");
   if (bytes.byteLength > maxBytes) invalid("技能文件不能超过 20 MB", 413);
   const files = /\.md$/i.test(fileName) ? new Map([["SKILL.md", bytes]]) : /\.zip$/i.test(fileName) ? skillZip(bytes) : await skillArchive(bytes);
-  const manifests = [...files.keys()].filter(path => path === "SKILL.md" || path.endsWith("/SKILL.md"));
-  if (manifests.length !== 1) invalid("技能包必须包含且仅包含一个 SKILL.md");
-  const manifest = manifests[0]!;
-  const prefix = manifest.slice(0, -8);
-  if ([...files.keys()].some(path => !path.startsWith(prefix))) invalid("技能资源必须位于 SKILL.md 所在目录内");
-  let frontmatter: Record<string, unknown>;
-  try { ({ frontmatter } = parseFrontmatter(decodeText(files.get(manifest)!))); }
-  catch { return invalid("SKILL.md 前言格式无效"); }
-  const name = frontmatter?.name;
-  const description = frontmatter?.description;
-  // ACT: 兼容本地创建的小驼峰名称与既有短横线名称，不修改包内标识。
-  if (typeof name !== "string" || name.length > 64 || !/^[a-z0-9][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)*$/.test(name)) invalid("技能 name 必须为不超过 64 字符的小驼峰或短横线名称");
-  skillPath(name);
-  if (typeof description !== "string" || !description.trim() || description.length > 1024) invalid("技能 description 必须为 1 至 1024 字符");
+  const manifests = [...files.keys()].filter(path => path === "SKILL.md" || path.endsWith("/SKILL.md")).sort();
+  if (!manifests.length) invalid("技能包中没有 SKILL.md");
+  const names = new Set<string>();
+  const packages = manifests.map(manifest => {
+    let frontmatter: ReturnType<typeof parseSkillManifest>;
+    try { frontmatter = parseSkillManifest(decodeText(files.get(manifest)!)); }
+    catch (error) { return invalid(`${manifest}：${error instanceof Error ? error.message : "技能元数据无效"}`); }
+    const name = frontmatter.name;
+    skillPath(name);
+    if (names.has(name.toLowerCase())) invalid(`技能包中有重复名称：${name}`);
+    names.add(name.toLowerCase());
+    return { name, prefix: manifest.slice(0, -8), frontmatter, existing: false };
+  });
+  const owners = [...packages].sort((left, right) => right.prefix.length - left.prefix.length);
   const root = dirname(conf.path);
   const directory = join(root, "skills");
   await mkdir(directory, { recursive: true });
   if ((await lstat(directory)).isSymbolicLink()) invalid("技能目录不能是符号链接", 403);
-  const target = join(directory, name);
   const release = lockWorkspaceFiles([directory]);
   let temporary: string | undefined;
   let preserveBackup = false;
   try {
-    const existing = (await readdir(directory)).find(item => item.toLowerCase() === name.toLowerCase());
-    if (existing && existing !== name) invalid(`技能目录“${existing}”与“${name}”大小写冲突，请先统一名称`, 409);
-    if (existing) {
-      if (!(await lstat(target)).isDirectory()) invalid("现有技能必须是独立的普通目录", 403);
-      const current = await lstat(join(target, "SKILL.md"));
-      if (!current.isFile()) invalid("现有技能主文件必须是普通文件", 403);
-      const entries = await readdir(target, { recursive: true, withFileTypes: true });
-      if (entries.some(entry => entry.name.toLowerCase() === "skill.md" && join(entry.parentPath, entry.name) !== join(target, "SKILL.md"))) invalid("目录中包含其他技能，不能整体替换", 409);
-      if (!force) {
-        let version: unknown;
-        if (current.size <= maxBytes) {
-          const previous = await readFile(join(target, "SKILL.md"), "utf8");
-          try { version = (parseFrontmatter(previous).frontmatter.metadata as Record<string, unknown> | undefined)?.version; } catch { /* 损坏元数据没有可比较的版本。 */ }
+    const installed = await readdir(directory);
+    // Validate the whole batch before replacing any installed skill.
+    for (const item of packages) {
+      const existing = installed.find(name => name.toLowerCase() === item.name.toLowerCase());
+      if (existing && existing !== item.name) invalid(`技能目录“${existing}”与“${item.name}”大小写冲突，请先统一名称`, 409);
+      item.existing = Boolean(existing);
+      if (item.existing) {
+        const target = join(directory, item.name);
+        if (!(await lstat(target)).isDirectory()) invalid("现有技能必须是独立的普通目录", 403);
+        const current = await lstat(join(target, "SKILL.md"));
+        if (!current.isFile()) invalid("现有技能主文件必须是普通文件", 403);
+        const entries = await readdir(target, { recursive: true, withFileTypes: true });
+        if (entries.some(entry => entry.name.toLowerCase() === "skill.md" && join(entry.parentPath, entry.name) !== join(target, "SKILL.md"))) invalid("目录中包含其他技能，不能整体替换", 409);
+        if (!force) {
+          let version: unknown;
+          if (current.size <= maxBytes) {
+            try { version = getSkillVersion(parseSkillManifest(await readFile(join(target, "SKILL.md"), "utf8"))); }
+            catch { /* Invalid metadata has no comparable version. */ }
+          }
+          requireNewerVersion(version, getSkillVersion(item.frontmatter), `技能“${item.name}”`);
         }
-        requireNewerVersion(version, (frontmatter.metadata as Record<string, unknown> | undefined)?.version, `技能“${name}”`);
       }
     }
     temporary = await mkdtemp(join(root, ".skillInstall"));
     if (!isWithin(root, temporary)) invalid("技能暂存目录无效");
     const staged = join(temporary, "new");
+    let stagedBytes = 0;
     for (const [path, content] of files) {
-      const destination = resolve(staged, path.slice(prefix.length));
+      const owner = owners.find(item => path.startsWith(item.prefix));
+      if (!owner) continue;
+      const destination = resolve(staged, owner.name, path.slice(owner.prefix.length));
       if (!isWithin(staged, destination)) invalid("技能资源路径无效");
+      stagedBytes += content.byteLength;
       await mkdir(dirname(destination), { recursive: true });
       await writeFile(destination, content, { flag: "wx", mode: 0o600 });
     }
-    // ACT: 单进程锁内切换完整目录；旧版留到新版就位，失败时原路恢复。
+    // Preserve repository-level license notices when splitting a skill bundle.
+    for (const item of packages) {
+      for (const label of ["LICENSE", "LICENSE.md", "LICENSE.txt", "NOTICE"]) {
+        if (files.has(item.prefix + label)) continue;
+        const notice = [...files.keys()].filter(path => path.split("/").at(-1) === label && item.prefix.startsWith(path.slice(0, path.lastIndexOf("/") + 1)))
+          .sort((left, right) => right.length - left.length)[0];
+        if (!notice) continue;
+        const content = files.get(notice)!;
+        stagedBytes += content.byteLength;
+        if (stagedBytes > maxBytes) invalid("技能资源展开后不能超过 20 MB", 413);
+        await writeFile(join(staged, item.name, label), content, { flag: "wx", mode: 0o600 });
+      }
+    }
+    const loaded = loadSkillDirectory(staged);
+    const failure = loaded.diagnostics.find(item => item.type === "error");
+    if (failure || loaded.skills.length !== packages.length) invalid(`技能包无法加载：${failure?.message ?? "技能数量不一致"}`);
+    // Keep all backups until the complete batch is in place.
     const backup = join(temporary, "previous");
-    if (existing) await rename(target, backup);
-    try { await rename(staged, target); }
-    catch (error) {
-      if (existing) {
-        try { await rename(backup, target); }
-        catch (restoreError) {
-          preserveBackup = true;
-          throw new AggregateError([error, restoreError], `技能更新失败，旧版保留在 ${backup}，请恢复后重试`);
-        }
+    await mkdir(backup);
+    const changed: { name: string; backedUp: boolean; installed: boolean }[] = [];
+    try {
+      for (const item of packages) {
+        const change = { name: item.name, backedUp: false, installed: false };
+        changed.push(change);
+        if (item.existing) { await rename(join(directory, item.name), join(backup, item.name)); change.backedUp = true; }
+        await rename(join(staged, item.name), join(directory, item.name));
+        change.installed = true;
+      }
+    } catch (error) {
+      const failures: unknown[] = [];
+      for (const change of changed.reverse()) {
+        try {
+          if (change.installed) await rename(join(directory, change.name), join(staged, change.name));
+          if (change.backedUp) await rename(join(backup, change.name), join(directory, change.name));
+        } catch (restoreError) { failures.push(restoreError); }
+      }
+      if (failures.length) {
+        preserveBackup = true;
+        throw Object.assign(new AggregateError([error, ...failures], `技能安装失败，部分旧版保留在 ${backup}，请恢复后重试`), { status: 500 });
       }
       throw error;
     }
-    return { name };
+    return {
+      name: packages[0]!.name,
+      names: packages.map(item => item.name),
+      diagnostics: loaded.diagnostics.map(item => ({ type: item.type, path: item.path ? relative(staged, item.path) : "", message: item.message })),
+    };
   } finally {
     try {
       if (temporary && !preserveBackup && temporary !== root && isWithin(root, temporary)) {
