@@ -1,5 +1,5 @@
 <template>
-  <div class="nodeSkeleton" :class="{ isSelected: node.selected }" @wheel.capture="zoomCanvas" @dblclick.stop="focusNode">
+  <div class="nodeSkeleton" :class="{ isSelected: node.selected }" :style="{ '--nodeTypeColor': nodeAppearance.color }" @wheel.capture="zoomCanvas" @dblclick.stop="focusNode">
     <uiDropdown ref="menu" trigger="manual" :anchor="menuAnchor" :items="menuItems" placement="bottom-start" @command="handleCommand" />
     <div
       v-if="topVisible && slotsVisible"
@@ -26,7 +26,9 @@
       <slot name="bottom" />
     </div>
     <div class="titleBar">
-      <component :is="icon ?? IconBox" class="titleIcon" :size="16" aria-hidden="true" />
+      <component :is="icon ?? nodeAppearance.icon" class="titleIcon" :size="18" aria-hidden="true" />
+      <div class="titleText">
+        <div class="typeCaption"><span>{{ nodeAppearance.label }}</span><span v-if="generationNode" class="generationBadge"><icon-sparkles :size="10" aria-hidden="true" />生成</span></div>
       <input
         v-if="editingLabel"
         ref="labelInput"
@@ -49,6 +51,7 @@
         @keydown.enter.stop.prevent="editLabel">
         {{ label }}
       </span>
+      </div>
       <div class="nodeActions nodrag nopan" @pointerdown.stop @mousedown.stop @dblclick.stop>
         <uiIconButton v-if="downloadUrl" size="small" :icon="IconMaximize" label="全屏" title="全屏" @click.stop="emit('fullscreen')" />
         <uiIconButton size="small" :icon="IconRefresh" :loading="loading || reloading" :disabled="loading || !reloadRemoteNode" label="刷新节点" title="刷新节点" @click.stop="reloadNode" />
@@ -110,6 +113,12 @@ import {
   IconCircleDashed,
   IconCircleDot,
   IconLoader2,
+  IconFileText,
+  IconPhoto,
+  IconVideo,
+  IconMusic,
+  IconCube3dSphere,
+  IconSparkles,
 } from "@tabler/icons-vue";
 import { uiDropdown, uiIconButton, useUiFeedback, type UiMenuItem } from "@omnistudio-next/ui";
 import { validateConnection } from "./connection";
@@ -149,6 +158,19 @@ const handleGroups = computed(() => [
 ]);
 const cardHeight = computed(() => Math.max(100, ...handleGroups.value.map((group) => (group.items.length + 1) * 44)));
 const { id: nodeId, node } = useNode();
+const nodeAppearances = {
+  STRING: { label: "文本", color: "#d4a65b", icon: IconFileText },
+  IMAGE: { label: "图片", color: "#75a9eb", icon: IconPhoto },
+  VIDEO: { label: "视频", color: "#b596e7", icon: IconVideo },
+  AUDIO: { label: "音频", color: "#68bca0", icon: IconMusic },
+};
+const nodeAppearance = computed(() => {
+  if (node.type === "remote-director3dNode") return { label: "3D 导演", color: "#e39671", icon: IconCube3dSphere };
+  const source = props.handles.find(handle => handle.type === "source");
+  const dataType = Array.isArray(source?.dataType) ? source.dataType[0] : source?.dataType;
+  return nodeAppearances[dataType as keyof typeof nodeAppearances] ?? { label: "节点", color: "var(--uiTextMuted)", icon: IconBox };
+});
+const generationNode = computed(() => node.type === "remote-imageGenerationNode" || node.type === "remote-videoGenerationNode");
 const selectionConnection = inject<ShallowRef<NodeConnectionFeedback | undefined>>("selectionConnection");
 const nodeEvent = useNodeEvent();
 node.isValidTargetPos = (...args) => nodeEvent.emit("canConnect", ...args);
@@ -458,11 +480,19 @@ watch(
 
 <style scoped lang="scss">
 .nodeSkeleton {
-  position: relative; width: 240px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); color: var(--uiTextPrimary); text-align: left; box-shadow: var(--uiShadowPopover);
-  &.isSelected { border-color: var(--uiActionPrimary); box-shadow: 0 0 0 1px var(--uiActionPrimary); }
+  position: relative; width: 240px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 38%, var(--uiBorderControl)); border-left: 3px solid var(--nodeTypeColor); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); color: var(--uiTextPrimary); text-align: left; box-shadow: var(--uiShadowPopover);
+  &.isSelected { border-color: var(--uiActionPrimary); border-left-color: var(--nodeTypeColor); box-shadow: 0 0 0 1px var(--uiActionPrimary); }
   &:hover .cardContainer .nodeHandle .handleIcon { opacity: 1; }
   .floatingSlot { position: absolute; left: 50%; z-index: 2; transform: translateX(-50%); &.topSlot { bottom: calc(100% + 12px); } &.bottomSlot { top: calc(100% + 12px); } .mediaToolbar { display: flex; align-items: center; gap: 4px; padding: 6px; width: max-content; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover); .toolbarDivider { width: 1px; height: 20px; margin-inline: 4px; background: var(--uiBorderDefault); } } }
-  .titleBar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--uiBorderDefault); font-size: var(--uiFontLabel); line-height: 1.5; .titleIcon { flex-shrink: 0; color: var(--uiTextMuted); } .labelText { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; user-select: none; &:active { cursor: grabbing; } } .labelInput { flex: 1; min-width: 0; width: 100%; padding: 0 4px; border: 1px solid var(--uiBorderFocus); border-radius: var(--uiRadiusControl); outline: none; background: var(--uiBackgroundSubtle); color: inherit; font: inherit; line-height: inherit; } .nodeActions { display: flex; flex-shrink: 0; gap: 2px; } }
+  .titleBar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--nodeTypeColor) 20%, var(--uiBorderDefault)); border-radius: var(--uiRadiusCard) var(--uiRadiusCard) 0 0; background: color-mix(in srgb, var(--nodeTypeColor) 6%, var(--uiSurfaceRaised)); font-size: var(--uiFontLabel); line-height: 1.5;
+    .titleIcon { flex-shrink: 0; color: var(--nodeTypeColor); }
+    .titleText { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0;
+      .typeCaption { display: flex; align-items: center; gap: 6px; color: var(--nodeTypeColor); font-size: 10px; line-height: 14px; .generationBadge { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 35%, transparent); border-radius: 4px; } }
+      .labelText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; user-select: none; &:active { cursor: grabbing; } }
+      .labelInput { min-width: 0; width: 100%; padding: 0 4px; border: 1px solid var(--uiBorderFocus); border-radius: var(--uiRadiusControl); outline: none; background: var(--uiBackgroundSubtle); color: inherit; font: inherit; line-height: inherit; }
+    }
+    .nodeActions { display: flex; flex-shrink: 0; gap: 2px; }
+  }
   .cardContainer { position: relative; .contentCard { padding: 12px; .loadingContent { display: flex; min-height: 84px; align-items: center; justify-content: center; gap: 8px; color: var(--uiTextMuted); font-size: var(--uiFontControl); .loadingIcon { color: var(--uiActionPrimary); animation: nodeLoading 1s linear infinite; @media (prefers-reduced-motion: reduce) { animation: none; } } } } .nodeHandle { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 0; background: transparent; color: var(--uiTextMuted); &.vue-flow__handle-left { left: -12px; } &.vue-flow__handle-right { right: -12px; } &::before { content: ""; position: absolute; inset: -13px; border-radius: 50%; } .handleIcon { pointer-events: none; opacity: 0; transform: translate(var(--handleX, 0px), var(--handleY, 0px)); transition: transform 120ms ease-out, opacity 120ms ease-out; } &.connected .handleIcon, &.linking .handleIcon, &.connecting .handleIcon, &[data-connection-status] .handleIcon { opacity: 1; } &:hover, &.linking, &.connecting, &[data-connection-status="valid"] { color: var(--uiActionPrimary); } &[data-connection-status="invalid"] { color: var(--uiStatusError); cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .handleIcon { transform: none; transition: none; } } } }
 }
 @keyframes nodeLoading { to { transform: rotate(360deg); } }

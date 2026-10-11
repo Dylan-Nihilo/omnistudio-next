@@ -48,7 +48,14 @@ function memberName(id: string) { return members.value.find(member => member.id 
 async function loadTeams() { loading.value = true; errorMessage.value = ""; try { await auth.restoreSession(); await loadDetail(); } catch (error) { errorMessage.value = errorText(error); } finally { loading.value = false; } }
 async function loadDetail() { const id = auth.currentTeamId; const revision = ++detailRevision; members.value = []; assets.value = []; if (!id) return; detailLoading.value = true; try { const [people, files] = await Promise.all([getMembers(id), getTeamAssets(id)]); if (revision === detailRevision) { members.value = people; assets.value = files.assets; } } catch (error) { if (revision === detailRevision) errorMessage.value = errorText(error); } finally { if (revision === detailRevision) detailLoading.value = false; } }
 watch(() => auth.currentTeamId, () => { inviteLink.value = ""; previewAsset.value = undefined; errorMessage.value = ""; void loadDetail(); });
-watch([createVisible, inviteVisible], () => { dialogError.value = ""; });
+watch(createVisible, visible => { if (visible) dialogError.value = ""; });
+watch(inviteVisible, visible => {
+  dialogError.value = "";
+  if (!visible) {
+    inviteForm.email = "";
+    inviteLink.value = "";
+  }
+});
 async function submitCreate() { busy.value = true; dialogError.value = ""; try { const team = await createTeam(createForm.name); await auth.restoreSession(); auth.selectTeam(team.id); createForm.name = ""; createVisible.value = false; await loadDetail(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function submitInvite() { const id = auth.currentTeamId; busy.value = true; dialogError.value = ""; try { const invitation = await inviteMember(id, inviteForm.email); const url = new URL(location.href); url.search = ""; url.hash = `/auth/invite?token=${encodeURIComponent(invitation.token)}`; inviteLink.value = url.href; } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function copyInvitation() { try { await writeClipboardText(inviteLink.value); feedback.message({ tone: "success", message: "邀请链接已复制" }); } catch (error) { dialogError.value = errorText(error); } }

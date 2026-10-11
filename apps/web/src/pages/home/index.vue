@@ -4,7 +4,7 @@
       <a class="homeBrand" href="#/home" aria-label="omnistudio-next 首页"><img :src="logoUrl" alt="omnistudio-next" /></a>
       <nav class="mainNavigation">
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'create' }" :icon="IconFolderPlus" @click="focusCreation">开始创作</uiButton>
-        <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" @click="focusProjects">我的项目</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" title="跳转到最近项目" @click="focusProjects">最近项目</uiButton>
       </nav>
       <nav class="secondaryNavigation">
         <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" @click="router.push('/account')">账户与积分</uiButton>
@@ -225,7 +225,7 @@ async function createProject(fromPrompt = true) {
 }
 function showError(message: string) { feedback.message({ tone: "error", message }); }
 function focusCreation() { activeSection.value = "create"; promptInput.value?.textarea?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); promptInput.value?.focus(); }
-function focusProjects() { activeSection.value = "projects"; projectSection.value?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
+function focusProjects() { activeSection.value = "projects"; projectSection.value?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
 </script>
 
 <style lang="scss" scoped>

@@ -8,10 +8,11 @@
         <header><h2 id="transferTitle">划转积分</h2><p>向同一团队的成员划转自己的可用积分。</p></header>
         <form class="sectionForm" @submit.prevent="submitTransfer">
           <uiField label="团队" required><template #default="{ id }"><uiSelect :id="id" :modelValue="transferTeamId" :options="transferTeamOptions" :disabled="busy || !transferTeamOptions.length" placeholder="选择你加入的团队" @update:modelValue="value => typeof value === 'string' && (transferTeamId = value)" /></template></uiField>
-          <uiField label="接收成员" required><template #default="{ id }"><uiSelect :id="id" :modelValue="recipientId" :options="recipientOptions" :disabled="busy || membersLoading || !transferTeamId" placeholder="选择接收成员" @update:modelValue="value => typeof value === 'string' && (recipientId = value)" /></template></uiField>
+          <uiField label="接收成员" required><template #default="{ id }"><uiSelect :id="id" :modelValue="recipientId" :options="recipientOptions" :disabled="busy || membersLoading || !transferTeamId || !recipientOptions.length" placeholder="选择接收成员" @update:modelValue="value => typeof value === 'string' && (recipientId = value)" /></template></uiField>
           <uiField label="积分数量" required><template #default="{ id }"><uiNumberInput :id="id" v-model="amount" :min="1" :max="Math.max(1, wallet?.available ?? 0)" :step="1" :precision="0" :disabled="busy || !wallet || wallet.available < 1" /></template></uiField>
           <uiField label="备注"><template #default="{ id }"><uiInput :id="id" v-model.trim="note" maxlength="500" :disabled="busy" placeholder="本次划转的用途" /></template></uiField>
           <p v-if="!transferTeamOptions.length" class="sectionHint">创建或加入团队后，即可向同团队成员划转积分。<router-link to="/teams">前往团队空间</router-link></p>
+          <p v-else-if="transferTeamId && !membersLoading && !recipientOptions.length" class="sectionHint">当前团队还没有其他成员，邀请成员后即可划转积分。<router-link to="/teams">前往团队空间</router-link></p>
           <p v-if="transferError" class="pageError" role="alert">{{ transferError }}</p>
           <uiButton htmlType="submit" :loading="busy" :disabled="busy || !recipientId || !amount || !wallet || amount > wallet.available">确认划转积分</uiButton>
         </form>
