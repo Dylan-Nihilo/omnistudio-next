@@ -1,4 +1,3 @@
-import { loadSkillsFromDir } from "@earendil-works/pi-coding-agent";
 import { Router } from "express";
 import { zip } from "fflate";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
@@ -49,7 +48,7 @@ export default router.get("/", validateFields({
     return res.set("Cache-Control", "no-store").attachment(fileName).send(bytes);
   }
 
-  const skill = loadSkillsFromDir({ dir: directory, source: "user" }).skills.find(item => item.name === name);
+  const skill = u.skillLoader.loadSkillDirectory(directory).skills.find(item => item.name === name);
   if (!skill) return res.status(404).json(error("技能不存在", null, 404));
   const files: Record<string, Uint8Array> = Object.create(null);
   let entries = 0;

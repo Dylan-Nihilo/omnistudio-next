@@ -1,24 +1,29 @@
-import { existsSync } from "node:fs";
 import { mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
-import { loadSkills, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 import type { SkillContext, SkillLocation, SkillScope } from "@omnistudio-next/tools-scaffold/runtime";
 import conf from "@/utils/conf";
 import { isWithin, lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { requireRootAccount } from "@/utils/accountContext";
+import { loadSkillDirectory, parseSkillManifest } from "@/utils/skills/loader";
 
 export function loadAgentSkills(cwd: string, scope?: SkillScope) {
   if (scope !== undefined && scope !== "workspace" && scope !== "global") throw new Error("技能范围无效");
-  return loadSkills({
-    cwd,
-    agentDir: join(cwd, ".agent"),
-    includeDefaults: false,
-    // 同名技能由工作区优先，列表与运行时共用 SDK 的扫描规则。
-    skillPaths: [
-      ...(scope !== "global" ? [join(cwd, "skill")] : []),
-      ...(scope !== "workspace" ? [join(dirname(conf.path), "skills")] : []),
-    ].filter(existsSync),
-  });
+  const directories = [
+    ...(scope !== "global" ? [join(cwd, "skill")] : []),
+    ...(scope !== "workspace" ? [join(dirname(conf.path), "skills")] : []),
+  ];
+  const result: ReturnType<typeof loadSkillDirectory> = { skills: [], diagnostics: [] };
+  const names = new Set<string>();
+  for (const directory of directories) {
+    const loaded = loadSkillDirectory(directory);
+    result.diagnostics.push(...loaded.diagnostics);
+    for (const skill of loaded.skills) {
+      if (names.has(skill.name.toLowerCase())) {
+        result.diagnostics.push({ type: "warning", path: skill.filePath, message: `同名技能“${skill.name}”已使用工作区版本` });
+      } else { names.add(skill.name.toLowerCase()); result.skills.push(skill); }
+    }
+  }
+  return result;
 }
 
 export function createSkillContext(cwd: string): SkillContext {
@@ -47,7 +52,7 @@ export function createSkillContext(cwd: string): SkillContext {
     const { target, manifest, ...document } = await locate(request, create);
     if (document.scope === "global") requireRootAccount();
     if (manifest) {
-      const { frontmatter } = parseFrontmatter(request.content);
+      const frontmatter = parseSkillManifest(request.content);
       if (frontmatter.name !== request.name || typeof frontmatter.description !== "string" || !frontmatter.description.trim()) {
         throw new Error("SKILL.md 必须包含匹配的 name 和非空 description");
       }
@@ -64,8 +69,8 @@ export function createSkillContext(cwd: string): SkillContext {
   }
 
   return {
-    list: scope => loadAgentSkills(cwd, scope).skills.map(({ name, description, filePath, disableModelInvocation }) => ({
-      name, description, filePath, disableModelInvocation, scope: skillScope(filePath),
+    list: scope => loadAgentSkills(cwd, scope).skills.map(({ name, description, filePath, disableModelInvocation, warnings }) => ({
+      name, description, filePath, disableModelInvocation, warnings, scope: skillScope(filePath),
     })),
     async read(request, signal) {
       signal?.throwIfAborted();

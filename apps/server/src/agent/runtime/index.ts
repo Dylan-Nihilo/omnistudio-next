@@ -44,6 +44,11 @@ type AgentOptions = {
   billing?: GenerationBillingContext;
 };
 
+function assertSkillInvocation(prompt: string, skills: { name: string }[]) {
+  const name = /^\/skill:(\S+)/.exec(prompt.trimStart())?.[1];
+  if (name && !skills.some(skill => skill.name === name)) throw Object.assign(new Error(`技能“${name}”未加载，请在技能列表查看加载提示`), { status: 400 });
+}
+
 export async function run(
   {
     prompt,
@@ -90,6 +95,7 @@ export async function run(
     if (resendFrom) throw Object.assign(new Error("子 Agent 运行时不能重发历史消息"), { status: 409 });
     if (!active.session?.isStreaming) throw Object.assign(new Error("子 Agent 正在准备或结束回复，请稍后发送"), { status: 409 });
     if (attachments.length || mentions.length) throw Object.assign(new Error("请等子 Agent 当前回复结束后发送附件或提及"), { status: 400 });
+    assertSkillInvocation(prompt, active.session.resourceLoader.getSkills().skills);
     await active.session.prompt(prompt.trim(), { streamingBehavior: "steer", expandPromptTemplates: false });
     send({ type: "accepted" });
     return;
@@ -151,6 +157,7 @@ export async function run(
     const resources = await createAgentResources(cwd, tools, undefined, child
       ? `## 子 Agent 职责\n你正在执行委派任务：${JSON.stringify({ name: child.name, task: child.task })}。遵守当前工作区规则与授权，用户可以进入此子会话补充要求。重要进展与最终结论使用 report 上报父 Agent。`
       : "");
+    assertSkillInvocation(prompt, resources.resourceLoader.getSkills().skills);
     const resendEntry = resendFrom ? history.getBranch().find((item) => item.id === resendFrom) : undefined;
     if (resendFrom && (resendEntry?.type !== "message" || resendEntry.message.role !== "user")) {
       throw Object.assign(new Error("重发消息不在当前对话中，请重新打开对话"), { status: 400 });
@@ -392,7 +399,7 @@ export async function run(
           )}`.trim()
         : mentionPrompt(prompt, mentions);
       // SDK 仅以空格分隔技能名；兼容换行输入与追加的附件说明。
-      await session.prompt(content.replace(/^(\/skill:\S+)\s+/, "$1 "));
+      await session.prompt(content.replace(/^\s*(\/skill:\S+)\s+/, "$1 "));
       if (compactionError) throw new Error(compactionError);
       if (modelError) throw Object.assign(new Error(modelError), limited ? { code: "AGENT_LENGTH" } : {});
     } catch (error) {

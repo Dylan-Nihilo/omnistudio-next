@@ -15,6 +15,7 @@ import * as question from "@/agent/bridge/question";
 import * as workspace from "@/utils/workspace";
 import * as workspaceFile from "@/utils/workspace/files";
 import * as skillFile from "@/utils/skills/files";
+import * as skillLoader from "@/utils/skills/loader";
 import * as mcpControl from "@/utils/mcp/control";
 import * as mcpRuntime from "@/utils/mcp/runtime";
 import * as teams from "@/utils/teams";
@@ -41,6 +42,7 @@ export default {
   workspace,
   workspaceFile,
   skillFile,
+  skillLoader,
   mcpControl,
   mcpRuntime,
   teams,

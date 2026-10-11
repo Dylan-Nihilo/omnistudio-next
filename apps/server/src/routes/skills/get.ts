@@ -1,6 +1,4 @@
-import { loadSkillsFromDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { relative } from "node:path";
 import { Router } from "express";
 import { success } from "@/lib/responseFormat";
 import u from "@/utils";
@@ -8,9 +6,10 @@ import u from "@/utils";
 const router = Router();
 
 export default router.get("/", async (_req, res) => {
-  const { skills } = loadSkillsFromDir({ dir: resolve(dirname(u.conf.path), "skills"), source: "user" });
-  const items = await Promise.all(skills.map(async (skill) => {
-    const { frontmatter } = parseFrontmatter(await readFile(skill.filePath, "utf8"));
+  const directory = u.skillFile.directory();
+  const { skills, diagnostics } = u.skillLoader.loadSkillDirectory(directory);
+  const items = skills.map(skill => {
+    const { frontmatter } = skill;
     const metadata = frontmatter.metadata && typeof frontmatter.metadata === "object" && !Array.isArray(frontmatter.metadata)
       ? frontmatter.metadata as Record<string, unknown> : {};
     let github = "";
@@ -20,12 +19,17 @@ export default router.get("/", async (_req, res) => {
     }
     return {
       name: skill.name,
-      version: typeof metadata.version === "string" ? metadata.version.trim() : "",
+      version: u.skillLoader.getSkillVersion(frontmatter),
       displayName: typeof metadata.displayName === "string" && metadata.displayName.trim() ? metadata.displayName : skill.name,
       description: skill.description,
       author: metadata.author === "Toonflow" ? "omnistudio-next" : typeof metadata.author === "string" ? metadata.author : "",
       github,
+      warnings: skill.warnings,
     };
+  });
+  res.set("Cache-Control", "no-store");
+  res.json(success({
+    skills: items.sort((left, right) => left.name.localeCompare(right.name)),
+    diagnostics: diagnostics.map(item => ({ type: item.type, path: item.path ? relative(directory, item.path) : "", message: item.message })),
   }));
-  res.json(success(items.sort((left, right) => left.name.localeCompare(right.name))));
 });
