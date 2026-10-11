@@ -30,27 +30,22 @@
         <uiPopover v-model:visible="helpVisible" placement="top-end" :width="216">
           <template #reference="{ triggerAttrs }"><uiIconButton v-bind="triggerAttrs" :icon="IconHelp" label="帮助" /></template>
           <div class="helpMenu">
-            <uiButton class="menuAction" variant="ghost" tag="a" :icon="IconBook" href="https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf" target="_blank" rel="noopener noreferrer" @click="helpVisible = false">使用教程</uiButton>
-            <uiButton class="menuAction" variant="ghost" tag="a" :icon="IconBug" href="https://docs.qq.com/smartsheet/form/EmvmQBrmlPmr%2Fss_vsqk2v%2FvhiGzE?tab=ss_vsqk2v" target="_blank" rel="noopener noreferrer" title="omnistudio-next 需求/BUG反馈表" @click="helpVisible = false">汇报 BUG</uiButton>
-            <uiButton class="menuAction" variant="ghost" :icon="IconBrandWechat" @click="showContact('community')">加入交流群</uiButton>
-            <uiButton class="menuAction" variant="ghost" :icon="IconBriefcase" @click="showContact('business')">商务合作</uiButton>
+            <uiButton class="menuAction" variant="ghost" :icon="IconBook" disabled>使用教程</uiButton>
+            <uiButton class="menuAction" variant="ghost" :icon="IconBug" disabled>汇报 BUG</uiButton>
+            <uiButton class="menuAction" variant="ghost" :icon="IconBrandWechat" disabled>加入交流群</uiButton>
           </div>
         </uiPopover>
       </div>
     </nav>
   </panel>
-  <uiDialog v-model="contactVisible" :title="contactInfo.title" :width="360">
-    <div class="contactContent"><q-r-code :value="contactInfo.url" :size="192" type="svg" color="#000000" bgColor="#ffffff" borderless role="img" :aria-label="`${contactInfo.title}二维码`" /><p class="contactTip">{{ contactInfo.tip }}</p></div>
-  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { Panel, useVueFlow, type XYPosition } from "@vue-flow/core";
 import { MiniMap } from "@vue-flow/minimap";
-import { IconFolders, IconSitemap, IconArrowGuide, IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat, IconBriefcase } from "@tabler/icons-vue";
-import { uiIconButton, uiButton, uiTooltip, uiPopover, uiDialog, uiField, uiNumberInput, useUiFeedback } from "@omnistudio-next/ui";
-import { QRCode } from "tdesign-vue-next";
+import { IconFolders, IconSitemap, IconArrowGuide, IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat } from "@tabler/icons-vue";
+import { uiIconButton, uiButton, uiTooltip, uiPopover, uiField, uiNumberInput, useUiFeedback } from "@omnistudio-next/ui";
 import { arrangeCanvas } from "../arrangeCanvas";
 
 const feedback = useUiFeedback();
@@ -65,21 +60,6 @@ const assetsVisible = defineModel<boolean>("assetsVisible", { default: false });
 const showMap = ref(false);
 const zoomMenuVisible = ref(false);
 const helpVisible = ref(false);
-const contactVisible = ref(false);
-const contactType = ref<"community" | "business">("community");
-const contacts = {
-  community: {
-    title: "加入交流群",
-    url: "https://work.weixin.qq.com/u/vc36adcc89845edcbe?v=5.0.3.63936&bb=85b8d228e8",
-    tip: "omnistudio-next 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。",
-  },
-  business: {
-    title: "商务合作",
-    url: "https://work.weixin.qq.com/u/vc0f54596c5837d05a?v=5.0.8.70675",
-    tip: "此联系方式仅用于商务合作接洽，不提供问题答疑。使用问题欢迎在交流群交流，需求与 BUG 可通过反馈表提交。感谢理解。",
-  },
-};
-const contactInfo = computed(() => contacts[contactType.value]);
 const flow = useVueFlow();
 const { viewport, zoomTo, zoomIn, zoomOut, fitView, getNodes, updateNode } = flow;
 const zoomPercent = computed(() => Math.round(viewport.value.zoom * 100));
@@ -109,12 +89,6 @@ watch(
   { flush: "sync" }
 );
 onBeforeUnmount(() => arrangeController?.abort());
-
-function showContact(type: "community" | "business") {
-  contactType.value = type;
-  helpVisible.value = false;
-  contactVisible.value = true;
-}
 
 function applyZoom(value: number | undefined) {
   if (value !== undefined && Number.isFinite(value)) void zoomTo(value / 100);
@@ -169,5 +143,4 @@ async function undoArrange() {
 }
 .zoomMenu, .helpMenu { display: flex; flex-direction: column; gap: 8px; .menuAction { width: 100%; justify-content: flex-start; } }
 .menuAction { width: 100%; justify-content: flex-start; }
-.contactContent { display: flex; flex-direction: column; align-items: center; gap: 20px; .contactTip { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } }
 </style>
