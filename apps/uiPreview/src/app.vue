@@ -2,7 +2,7 @@
   <uiThemeProvider :mode="mode" :accent="accent" :fontScale="fontScale" :radius="radius" :primaryColor="primaryColor" class="previewRoot">
     <uiFeedbackProvider>
       <main class="previewPage">
-        <header class="previewHeader"><div class="brand"><img :src="logo" alt="omnistudio-next" class="brandLogo" /><h1>组件库</h1></div>
+        <header class="previewHeader"><div class="brand"><img :src="logo" alt="万象点点" class="brandLogo" /><h1>组件库</h1></div>
           <div class="themeActions"><uiButton variant="ghost" @click="mode = mode === 'dark' ? 'light' : 'dark'">{{ mode === 'dark' ? '浅色' : '深色' }}</uiButton><uiButton variant="secondary" @click="switchAccent">{{ accent === 'orange' ? '绿色主题' : '橙色主题' }}</uiButton><uiButton variant="ghost" @click="fontScale = fontScale === 100 ? 125 : 100">{{ fontScale }}%</uiButton><uiColorPicker :modelValue="primaryColor || (accent === 'orange' ? '#ff6b35' : '#c3f15a')" aria-label="强调色" @update:modelValue="value => primaryColor = value" /></div>
         </header>
         <uiTabs v-model="active" :options="sections" label="组件分类">
@@ -35,7 +35,7 @@ html, body, #app { margin: 0; min-height: 100%; }
 .previewRoot { min-height: 100vh; }
 .previewPage {
   width: min(1120px, calc(100% - 64px)); margin-inline: auto; padding: 40px 0 64px;
-  .previewHeader { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; .brand { display: flex; align-items: center; gap: 16px; img { width: 168px; height: auto; border-radius: 8px; background: #101010; } h1 { margin: 0; font-size: 22px; } p { margin: 4px 0 0; color: var(--uiTextMuted); } } .themeActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } }
+  .previewHeader { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; .brand { display: flex; align-items: center; gap: 16px; img { width: 168px; height: auto; border-radius: 8px; } h1 { margin: 0; font-size: 22px; } p { margin: 4px 0 0; color: var(--uiTextMuted); } } .themeActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } }
   section > h2 { margin: 8px 0 20px; font-size: var(--uiFontTitle); font-weight: 500; }
   .tabPanel > .uiStack { gap: 32px; }
   .uiForm { margin-top: 20px; }

@@ -38,7 +38,7 @@ async function restoreInstallRegistration(installDirectory: string) {
       // SDK 启动和更新会重写卸载入口；安装了 NSIS 时统一交给它处理数据保留选项。
       const { identifier, channel } = await Bun.file(resolve(PATHS.RESOURCES_FOLDER, "version.json")).json();
       const registryKey = `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${identifier}.${channel}`;
-      for (const [name, command] of [["UninstallString", `"${uninstaller}"`], ["QuietUninstallString", `"${uninstaller}" /S`]]) {
+      for (const [name, command] of [["DisplayName", "万象点点"], ["UninstallString", `"${uninstaller}"`], ["QuietUninstallString", `"${uninstaller}" /S`]]) {
         await execFileAsync("reg.exe", ["add", registryKey, "/v", name, "/t", "REG_SZ", "/d", command, "/f"], { windowsHide: true });
       }
       const protocolLauncher = resolve(PATHS.RESOURCES_FOLDER, "app/protocolLauncher.exe");
@@ -124,7 +124,7 @@ async function start() {
     const width = Math.min(1280, workArea.width - 64);
     const height = Math.min(960, workArea.height - 64);
     const mainWindow = new BrowserWindow({
-      title: "omnistudio-next",
+      title: "万象点点",
       url: `http://127.0.0.1:${address.port}/?desktop=1`,
       hidden: Boolean(splash),
       frame: {

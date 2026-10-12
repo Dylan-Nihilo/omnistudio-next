@@ -1,6 +1,6 @@
 <template>
   <main class="authPage">
-    <header class="authBrand"><a :href="brandHref" aria-label="万象点点首页"><img :src="logoUrl" alt="万象点点" /></a><span>OmniStudio Next</span></header>
+    <header class="authBrand"><a :href="brandHref" aria-label="万象点点首页"><img :src="logoUrl" alt="万象点点" /></a><span>万象点点</span></header>
     <div class="authLayout">
       <aside class="storyPanel" aria-label="漫剧创作">
         <span class="storyLabel">你的故事，从这里开始</span>

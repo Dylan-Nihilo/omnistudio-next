@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <aside class="homeSidebar" aria-label="主导航">
-      <a class="homeBrand" href="#/home" aria-label="omnistudio-next 首页"><img :src="logoUrl" alt="omnistudio-next" /></a>
+      <a class="homeBrand" href="#/home" aria-label="万象点点首页"><img :src="logoUrl" alt="万象点点" /></a>
       <nav class="mainNavigation">
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'create' }" :icon="IconFolderPlus" @click="focusCreation">开始创作</uiButton>
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" title="跳转到最近项目" @click="focusProjects">最近项目</uiButton>

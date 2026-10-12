@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="uiStack">
-    <section data-tour="gallery"><h2>图片</h2><div class="uiRow"><uiImage :src="logo" alt="omnistudio-next" :previewSrcList="[logo]" style="width: 224px; height: 80px; background: #101010; border-radius: 8px" /></div></section>
+    <section data-tour="gallery"><h2>图片</h2><div class="uiRow"><uiImage :src="logo" alt="万象点点" :previewSrcList="[logo]" style="width: 224px; height: 80px; border-radius: 8px" /></div></section>
     <section data-tour="player"><h2>媒体</h2><div class="uiStack"><uiRadioGroup v-model="kind" :options="[{ value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]" variant="segmented" aria-label="媒体类型" /><uiInput v-model="source" type="url" aria-label="媒体地址" placeholder="输入媒体地址" clearable /><uiMediaPlayer :src="source || undefined" :kind="kind === 'audio' ? 'audio' : 'video'" label="媒体播放" /></div></section>
     <section><h2>引导</h2><uiButton @click="tourVisible = true">查看引导</uiButton></section>
     <uiTour v-model="tourVisible" :steps="steps" />

@@ -52,7 +52,7 @@ export function registerDesktopProtocol() {
         headers: { "x-omnistudio-next-desktop": "1" },
         timeout: 60000,
       });
-      if (data?.code !== 200) throw new Error(typeof data?.message === "string" && data.message.trim() ? data.message : "安装接口返回了无效响应，请重启或更新 omnistudio-next 后重试");
+      if (data?.code !== 200) throw new Error(typeof data?.message === "string" && data.message.trim() ? data.message : "安装接口返回了无效响应，请重启或更新万象点点后重试");
       if (typeof data.data?.name !== "string" || !data.data.name.trim()) throw new Error("安装接口未返回有效的插件名称，请先检查插件列表，再重试");
       window.dispatchEvent(new CustomEvent("omnistudio-next:plugin-installed", { detail: { type: request.type, name: data.data.name } }));
       feedback.message({ tone: "success", message: `${labels[request.type]}已安装` });
@@ -67,9 +67,9 @@ export function registerDesktopProtocol() {
         } else if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
           message = "安装请求等待超时，请先查看插件是否已安装，再重试";
         } else if (!response) {
-          message = "无法连接 omnistudio-next 本机服务，请确认应用正常运行后重试";
+          message = "无法连接万象点点本机服务，请确认应用正常运行后重试";
         } else {
-          message = `安装接口返回异常（HTTP ${response.status}），请重启或更新 omnistudio-next 后重试`;
+          message = `安装接口返回异常（HTTP ${response.status}），请重启或更新万象点点后重试`;
         }
       }
       feedback.message({ tone: "error", message: `${labels[request.type]}“${request.fileName}”安装失败：${message}`, duration: 10000, showClose: true });

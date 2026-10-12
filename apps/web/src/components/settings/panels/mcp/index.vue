@@ -2,7 +2,7 @@
   <div class="mcpPanel">
     <section class="accessSection" aria-labelledby="mcpEnabledTitle">
       <div class="sectionHeader"><h3 id="mcpEnabledTitle">开启 MCP</h3><uiSwitch :modelValue="mcpSettings.enabled" :loading="saving" aria-label="开启 MCP" @change="setEnabled" /></div>
-      <p class="description">允许外部 Coding 工具和 Agent 操作 omnistudio-next。开启后，将客户端配置添加到对应工具中。</p>
+      <p class="description">允许外部 Coding 工具和 Agent 操作万象点点。开启后，将客户端配置添加到对应工具中。</p>
     </section>
     <section class="statusSection" aria-labelledby="mcpConnectionTitle">
       <div class="sectionHeader"><h3 id="mcpConnectionTitle">连接状态</h3><uiButton variant="ghost" size="small" :icon="IconRefresh" :loading="loading" :disabled="saving" @click="refreshStatus">刷新</uiButton></div>
@@ -13,7 +13,7 @@
           <li v-for="connection in status.connections" :key="connection.id"><span>{{ connection.state.directory || "首页" }}</span><small v-if="connection.state.directory">{{ connection.state.panel === "document" ? "文档" : "画布" }}</small></li>
         </ul>
       </template>
-      <p class="description">画布与节点操作需要 omnistudio-next 界面保持打开。</p>
+      <p class="description">画布与节点操作需要万象点点界面保持打开。</p>
     </section>
     <section class="endpointSection" aria-labelledby="mcpEndpointTitle">
       <h3 id="mcpEndpointTitle">服务地址</h3>
@@ -27,10 +27,10 @@
       <p class="description">HTTP 配置包含访问凭证，请仅提供给可信的客户端。</p>
     </section>
     <section class="skillSection" aria-labelledby="mcpSkillTitle">
-      <div class="skillInfo"><h3 id="mcpSkillTitle">omnistudio-next Skill</h3><p class="description">教外部 Agent 组合使用 omnistudio-next 工具。将 SKILL.md 安装到对应 Coding 工具的技能目录。</p></div>
+      <div class="skillInfo"><h3 id="mcpSkillTitle">万象点点 Skill</h3><p class="description">教外部 Agent 组合使用万象点点工具。将 SKILL.md 安装到对应 Coding 工具的技能目录。</p></div>
       <div class="skillActions"><uiButton variant="secondary" :icon="IconFileText" :loading="skillAction === 'view'" :disabled="!!skillAction" @click="handleSkill('view')">查看 Skill</uiButton><uiButton variant="ghost" :icon="IconCopy" :loading="skillAction === 'copy'" :disabled="!!skillAction" @click="handleSkill('copy')">复制</uiButton><uiButton variant="ghost" :icon="IconDownload" :loading="skillAction === 'download'" :disabled="!!skillAction" @click="handleSkill('download')">导出 Skill</uiButton></div>
     </section>
-    <uiDialog v-model="skillVisible" title="omnistudio-next Skill" :width="760"><div class="skillContent"><messageMarkdown :content="skillContent" /></div></uiDialog>
+    <uiDialog v-model="skillVisible" title="万象点点 Skill" :width="760"><div class="skillContent"><messageMarkdown :content="skillContent" /></div></uiDialog>
     <uiDialog v-model="copyVisible" :title="`复制 ${copyTitle}`" :width="680" @opened="copyInput?.select()">
       <p class="copyHint">浏览器无法自动复制，请选中文本后手动复制。{{ copyHasCredential ? "此配置包含访问凭证，请仅提供给可信的客户端。" : "" }}</p>
       <uiTextarea ref="copyInput" :modelValue="copyContent" :autosize="{ minRows: 8, maxRows: 18 }" readonly :aria-label="copyTitle" />

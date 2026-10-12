@@ -102,7 +102,7 @@ export default {
   version: "1.0.2",
   apiUrl: "https://www.kaizo.top/v1",
   protocol: "openai-completions",
-  readme: "旧 omnistudio-next 使用的 Kaizo OpenAI 兼容图片服务。",
+  readme: "旧版万象点点使用的 Kaizo OpenAI 兼容图片服务。",
   rules,
   models: [{
     id: "gpt-image-2", label: "GPT Image 2", type: "image", mode: ["text", "singleImage", "multiReference"],
