@@ -9,7 +9,7 @@ export const platformProviders = [
 export const platformModelCatalog: Array<{ providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video"; apiModelId?: string; capabilities?: Record<string, boolean>; sortOrder: number }> = [
   { providerId: "kaizoText", modelId: "text/gpt-5.6-sol", apiModelId: "gpt-5.6-sol", label: "高级 · GPT 5.6 Sol", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 60 },
   { providerId: "kaizoClaude", modelId: "text/claude-opus-5", apiModelId: "claude-opus-5", label: "极致 · Claude Opus 5", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 70 },
-  { providerId: "dashscope", modelId: "text/deepseek-v4.1-flash", apiModelId: "DeepSeek-V4.1-Flash", label: "标准 · DeepSeek V4.1 Flash", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 40 },
+  { providerId: "dashscope", modelId: "text/deepseek-v4.1-flash", apiModelId: "deepseek-v4.1-flash", label: "标准 · DeepSeek V4.1 Flash", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 40 },
   { providerId: "openheapImage", modelId: "gpt-image-2", label: "GPT Image 2", mediaType: "image", sortOrder: 100 },
   { providerId: "openheapImage", modelId: "gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image", mediaType: "image", sortOrder: 110 },
   { providerId: "openheapImage", modelId: "gpt-image-2.5-sunburst", label: "GPT Image 2.5 Sunburst", mediaType: "image", sortOrder: 120 },
