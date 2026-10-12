@@ -1,14 +1,14 @@
 <template>
   <div class="uiTagInput" :class="{ isDisabled: disabled, isError: error }">
     <uiTag v-for="(value, index) in modelValue" :key="value" :closable="!readonly" :disabled="disabled" :closeLabel="'移除 ' + value" @close="remove(index)">{{ value }}</uiTag>
-    <input v-if="!readonly" ref="input" v-bind="$attrs" :value="draft" :disabled="disabled || modelValue.length >= max" :aria-invalid="error || undefined" @input="draft = ($event.target as HTMLInputElement).value" @keydown="handleKeydown" />
+    <input v-if="!readonly" ref="input" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="$attrs" v-model="draft" :disabled="disabled || modelValue.length >= max" :aria-invalid="error || undefined" @keydown="handleKeydown" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { inject, ref } from "vue";
 import uiTag from "./uiTag.vue";
-import { uiFieldKey } from "../form";
+import { handleCompositionKey, isComposingInput, uiFieldKey } from "../form";
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{ modelValue?: string[]; disabled?: boolean; readonly?: boolean; error?: boolean; max?: number }>(), { modelValue: () => [], disabled: false, readonly: false, error: false, max: Infinity });
 const emit = defineEmits<{ "update:modelValue": [value: string[]]; change: [value: string[]] }>();
@@ -18,7 +18,7 @@ const draft = ref("");
 function publish(values: string[]) { emit("update:modelValue", values); emit("change", values); validateField?.("change"); }
 function remove(index: number) { if (props.disabled || props.readonly) return; publish(props.modelValue.filter((_value, item) => item !== index)); input.value?.focus(); }
 function handleKeydown(event: KeyboardEvent) {
-  if (event.isComposing || props.disabled || props.readonly) return;
+  if (isComposingInput(event) || props.disabled || props.readonly) return;
   if (event.key === "Backspace" && !draft.value) remove(props.modelValue.length - 1);
   if (event.key !== "Enter") return;
   event.preventDefault();

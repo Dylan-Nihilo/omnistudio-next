@@ -1,7 +1,7 @@
 <template>
-  <div class="uiInput" :class="[sizeClass, $attrs.class, { isError: error, isDisabled: disabled, isReadonly: readonly }]" :style="$attrs.style as StyleValue" @click.self="focus">
+  <div class="uiInput" :class="[sizeClass, $attrs.class, { isError: error, isDisabled: disabled, isReadonly: readonly }]" :style="$attrs.style as StyleValue" @click="focusFromContainer">
     <span v-if="$slots.prefix" class="inputPrefix"><slot name="prefix" /></span>
-    <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" :value="modelValue ?? ''" :type="type === 'password' && passwordVisible ? 'text' : type" :disabled="disabled" :readonly="readonly" @input="handleInput" @change="emit('change', ($event.target as HTMLInputElement).value)" @focus="emit('focus', $event)" @blur="emit('blur', $event)" @compositionstart="composing = true" @compositionend="handleCompositionEnd" :aria-invalid="error || undefined" />
+    <input ref="input" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="{ ...$attrs, class: undefined, style: undefined }" v-model="inputValue" :type="type === 'password' && passwordVisible ? 'text' : type" :disabled="disabled" :readonly="readonly" @change="emit('change', ($event.target as HTMLInputElement).value)" @focus="emit('focus', $event)" @blur="emit('blur', $event)" :aria-invalid="error || undefined" />
     <button v-if="clearable && modelValue !== '' && modelValue != null && !disabled && !readonly" class="clearButton" type="button" aria-label="清空内容" @click="clear">×</button>
     <button v-if="showPassword && type === 'password'" class="passwordButton" type="button" :disabled="disabled" :aria-label="passwordVisible ? '隐藏密码' : '显示密码'" @click="passwordVisible = !passwordVisible">
       <svg v-if="!passwordVisible" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>
@@ -13,6 +13,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type StyleValue } from "vue";
+import { handleCompositionKey } from "../form";
 import type { UiSize } from "../theme";
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{ modelValue?: string | number | null; type?: "text" | "search" | "password" | "email" | "url" | "tel"; disabled?: boolean; readonly?: boolean; clearable?: boolean; error?: boolean; size?: UiSize; showPassword?: boolean }>(), { type: "text", disabled: false, readonly: false, clearable: false, error: false, size: "medium", showPassword: false });
@@ -20,21 +21,33 @@ const emit = defineEmits<{ "update:modelValue": [value: string]; input: [value: 
 const input = ref<HTMLInputElement>();
 const passwordVisible = ref(false);
 const sizeClass = computed(() => "size" + props.size[0]!.toUpperCase() + props.size.slice(1));
-const composing = ref(false);
+const inputValue = computed({ get: () => String(props.modelValue ?? ""), set: publish });
 let lastValue = String(props.modelValue ?? "");
 watch(() => props.modelValue, value => { lastValue = String(value ?? ""); });
 function publish(value: string) {
-  if (value === lastValue) return;
+  if (props.disabled || props.readonly || value === lastValue) return;
   lastValue = value;
   emit("update:modelValue", value);
   emit("input", value);
 }
-function handleInput(event: Event) { if (!composing.value && !(event as InputEvent).isComposing && !props.disabled && !props.readonly) publish((event.target as HTMLInputElement).value); }
-function handleCompositionEnd(event: CompositionEvent) { composing.value = false; handleInput(event); }
+function focusFromContainer(event: MouseEvent) {
+  const control = event.target instanceof Element ? event.target.closest("button,a,input,select,textarea,[contenteditable='true'],[role='button'],[tabindex]") : null;
+  if (control && (event.currentTarget as HTMLElement).contains(control)) return;
+  focus();
+}
 function focus() { input.value?.focus(); }
 function blur() { input.value?.blur(); }
 function select() { input.value?.select(); }
-function clear() { if (props.disabled || props.readonly) return; publish(""); emit("change", ""); emit("clear"); focus(); }
+function clear() {
+  if (props.disabled || props.readonly) return;
+  if (input.value) {
+    input.value.value = "";
+    input.value.dispatchEvent(new Event("input", { bubbles: true }));
+    input.value.dispatchEvent(new Event("change", { bubbles: true }));
+  } else { publish(""); emit("change", ""); }
+  emit("clear");
+  focus();
+}
 defineExpose({ focus, blur, select, clear, input });
 </script>
 
