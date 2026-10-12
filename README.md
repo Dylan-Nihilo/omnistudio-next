@@ -122,6 +122,26 @@ docker compose exec omnistudio-next cat /app/data/rootSetupToken
 
 该凭据只用于首次初始化，不作为日常登录密码。Compose 提供本机运行入口；公网部署需要另行适配反向代理，并验证 HTTPS、会话与请求来源校验。升级前备份数据目录和数据库。
 
+### 服务端流水线
+
+GitHub Actions 的 `Server pipeline` 在提交 PR、推送 `master` 或手动运行时，使用 Bun 1.3.14 构建完整的服务端、Web、节点及工具，检查前后端类型，并生成 Linux amd64 Docker 镜像。镜像按提交 SHA 标记，压缩包保存在该次运行的 `serverImage` artifact 中，保留 7 天。
+
+服务器部署需要在 Actions 中选择 `master`，勾选“构建成功后部署到服务器”。PR 和普通主分支推送只构建，不连接生产服务器。仓库需要配置以下 Secrets：
+
+| Secret | 内容 |
+| --- | --- |
+| `DEPLOY_HOST` | 服务器地址，如 `182.92.173.156` |
+| `DEPLOY_USER` | SSH 用户，如 `root` |
+| `DEPLOY_PATH` | 已部署目录，如 `/opt/omnistudio-next` |
+| `DEPLOY_SSH_KEY` | 仅用于此流水线的 SSH 私钥；对应公钥须加入部署用户的 `authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | 经核实的服务器 SSH 主机公钥记录；不得用临时扫描替代核实 |
+
+部署复用服务器现有的 `compose.yaml`、`.env` 和 Compose 项目名 `omnistudio-next`。目录须已有健康的 `mysql`、`omnistudio-next` 服务。流水线先将数据库备份到 `releases/<提交 SHA>/database.sql.gz`，再通过 `releaseCompose.yaml` 替换应用镜像；不会覆盖基础 Compose、修改端口、重新创建 MySQL 或删除数据卷。
+
+部署后检查服务器本机的认证状态接口和容器镜像 ID，成功时写入 `deployedCommit`。失败或中断时恢复上一镜像；镜像回滚不会撤销 SQL 迁移，数据库恢复需要维护者评估后使用 SQL 备份。同一提交重试保留第一次部署前的 SQL 备份。镜像与数据库备份不自动清理。公网入口及真实模型调用需在部署后另行确认。
+
+部署后的日常管理使用 `docker compose -p omnistudio-next --env-file .env -f compose.yaml -f releaseCompose.yaml`，让运行命令继续读取已选镜像。
+
 ## 项目结构
 
 | 目录 | 职责 |

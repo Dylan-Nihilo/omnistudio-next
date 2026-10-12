@@ -1,70 +1,164 @@
-name: Deploy server
+name: Server pipeline
 
 on:
+  pull_request:
+    branches: [master]
   push:
     branches: [master]
   workflow_dispatch:
-
-concurrency:
-  group: deploy-master
-  cancel-in-progress: true
+    inputs:
+      deploy:
+        description: 构建成功后部署到服务器
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Build Linux artifacts
+        run: bun run build:server
+      - name: Check server and web types
+        run: |
+          bun run --cwd apps/server typecheck
+          bun run --cwd apps/web typecheck
+      - name: Build application image
+        run: |
+          deployContext="$RUNNER_TEMP/deployContext"
+          mkdir -p "$deployContext"
+          cp deployDockerfile "$deployContext/deployDockerfile"
+          cp "$(command -v bun)" "$deployContext/bun"
+          cp -R build "$deployContext/build"
+          docker build --platform linux/amd64 --build-arg "buildCommit=$GITHUB_SHA" \
+            -f "$deployContext/deployDockerfile" -t "omnistudio-next-app:$GITHUB_SHA" "$deployContext"
+          docker save "omnistudio-next-app:$GITHUB_SHA" | gzip -1 > appImage.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: serverImage
+          path: appImage.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: serverProduction
+      cancel-in-progress: false
     env:
       serverHost: ${{ secrets.DEPLOY_HOST }}
       serverUser: ${{ secrets.DEPLOY_USER }}
       serverPath: ${{ secrets.DEPLOY_PATH }}
       deploySshKey: ${{ secrets.DEPLOY_SSH_KEY }}
+      deployKnownHosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build Linux artifacts
-        run: |
-          bun run dev:plugins
-          bun run build
-
-      - name: Build application image
-        run: |
-          rm -rf .deploy-context
-          mkdir .deploy-context
-          cp deployDockerfile .deploy-context/deployDockerfile
-          cp "$(command -v bun)" .deploy-context/bun
-          cp -R build .deploy-context/build
-          docker build -f .deploy-context/deployDockerfile -t omnistudio-next-app:latest .deploy-context
-          docker save omnistudio-next-app:latest | gzip -1 > app-image.tar.gz
-          rm -rf .deploy-context
-
       - name: Configure SSH
         run: |
-          test -n "$serverHost"
-          test -n "$serverUser"
-          test -n "$serverPath"
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-          ssh-keyscan -H "$serverHost" >> "$HOME/.ssh/known_hosts"
-          test -n "$deploySshKey"
-          printf '%s\n' "$deploySshKey" > "$HOME/.ssh/deploy_key"
-          chmod 600 "$HOME/.ssh/deploy_key"
-
-      - name: Upload image and Compose file
+          : "${serverHost:?Configure DEPLOY_HOST}"
+          : "${serverUser:?Configure DEPLOY_USER}"
+          : "${serverPath:?Configure DEPLOY_PATH}"
+          : "${deploySshKey:?Configure DEPLOY_SSH_KEY}"
+          : "${deployKnownHosts:?Configure DEPLOY_KNOWN_HOSTS}"
+          [[ "$serverHost" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$serverUser" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$serverPath" =~ ^/[a-zA-Z0-9/_-]+$ ]]
+          umask 077
+          printf '%s\n' "$deploySshKey" > "$RUNNER_TEMP/deployKey"
+          printf '%s\n' "$deployKnownHosts" > "$RUNNER_TEMP/sshKnownHosts"
+      - uses: actions/download-artifact@v8
+        with:
+          name: serverImage
+      - name: Upload image
         run: |
-          scp -i "$HOME/.ssh/deploy_key" app-image.tar.gz deployCompose.yaml "$serverUser@$serverHost:$serverPath/"
-
-      - name: Restart production services
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" -o ConnectTimeout=10)
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
+            "test -f '$serverPath/compose.yaml' && test -f '$serverPath/.env' && mkdir -p '$serverPath/releases/$GITHUB_SHA'"
+          scp "${sshOptions[@]}" appImage.tar.gz "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/"
+      - name: Back up and deploy application
         run: |
-          ssh -i "$HOME/.ssh/deploy_key" "$serverUser@$serverHost" \
-            "set -eu; cd '$serverPath'; docker load < app-image.tar.gz; cp deployCompose.yaml compose.yaml; docker compose up -d --no-build; rm -f app-image.tar.gz; docker image prune -f; curl -fsS http://127.0.0.1:3000/ >/dev/null"
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" -o ConnectTimeout=10)
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash -s -- "$serverPath" "$GITHUB_SHA" <<'SH'
+          set -euo pipefail
+          umask 077
+          serverPath=$1
+          releaseCommit=$2
+          [[ "$releaseCommit" =~ ^[a-f0-9]{40}$ ]]
+          cd "$serverPath"
+          exec 9>deployLock
+          flock -n 9
+          releaseDirectory="$serverPath/releases/$releaseCommit"
+          image="omnistudio-next-app:$releaseCommit"
+          compose=(docker compose -p omnistudio-next --env-file .env -f compose.yaml)
+          appContainer=$("${compose[@]}" ps -q omnistudio-next)
+          mysqlContainer=$("${compose[@]}" ps -q mysql)
+          test -n "$appContainer"
+          test -n "$mysqlContainer"
+          previousImage=$(docker inspect --format '{{.Image}}' "$appContainer")
+          printf '%s\n' "$previousImage" > "$releaseDirectory/previousImage"
+          if [ ! -f "$releaseDirectory/database.sql.gz" ]; then
+            docker exec "$mysqlContainer" sh -c \
+              'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user="$MYSQL_USER" --single-transaction --quick --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' \
+              | gzip > "$releaseDirectory/databasePending.sql.gz"
+            gzip -t "$releaseDirectory/databasePending.sql.gz"
+            mv "$releaseDirectory/databasePending.sql.gz" "$releaseDirectory/database.sql.gz"
+          fi
+          gzip -t "$releaseDirectory/database.sql.gz"
+          docker load < "$releaseDirectory/appImage.tar.gz"
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$releaseCommit"
+          test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
+
+          writeImage() {
+            printf 'services:\n  omnistudio-next:\n    image: "%s"\n' "$1" > releaseCompose.yaml
+          }
+          waitHealthy() {
+            for attempt in {1..60}; do
+              if curl -fsS --max-time 5 http://127.0.0.1:3000/api/auth/setupStatus >/dev/null 2>&1; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+          rollback() {
+            exitCode=${1:-$?}
+            trap - ERR
+            trap '' HUP INT TERM
+            set +e
+            writeImage "$previousImage"
+            "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
+            if waitHealthy; then echo 'Deployment failed; previous image restored.'; else echo 'Rollback failed; inspect the application on the server.'; fi
+            exit "$exitCode"
+          }
+          # ACT: Image rollback leaves SQL migrations in place; retain the SQL backup for manual database recovery.
+          trap rollback ERR
+          trap 'rollback 130' HUP INT TERM
+          writeImage "$image"
+          "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
+          waitHealthy
+          appContainer=$("${compose[@]}" -f releaseCompose.yaml ps -q omnistudio-next)
+          test "$(docker inspect --format '{{.Image}}' "$appContainer")" = "$(docker image inspect --format '{{.Id}}' "$image")"
+          printf '%s\n' "$releaseCommit" > deployedCommit
+          trap - ERR HUP INT TERM
+          echo "Deployed $releaseCommit"
+          SH
+      - name: Remove runner credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deployKey" "$RUNNER_TEMP/sshKnownHosts"
