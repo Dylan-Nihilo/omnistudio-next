@@ -138,7 +138,9 @@ GitHub Actions 的 `Server pipeline` 在提交 PR、推送 `master` 或手动运
 
 部署复用服务器现有的 `compose.yaml`、`.env` 和 Compose 项目名 `omnistudio-next`。目录须已有健康的 `mysql`、`omnistudio-next` 服务。流水线先将数据库备份到 `releases/<提交 SHA>/database.sql.gz`，再通过 `releaseCompose.yaml` 替换应用镜像；不会覆盖基础 Compose、修改端口、重新创建 MySQL 或删除数据卷。
 
-部署后检查服务器本机的认证状态接口和容器镜像 ID，成功时写入 `deployedCommit`。失败时恢复上一镜像；镜像回滚不会撤销 SQL 迁移，数据库恢复需要维护者评估后使用 SQL 备份。镜像与数据库备份不自动清理。公网入口及真实模型调用需在部署后另行确认。
+部署后检查服务器本机的认证状态接口和容器镜像 ID，成功时写入 `deployedCommit`。失败或中断时恢复上一镜像；镜像回滚不会撤销 SQL 迁移，数据库恢复需要维护者评估后使用 SQL 备份。同一提交重试保留第一次部署前的 SQL 备份。镜像与数据库备份不自动清理。公网入口及真实模型调用需在部署后另行确认。
+
+部署后的日常管理使用 `docker compose -p omnistudio-next --env-file .env -f compose.yaml -f releaseCompose.yaml`，让运行命令继续读取已选镜像。
 
 ## 项目结构
 

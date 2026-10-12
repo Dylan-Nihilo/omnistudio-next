@@ -59,7 +59,7 @@ jobs:
     needs: build
     if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     concurrency:
       group: serverProduction
       cancel-in-progress: false
@@ -138,8 +138,9 @@ jobs:
             return 1
           }
           rollback() {
-            exitCode=$?
+            exitCode=${1:-$?}
             trap - ERR
+            trap '' HUP INT TERM
             set +e
             writeImage "$previousImage"
             "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
@@ -148,13 +149,14 @@ jobs:
           }
           # ACT: Image rollback leaves SQL migrations in place; retain the SQL backup for manual database recovery.
           trap rollback ERR
+          trap 'rollback 130' HUP INT TERM
           writeImage "$image"
           "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
           waitHealthy
           appContainer=$("${compose[@]}" -f releaseCompose.yaml ps -q omnistudio-next)
           test "$(docker inspect --format '{{.Image}}' "$appContainer")" = "$(docker image inspect --format '{{.Id}}' "$image")"
           printf '%s\n' "$releaseCommit" > deployedCommit
-          trap - ERR
+          trap - ERR HUP INT TERM
           echo "Deployed $releaseCommit"
           SH
       - name: Remove runner credentials
