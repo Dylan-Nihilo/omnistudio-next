@@ -81,9 +81,9 @@ for (const model of platformModelCatalog) {
     "minimax-h3": { "720P": 9, "960P": 13, "2K": 18 },
   };
   const textCredits: Record<string, number> = {
-    "text/gpt-5.6-sol": 20,
-    "text/deepseek-v4.1-flash": 10,
-    "text/claude-opus-5": 30,
+    "text/gpt-5.6-sol": 1,
+    "text/deepseek-v4.1-flash": 0.5,
+    "text/claude-opus-5": 1.5,
   };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
   const imagePremiumPricing = model.mediaType === "image" && model.modelId === "gpt-image-2.5-sunburst";

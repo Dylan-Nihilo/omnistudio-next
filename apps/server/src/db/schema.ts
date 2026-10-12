@@ -1,6 +1,7 @@
 import {
   bigint,
   datetime,
+  decimal,
   index,
   int,
   json,
@@ -93,7 +94,7 @@ export const pricingItems = mysqlTable("platform_pricing_items", {
   modelId: varchar("model_id", { length: 200 }).notNull(),
   mediaType: mysqlEnum("media_type", ["text", "image", "video", "audio"]).notNull(),
   unit: varchar("unit", { length: 32 }).notNull(),
-  creditsPerUnit: bigint("credits_per_unit", { mode: "number", unsigned: true }).notNull(),
+  creditsPerUnit: decimal("credits_per_unit", { precision: 20, scale: 1, mode: "number", unsigned: true }).notNull(),
   constraints: json("constraints").notNull(),
   ...timestamps,
 }, table => ({ itemIndex: uniqueIndex("platform_pricing_item_unique").on(table.priceBookVersionId, table.providerId, table.modelId, table.mediaType) }));

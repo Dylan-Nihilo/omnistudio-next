@@ -28,7 +28,7 @@ export const modelInputSchema = z.strictObject({
 
 export const pricesInputSchema = z.strictObject({ items: z.array(z.strictObject({
   providerId: z.string().min(1).max(100), modelId: z.string().min(1).max(200), mediaType: z.enum(["text", "image", "video", "audio"]),
-  creditsPerUnit: z.number().int().min(0).max(1_000_000_000), constraints: z.record(z.string(), z.json()).optional(),
+  creditsPerUnit: z.number().finite().min(0).max(1_000_000_000).multipleOf(0.5), constraints: z.record(z.string(), z.json()).optional(),
 })).min(1).max(1000) });
 
 export async function getPlatformConfiguration() {
