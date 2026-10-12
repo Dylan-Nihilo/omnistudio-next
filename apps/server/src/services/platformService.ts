@@ -89,8 +89,15 @@ export async function initializePlatformCatalog() {
   const account = requireRootAccount();
   const now = new Date();
   await getDatabase().transaction(async tx => {
-    for (const provider of platformProviders) await tx.insert(platformProviderConfigs).values({ id: randomUUID(), providerId: provider.providerId, enabled: 1, config: { apiUrl: provider.apiUrl, protocol: provider.protocol, ...provider.config }, secretRef: provider.secretRef, createdAt: now, updatedAt: now }).onDuplicateKeyUpdate({ set: { providerId: provider.providerId } });
-    for (const model of platformModelCatalog) await tx.insert(platformModels).values({ id: randomUUID(), ...model, enabled: 1, createdAt: now, updatedAt: now }).onDuplicateKeyUpdate({ set: { modelId: model.modelId } });
+    for (const provider of platformProviders) {
+      const config = { apiUrl: provider.apiUrl, protocol: provider.protocol, ...provider.config };
+      await tx.insert(platformProviderConfigs).values({ id: randomUUID(), providerId: provider.providerId, enabled: 1, config, secretRef: provider.secretRef, createdAt: now, updatedAt: now })
+        .onDuplicateKeyUpdate({ set: { config, secretRef: provider.secretRef, updatedAt: now } });
+    }
+    for (const model of platformModelCatalog) {
+      await tx.insert(platformModels).values({ id: randomUUID(), ...model, enabled: 1, createdAt: now, updatedAt: now })
+        .onDuplicateKeyUpdate({ set: { label: model.label, apiModelId: model.apiModelId ?? null, capabilities: model.capabilities ?? null, sortOrder: model.sortOrder, updatedAt: now } });
+    }
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.catalog.initialize", createdAt: now, updatedAt: now });
   });
 }
