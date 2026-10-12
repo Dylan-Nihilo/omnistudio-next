@@ -78,7 +78,7 @@ async function reviewSeedanceAssets(context: ProviderContext, apiKey: string, ba
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      group: { name: `omnistudio-next-seedance-group-${Date.now()}`, description: "omnistudio-next自动创建的Seedance素材组" },
+      group: { name: `omnistudio-next-seedance-group-${Date.now()}`, description: "万象点点自动创建的Seedance素材组" },
       project_name: "default",
       asset_type: "Image",
       assets,

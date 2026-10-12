@@ -1,6 +1,6 @@
 <div align="center">
 
-# OmniStudio
+# 万象点点
 
 ### 让灵感，落成作品。
 
@@ -8,7 +8,7 @@
 
 把故事、分镜、素材和生成流程，放进同一张创作画布。
 
-<img src="packages/assets/illustrations/heroInk.png" alt="OmniStudio 黑橙水墨创作视觉" width="640" />
+<img src="packages/assets/illustrations/heroInk.png" alt="万象点点黑橙水墨创作视觉" width="640" />
 
 [开始使用](#开始使用) · [本地开发](#本地开发) · [开发文档](#开发文档) · [问题反馈](https://github.com/Dylan-Nihilo/omnistudio-next/issues)
 
@@ -16,9 +16,9 @@
 
 ---
 
-OmniStudio 面向漫剧、短片和视频创作者。你可以先写下一句构想，也可以带着已有剧本和素材开始：整理文本，搭建分镜，连接生成节点，再逐步调整画面与镜头。
+万象点点面向漫剧、短片和视频创作者。你可以先写下一句构想，也可以带着已有剧本和素材开始：整理文本，搭建分镜，连接生成节点，再逐步调整画面与镜头。
 
-当前代码库为 **OmniStudio Next**，仓库与应用包标识使用 `omnistudio-next`。
+当前代码库为 **万象点点**，仓库与应用包标识使用 `omnistudio-next`。
 
 ## 从构想到镜头
 
@@ -107,7 +107,7 @@ bun run start:server
 
 ### 官网与 Web 应用
 
-独立服务器的 `/` 展示官网，官网的“开始创作”进入 `/app/`；应用使用原有 hash 路由，API 仍位于 `/api/*`。官网来自 OmniStudio 的 `landing/chapters`，源码和网页媒体位于 `apps/web/public/landingPage`，通过现有 Web 构建一同进入发布镜像。字体许可随资源保留。
+独立服务器的 `/` 展示官网，官网的“开始创作”进入 `/app/`；应用使用原有 hash 路由，API 仍位于 `/api/*`。官网来自万象点点的 `landing/chapters`，源码和网页媒体位于 `apps/web/public/landingPage`，通过现有 Web 构建一同进入发布镜像。字体许可随资源保留。
 
 `createApp` 仅在传入 `landingRoot` 时启用官网和 `/app/` 入口；桌面端沿用原有应用首页。
 
@@ -180,6 +180,6 @@ Web 使用 Vue 3、Vite、Pinia 与 Vue Flow；后端使用 TypeScript、Express
 
 ## 开源与致谢
 
-OmniStudio Next 基于 [HBAI-Ltd/Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) 开发，保留原项目的 MIT 版权声明。许可证见 [LICENSE](LICENSE)。
+万象点点基于 [HBAI-Ltd/Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) 开发，保留原项目的 MIT 版权声明。许可证见 [LICENSE](LICENSE)。
 
 欢迎通过 [Issues](https://github.com/Dylan-Nihilo/omnistudio-next/issues) 提交可复现的问题和功能建议。

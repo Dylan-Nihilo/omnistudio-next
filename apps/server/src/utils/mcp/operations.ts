@@ -143,7 +143,7 @@ export async function runAppOperation(name: string, parameters: Record<string, u
   const parsed = operation.parameters.parse(parameters) as Record<string, unknown>;
   const { idempotencyKey, ...args } = parsed;
   const origin = getMcpRuntime().appOrigin;
-  if (!origin) throw new Error("omnistudio-next 服务尚未就绪");
+  if (!origin) throw new Error("万象点点服务尚未就绪");
   const url = new URL(operation.path, origin);
   const headers: Record<string, string> = { "x-omnistudio-next-workspace": "1", Origin: origin, Referer: `${origin}/` };
   if (typeof idempotencyKey === "string") headers["Idempotency-Key"] = idempotencyKey;

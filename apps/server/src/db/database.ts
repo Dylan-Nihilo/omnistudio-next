@@ -127,7 +127,7 @@ export async function runSqlMigrations() {
           );
           if (Array.isArray(columns) && columns.length === 0) {
             const [tables] = await connection.query("SELECT 1 AS present FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1", [databaseName, table]);
-            if (Array.isArray(tables) && tables.length > 0) throw new Error(`数据库表 ${table} 已存在但不是 omnistudio-next 新版结构，请使用独立数据库或先完成备份后重命名`);
+            if (Array.isArray(tables) && tables.length > 0) throw new Error(`数据库表 ${table} 已存在但不是万象点点新版结构，请使用独立数据库或先完成备份后重命名`);
           }
         }
       }

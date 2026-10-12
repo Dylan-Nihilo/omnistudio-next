@@ -36,7 +36,7 @@ async function main() {
   if (!(["http:", "https:"].includes(url.protocol)) || (url.protocol === "http:" && !local)) {
     throw new Error("远程 MCP 必须使用 HTTPS；本机连接允许 HTTP");
   }
-  if (values.runtime && !local) throw new Error("运行信息文件只允许指向本机 omnistudio-next");
+  if (values.runtime && !local) throw new Error("运行信息文件只允许指向本机万象点点");
   if (url.username || url.password) throw new Error("MCP URL 不允许包含账号或密码");
   const transport = new StreamableHTTPClientTransport(url, {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },
@@ -49,7 +49,7 @@ async function main() {
   }
   const bridge = serveStdio(() => {
     const resources = client.getServerCapabilities()?.resources;
-    const server = new McpServer({ name: "omnistudio-next", version: "0.0.0" }, {
+    const server = new McpServer({ name: "omnistudio-next", title: "万象点点", version: "0.0.0" }, {
       capabilities: { tools: { listChanged: false }, ...(resources ? { resources: { subscribe: false, listChanged: false } } : {}) },
       instructions: client.getInstructions(),
     });

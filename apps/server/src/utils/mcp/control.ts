@@ -38,7 +38,7 @@ function allowedHost(req: Request) {
 
 export function getAppOrigin(req: Request) {
   const source = req.get("origin") ?? req.get("referer");
-  if (!source || !allowedHost(req)) throw Object.assign(new Error("只允许 omnistudio-next 页面访问控制连接"), { status: 403 });
+  if (!source || !allowedHost(req)) throw Object.assign(new Error("只允许万象点点页面访问控制连接"), { status: 403 });
   let url: URL;
   try { url = new URL(source); }
   catch { throw Object.assign(new Error("页面来源无效"), { status: 403 }); }
@@ -59,7 +59,7 @@ export function authorizeMcp(req: Request) {
 
 export function assertAppRequest(req: Request) {
   getAppOrigin(req);
-  if ((req.get("x-omnistudio-next-workspace") ?? req.get("x-toonflow-workspace")) !== "1") throw Object.assign(new Error("只允许 omnistudio-next 页面访问控制连接"), { status: 403 });
+  if ((req.get("x-omnistudio-next-workspace") ?? req.get("x-toonflow-workspace")) !== "1") throw Object.assign(new Error("只允许万象点点页面访问控制连接"), { status: 403 });
 }
 
 export async function assertControlRequest(req: Request) {
@@ -82,7 +82,7 @@ export function getConnection(id?: string, directory?: string) {
     return connection;
   }
   const matches = [...connections.values()].filter(item => (item.userId === account.userId || account.isRoot) && (!directory || item.state.directory === directory));
-  if (matches.length > 1) throw new Error("存在多个 omnistudio-next 页面，请用 target.connectionId 指定操作目标");
+  if (matches.length > 1) throw new Error("存在多个万象点点页面，请用 target.connectionId 指定操作目标");
   return matches[0];
 }
 
@@ -102,7 +102,7 @@ export function connectControl(id: string, response: Response, signal: AbortSign
     socket?.off("close", close);
     signal.removeEventListener("abort", abort);
     if (connections.get(id) === connection) connections.delete(id);
-    connection.pending?.finish({ error: "omnistudio-next 页面已断开，操作已取消" });
+    connection.pending?.finish({ error: "万象点点页面已断开，操作已取消" });
   };
   const abort = () => { close(); response.end(); };
   response.once("close", close);

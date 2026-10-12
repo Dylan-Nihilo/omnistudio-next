@@ -5,9 +5,9 @@
         <div v-if="!messages.length && !disabled" class="welcomeArea">
             <section class="welcomeMessage" aria-label="开始新对话">
               <div class="welcomeHeader">
-                <span class="welcomeIcon" aria-hidden="true"><img class="welcomeLogo" :src="logoUrl" alt="omnistudio-next" /></span>
+                <span class="welcomeIcon" aria-hidden="true"><img class="welcomeLogo" :src="logoUrl" alt="万象点点" /></span>
                 <div>
-                  <p class="welcomeLabel">你好，我是 omnistudio-next 助手</p>
+                  <p class="welcomeLabel">你好，我是万象点点助手</p>
                   <h3>从一个想法开始</h3>
                 </div>
               </div>
