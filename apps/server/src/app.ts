@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { resolve } from "node:path";
 import { mkdir, realpath } from "node:fs/promises";
+import { isIP } from "node:net";
 import type { Request, Response, NextFunction } from "express";
 import buildRoute from "@/core";
 import { error } from "@/lib/responseFormat";
@@ -30,6 +31,8 @@ export async function createApp({
   agentsRoot?: string;
   pluginRevision?: string;
 }) {
+  const trustedProxies = (process.env.OMNISTUDIO_NEXT_TRUSTED_PROXIES ?? "").split(",").map(value => value.trim()).filter(Boolean);
+  if (trustedProxies.some(value => !isIP(value))) throw new Error("OMNISTUDIO_NEXT_TRUSTED_PROXIES 只能包含逗号分隔的可信代理 IP 地址");
   // conf 由下方的路由动态加载，必须先确定整个进程共用的数据目录。
   if (dataDirectory) {
     await mkdir(dataDirectory, { recursive: true, mode: 0o700 });
@@ -45,6 +48,7 @@ export async function createApp({
   if (dataDirectory && skillsRoot) await initializePlugins(resolve(dataDirectory, "skills"), skillsRoot);
   if (dataDirectory && agentsRoot) await initializePlugins(resolve(dataDirectory, "agents"), agentsRoot);
   const app = express();
+  if (trustedProxies.length) app.set("trust proxy", trustedProxies);
 
   await runSqlMigrations();
   await checkDatabase();
