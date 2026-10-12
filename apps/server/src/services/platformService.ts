@@ -94,9 +94,14 @@ export async function initializePlatformCatalog() {
       await tx.insert(platformProviderConfigs).values({ id: randomUUID(), providerId: provider.providerId, enabled: 1, config, secretRef: provider.secretRef, createdAt: now, updatedAt: now })
         .onDuplicateKeyUpdate({ set: { config, secretRef: provider.secretRef, updatedAt: now } });
     }
+    const catalogTextModels = new Set(platformModelCatalog.filter(model => model.mediaType === "text").map(model => `${model.providerId}:${model.modelId}`));
+    const existingTextModels = await tx.select({ id: platformModels.id, providerId: platformModels.providerId, modelId: platformModels.modelId }).from(platformModels).where(eq(platformModels.mediaType, "text"));
+    for (const model of existingTextModels) {
+      if (!catalogTextModels.has(`${model.providerId}:${model.modelId}`)) await tx.update(platformModels).set({ enabled: 0, updatedAt: now }).where(eq(platformModels.id, model.id));
+    }
     for (const model of platformModelCatalog) {
       await tx.insert(platformModels).values({ id: randomUUID(), ...model, enabled: 1, createdAt: now, updatedAt: now })
-        .onDuplicateKeyUpdate({ set: { label: model.label, apiModelId: model.apiModelId ?? null, capabilities: model.capabilities ?? null, sortOrder: model.sortOrder, updatedAt: now } });
+        .onDuplicateKeyUpdate({ set: { label: model.label, apiModelId: model.apiModelId ?? null, capabilities: model.capabilities ?? null, enabled: 1, sortOrder: model.sortOrder, updatedAt: now } });
     }
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.catalog.initialize", createdAt: now, updatedAt: now });
   });

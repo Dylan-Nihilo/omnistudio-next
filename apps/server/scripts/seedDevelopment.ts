@@ -83,13 +83,7 @@ for (const model of platformModelCatalog) {
   const textCredits: Record<string, number> = {
     "text/gpt-5.6-sol": 20,
     "text/deepseek-v4.1-flash": 10,
-    "text/qwen3.8-max": 30,
-    "text/qwen3.8-flash": 10,
-    "text/qwen3.7-plus": 20,
-    "text/qwen3.7-flash": 10,
-    "text/deepseek-v4-pro": 20,
-    "text/glm-5": 20,
-    "text/kimi-k2.5": 20,
+    "text/claude-opus-5": 30,
   };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
   const imagePremiumPricing = model.mediaType === "image" && model.modelId === "gpt-image-2.5-sunburst";
