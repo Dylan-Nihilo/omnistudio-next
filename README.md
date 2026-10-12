@@ -73,6 +73,7 @@ cp -n .env.example .env
 | `PORT` | 后端端口，默认 `3000` |
 | `OMNISTUDIO_NEXT_UI_SERVER_ORIGIN` | Web 开发代理的后端地址，默认 `http://127.0.0.1:3000` |
 | `OMNISTUDIO_NEXT_DATA_DIR` | 可选数据目录；未设置时使用仓库根目录 `data/` |
+| `OMNISTUDIO_NEXT_TRUSTED_PROXIES` | 可选可信反向代理来源 IP，逗号分隔；未设置时不信任转发头 |
 
 在开发工作区构建自有组件与内置插件，再启动 Web 和 Server。`dev:plugins` 会覆盖开发数据目录中的同名节点与工具，请把修改保存在 `packages/` 源码中：
 
@@ -141,6 +142,8 @@ GitHub Actions 的 `Server pipeline` 在提交 PR、推送 `master` 或手动运
 部署后检查服务器本机的认证状态接口和容器镜像 ID，成功时写入 `deployedCommit`。失败或中断时恢复上一镜像；镜像回滚不会撤销 SQL 迁移，数据库恢复需要维护者评估后使用 SQL 备份。同一提交重试保留第一次部署前的 SQL 备份。镜像与数据库备份不自动清理。公网入口及真实模型调用需在部署后另行确认。
 
 部署后的日常管理使用 `docker compose -p omnistudio-next --env-file .env -f compose.yaml -f releaseCompose.yaml`，让运行命令继续读取已选镜像。
+
+Nginx 终止 HTTPS 时，需要覆盖 `Host`、`X-Forwarded-Host`、`X-Forwarded-For` 和 `X-Forwarded-Proto`，并将应用端口仅绑定到服务器本机。通过 Compose 的应用环境配置传入 `OMNISTUDIO_NEXT_TRUSTED_PROXIES`，填写 Nginx 请求实际到达应用时的来源 IP；宿主机代理进入 Docker 网络时通常为该网络的网关，须核实后配置。该设置让同源校验识别 HTTPS，不能填写不受信任的客户端地址。
 
 ## 项目结构
 
