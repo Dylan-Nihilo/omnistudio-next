@@ -14,6 +14,7 @@ import { acquireServerLease, checkDatabase, hasServerLease, runSqlMigrations } f
 
 export async function createApp({
   webRoot,
+  landingRoot,
   dataDirectory,
   toolsRoot,
   nodesRoot,
@@ -23,6 +24,7 @@ export async function createApp({
   pluginRevision,
 }: {
   webRoot: string;
+  landingRoot?: string;
   dataDirectory?: string;
   toolsRoot?: string;
   nodesRoot?: string;
@@ -111,6 +113,10 @@ export async function createApp({
   app.use("/mcp", createMcpRouter({ getTools: getMcpTools, authorize: authorizeMcp, subject: request => request.authContext?.user.id ?? "", resources: skillResources }));
   const { createA2aRouter } = await import("@/agent/a2a");
   app.use("/a2a", createA2aRouter());
+  if (landingRoot) {
+    app.use("/app", express.static(webRoot));
+    app.use(express.static(landingRoot));
+  }
   app.use(express.static(webRoot));
 
   // 错误处理
