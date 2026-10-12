@@ -1,14 +1,15 @@
 <template>
-  <textarea ref="textarea" v-bind="$attrs" class="uiTextarea" :class="{ isError: error, isDisabled: disabled, isAutosized: !!autosize }" :value="modelValue ?? ''" :rows="rows" :disabled="disabled" :readonly="readonly" :aria-invalid="error || undefined" :style="textareaStyle" @input="handleInput" @change="emit('change', ($event.target as HTMLTextAreaElement).value)" @compositionstart="composing = true" @compositionend="handleCompositionEnd" />
+  <textarea ref="textarea" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="$attrs" v-model="inputValue" class="uiTextarea" :class="{ isError: error, isDisabled: disabled, isAutosized: !!autosize }" :rows="rows" :disabled="disabled" :readonly="readonly" :aria-invalid="error || undefined" :style="textareaStyle" @change="emit('change', ($event.target as HTMLTextAreaElement).value)" />
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { handleCompositionKey } from "../form";
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{ modelValue?: string | null; rows?: number; disabled?: boolean; readonly?: boolean; error?: boolean; resize?: "none" | "vertical" | "both" | "horizontal"; autosize?: boolean | { minRows?: number; maxRows?: number } }>(), { rows: 4, disabled: false, readonly: false, error: false, resize: "vertical" });
 const emit = defineEmits<{ "update:modelValue": [value: string]; input: [value: string]; change: [value: string] }>();
 const textarea = ref<HTMLTextAreaElement>();
-const composing = ref(false);
+const inputValue = computed({ get: () => props.modelValue ?? "", set: publish });
 let observer: ResizeObserver | undefined;
 let frame = 0;
 const minRows = computed(() => typeof props.autosize === "object" ? props.autosize.minRows ?? props.rows : props.rows);
@@ -32,16 +33,13 @@ watch([() => props.modelValue, () => props.autosize, () => props.rows], resizeTe
 onBeforeUnmount(() => { observer?.disconnect(); cancelAnimationFrame(frame); });
 let lastValue = props.modelValue ?? "";
 watch(() => props.modelValue, value => { lastValue = value ?? ""; });
-function publish(event: Event) {
+function publish(value: string) {
   if (props.disabled || props.readonly) return;
-  const value = (event.target as HTMLTextAreaElement).value;
   if (value === lastValue) return;
   lastValue = value;
   emit("update:modelValue", value);
   emit("input", value);
 }
-function handleInput(event: Event) { if (!composing.value && !(event as InputEvent).isComposing) publish(event); }
-function handleCompositionEnd(event: CompositionEvent) { composing.value = false; publish(event); }
 function focus() { textarea.value?.focus(); }
 function blur() { textarea.value?.blur(); }
 function select() { textarea.value?.select(); }

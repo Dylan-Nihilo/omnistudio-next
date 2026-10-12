@@ -30,11 +30,11 @@ function rulesFor(field: string) {
   return rules;
 }
 async function validateOne(field: string, trigger?: string) {
-  const version = (versions.get(field) ?? 0) + 1;
-  versions.set(field, version);
   const value = readPath(props.model, field);
   const rules = rulesFor(field).filter(rule => !trigger || !rule.trigger || (Array.isArray(rule.trigger) ? rule.trigger.includes(trigger) : rule.trigger === trigger));
   if (!rules.length) return;
+  const version = (versions.get(field) ?? 0) + 1;
+  versions.set(field, version);
   try {
     await new Schema({ [field]: rules }).validate({ ...props.model, [field]: value }, { suppressWarning: true });
     if (disposed || !Object.is(value, readPath(props.model, field))) throw new Error("字段已变化，请重新校验");
@@ -77,7 +77,17 @@ function resetFields() {
 async function submit() {
   if (props.disabled || validating.value) return;
   try { await validate(); emit("submit", props.model); }
-  catch { emit("invalid", errors.value); await nextTick(); form.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); }
+  catch {
+    emit("invalid", errors.value);
+    await nextTick();
+    const focusable = ":is(input,textarea,select,button,a[href],[tabindex],[contenteditable='true']):not(:disabled):not([aria-disabled='true'])";
+    for (const invalid of form.value?.querySelectorAll<HTMLElement>('[aria-invalid="true"]') ?? []) {
+      const control = invalid.matches(focusable) ? invalid : invalid.querySelector<HTMLElement>(focusable);
+      if (!control || control.closest("[inert]")) continue;
+      control.focus();
+      if (document.activeElement === control) break;
+    }
+  }
 }
 const context = {
   validate, validateField, clearValidate, resetFields,

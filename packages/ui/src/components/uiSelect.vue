@@ -3,7 +3,7 @@
   <uiPopover ref="popover" v-model:visible="visible" trigger="manual" role="listbox" :block="!inline" matchWidth :disabled="disabled" @hide="query = ''">
     <template #reference="{ panelId, open, toggle }">
       <div class="uiSelect" :class="[sizeClass, { isDisabled: disabled, isError: error }]">
-        <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" role="combobox" aria-autocomplete="list" :aria-expanded="visible" :aria-controls="panelId" :aria-activedescendant="activeIndex >= 0 && visible ? panelId + '-option-' + activeIndex : undefined" :aria-invalid="error || undefined" :aria-busy="loading || undefined" :value="visible && filterable ? query : selectedLabel" :placeholder="placeholder" :readonly="!filterable" :disabled="disabled" @click="open" @input="search" @compositionend="search" @keydown="handleKeydown" />
+        <input ref="input" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="{ ...$attrs, class: undefined, style: undefined }" v-model="inputValue" role="combobox" aria-autocomplete="list" :aria-expanded="visible" :aria-controls="panelId" :aria-activedescendant="activeIndex >= 0 && visible ? panelId + '-option-' + activeIndex : undefined" :aria-invalid="error || undefined" :aria-busy="loading || undefined" :placeholder="placeholder" :readonly="!filterable" :disabled="disabled" @focus="filterable && input?.select()" @click="open" @keydown="handleKeydown" />
         <button v-if="clearable && hasValue" type="button" class="clearButton" :disabled="disabled" aria-label="清空选择" @click.stop="clear">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
@@ -33,7 +33,7 @@ import uiPopover from "./uiPopover.vue";
 import type { UiSize } from "../theme";
 import type { UiOption, UiValue } from "../types";
 import { valueKey } from "../values";
-import { uiFieldKey } from "../form";
+import { handleCompositionKey, isComposingInput, uiFieldKey } from "../form";
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{ modelValue?: UiValue | UiValue[] | null; options: UiOption[]; multiple?: boolean; disabled?: boolean; error?: boolean; loading?: boolean; clearable?: boolean; filterable?: boolean; allowCreate?: boolean; placeholder?: string; noDataText?: string; size?: UiSize; inline?: boolean }>(), { multiple: false, disabled: false, error: false, loading: false, clearable: false, filterable: false, allowCreate: false, placeholder: "", size: "medium", inline: false });
 const emit = defineEmits<{ "update:modelValue": [value: UiValue | UiValue[] | undefined]; change: [value: UiValue | UiValue[] | undefined]; visibleChange: [value: boolean]; create: [value: string] }>();
@@ -47,6 +47,7 @@ const activeIndex = ref(-1);
 const values = computed(() => Array.isArray(props.modelValue) ? props.modelValue : props.modelValue == null ? [] : [props.modelValue]);
 const hasValue = computed(() => values.value.some(value => value !== "" || props.options.some(option => option.value === "")));
 const selectedLabel = computed(() => values.value.map(value => props.options.find(option => option.value === value)?.label ?? String(value)).join("、"));
+const inputValue = computed({ get: () => visible.value && props.filterable ? query.value : selectedLabel.value, set: search });
 const filteredOptions = computed(() => props.options.filter(option => !props.filterable || option.label.toLocaleLowerCase().includes(query.value.toLocaleLowerCase())));
 const canCreate = computed(() => props.allowCreate && props.filterable && !!query.value.trim() && !props.options.some(option => option.label === query.value.trim() || option.value === query.value.trim()));
 watch([visible, filteredOptions], () => {
@@ -64,12 +65,12 @@ function choose(option: UiOption) {
 }
 function clear() { if (props.disabled) return; publish(props.multiple ? [] : undefined); query.value = ""; input.value?.focus(); }
 function create() { if (!canCreate.value) return; const value = query.value.trim(); emit("create", value); choose({ label: value, value }); }
-function search(event: Event) {
-  if ((event as InputEvent).isComposing) return;
-  query.value = (event.target as HTMLInputElement).value; visible.value = true;
+function search(value: string) {
+  if (props.disabled || !props.filterable) return;
+  query.value = value; visible.value = true;
 }
 async function handleKeydown(event: KeyboardEvent) {
-  if (event.isComposing || props.disabled) return;
+  if (isComposingInput(event) || props.disabled) return;
   if (event.key === "Escape") { if (visible.value) { event.preventDefault(); event.stopPropagation(); visible.value = false; } return; }
   if (event.key === "Tab") { visible.value = false; return; }
   if (event.key === "Enter") { event.preventDefault(); if (!visible.value) visible.value = true; else if (filteredOptions.value[activeIndex.value]) choose(filteredOptions.value[activeIndex.value]!); else create(); return; }

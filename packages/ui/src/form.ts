@@ -18,6 +18,28 @@ export type UiFormContext = UiFormApi & {
 export const uiFieldKey: InjectionKey<(trigger: string) => Promise<void>> = Symbol("uiField");
 export const uiFormKey: InjectionKey<UiFormContext> = Symbol("uiForm");
 
+export function isComposingInput(event: Event) {
+  return !!((event as InputEvent).isComposing || (event as KeyboardEvent).keyCode === 229 || (event.target as (HTMLInputElement & { composing?: boolean }) | null)?.composing);
+}
+
+const compositionKeys = new WeakMap<HTMLElement, Set<string>>();
+export function handleCompositionKey(event: KeyboardEvent) {
+  const element = event.currentTarget as HTMLElement;
+  const key = event.code || event.key;
+  const composing = isComposingInput(event);
+  let keys = compositionKeys.get(element);
+  if (event.type === "keydown" && composing) {
+    if (!keys) { keys = new Set(); compositionKeys.set(element, keys); }
+    keys.add(key);
+  } else if (event.type === "keydown" && !event.repeat) keys?.delete(key);
+  // The confirmation keyup can arrive after compositionend with isComposing=false.
+  if (composing || keys?.has(key)) event.stopImmediatePropagation();
+  if (event.type === "keyup") {
+    keys?.delete(key);
+    if (!keys?.size) compositionKeys.delete(element);
+  }
+}
+
 export type UiFieldRule = {
   type: string;
   field: string;

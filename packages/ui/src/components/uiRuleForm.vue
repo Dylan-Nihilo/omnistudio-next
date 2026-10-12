@@ -3,7 +3,7 @@
   <uiForm ref="form" :model="values" :rules="validationRules" :disabled="disabled">
     <uiFormField v-for="rule in visibleRules" :key="rule.field" :prop="rule.field" :label="rule.title" :help="rule.info" :required="requiredFields.has(rule.field)">
       <template #default="{ id, describedBy, invalid, required }">
-        <component :is="components[rule.type === 'input' && rule.props?.type === 'textarea' ? 'textarea' : rule.type]" v-if="Object.hasOwn(components, rule.type)" v-bind="rule.props" :id="id" :modelValue="values[rule.field]" :options="rule.options ?? []" :aria-describedby="describedBy" :aria-label="rule.title" :required="required && ['input', 'textarea', 'inputNumber', 'select'].includes(rule.type)" :error="invalid" :disabled="disabled || rule.props?.disabled === true" @update:modelValue="(value: unknown) => update(rule.field, value)" />
+        <component :is="components[rule.type === 'input' && rule.props?.type === 'textarea' ? 'textarea' : rule.type]" v-if="Object.hasOwn(components, rule.type)" v-bind="rule.props" :id="id" :modelValue="values[rule.field]" :options="rule.options ?? []" :aria-describedby="describedBy" :aria-label="rule.title" :aria-invalid="invalid || undefined" :required="required && ['input', 'textarea', 'inputNumber', 'select'].includes(rule.type)" :error="invalid" :disabled="disabled || rule.props?.disabled === true" @update:modelValue="(value: unknown) => update(rule.field, value)" />
       </template>
     </uiFormField>
   </uiForm>

@@ -11,7 +11,7 @@
       <uiDialog v-if="request" :key="request.id" :modelValue="true" :title="request.title" :width="480" :showClose="!validating" :closeOnClickModal="request.closeOnClickModal ?? false" :closeOnPressEscape="(request.closeOnPressEscape ?? true) && !validating" @update:modelValue="value => !value && finish('close')">
         <div class="boxMessage"><uiContentRenderer :content="request.message" /></div>
         <uiField v-if="request.kind === 'prompt'" class="boxField" :label="request.title" :error="inputError">
-          <template #default="{ id, describedBy, invalid }"><uiInput ref="promptInput" :id="id" v-model="inputValue" :type="request.inputType" :disabled="validating" :placeholder="request.inputPlaceholder" :error="invalid" :aria-describedby="describedBy" autofocus @keydown.enter.prevent="!$event.isComposing && confirm()" /></template>
+          <template #default="{ id, describedBy, invalid }"><uiInput ref="promptInput" :id="id" v-model="inputValue" :type="request.inputType" :disabled="validating" :placeholder="request.inputPlaceholder" :error="invalid" :aria-describedby="describedBy" autofocus @keydown.enter="handleInputEnter" /></template>
         </uiField>
         <template #footer>
           <uiButton v-if="request.kind !== 'alert'" variant="secondary" :disabled="validating" @click="finish('cancel')">{{ request.cancelButtonText ?? '取消' }}</uiButton>
@@ -31,6 +31,7 @@ import uiField from "./uiField.vue";
 import uiInput from "./uiInput.vue";
 import uiContentRenderer from "./uiContentRenderer";
 import { createUiFeedback, uiFeedbackKey, type UiFeedback } from "../feedback";
+import { isComposingInput } from "../form";
 const props = defineProps<{ feedback?: UiFeedback }>();
 const feedback = props.feedback ?? createUiFeedback();
 provide(uiFeedbackKey, feedback);
@@ -76,6 +77,11 @@ watch([() => feedback.toasts.map(toast => toast.id).join(","), hostTarget], asyn
 }, { flush: "post" });
 function closeToast(id: number) { feedback.closeToast(id); }
 function finish(action: "confirm" | "cancel" | "close") { if (request.value) feedback.finish(request.value.id, action, inputValue.value); }
+function handleInputEnter(event: KeyboardEvent) {
+  if (isComposingInput(event)) return;
+  event.preventDefault();
+  confirm();
+}
 async function confirm() {
   if (!request.value || validating.value) return;
   const current = request.value, version = revision;

@@ -1,7 +1,7 @@
 <template>
   <div class="uiNumberInput" :class="[sizeClass, $attrs.class, { isDisabled: disabled, isError: error }]" :style="$attrs.style as StyleValue">
     <button v-if="controls" type="button" :disabled="disabled || readonly || (modelValue != null && modelValue <= lower)" aria-label="减少" @click="stepBy(-1)">−</button>
-    <input ref="input" v-bind="{ ...$attrs, class: undefined, style: undefined }" type="number" :value="draft" :min="lower" :max="upper" :step="stepStrictly ? safeStep : 'any'" :disabled="disabled" :readonly="readonly" :aria-invalid="error || undefined" @input="handleInput" @change="commit" @blur="commit" @keydown.up.prevent="stepBy(1)" @keydown.down.prevent="stepBy(-1)" />
+    <input ref="input" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="{ ...$attrs, class: undefined, style: undefined }" type="number" :value="draft" :min="lower" :max="upper" :step="stepStrictly ? safeStep : 'any'" :disabled="disabled" :readonly="readonly" :aria-invalid="error || undefined" @input="handleInput" @change="commit" @blur="commit" @keydown.up.prevent="stepBy(1)" @keydown.down.prevent="stepBy(-1)" />
     <button v-if="controls" type="button" :disabled="disabled || readonly || (modelValue != null && modelValue >= upper)" aria-label="增加" @click="stepBy(1)">+</button>
   </div>
 </template>
@@ -10,7 +10,7 @@
 import { computed, inject, nextTick, ref, watch, type StyleValue } from "vue";
 import type { UiSize } from "../theme";
 import { finiteNumber } from "../values";
-import { uiFieldKey } from "../form";
+import { handleCompositionKey, uiFieldKey } from "../form";
 defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<{ modelValue?: number | null; min?: number; max?: number; step?: number; precision?: number; stepStrictly?: boolean; controls?: boolean; disabled?: boolean; readonly?: boolean; error?: boolean; size?: UiSize }>(), { min: -Infinity, max: Infinity, step: 1, stepStrictly: false, controls: true, disabled: false, readonly: false, error: false, size: "medium" });
 const emit = defineEmits<{ "update:modelValue": [value: number | undefined]; input: [value: number | undefined]; change: [value: number | undefined] }>();
