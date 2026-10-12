@@ -17,14 +17,14 @@ const rules = [
   },
 ] as const;
 
-type JojoRoute = { line: "cn" | "overseas"; upstream: string; dialect: "seedance" | "minimax_a" };
+type JojoRoute = { line: "cn" | "overseas"; upstream: string; dialect: "seedance" | "minimax_a" | "h3" };
 
 const routes: Record<string, JojoRoute> = {
   "seedance-2.0-mini": { line: "cn", upstream: "video-cn-2.0-mini", dialect: "seedance" },
   "seedance-2.0-fast": { line: "cn", upstream: "video-cn-2.0-fast", dialect: "seedance" },
   "seedance-2.0": { line: "cn", upstream: "video-cn-2.0-pro", dialect: "seedance" },
   "seedance-2.5": { line: "cn", upstream: "video-cn-2.5", dialect: "seedance" },
-  "minimax-h3": { line: "overseas", upstream: "minimax-A", dialect: "minimax_a" },
+  "minimax-h3": { line: "overseas", upstream: "minimax-h3-reference-to-video", dialect: "h3" },
 };
 
 function object(value: unknown): Record<string, unknown> {
@@ -40,6 +40,14 @@ function inputBytes(input: MediaInput) {
 
 function fileName(mimeType: string, index: number) {
   return `reference-${index}.${mimeType.split("/")[1] || "bin"}`;
+}
+
+async function appendFile(context: ProviderContext<{ apiKey: string; baseUrl: string }>, form: FormData, field: "images" | "videos", input: MediaInput, index: number) {
+  const mimeType = input.mimeType || "application/octet-stream";
+  const response = input.type === "url" ? await context.tool.fetch(input.url, { signal: context.signal }) : undefined;
+  if (response && !response.ok) throw new Error(`JojoKey 参考素材下载失败（HTTP ${response.status}）`);
+  const bytes = response ? new Uint8Array(await response.arrayBuffer()) : inputBytes(input);
+  form.append(field, new File([bytes as unknown as BlobPart], fileName(mimeType, index), { type: mimeType }));
 }
 
 function randomKey() {
@@ -93,13 +101,31 @@ async function generateVideo(request: VideoRequest, context: ProviderContext<{ a
   const route = routes[request.model];
   if (!route) throw new Error(`JojoKey 未配置模型 ${request.model}`);
   const base = context.config.baseUrl.replace(/\/$/, "");
-  const endpoint = `${base}${route.line === "cn" ? "/video-cn/videos" : "/videos"}`;
+  const endpoint = `${base}${route.dialect === "h3" ? "/h3/reference-videos" : route.line === "cn" ? "/video-cn/videos" : "/videos"}`;
   const mode = Array.isArray(request.mode) ? "reference" : request.mode === "startFrameOptional" || request.mode === "endFrameOptional" || request.mode === "startEndRequired" ? "keyframe" : "text";
   const images = await Promise.all((request.images ?? []).map((item, index) => upload(context, item, "image", route.line, index)));
   const videos = await Promise.all((request.videos ?? []).map((item, index) => upload(context, item, "video", route.line, index)));
   const audios = await Promise.all((request.audios ?? []).map((item, index) => upload(context, item, "audio", route.line, index)));
   const firstFrame = request.firstFrame ? await upload(context, request.firstFrame, "image", route.line, 0) : undefined;
   const lastFrame = request.lastFrame ? await upload(context, request.lastFrame, "image", route.line, 1) : undefined;
+  if (route.dialect === "h3") {
+    const form = new FormData();
+    form.append("prompt", request.prompt);
+    if (request.duration !== undefined) form.append("duration", String(request.duration));
+    if (request.resolution) form.append("resolution", request.resolution.toLowerCase());
+    if (request.ratio) form.append("ratio", request.ratio);
+    await Promise.all((request.images ?? []).map((item, index) => appendFile(context, form, "images", item, index)));
+    await Promise.all((request.videos ?? []).map((item, index) => appendFile(context, form, "videos", item, index)));
+    const response = await context.tool.fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Idempotency-Key": randomKey() }, body: form, signal: context.signal });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`JojoKey 视频提交失败（HTTP ${response.status}）：${errorText}`);
+    }
+    const result = object(await response.json());
+    const taskId = result.id;
+    if (typeof taskId !== "string" || !taskId) throw new Error("JojoKey 提交未返回任务 ID");
+    return [{ mediaType: "video" as const, type: "url" as const, url: await poll(context, `${base}/videos`, taskId) }];
+  }
   const payload: Record<string, unknown> = { model: route.upstream, prompt: request.prompt };
   if (route.dialect === "minimax_a") {
     payload.mode = images.length || videos.length || audios.length ? "reference" : firstFrame ? "keyframe" : "text";
@@ -182,9 +208,9 @@ export default {
       id: "minimax-h3",
       label: "MiniMax H3",
       type: "video",
-      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
-      audio: "optional",
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["720P", "960P", "2K"] }],
+      mode: ["text", ["imageReference:8", "videoReference:3"]],
+      audio: true,
+      durationResolutionMap: [{ duration: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
     },
   ] satisfies ProviderModel[],
   async generateVideo(request: VideoRequest) {
