@@ -105,6 +105,12 @@ bun run start:server
 
 开发 Server 与构建后的 Server 选一个运行，避免使用同一数据库启动两个实例。桌面宿主使用 Electrobun，复用相同的业务 Server。
 
+### 官网与 Web 应用
+
+独立服务器的 `/` 展示官网，官网的“开始创作”进入 `/app/`；应用使用原有 hash 路由，API 仍位于 `/api/*`。官网来自 OmniStudio 的 `landing/chapters`，源码和网页媒体位于 `apps/web/public/landingPage`，通过现有 Web 构建一同进入发布镜像。字体许可随资源保留。
+
+`createApp` 仅在传入 `landingRoot` 时启用官网和 `/app/` 入口；桌面端沿用原有应用首页。
+
 ### Docker
 
 仓库提供应用与 MySQL 的 Compose 配置。复制并编辑 `.env`，为 `MYSQL_PASSWORD` 和 `MYSQL_ROOT_PASSWORD` 设置不同的长随机密码，再执行：
