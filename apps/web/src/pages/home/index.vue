@@ -48,7 +48,7 @@
         <div class="projectItems" :class="{ listView: viewMode === 'list' }">
           <article v-for="project in sortedProjects" :key="project.directory" class="projectCard">
             <div class="projectCardHeader">
-              <icon-folder class="projectIcon" :size="20" aria-hidden="true" />
+              <img class="projectIcon" :src="markUrl" alt="" aria-hidden="true" />
               <div class="projectActions">
                 <uiIconButton size="small" :icon="IconEdit" :disabled="creating || opening" :label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
                 <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="workspaceStore.removeProject(project.directory)" />
@@ -83,6 +83,7 @@ import {
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
+import markUrl from "@omnistudio-next/assets/omniStudioNextMark.svg";
 import { useWorkspaceStore, type Project } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
@@ -258,7 +259,7 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
       .projectHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } .projectToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } }
       .projectItems {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 24px;
-        .projectCard { min-width: 0; padding: 20px 24px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:hover, &:focus-within { border-color: var(--uiBorderControl); } .projectCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; .projectIcon { color: var(--uiTextMuted); } .projectActions { display: flex; gap: 4px; } } .projectEntry { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; margin: 0; padding: 0 0 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; &:disabled { cursor: wait; opacity: 0.6; } .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectName { font-size: var(--uiFontTitle); font-weight: 700; } .projectPath { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .projectTime { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); time { min-width: 0; overflow-wrap: anywhere; } } }
+        .projectCard { min-width: 0; padding: 20px 24px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:hover, &:focus-within { border-color: var(--uiBorderControl); } .projectCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; .projectIcon { display: block; width: 20px; height: 20px; object-fit: contain; } .projectActions { display: flex; gap: 4px; } } .projectEntry { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; margin: 0; padding: 0 0 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; &:disabled { cursor: wait; opacity: 0.6; } .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectName { font-size: var(--uiFontTitle); font-weight: 700; } .projectPath { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .projectTime { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); time { min-width: 0; overflow-wrap: anywhere; } } }
         &.listView { grid-template-columns: 1fr; .projectCard { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 24px; .projectCardHeader { margin: 0; } .projectEntry { padding: 0; } .projectTime { max-width: 260px; padding: 0; border: 0; } } }
       }
     }

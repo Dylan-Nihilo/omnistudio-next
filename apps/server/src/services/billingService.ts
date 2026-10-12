@@ -8,6 +8,7 @@ import { accountContext, requireAccount, requireActiveAccount, requireRootAccoun
 export type GenerationMediaType = "text" | "image" | "video" | "audio";
 
 const imageSizePricingSchema = z.object({ sizeTiers: z.record(z.enum(["1K", "2K", "4K"]), z.number().int().positive().safe()) });
+const resolutionPricingSchema = z.object({ resolutionTiers: z.record(z.string().min(1).max(32), z.number().int().positive().safe()) });
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -20,6 +21,13 @@ function imageSizeTier(size?: string): "1K" | "2K" | "4K" | undefined {
   if (!dimensions) return;
   const longest = Math.max(Number(dimensions[1]), Number(dimensions[2]));
   return longest <= 1024 ? "1K" : longest <= 2048 ? "2K" : "4K";
+}
+
+function resolutionTier(resolution: string | undefined, tiers: Record<string, number>) {
+  const value = resolution?.trim().toUpperCase();
+  if (!value) return undefined;
+  const key = Object.keys(tiers).find(item => item.toUpperCase() === value);
+  return key ? tiers[key] : undefined;
 }
 
 function positiveCredits(value: number) {
@@ -84,6 +92,11 @@ export async function quoteCredits(providerId: string, modelId: string, mediaTyp
     const tier = imageSizeTier(size);
     // ACT: 沿用旧项目规则，尺寸未知时按最高档报价。
     creditsPerUnit = tier ? pricing.data.sizeTiers[tier] : Math.max(...Object.values(pricing.data.sizeTiers));
+  }
+  if (mediaType === "video" && constraints && typeof constraints === "object" && "resolutionTiers" in constraints) {
+    const pricing = resolutionPricingSchema.safeParse(constraints);
+    if (!pricing.success) invalid("视频分辨率积分价格配置无效", 503);
+    creditsPerUnit = resolutionTier(size, pricing.data.resolutionTiers) ?? Math.max(...Object.values(pricing.data.resolutionTiers));
   }
   const credits = Math.ceil(units * creditsPerUnit);
   if (!Number.isSafeInteger(credits) || credits < 0) invalid("价格计算超出安全范围", 422);

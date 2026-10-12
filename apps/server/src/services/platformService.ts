@@ -28,7 +28,7 @@ export const modelInputSchema = z.strictObject({
 
 export const pricesInputSchema = z.strictObject({ items: z.array(z.strictObject({
   providerId: z.string().min(1).max(100), modelId: z.string().min(1).max(200), mediaType: z.enum(["text", "image", "video", "audio"]),
-  creditsPerUnit: z.number().int().min(0).max(1_000_000_000),
+  creditsPerUnit: z.number().int().min(0).max(1_000_000_000), constraints: z.record(z.string(), z.json()).optional(),
 })).min(1).max(1000) });
 
 export async function getPlatformConfiguration() {
@@ -110,7 +110,7 @@ export async function publishPlatformPrices(input: z.infer<typeof pricesInputSch
     const id = randomUUID();
     const version = (previous?.version ?? 0) + 1;
     await tx.insert(priceBookVersions).values({ id, version, status: "published", publishedAt: now, createdAt: now, updatedAt: now });
-    for (const item of input.items) await tx.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: id, ...item, unit: item.mediaType === "video" ? "second" : item.mediaType === "image" ? "image" : "10k_chars", constraints: {}, createdAt: now, updatedAt: now });
+    for (const item of input.items) await tx.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: id, ...item, unit: item.mediaType === "video" ? "second" : item.mediaType === "image" ? "image" : "10k_chars", constraints: item.constraints ?? {}, createdAt: now, updatedAt: now });
     await tx.update(pricingSettings).set({ activePriceBookVersionId: id, updatedAt: now }).where(eq(pricingSettings.id, "platform"));
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.prices.publish", metadata: { version, items: input.items }, createdAt: now, updatedAt: now });
     return { version };

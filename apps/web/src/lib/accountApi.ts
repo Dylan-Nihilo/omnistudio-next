@@ -8,7 +8,7 @@ export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: 
 export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: number; frozen: number; available: number };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
-export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string };
+export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: Record<string, unknown> };
 export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[] };
 export type AuditEntry = { id: string; actorUserId: string | null; action: string; metadata: unknown; createdAt: string };
 
@@ -44,7 +44,7 @@ export function getPlatformConfiguration() { return accountRequest<PlatformConfi
 export function initializePlatformCatalog() { return accountRequest("POST", "/api/admin/platform/initializeCatalog"); }
 export function savePlatformProvider(input: { providerId: string; apiUrl: string; protocol: PlatformProvider["config"]["protocol"]; enabled: boolean; apiKey?: string; removeApiKey?: boolean }) { return accountRequest("PUT", "/api/admin/platform/saveProvider", input); }
 export function savePlatformModel(input: Omit<PlatformModel, "id" | "enabled" | "capabilities" | "apiModelId"> & { id?: string; enabled: boolean; capabilities?: Record<string, unknown>; apiModelId?: string }) { return accountRequest("PUT", "/api/admin/platform/saveModel", input); }
-export function publishPlatformPrices(items: ModelPrice[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit }) => ({ providerId, modelId, mediaType, creditsPerUnit })) }); }
+export function publishPlatformPrices(items: ModelPrice[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}) })) }); }
 export function getPlatformAudit() { return accountRequest<AuditEntry[]>("GET", "/api/admin/audit"); }
 
 export async function uploadTeamFile(teamId: string, file: File) {

@@ -16,7 +16,7 @@ export function supportsUiRules(value: unknown): value is UiFieldRule[] {
     if (Object.keys(rule).some(key => !ruleKeys.has(key))) return false;
     if (rule.props !== undefined && (!record(rule.props) || Object.keys(rule.props).some(key => !fieldProps.has(key) && !key.startsWith("aria-") && !key.startsWith("data-")))) return false;
     if (rule.type === "input" && record(rule.props) && rule.props.type != null && !["text", "textarea", "password", "email", "url", "tel", "search"].includes(String(rule.props.type))) return false;
-    if (rule.options !== undefined && (!Array.isArray(rule.options) || rule.options.some(option => !record(option) || typeof option.label !== "string" || !["string", "number", "boolean"].includes(typeof option.value) || Object.keys(option).some(key => !["label", "value", "disabled", "group", "icon"].includes(key))))) return false;
+    if (rule.options !== undefined && (!Array.isArray(rule.options) || rule.options.some(option => !record(option) || typeof option.label !== "string" || !["string", "number", "boolean"].includes(typeof option.value) || Object.keys(option).some(key => !["label", "value", "disabled", "group", "icon", "iconProps"].includes(key))))) return false;
     if (rule.validate !== undefined && !Array.isArray(rule.validate)) return false;
   }
   return value.every(rule => rule.control === undefined || Array.isArray(rule.control) && rule.control.every((control: unknown) => record(control) && Object.keys(control).every(key => ["value", "method", "rule"].includes(key)) && [undefined, "required", "display"].includes(control.method as string | undefined) && Array.isArray(control.rule) && control.rule.every(field => fieldName(field) && fields.has(field))));

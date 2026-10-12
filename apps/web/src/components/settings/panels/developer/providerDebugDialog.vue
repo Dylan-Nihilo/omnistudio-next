@@ -8,7 +8,7 @@
             <h3>{{ provider.label }}</h3>
             <uiRuleForm v-if="supportsUiRules(formRules)" v-model="config" :rule="formRules" :disabled="busy" @update:api="value => formApi = value" /><form-create v-else v-model="config" v-model:api="formApi" :rule="formRules" :option="formOptions" />
             <div class="parameterForm">
-              <uiField label="模型"><uiSelect :modelValue="modelId" :options="provider.models.map(model => ({ value: model.id, label: model.label }))" :disabled="busy" placeholder="选择模型" aria-label="调试模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></uiField>
+              <uiField label="模型"><uiSelect :modelValue="modelId" :options="provider.models.filter(model => model.type !== 'audio').map(model => ({ value: model.id, label: model.label }))" :disabled="busy" placeholder="选择模型" aria-label="调试模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></uiField>
               <uiField label="提示词"><uiTextarea v-model="prompt" :rows="4" resize="vertical" :disabled="busy" aria-label="调试提示词" /></uiField>
               <uiField label="参考素材"><div class="references">
                 <div v-for="(item, index) in references" :key="item.url" class="referenceItem"><uiImage v-if="item.file.type.startsWith('image/')" :src="item.url" :alt="item.file.name" fit="cover" :previewSrcList="[item.url]" /><video v-else-if="item.file.type.startsWith('video/')" :src="item.url" muted preload="metadata" /><icon-volume v-else :size="22" aria-hidden="true" /><uiIconButton class="removeReference" variant="danger" size="small" :icon="IconX" :disabled="busy" :label="`移除 ${item.file.name}`" @click="removeReference(index)" /><uiSelect v-if="activeModel?.type === 'video' && item.file.type.startsWith('image/')" :modelValue="item.role" :options="referenceRoles" size="small" :disabled="busy" aria-label="参考图用途" @update:modelValue="value => typeof value === 'string' && (references = references.map((reference, itemIndex) => itemIndex === index ? { ...reference, role: value } : reference))" /></div>
@@ -76,7 +76,7 @@ const action = ref<"" | "select" | "refresh" | "run" | "install">("");
 const busy = computed(() => !!action.value);
 const formOptions = computed<Options>(() => ({ form: { labelPosition: "top", disabled: busy.value }, submitBtn: false, resetBtn: false }));
 const modelId = ref("");
-const activeModel = computed(() => provider.value?.models.find(model => model.id === modelId.value));
+const activeModel = computed(() => provider.value?.models.find(model => model.type !== "audio" && model.id === modelId.value));
 const resolutions = computed(() => [...new Set(activeModel.value?.durationResolutionMap?.flatMap(item => item.resolution) ?? ['720p', '1080p'])]);
 const prompt = ref("");
 const ratio = ref("");
@@ -129,7 +129,8 @@ async function refreshProvider() {
   config.value = Object.fromEntries(next.rules.filter(rule => rule.field).map(rule => [rule.field!, next.id === provider.value?.id && rule.field! in values ? values[rule.field!] : rule.value]));
   if (JSON.stringify(next.rules) !== JSON.stringify(provider.value?.rules)) formRules.value = formCreate.copyRules(next.rules);
   provider.value = next;
-  if (!next.models.some(model => model.id === modelId.value)) modelId.value = next.models[0]?.id ?? "";
+  const mediaModels = next.models.filter(model => model.type !== "audio");
+  if (!mediaModels.some(model => model.id === modelId.value)) modelId.value = mediaModels[0]?.id ?? "";
   fileName.value = file.name;
   modifiedAt.value = new Date(file.lastModified).toLocaleTimeString();
   source.value = file.source;

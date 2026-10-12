@@ -17,7 +17,7 @@
       <template v-for="(option, index) in filteredOptions" :key="valueKey(option.value)">
         <div v-if="option.group && (index === 0 || option.group !== filteredOptions[index - 1]?.group)" class="optionGroup" role="presentation">{{ option.group }}</div>
         <div :id="popover?.panel?.id + '-option-' + index" class="selectOption" :class="{ isActive: index === activeIndex, isSelected: isSelected(option.value), isDisabled: option.disabled }" role="option" :aria-selected="isSelected(option.value)" :aria-disabled="option.disabled || undefined" @pointermove="!option.disabled && (activeIndex = index)" @mousedown.prevent @click="choose(option)">
-          <span>{{ option.label }}</span><span v-if="isSelected(option.value)" aria-hidden="true">✓</span>
+          <span class="optionLabel"><component v-if="option.icon" :is="option.icon" v-bind="option.iconProps" aria-hidden="true" /><span>{{ option.label }}</span></span><span v-if="isSelected(option.value)" aria-hidden="true">✓</span>
         </div>
       </template>
       <button v-if="canCreate" class="createOption" type="button" @mousedown.prevent @click="create">{{ query.trim() }}</button>
@@ -129,7 +129,8 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
 }
 .selectOption {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--uiRadiusControl); cursor: pointer; font-size: var(--uiFontControl);
-  span:first-child { min-width: 0; overflow-wrap: anywhere; }
+  .optionLabel { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+  .optionLabel > :last-child { min-width: 0; }
   &.isActive:not(.isDisabled) { background: var(--uiSurfaceHover); }
   &.isSelected { background: var(--uiActionSoft); color: var(--uiTextPrimary); }
   &.isDisabled { color: var(--uiStateDisabledText); cursor: not-allowed; }

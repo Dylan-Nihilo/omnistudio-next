@@ -23,6 +23,7 @@ export const providerSchema = z.object({
 });
 
 const builtinModels = getBuiltinProviders().flatMap(provider => getBuiltinModels(provider));
+const providerDisplayNames: Record<string, string> = { kaizoText: "高级模型", dashscope: "标准模型" };
 
 export function getModelLimits(providerId: string, model: z.infer<typeof providerSchema>["models"][number]) {
   const limits = modelContextLimits.find(item => item.id === model.id)
@@ -52,7 +53,7 @@ export async function getConfiguredModel(providerId: string, modelId: string) {
 export async function listAiModels() {
   const models = await listPlatformModels("text");
   return models.map(model => ({
-    providerId: model.providerId, providerLabel: model.providerId, protocol: model.protocol, modelId: model.modelId, label: model.label,
+    providerId: model.providerId, providerLabel: providerDisplayNames[model.providerId] ?? model.providerId, protocol: model.protocol, modelId: model.modelId, label: model.label,
     contextWindow: 262144, maxOutputTokens: 32768, capabilities: model.capabilities,
   }));
 }

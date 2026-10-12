@@ -69,15 +69,37 @@ await database.insert(priceBookVersions).values({ id: priceBookId, version: 1, s
   .onDuplicateKeyUpdate({ set: { status: "published", publishedAt: now, updatedAt: now } });
 await database.insert(pricingSettings).values({ id: "platform", activePriceBookVersionId: priceBookId, createdAt: now, updatedAt: now })
   .onDuplicateKeyUpdate({ set: { activePriceBookVersionId: priceBookId, updatedAt: now } });
+await database.delete(pricingItems).where(eq(pricingItems.priceBookVersionId, priceBookId));
 for (const model of platformModelCatalog) {
   // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
   const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
+  const videoPricing: Record<string, Record<string, number>> = {
+    "seedance-2.0-mini": { "480p": 9, "720p": 19 },
+    "seedance-2.0-fast": { "480p": 15, "720p": 31 },
+    "seedance-2.0": { "480p": 18, "720p": 38, "1080p": 86 },
+    "seedance-2.5": { "480p": 32, "720p": 68, "1080p": 153 },
+    "minimax-h3": { "720P": 9, "960P": 13, "2K": 18 },
+  };
+  const textCredits: Record<string, number> = {
+    "text/gpt-5.6-sol": 20,
+    "text/deepseek-v4.1-flash": 10,
+    "text/qwen3.8-max": 30,
+    "text/qwen3.8-flash": 10,
+    "text/qwen3.7-plus": 20,
+    "text/qwen3.7-flash": 10,
+    "text/deepseek-v4-pro": 20,
+    "text/glm-5": 20,
+    "text/kimi-k2.5": 20,
+  };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
-  const creditsPerUnit = imagePricing ? Math.max(...Object.values(imageSizeCredits)) : model.mediaType === "video" ? 30 : model.mediaType === "image" ? 20 : 1;
-  const constraints = imagePricing ? { sizeTiers: imageSizeCredits } : {};
+  const imagePremiumPricing = model.mediaType === "image" && model.modelId === "gpt-image-2.5-sunburst";
+  const resolutionTiers = model.mediaType === "video" ? videoPricing[model.modelId] : undefined;
+  const constraints = imagePricing || imagePremiumPricing
+    ? { sizeTiers: imagePremiumPricing ? { "1K": 4, "2K": 6, "4K": 7 } : imageSizeCredits }
+    : resolutionTiers ? { resolutionTiers } : {};
+  const creditsPerUnit = imagePricing ? 6 : imagePremiumPricing ? 7 : resolutionTiers ? Math.max(...Object.values(resolutionTiers)) : model.mediaType === "image" ? 4 : model.mediaType === "text" ? (textCredits[model.modelId] ?? 10) : 1;
   const unit = model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "10k_chars";
-  await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints, createdAt: now, updatedAt: now })
-    .onDuplicateKeyUpdate({ set: { unit, creditsPerUnit, constraints, updatedAt: now } });
+  await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints, createdAt: now, updatedAt: now });
 }
 
 console.log(`开发 seed 完成：${email}，Team=${teamId}，已写入 ${platformModelCatalog.length} 个平台模型和默认价格簿。密码来自 SEED_ADMIN_PASSWORD。`);

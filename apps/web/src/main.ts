@@ -2,6 +2,7 @@ import { createApp, h, nextTick } from "vue";
 import { uiThemeProvider, uiButton } from "@omnistudio-next/ui";
 import "@omnistudio-next/ui/styles";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
+import markUrl from "@omnistudio-next/assets/omniStudioNextMark.svg";
 import { createPinia } from "pinia";
 import { createPersistedState } from "pinia-plugin-persistedstate";
 import appRoot from "./App.vue";
@@ -17,6 +18,11 @@ import { settingsStorage } from "@/stores/settings";
 import { checkDesktopUpdate } from "@/stores/desktopUpdate";
 
 const app = createApp(appRoot);
+const favicon = document.createElement("link");
+favicon.rel = "icon";
+favicon.type = "image/svg+xml";
+favicon.href = markUrl;
+document.head.appendChild(favicon);
 const isDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
 const requiresWebView2Update = isDesktop && /Windows/i.test(navigator.userAgent)
   && [Map.groupBy, URL.canParse, Promise.withResolvers].some(method => typeof method !== "function");

@@ -1,11 +1,10 @@
 import { z } from "zod";
 import type { ToolDefinition, ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
-import { audioGenerationSchema, imageGenerationSchema, listMediaModelsSchema, videoGenerationSchema } from "./runtime";
+import { imageGenerationSchema, listMediaModelsSchema, videoGenerationSchema } from "./runtime";
 
-const configSchema = z.strictObject({
+const configSchema = z.object({
   allowImage: z.boolean().default(true),
   allowVideo: z.boolean().default(true),
-  allowAudio: z.boolean().default(true),
 });
 
 const plugin: ToolPlugin = {
@@ -16,13 +15,12 @@ const plugin: ToolPlugin = {
     const generationTools = ([
       { name: "generateImage", mediaType: "image", enabled: permissions.allowImage, label: "生成图片", parameters: imageGenerationSchema, description: "根据提示词和可选的工作区参考图生成图片。" },
       { name: "generateVideo", mediaType: "video", enabled: permissions.allowVideo, label: "生成视频", parameters: videoGenerationSchema, description: "根据提示词和可选的工作区图片、视频、音频、首尾帧生成视频。按模型能力设置生成模式、时长、分辨率和音频。" },
-      { name: "generateAudio", mediaType: "audio", enabled: permissions.allowAudio, label: "生成音频", parameters: audioGenerationSchema, description: "根据文本或提示词和可选的工作区参考音频生成音频。按模型能力设置音色、语速、音量和格式。" },
     ] as const).filter(operation => operation.enabled);
     if (!generationTools.length) return [];
     const listTool: ToolDefinition = {
       name: "listMediaModels",
       label: "查询媒体模型",
-      description: "查询已允许生成的媒体模型，返回 providerId、modelId、类型、模式及支持的画幅、时长、分辨率或音色。生成前先查询，不能猜测模型 ID。",
+      description: "查询已允许生成的媒体模型，返回 providerId、modelId、类型、模式及支持的画幅、时长、分辨率和原生音频能力。生成前先查询，不能猜测模型 ID。",
       parameters: z.toJSONSchema(listMediaModelsSchema, { io: "input", target: "draft-07" }),
       async execute(_id, params, signal) {
         listMediaModelsSchema.parse(params);
@@ -43,7 +41,7 @@ const plugin: ToolPlugin = {
         const result = await media[operation.name](operation.parameters.parse(params), signal);
         const text = result.map(asset => {
           const url = asset.path.replaceAll("\\", "/").split("/").map(encodeURIComponent).join("/");
-          const preview = asset.mediaType === "image" ? `![生成图片](<${url}>)` : `[${asset.mediaType === "audio" ? "播放生成音频" : "查看生成视频"}](<${url}>)`;
+          const preview = asset.mediaType === "image" ? `![生成图片](<${url}>)` : `[查看生成视频](<${url}>)`;
           return `${preview}\n工作区文件：${asset.path}`;
         }).join("\n\n");
         return { content: [{ type: "text", text }], details: result };

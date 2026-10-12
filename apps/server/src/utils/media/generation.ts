@@ -159,7 +159,7 @@ export async function generateMedia(
   const reserved = await reserveGeneration({
     userId: account.userId, providerId: request.providerId, modelId: request.modelId, mediaType,
     units: mediaType === "video" ? Math.max(1, request.duration ?? 1) : mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1,
-    size: mediaType === "image" ? request.size : undefined,
+    size: mediaType === "image" ? request.size : mediaType === "video" ? request.resolution : undefined,
     idempotencyKey: nextGenerationKey(billing?.idempotencyKey),
     requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, request },
   });

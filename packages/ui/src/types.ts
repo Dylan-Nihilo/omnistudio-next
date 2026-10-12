@@ -4,7 +4,7 @@ export type UiValue = string | number | boolean;
 export type UiTone = "neutral" | "success" | "warning" | "error";
 export type UiContent = string | VNodeChild | (() => VNodeChild);
 export type UiPlacement = "top" | "bottom" | "left" | "right" | "top-start" | "top-end" | "bottom-start" | "bottom-end" | "left-start" | "left-end" | "right-start" | "right-end";
-export type UiOption = { value: UiValue; label: string; disabled?: boolean; group?: string; icon?: Component };
+export type UiOption = { value: UiValue; label: string; disabled?: boolean; group?: string; icon?: Component; iconProps?: Record<string, unknown> };
 export type UiDropdownApi = { open: (last?: boolean) => Promise<void>; close: () => void };
 export type UiMenuItem = UiOption & { divided?: boolean; children?: UiMenuItem[] };
 export type UiColumn = {
