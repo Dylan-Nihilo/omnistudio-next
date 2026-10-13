@@ -22,6 +22,7 @@ import * as teams from "@/utils/teams";
 import * as a2aSettings from "@/agent/a2a/settings";
 import * as personalization from "@/utils/personalization";
 import * as mentionFiles from "@/agent/mentionFiles";
+import * as demos from "@/utils/demos";
 
 export default {
   assets,
@@ -49,4 +50,5 @@ export default {
   a2aSettings,
   personalization,
   mentionFiles,
+  demos,
 };
