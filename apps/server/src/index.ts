@@ -18,6 +18,7 @@ const app = await createApp({
   // agentsRoot: resolve(appDirectory, "build/agents"),
   providersRoot: resolve(appDirectory, fromSource ? "packages/providers/src" : "build/providers"),
   skillsRoot: resolve(appDirectory, fromSource ? "packages/skills" : "build/skills"),
+  pluginRevision: process.env.OMNISTUDIO_NEXT_PLUGIN_REVISION,
 });
 const { initializeMcpRuntime } = await import("./utils/mcp/runtime");
 app.listen(realPort, process.env.NODE_ENV === "dev" ? "127.0.0.1" : "0.0.0.0", async () => {

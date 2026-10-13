@@ -15,6 +15,7 @@ RUN chmod +x /usr/local/bin/bun && mkdir -p /app/data/workspaces/myProject
 
 ENV NODE_ENV=production
 ENV OMNISTUDIO_NEXT_DATA_DIR=/app/data
+ENV OMNISTUDIO_NEXT_PLUGIN_REVISION=$buildCommit
 
 EXPOSE 3000
 CMD ["/usr/local/bin/bun", "build/server/index.js"]
