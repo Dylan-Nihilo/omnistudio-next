@@ -2,7 +2,7 @@
 
 登录后的首页展示《拼回去》第一集，可以观看成片或打开制作画布。
 
-样板资源保存在持久化数据目录的 `demos/admissionCounterattack/`，与应用镜像分别部署。该目录包含 `episodeOne.json`、`demoSource.json`（`{"id":"admissionCounterattack"}`）以及画布引用的相对路径素材。封面为 `assets/demoCover/cover.webp`，成片为 `assets/d37fdb2d-4b99-461b-ae29-cf6775945f85/episodeOneFinalV1.mp4`。资源缺失时首页不展示 Demo；不将私人成本账本、账户配置或供应商账单包含在样板中。
+样板资源保存在持久化数据目录的 `demos/admissionCounterattack/`，与应用镜像分别部署。该目录包含 `episodeOne.json`、`demoSource.json`（`{"id":"admissionCounterattack"}`）以及画布引用的相对路径素材。横版封面为 `assets/demoCover/coverLandscape.webp`，成片为 `assets/d37fdb2d-4b99-461b-ae29-cf6775945f85/episodeOneFinalV1.mp4`。资源缺失时首页不展示 Demo；不将私人成本账本、账户配置或供应商账单包含在样板中。
 
 `GET /api/demos/get` 返回合集；`GET /api/demos/file` 提供封面和支持 Range 的视频。接口沿用现有登录权限，写入接口同时沿用 CSRF 校验。
 
