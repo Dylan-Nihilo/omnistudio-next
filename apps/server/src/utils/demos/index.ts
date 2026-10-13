@@ -14,7 +14,7 @@ const demo = {
   meta: "真人短剧 · 第一集 · 2分45秒",
 };
 const mediaPaths = {
-  cover: "assets/demoCover/cover.webp",
+  cover: "assets/demoCover/coverLandscape.webp",
   video: "assets/d37fdb2d-4b99-461b-ae29-cf6775945f85/episodeOneFinalV1.mp4",
 };
 
@@ -38,7 +38,7 @@ export async function list() {
     await getMedia(demo.id, "video");
     const directory = await getDirectory(demo.id);
     await stat(resolve(directory, "episodeOne.json"));
-    return [{ ...demo, coverUrl: `/api/demos/file?id=${demo.id}&kind=cover`, videoUrl: `/api/demos/file?id=${demo.id}&kind=video` }];
+    return [{ ...demo, coverUrl: `/api/demos/file?id=${demo.id}&kind=cover&version=landscape`, videoUrl: `/api/demos/file?id=${demo.id}&kind=video` }];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;

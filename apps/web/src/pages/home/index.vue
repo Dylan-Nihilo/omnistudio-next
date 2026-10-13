@@ -316,9 +316,9 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
     .demoCollection {
       .demoHeader { margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } }
       .demoCard {
-        display: grid; grid-template-columns: 220px minmax(0, 1fr); max-width: 900px; min-height: 390px; overflow: hidden;
+        display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); max-width: 1000px; overflow: hidden;
         border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle);
-        .demoCover { display: block; width: 220px; height: 390px; object-fit: cover; }
+        .demoCover { display: block; width: 100%; height: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
         .demoContent {
           display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 32px 40px; min-width: 0;
           .demoMeta { color: var(--uiTextMuted); font-size: var(--uiFontControl); }
@@ -326,9 +326,10 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
           p { margin: 0; color: var(--uiTextSecondary); font-size: var(--uiFontBody); }
           .demoActions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
         }
-        @media (max-width: 620px) {
+        @media (max-width: 1000px) {
           grid-template-columns: minmax(0, 1fr);
-          .demoCover { width: 100%; height: 420px; object-fit: contain; background: #111; }
+          max-width: 640px;
+          .demoCover { height: auto; }
           .demoContent { padding: 26px; h3 { font-size: 30px; } }
         }
       }
