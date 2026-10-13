@@ -1,6 +1,6 @@
 export const platformProviders = [
   { providerId: "kaizoText", apiUrl: "https://kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "OPENAI_API_KEY", config: { baseUrl: "https://kaizo.top/v1" } },
-  { providerId: "kaizoClaude", apiUrl: "https://kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "KAIZO_CLAUDE_API_KEY", config: { baseUrl: "https://kaizo.top/v1" } },
+  { providerId: "kaizoClaude", apiUrl: "https://kaizo.top", protocol: "anthropic-messages" as const, secretRef: "KAIZO_CLAUDE_API_KEY", config: { baseUrl: "https://kaizo.top" } },
   { providerId: "openheapImage", apiUrl: "https://openheapstack.com/v1", protocol: "openai-completions" as const, secretRef: "OPENHEAP_IMAGE_API_KEY", config: { baseUrl: "https://openheapstack.com/v1" } },
   { providerId: "jojokey", apiUrl: "https://video.jojokey.com/v1", protocol: "openai-completions" as const, secretRef: "JOJOKEY_API_KEY", config: { baseUrl: "https://video.jojokey.com/v1" } },
   { providerId: "dashscope", apiUrl: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", protocol: "openai-completions" as const, secretRef: "DASHSCOPE_API_KEY", config: {} },

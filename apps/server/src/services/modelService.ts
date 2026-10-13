@@ -43,7 +43,8 @@ export async function getPlatformModel(providerId: string, modelId: string, medi
   const apiKey = await readPlatformSecret(providerId) ?? (secretRef ? process.env[secretRef]?.trim() : "");
   if (!apiKey) invalid("平台模型凭证未配置", 503);
   const baseUrl = new URL(config.apiUrl);
-  if (baseUrl.pathname === "/") baseUrl.pathname = "/v1";
+  if (config.protocol === "anthropic-messages") baseUrl.pathname = baseUrl.pathname.replace(/\/v1\/?$/, "/");
+  else if (baseUrl.pathname === "/") baseUrl.pathname = "/v1";
   return {
     provider: { apiUrl: config.apiUrl, apiKey, protocol: config.protocol, models: [{ id: model.modelId, label: model.label }] },
     model: { id: model.apiModelId || model.modelId, label: model.label, contextWindow: 262144, maxOutputTokens: 32768 },
