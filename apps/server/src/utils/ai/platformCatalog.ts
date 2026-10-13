@@ -1,4 +1,5 @@
 export const platformProviders = [
+  { providerId: "utoooSeedance", apiUrl: "https://ai-gateway.utooo.com", protocol: "openai-completions" as const, secretRef: "UTOOO_SEEDANCE_API_KEY", config: { baseUrl: "https://ai-gateway.utooo.com" } },
   { providerId: "kaizoText", apiUrl: "https://kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "OPENAI_API_KEY", config: { baseUrl: "https://kaizo.top/v1" } },
   { providerId: "kaizoClaude", apiUrl: "https://kaizo.top", protocol: "anthropic-messages" as const, secretRef: "KAIZO_CLAUDE_API_KEY", config: { baseUrl: "https://kaizo.top" } },
   { providerId: "openheapImage", apiUrl: "https://openheapstack.com/v1", protocol: "openai-completions" as const, secretRef: "OPENHEAP_IMAGE_API_KEY", config: { baseUrl: "https://openheapstack.com/v1" } },
@@ -8,6 +9,9 @@ export const platformProviders = [
 ];
 
 export const platformModelCatalog: Array<{ providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video"; apiModelId?: string; capabilities?: Record<string, boolean>; sortOrder: number }> = [
+  { providerId: "utoooSeedance", modelId: "doubao-seedance-2-5-260628", label: "Seedance 2.5", mediaType: "video", sortOrder: 180 },
+  { providerId: "utoooSeedance", modelId: "doubao-seedance-2-0-260128", label: "Seedance 2.0", mediaType: "video", sortOrder: 190 },
+  { providerId: "utoooSeedance", modelId: "doubao-seedance-2-0-fast-260128", label: "Seedance 2.0 Fast", mediaType: "video", sortOrder: 195 },
   { providerId: "kaizoText", modelId: "text/gpt-5.6-sol", apiModelId: "gpt-5.6-sol", label: "高级模型", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 60 },
   { providerId: "kaizoClaude", modelId: "text/claude-opus-5", apiModelId: "claude-opus-5", label: "极致模型", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 70 },
   { providerId: "dashscope", modelId: "text/qwen3.7-plus", apiModelId: "qwen3.7-plus", label: "通用模型", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 40 },

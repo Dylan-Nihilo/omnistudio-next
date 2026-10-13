@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getDatabase } from "@/db/database";
 import { auditEvents, platformModels, platformProviderConfigs, platformSecrets, priceBookVersions, pricingItems, pricingSettings, providerHealth } from "@/db/schema";
 import { requireRootAccount } from "@/utils/accountContext";
-import { encryptPlatformSecret } from "@/utils/platformSecrets";
+import { encryptPlatformSecret, maskApiKey, readPlatformSecret } from "@/utils/platformSecrets";
 import { platformModelCatalog, platformProviders } from "@/utils/ai/platformCatalog";
 import { getMediaProvider, listMediaProviders } from "@/utils/media/provider";
 
@@ -41,8 +41,28 @@ export async function getPlatformConfiguration() {
   const [version] = pricing?.activePriceBookVersionId ? await database.select().from(priceBookVersions).where(eq(priceBookVersions.id, pricing.activePriceBookVersionId)).limit(1) : [];
   const prices = version ? await database.select().from(pricingItems).where(eq(pricingItems.priceBookVersionId, version.id)) : [];
   const mediaProviders = await listMediaProviders();
+  const providersWithSecrets = await Promise.all(
+    providers.map(async provider => {
+      let secret: string | undefined;
+      if (secretIds.has(provider.providerId)) {
+        try { secret = await readPlatformSecret(provider.providerId); }
+        catch {}
+      } else if (provider.secretRef && process.env[provider.secretRef]?.trim()) {
+        secret = process.env[provider.secretRef]?.trim();
+      }
+      const maskedApiKey = maskApiKey(secret);
+      return {
+        id: provider.id,
+        providerId: provider.providerId,
+        enabled: Boolean(provider.enabled),
+        config: provider.config,
+        apiKeyConfigured: Boolean(maskedApiKey) || secretIds.has(provider.providerId) || Boolean(provider.secretRef && process.env[provider.secretRef]?.trim()),
+        maskedApiKey,
+      };
+    })
+  );
   return {
-    providers: providers.map(provider => ({ id: provider.id, providerId: provider.providerId, enabled: Boolean(provider.enabled), config: provider.config, apiKeyConfigured: secretIds.has(provider.providerId) || Boolean(provider.secretRef && process.env[provider.secretRef]?.trim()) })),
+    providers: providersWithSecrets,
     models, prices, priceVersion: version?.version ?? null,
     mediaProviders: mediaProviders.map(provider => ({ id: provider.id, label: provider.label, models: provider.models })),
   };

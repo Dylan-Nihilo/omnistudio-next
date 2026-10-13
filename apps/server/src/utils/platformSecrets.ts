@@ -40,3 +40,23 @@ export function encryptPlatformSecret(value: string) {
   const ciphertext = `v1:${nonce.toString("hex")}:${cipher.getAuthTag().toString("hex")}:${encrypted.toString("hex")}`;
   return ciphertext;
 }
+
+export function maskApiKey(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^sk-/i.test(trimmed)) {
+    const prefix = trimmed.slice(0, 7);
+    if (trimmed.length > 11) {
+      return `${prefix}******${trimmed.slice(-4)}`;
+    }
+    return `${trimmed.slice(0, 4)}****${trimmed.slice(-2)}`;
+  }
+  if (trimmed.length >= 10) {
+    return `${trimmed.slice(0, 4)}******${trimmed.slice(-4)}`;
+  }
+  if (trimmed.length >= 6) {
+    return `${trimmed.slice(0, 2)}****${trimmed.slice(-2)}`;
+  }
+  return `${trimmed.slice(0, 1)}****${trimmed.slice(-1)}`;
+}
