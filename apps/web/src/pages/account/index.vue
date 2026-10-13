@@ -1,6 +1,6 @@
 <template>
   <accountShell title="个人账户" eyebrow="我的空间" description="项目、资产和积分属于你的个人账户。团队协作不合并积分余额。">
-    <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton><uiButton variant="ghost" :disabled="busy" @click="auth.signOut()">退出登录</uiButton></template>
+    <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton></template>
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <div class="balanceSummary" aria-label="个人积分余额"><div><span>可用积分</span><strong>{{ wallet?.available.toLocaleString() ?? '—' }}</strong></div><div><span>冻结积分</span><strong>{{ wallet?.frozen.toLocaleString() ?? '—' }}</strong></div><div><span>总余额</span><strong>{{ wallet?.total.toLocaleString() ?? '—' }}</strong></div></div>
     <div class="accountForms">

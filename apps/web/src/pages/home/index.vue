@@ -12,6 +12,16 @@
         <uiButton v-if="auth.isRoot" class="navigationItem" variant="ghost" :icon="IconShieldLock" @click="router.push('/admin')">平台管理</uiButton>
         <uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton class="navigationItem" variant="ghost" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</uiButton></uiBadge>
       </nav>
+      <div class="accountIdentity">
+        <div class="identityHeader">
+          <div class="identityUser">
+            <span class="identityName" :title="auth.user?.displayName">{{ auth.user?.displayName }}</span>
+            <span v-if="auth.isRoot" class="rootBadge">root</span>
+          </div>
+          <uiIconButton variant="ghost" size="small" :icon="IconLogout" label="退出登录" title="退出登录" class="logoutButton" @click="handleSignOut" />
+        </div>
+        <span class="identityEmail" :title="auth.user?.email">{{ auth.user?.email }}</span>
+      </div>
     </aside>
     <main class="homeContent">
       <header class="homeHeader"><span>创作工作台</span></header>
@@ -91,13 +101,14 @@ import axios from "axios";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, uiDialog, uiMediaPlayer, useUiFeedback } from "@omnistudio-next/ui";
+import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, uiDialog, uiMediaPlayer, useUiFeedback, isUiCancelledError } from "@omnistudio-next/ui";
 import {
   IconSettings, IconUserCircle, IconUsersGroup, IconShieldLock,
   IconArrowUp, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
   IconTrash, IconFolderPlus, IconFolderOpen, IconPlayerPlay,
+  IconLogout,
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
@@ -131,6 +142,20 @@ const demos = ref<Demo[]>([]);
 const selectedDemo = ref<Demo>();
 const demoPreviewVisible = ref(false);
 const demoVideoUrl = computed(() => selectedDemo.value?.videoUrl ?? "");
+
+async function handleSignOut() {
+  try {
+    const accountName = auth.user?.displayName || auth.user?.email || "当前账户";
+    await feedback.confirm(`确定退出当前账户「${accountName}」？`, "退出登录", {
+      danger: true,
+      confirmButtonText: "退出登录",
+      cancelButtonText: "取消",
+    });
+    await auth.signOut();
+  } catch (error) {
+    if (!isUiCancelledError(error)) throw error;
+  }
+}
 
 onMounted(async () => {
   try {
@@ -281,13 +306,29 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
 
 <style lang="scss" scoped>
 .home {
-  display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
+  display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
   .homeSidebar {
     position: sticky; top: 0; display: flex; flex-direction: column; gap: 36px; height: 100dvh; min-width: 0; padding: 20px 16px 28px; border-right: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle);
     .homeBrand { display: block; margin: 0 4px; img { display: block; width: 100%; height: auto; border-radius: 8px; } }
     .mainNavigation, .secondaryNavigation { display: flex; flex-direction: column; gap: 10px; }
     .secondaryNavigation { margin-top: auto; :deep(.uiBadge) { width: 100%; } }
     .navigationItem { width: 100%; justify-content: flex-start; min-height: 40px; padding-inline: 12px; &.isSelected { color: var(--uiActionPrimary); background: var(--uiActionSoft); } }
+    .accountIdentity {
+      display: flex; flex-direction: column; gap: 4px; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault); min-width: 0;
+      .identityHeader {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0;
+        .identityUser {
+          display: flex; align-items: center; gap: 6px; min-width: 0;
+          .identityName { font-size: var(--uiFontControl); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .rootBadge { flex-shrink: 0; width: fit-content; padding: 1px 5px; border: 1px solid var(--uiBorderDefault); border-radius: 4px; color: var(--uiActionPrimary); font-size: 11px; }
+        }
+        .logoutButton {
+          flex-shrink: 0; color: var(--uiTextMuted);
+          &:hover { color: var(--uiStatusError); background: var(--uiStatusErrorSoft); }
+        }
+      }
+      .identityEmail { display: block; width: 100%; color: var(--uiTextMuted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
+    }
   }
   .homeContent {
     display: flex; flex-direction: column; gap: clamp(32px, 4dvh, 56px); min-width: 0; min-height: 100dvh;
@@ -336,6 +377,6 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
     }
   }
   @media (max-width: 1200px) { grid-template-columns: 176px minmax(0, 1fr); .homeSidebar { padding-inline: 12px; } .homeContent { padding-inline: 32px; .creationPanel { min-height: 480px; .heroArtwork { width: 62%; right: -20px; opacity: 0.65; } .creationContent { width: min(100%, 640px); } } } }
-  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); .homeSidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); .homeBrand { width: 140px; margin: 0; } .mainNavigation, .secondaryNavigation { flex-direction: row; gap: 4px; margin: 0; .navigationItem { width: auto; padding-inline: 8px; } } } .homeContent { padding: 24px 20px 40px; .creationPanel { min-height: 460px; .heroArtwork { width: 78%; opacity: 0.35; } } .projectList .projectItems.listView .projectCard { grid-template-columns: 1fr; gap: 14px; .projectTime { max-width: none; } } } }
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); .homeSidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); .homeBrand { width: 140px; margin: 0; } .mainNavigation, .secondaryNavigation { flex-direction: row; gap: 4px; margin: 0; .navigationItem { width: auto; padding-inline: 8px; } } .accountIdentity { width: 100%; padding-top: 10px; margin-top: 4px; } } .homeContent { padding: 24px 20px 40px; .creationPanel { min-height: 460px; .heroArtwork { width: 78%; opacity: 0.35; } } .projectList .projectItems.listView .projectCard { grid-template-columns: 1fr; gap: 14px; .projectTime { max-width: none; } } } }
 }
 </style>
