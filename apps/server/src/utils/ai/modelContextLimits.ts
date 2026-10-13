@@ -48,6 +48,7 @@ const modelContextLimits: { id: string | RegExp; contextWindow: number; maxToken
   // https://help.aliyun.com/zh/model-studio/qwen3-5-27b
   { id: "qwen3.5-plus", contextWindow: 1000000, maxTokens: 65536 },
   { id: "qwen3.5-plus-2026-04-20", contextWindow: 1000000, maxTokens: 65536 },
+  { id: "qwen3.7-plus", contextWindow: 1000000, maxTokens: 65536 },
   { id: "qwen3.5-397b-a17b", contextWindow: 262144, maxTokens: 65536 },
   { id: "qwen3.5-35b-a3b", contextWindow: 262144, maxTokens: 65536 },
   { id: "qwen3.5-27b", contextWindow: 262144, maxTokens: 65536 },

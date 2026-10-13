@@ -23,7 +23,7 @@ export const providerSchema = z.object({
 });
 
 const builtinModels = getBuiltinProviders().flatMap(provider => getBuiltinModels(provider));
-const providerDisplayNames: Record<string, string> = { kaizoText: "高级模型", kaizoClaude: "极致模型", dashscope: "标准模型" };
+const providerDisplayNames: Record<string, string> = { kaizoText: "高级模型", kaizoClaude: "极致模型", dashscope: "百炼模型" };
 
 export function getModelLimits(providerId: string, model: z.infer<typeof providerSchema>["models"][number]) {
   const limits = modelContextLimits.find(item => item.id === model.id)

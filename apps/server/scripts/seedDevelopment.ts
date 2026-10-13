@@ -74,20 +74,23 @@ for (const model of platformModelCatalog) {
   // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
   const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
   const videoPricing: Record<string, Record<string, number>> = {
-    "seedance-2.0-mini": { "480p": 9, "720p": 19 },
-    "seedance-2.0-fast": { "480p": 15, "720p": 31 },
-    "seedance-2.0": { "480p": 18, "720p": 38, "1080p": 86 },
-    "seedance-2.5": { "480p": 32, "720p": 68, "1080p": 153 },
-    "minimax-h3": { "720P": 9, "960P": 13, "2K": 18 },
+    "jojokey:seedance-2.0-mini": { "480p": 9, "720p": 19 },
+    "jojokey:seedance-2.0-fast": { "480p": 15, "720p": 31 },
+    "jojokey:seedance-2.0": { "480p": 18, "720p": 38, "1080p": 86 },
+    "jojokey:seedance-2.5": { "480p": 32, "720p": 68, "1080p": 153 },
+    "jojokey:minimax-h3": { "720P": 9, "960P": 13, "2K": 18 },
+    "dashscopeVideo:minimax-h3": { "768P": 9, "2K": 18 },
   };
   const textCredits: Record<string, number> = {
     "text/gpt-5.6-sol": 1,
     "text/deepseek-v4.1-flash": 0.5,
+    "text/qwen3.7-plus": 0.5,
+    "text/glm-5": 1,
     "text/claude-opus-5": 1.5,
   };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
   const imagePremiumPricing = model.mediaType === "image" && model.modelId === "gpt-image-2.5-sunburst";
-  const resolutionTiers = model.mediaType === "video" ? videoPricing[model.modelId] : undefined;
+  const resolutionTiers = model.mediaType === "video" ? videoPricing[`${model.providerId}:${model.modelId}`] : undefined;
   const constraints = imagePricing || imagePremiumPricing
     ? { sizeTiers: imagePremiumPricing ? { "1K": 4, "2K": 6, "4K": 7 } : imageSizeCredits }
     : resolutionTiers ? { resolutionTiers } : {};

@@ -3,11 +3,11 @@
     <uiPopover v-model:visible="visible" placement="top-start" :width="340" :offset="10" :disabled="disabled">
       <template #reference="{ triggerAttrs }">
         <uiButton class="modelButton" variant="ghost" size="small" :disabled="disabled" v-bind="triggerAttrs" aria-label="模型与推理设置">
-          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="14" /><span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
+          <span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
         </uiButton>
       </template>
       <div class="modelOptions">
-        <uiField label="模型"><template #default="{ id }"><div class="modelSelection"><modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :size="18" /><uiSelect :id="id" :modelValue="selectedModel" :options="modelOptions" filterable :disabled="disabled" placeholder="选择模型" aria-label="选择模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (selectedModel = value)" /></div></template></uiField>
+        <uiField label="模型"><template #default="{ id }"><div class="modelSelection"><uiSelect :id="id" :modelValue="selectedModel" :options="modelOptions" filterable :disabled="disabled" placeholder="选择模型" aria-label="选择模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (selectedModel = value)" /></div></template></uiField>
         <uiField label="推理等级"><uiRadioGroup :modelValue="reasoningEffort" :options="reasoningOptions" :disabled="disabled" variant="segmented" block aria-label="推理等级" @update:modelValue="value => typeof value === 'string' && (reasoningEffort = value)" /></uiField>
       </div>
     </uiPopover>
@@ -18,7 +18,6 @@
 import { computed, ref, watch } from "vue";
 import { IconChevronDown } from "@tabler/icons-vue";
 import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@omnistudio-next/ui";
-import { modelIcon } from "@omnistudio-next/model-icons";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 
 const selectedModel = defineModel<string>({ default: "" });
@@ -33,7 +32,7 @@ const reasoningOptions = [
 ];
 const platformModels = usePlatformModelsStore();
 const modelChoices = computed(() => platformModels.modelChoices);
-const modelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: model.label, group: model.providerLabel, icon: modelIcon, iconProps: { model: model.modelId, size: 18 } })));
+const modelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: model.label })));
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const reasoningLabel = computed(() => reasoningOptions.find(item => item.value === reasoningEffort.value)?.label ?? "默认");
 watch(selectedModel, () => { reasoningEffort.value = ""; });
