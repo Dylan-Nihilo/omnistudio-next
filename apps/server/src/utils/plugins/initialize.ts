@@ -42,8 +42,8 @@ export default async function initializePlugins(targetDirectory: string, sourceD
   for (const file of files) {
     const source = resolve(sourceDirectory, file.name);
     const target = resolve(targetDirectory, file.name);
-    if (effectiveRevision === undefined) {
-      await cp(source, target, { recursive: true, force: false });
+    if (file.isDirectory()) {
+      await cp(source, target, { recursive: true, force: true });
       continue;
     }
     // ACT: 版本同步仅覆盖节点和工具单文件；同目录 rename 保留失败时的旧文件。
