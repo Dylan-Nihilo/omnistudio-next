@@ -187,7 +187,7 @@ jobs:
             docker logs --tail 100 "$appContainer" || true
             false
           fi
-          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names' <<'SQL'
+          docker exec -i "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names' <<'SQL'
           INSERT INTO platform_provider_configs (id, provider_id, enabled, config, secret_ref, created_at, updated_at)
           VALUES (UUID(), 'utoooSeedance', 1, JSON_OBJECT('apiUrl', 'https://ai-gateway.utooo.com', 'baseUrl', 'https://ai-gateway.utooo.com', 'protocol', 'openai-completions'), 'UTOOO_SEEDANCE_API_KEY', UTC_TIMESTAMP(), UTC_TIMESTAMP())
           ON DUPLICATE KEY UPDATE enabled = 1, config = VALUES(config), secret_ref = VALUES(secret_ref), updated_at = UTC_TIMESTAMP();
@@ -205,7 +205,7 @@ jobs:
             (UUID(), @priceBookId, 'utoooSeedance', 'doubao-seedance-2-0-260128', 'video', 'second', 86.0, JSON_OBJECT('resolutionTiers', JSON_OBJECT('480p', 18, '720p', 38, '1080p', 86)), UTC_TIMESTAMP(), UTC_TIMESTAMP())
           ON DUPLICATE KEY UPDATE unit = VALUES(unit), credits_per_unit = VALUES(credits_per_unit), constraints = VALUES(constraints), updated_at = UTC_TIMESTAMP();
           SQL
-          enabledCount=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM platform_models m JOIN platform_provider_configs p ON p.provider_id=m.provider_id WHERE m.provider_id=\"utoooSeedance\" AND m.enabled=1 AND p.enabled=1 AND m.model_id IN (\"doubao-seedance-2-5-260628\",\"doubao-seedance-2-0-260128\")"')
+          enabledCount=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM platform_models m JOIN platform_provider_configs p ON p.provider_id=m.provider_id WHERE m.provider_id=0x75746f6f6f53656564616e6365 AND m.enabled=1 AND p.enabled=1 AND m.model_id IN (0x646f7562616f2d73656564616e63652d322d352d323630363238,0x646f7562616f2d73656564616e63652d322d302d323630313238)"')
           if [ "$enabledCount" != 2 ]; then
             echo "Unexpected enabled Seedance model count: $enabledCount"
             false
