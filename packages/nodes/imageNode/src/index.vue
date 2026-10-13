@@ -6,7 +6,7 @@
     :downloadUrl="previewUrl"
     :downloadName="outputFile?.url.split(/[\\/]/).at(-1)"
     @fullscreen="previewVisible = true"
-    :style="{ width: previewUrl && imageWidth ? `${imageWidth + 18}px` : undefined }">
+    :style="{ width: previewUrl && imageWidth ? `${Math.max(260, imageWidth + 18)}px` : undefined }">
     <template #topActions>
       <uiIconButton
         :icon="IconTransfer"
@@ -104,7 +104,7 @@ nodeTools.register({
 async function resizeImage(event: Event) {
   const image = event.currentTarget as HTMLImageElement;
   if (!image.naturalWidth || !image.naturalHeight) return;
-  imageWidth.value = 240 * image.naturalWidth / image.naturalHeight;
+  imageWidth.value = Math.max(242, (240 * image.naturalWidth) / image.naturalHeight);
   await nextTick();
   updateNodeInternals();
 }

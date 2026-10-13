@@ -1,6 +1,6 @@
 <template>
   <nodeSkeleton v-bind="nodeProps" v-model:bottomVisible="node.selected" :topVisible="node.selected" topWidth="max-content" :downloadUrl="downloadUrl" :downloadName="`${nodeProps.label || '文本'}.txt`" :bottomWidth="660" @fullscreen="fullscreen = true; editing = true">
-    <div class="textContent" :class="{ empty: !outputs.text.value.trim() }"><div v-if="outputs.text.value.trim()" class="textPreview nopan nowheel" aria-label="文本内容">{{ outputs.text.value }}</div><uiButton class="editButton nodrag nopan" variant="ghost" size="small" :icon="IconEdit" :disabled="generating || !textReady" @dblclick.stop @click.stop="editing = true">编辑</uiButton></div>
+    <div class="textContent" :class="{ empty: !hasText }"><div v-if="hasText" class="textPreview nopan nowheel" aria-label="文本内容">{{ outputs.text.value }}</div><uiButton class="editButton nodrag nopan" variant="ghost" size="small" :icon="IconEdit" :disabled="generating || !textReady" @dblclick.stop @click.stop="editing = true">编辑</uiButton></div>
     <template #bottom><section class="promptCard"><div v-if="refList.length" class="promptHeader"><referenceItem v-model="refList" @preview="setReferencePreview" @remove="removeReference" /></div><promptInput v-model="promptModel" v-model:text="prompt" :references="referenceMentions" /><div class="promptFooter"><div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="visible => visible && loadModels()" /></div><uiIconButton :icon="IconArrowUp" variant="primary" :loading="generating" :disabled="!prompt.trim() || !selectedModel || generating || !textReady" label="生成" title="生成" @click="generateText" /></div></section></template>
   </nodeSkeleton>
   <uiDialog v-model="editing" title="编辑文本" :width="860" :fullscreen="fullscreen" @closed="fullscreen = false"><uiTextarea class="textEditor" :class="{ fullscreen }" v-model="outputs.text.value" :rows="1" :disabled="generating" resize="none" aria-label="编辑文本内容" /></uiDialog>
@@ -47,7 +47,14 @@ const model = computed({ get: () => data.value.model ?? "", set: (value: string)
 const models = ref<NodeAiModel[]>([]);
 const modelsLoading = ref(false);
 const generating = ref(false);
+const hasText = computed(() => Boolean(outputs.value?.text?.value && outputs.value.text.value.trim()));
 const selectedModel = computed(() => models.value.find(item => JSON.stringify([item.providerId, item.modelId]) === model.value));
+watch(models, (items) => {
+  if (items.length && (!model.value || !selectedModel.value)) {
+    const first = items[0];
+    model.value = first ? JSON.stringify([first.providerId, first.modelId]) : "";
+  }
+}, { immediate: true });
 const modelGroups = computed(() => groupNodeModels(models.value));
 const textReady = ref(false);
 const textPath = `assets/${node.id}/content.md`;
@@ -175,18 +182,20 @@ nodeTools.register({
 <style lang="scss" scoped>
 .textEditor { height: min(560px, calc(100dvh - 176px)); line-height: 1.8; &.fullscreen { height: calc(100dvh - 144px); } }
 .textContent {
+  display: flex;
+  flex-direction: column;
   min-height: 144px;
+  width: 100%;
   &.empty {
-    display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
     min-height: 144px;
     .editButton {
-      margin: 0;
+      margin: auto;
     }
   }
   .textPreview {
+    flex: 1;
     min-height: 110px;
     max-height: 240px;
     overflow: auto;
@@ -200,6 +209,8 @@ nodeTools.register({
   &:not(.empty) .editButton {
     display: flex;
     margin-left: auto;
+    margin-top: 8px;
+    align-self: flex-end;
   }
 }
 .promptCard { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover); .promptHeader { display: flex; align-items: flex-start; gap: 12px; } .promptFooter { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); .modelChoice { display: flex; align-items: center; gap: 8px; width: 240px; min-width: 0; color: var(--uiTextMuted); :deep(.uiPopover) { flex: 1; min-width: 0; } } } }

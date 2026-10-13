@@ -8,7 +8,7 @@
     :downloadName="outputFile?.url.split(/[\\/]/).at(-1)"
     @fullscreen="player?.enterFullscreen()"
     :bottomWidth="660"
-    :style="{ width: previewUrl && videoWidth ? `${videoWidth + 18}px` : undefined }">
+    :style="{ width: previewUrl && videoWidth ? `${Math.max(260, videoWidth + 18)}px` : undefined }">
     <template #topActions>
       <mediaHistory mediaType="video" :current="outputFile" :disabled="generating || deleting || uploading" @select="outputs.video = { dataType: 'VIDEO', value: $event }" />
       <uiIconButton :icon="IconTransfer" :loading="uploading" :disabled="generating || deleting" title="替换视频" label="替换视频" @click.stop="fileInput?.click()" />
@@ -111,6 +111,12 @@ let modelsRequest: Promise<void> | undefined;
 // ACT: 供应商未声明视频比例范围，沿用界面的通用比例，具体支持范围由供应商校验。
 const ratioOptions = ["16:9", "9:16", "1:1", "4:3", "3:4"];
 const selectedModel = computed(() => models.value.find((item) => JSON.stringify([item.providerId, item.modelId]) === data.value.model));
+watch(models, (items) => {
+  if (items.length && (!data.value.model || !selectedModel.value)) {
+    const first = items[0];
+    data.value.model = first ? JSON.stringify([first.providerId, first.modelId]) : "";
+  }
+}, { immediate: true });
 const selectedMode = computed(() => selectedModel.value?.mode?.find((item) => JSON.stringify(item) === data.value.mode) as NodeVideoRequest["mode"]);
 const frameMode = computed(() => ["startEndRequired", "endFrameOptional", "startFrameOptional"].includes(String(selectedMode.value)));
 const mediaCounts = computed(() => ({
@@ -291,7 +297,7 @@ nodeEvent.on("delete", async () => {
 async function resizeVideo(event: Event) {
   const video = event.currentTarget as HTMLVideoElement;
   if (!video.videoWidth || !video.videoHeight) return;
-  videoWidth.value = Math.max(180, (240 * video.videoWidth) / video.videoHeight);
+  videoWidth.value = Math.max(242, (240 * video.videoWidth) / video.videoHeight);
   await nextTick();
   updateNodeInternals();
 }

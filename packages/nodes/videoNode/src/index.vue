@@ -5,7 +5,7 @@
     topWidth="max-content"
     :downloadUrl="exporting ? '' : previewUrl"
     :downloadName="outputFile?.url.split(/[\\/]/).at(-1)"
-    :style="{ width: previewUrl && videoWidth ? `${videoWidth + 18}px` : undefined }"
+    :style="{ width: previewUrl && videoWidth ? `${Math.max(260, videoWidth + 18)}px` : undefined }"
     @fullscreen="player?.enterFullscreen()">
     <template #topActions>
       <uiIconButton
@@ -109,7 +109,7 @@ nodeTools.register({
 async function resizeVideo(event: Event) {
   const video = event.currentTarget as HTMLVideoElement;
   if (!video.videoWidth || !video.videoHeight) return;
-  videoWidth.value = Math.max(180, (240 * video.videoWidth) / video.videoHeight);
+  videoWidth.value = Math.max(242, (240 * video.videoWidth) / video.videoHeight);
   await nextTick();
   updateNodeInternals();
 }

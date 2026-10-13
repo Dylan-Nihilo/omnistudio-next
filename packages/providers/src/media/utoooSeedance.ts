@@ -139,14 +139,6 @@ export default {
       audio: "optional",
       durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p", "1080p"] }],
     },
-    {
-      id: "doubao-seedance-2-0-fast-260128",
-      label: "Seedance 2.0 Fast",
-      type: "video",
-      mode: ["text", "startFrameOptional", ["imageReference:9", "videoReference:3", "audioReference:3"]],
-      audio: "optional",
-      durationResolutionMap: [{ duration: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], resolution: ["480p", "720p"] }],
-    },
   ] satisfies ProviderModel[],
   async generateVideo(request: VideoRequest) {
     return generateVideo(request, this);

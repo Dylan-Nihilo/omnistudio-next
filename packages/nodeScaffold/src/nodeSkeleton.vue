@@ -42,15 +42,21 @@
         @keydown.enter="confirmLabel"
         @keydown.esc.prevent="editingLabel = false"
         @blur="saveLabel" />
-      <span
+      <uiTooltip
         v-else
-        class="labelText"
-        tabindex="0"
-        :title="`${label}（双击编辑名称）`"
-        @dblclick.stop="editLabel"
-        @keydown.enter.stop.prevent="editLabel">
-        {{ label }}
-      </span>
+        :content="`${label}（双击编辑名称）`"
+        :showAfter="120"
+        placement="top"
+        block
+        class="labelTooltip">
+        <span
+          class="labelText"
+          tabindex="0"
+          @dblclick.stop="editLabel"
+          @keydown.enter.stop.prevent="editLabel">
+          {{ label }}
+        </span>
+      </uiTooltip>
       </div>
       <div class="nodeActions nodrag nopan" @pointerdown.stop @mousedown.stop @dblclick.stop>
         <uiIconButton v-if="downloadUrl" size="small" :icon="IconMaximize" label="全屏" title="全屏" @click.stop="emit('fullscreen')" />
@@ -120,7 +126,7 @@ import {
   IconCube3dSphere,
   IconSparkles,
 } from "@tabler/icons-vue";
-import { uiDropdown, uiIconButton, useUiFeedback, type UiMenuItem } from "@omnistudio-next/ui";
+import { uiDropdown, uiIconButton, uiTooltip, useUiFeedback, type UiMenuItem } from "@omnistudio-next/ui";
 import { validateConnection } from "./connection";
 import { useNodeEvent } from "./nodeEvent";
 import type { NodeConnectionFeedback, NodeData, NodeHandle } from "./connection";
@@ -480,18 +486,19 @@ watch(
 
 <style scoped lang="scss">
 .nodeSkeleton {
-  position: relative; width: 240px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 38%, var(--uiBorderControl)); border-left: 3px solid var(--nodeTypeColor); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); color: var(--uiTextPrimary); text-align: left; box-shadow: var(--uiShadowPopover);
+  position: relative; width: 260px; min-width: 260px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 38%, var(--uiBorderControl)); border-left: 3px solid var(--nodeTypeColor); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); color: var(--uiTextPrimary); text-align: left; box-shadow: var(--uiShadowPopover);
   &.isSelected { border-color: var(--uiActionPrimary); border-left-color: var(--nodeTypeColor); box-shadow: 0 0 0 1px var(--uiActionPrimary); }
   &:hover .cardContainer .nodeHandle .handleIcon { opacity: 1; }
   .floatingSlot { position: absolute; left: 50%; z-index: 2; transform: translateX(-50%); &.topSlot { bottom: calc(100% + 12px); } &.bottomSlot { top: calc(100% + 12px); } .mediaToolbar { display: flex; align-items: center; gap: 4px; padding: 6px; width: max-content; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover); .toolbarDivider { width: 1px; height: 20px; margin-inline: 4px; background: var(--uiBorderDefault); } } }
-  .titleBar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--nodeTypeColor) 20%, var(--uiBorderDefault)); border-radius: var(--uiRadiusCard) var(--uiRadiusCard) 0 0; background: color-mix(in srgb, var(--nodeTypeColor) 6%, var(--uiSurfaceRaised)); font-size: var(--uiFontLabel); line-height: 1.5;
+  .titleBar { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--nodeTypeColor) 20%, var(--uiBorderDefault)); border-radius: var(--uiRadiusCard) var(--uiRadiusCard) 0 0; background: color-mix(in srgb, var(--nodeTypeColor) 6%, var(--uiSurfaceRaised)); font-size: var(--uiFontLabel); line-height: 1.5; min-width: 0;
     .titleIcon { flex-shrink: 0; color: var(--nodeTypeColor); }
-    .titleText { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0;
-      .typeCaption { display: flex; align-items: center; gap: 6px; color: var(--nodeTypeColor); font-size: 10px; line-height: 14px; .generationBadge { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 35%, transparent); border-radius: 4px; } }
-      .labelText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; user-select: none; &:active { cursor: grabbing; } }
+    .titleText { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden;
+      .typeCaption { display: flex; align-items: center; gap: 4px; color: var(--nodeTypeColor); font-size: 10px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; .generationBadge { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px; border: 1px solid color-mix(in srgb, var(--nodeTypeColor) 35%, transparent); border-radius: 4px; white-space: nowrap; flex-shrink: 0; } }
+      .labelTooltip { display: flex; min-width: 0; width: 100%; :deep(.uiPopover), :deep(.popoverReference), :deep(.tooltipReference) { display: flex; min-width: 0; width: 100%; } }
+      .labelText { min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; user-select: none; &:active { cursor: grabbing; } }
       .labelInput { min-width: 0; width: 100%; padding: 0 4px; border: 1px solid var(--uiBorderFocus); border-radius: var(--uiRadiusControl); outline: none; background: var(--uiBackgroundSubtle); color: inherit; font: inherit; line-height: inherit; }
     }
-    .nodeActions { display: flex; flex-shrink: 0; gap: 2px; }
+    .nodeActions { display: flex; align-items: center; flex-shrink: 0; gap: 2px; white-space: nowrap; }
   }
   .cardContainer { position: relative; .contentCard { padding: 12px; .loadingContent { display: flex; min-height: 84px; align-items: center; justify-content: center; gap: 8px; color: var(--uiTextMuted); font-size: var(--uiFontControl); .loadingIcon { color: var(--uiActionPrimary); animation: nodeLoading 1s linear infinite; @media (prefers-reduced-motion: reduce) { animation: none; } } } } .nodeHandle { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 0; background: transparent; color: var(--uiTextMuted); &.vue-flow__handle-left { left: -12px; } &.vue-flow__handle-right { right: -12px; } &::before { content: ""; position: absolute; inset: -13px; border-radius: 50%; } .handleIcon { pointer-events: none; opacity: 0; transform: translate(var(--handleX, 0px), var(--handleY, 0px)); transition: transform 120ms ease-out, opacity 120ms ease-out; } &.connected .handleIcon, &.linking .handleIcon, &.connecting .handleIcon, &[data-connection-status] .handleIcon { opacity: 1; } &:hover, &.linking, &.connecting, &[data-connection-status="valid"] { color: var(--uiActionPrimary); } &[data-connection-status="invalid"] { color: var(--uiStatusError); cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .handleIcon { transform: none; transition: none; } } } }
 }

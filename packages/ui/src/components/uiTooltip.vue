@@ -1,5 +1,5 @@
 <template>
-  <uiPopover ref="popover" v-model:visible="visible" @show="describe" @hide="clearDescription" trigger="hover" role="tooltip" :disabled="disabled || !content" :placement="placement" :showAfter="showAfter" :hideAfter="120">
+  <uiPopover ref="popover" v-model:visible="visible" @show="describe" @hide="clearDescription" trigger="hover" role="tooltip" :disabled="disabled || !content" :placement="placement" :showAfter="showAfter" :hideAfter="120" :block="block">
     <template #reference="{ panelId }"><span class="tooltipReference" :aria-describedby="visible ? panelId : undefined"><slot :describedBy="visible ? panelId : undefined" /></span></template>
     <span class="tooltipContent">{{ content }}</span>
   </uiPopover>
@@ -9,7 +9,7 @@
 import { onBeforeUnmount, ref } from "vue";
 import uiPopover from "./uiPopover.vue";
 import type { UiPlacement } from "../types";
-withDefaults(defineProps<{ content: string; disabled?: boolean; placement?: UiPlacement; showAfter?: number }>(), { disabled: false, placement: "top", showAfter: 350 });
+withDefaults(defineProps<{ content: string; disabled?: boolean; placement?: UiPlacement; showAfter?: number; block?: boolean }>(), { disabled: false, placement: "top", showAfter: 350, block: false });
 const visible = ref(false);
 const popover = ref<InstanceType<typeof uiPopover>>();
 let control: HTMLElement | undefined;
@@ -19,6 +19,6 @@ onBeforeUnmount(clearDescription);
 </script>
 
 <style scoped lang="scss">
-.tooltipReference { display: inline-flex; min-width: 0; }
-.tooltipContent { display: block; max-width: 320px; overflow-wrap: anywhere; font-size: var(--uiFontControl); }
+.tooltipReference { display: inline-flex; min-width: 0; max-width: 100%; width: 100%; }
+.tooltipContent { display: block; max-width: 360px; overflow-wrap: anywhere; font-size: var(--uiFontControl); white-space: normal; line-height: 1.5; }
 </style>

@@ -46,10 +46,36 @@ const query = ref("");
 const activeIndex = ref(-1);
 const values = computed(() => Array.isArray(props.modelValue) ? props.modelValue : props.modelValue == null ? [] : [props.modelValue]);
 const hasValue = computed(() => values.value.some(value => value !== "" || props.options.some(option => option.value === "")));
-const selectedLabel = computed(() => values.value.map(value => props.options.find(option => option.value === value)?.label ?? String(value)).join("、"));
+const selectedLabel = computed(() => values.value.map(value => {
+  const match = props.options.find(option => option.value === value);
+  if (match) return match.label;
+  return formatFallbackLabel(value);
+}).join("、"));
 const inputValue = computed({ get: () => visible.value && props.filterable ? query.value : selectedLabel.value, set: search });
 const filteredOptions = computed(() => props.options.filter(option => !props.filterable || option.label.toLocaleLowerCase().includes(query.value.toLocaleLowerCase())));
 const canCreate = computed(() => props.allowCreate && props.filterable && !!query.value.trim() && !props.options.some(option => option.label === query.value.trim() || option.value === query.value.trim()));
+
+function formatFallbackLabel(value: unknown): string {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          const item = parsed[1] ?? parsed[0];
+          return typeof item === "string" ? item.split("/").pop() || item : String(item ?? "");
+        }
+        if (parsed && typeof parsed === "object") {
+          const label = (parsed as Record<string, unknown>).label || (parsed as Record<string, unknown>).name || (parsed as Record<string, unknown>).modelId || (parsed as Record<string, unknown>).id;
+          if (label) return String(label);
+        }
+      } catch {
+        // ignore invalid json
+      }
+    }
+  }
+  return String(value ?? "");
+}
 watch([visible, filteredOptions], () => {
   activeIndex.value = filteredOptions.value.findIndex(option => !option.disabled && values.value.includes(option.value));
   if (activeIndex.value < 0) activeIndex.value = filteredOptions.value.findIndex(option => !option.disabled);

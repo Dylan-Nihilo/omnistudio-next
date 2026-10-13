@@ -74,14 +74,8 @@ for (const model of platformModelCatalog) {
   // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
   const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
   const videoPricing: Record<string, Record<string, number>> = {
-    "utoooSeedance:doubao-seedance-2-5-260628": { "480p": 1, "720p": 1, "1080p": 1 },
-    "utoooSeedance:doubao-seedance-2-0-260128": { "480p": 1, "720p": 1, "1080p": 1 },
-    "utoooSeedance:doubao-seedance-2-0-fast-260128": { "480p": 1, "720p": 1 },
-    "jojokey:seedance-2.0-mini": { "480p": 9, "720p": 19 },
-    "jojokey:seedance-2.0-fast": { "480p": 15, "720p": 31 },
-    "jojokey:seedance-2.0": { "480p": 18, "720p": 38, "1080p": 86 },
-    "jojokey:seedance-2.5": { "480p": 32, "720p": 68, "1080p": 153 },
-    "jojokey:minimax-h3": { "720P": 9, "960P": 13, "2K": 18 },
+    "utoooSeedance:doubao-seedance-2-5-260628": { "480p": 32, "720p": 68, "1080p": 153 },
+    "utoooSeedance:doubao-seedance-2-0-260128": { "480p": 18, "720p": 38, "1080p": 86 },
     "dashscopeVideo:minimax-h3": { "768P": 9, "2K": 18 },
   };
   const textCredits: Record<string, number> = {
