@@ -62,7 +62,25 @@
           </article>
         </div>
       </section>
+      <section v-if="demos.length" class="demoCollection" aria-labelledby="demoCollectionTitle">
+        <header class="demoHeader"><h2 id="demoCollectionTitle">Demo 合集</h2></header>
+        <article v-for="demo in demos" :key="demo.id" class="demoCard">
+          <img class="demoCover" :src="demo.coverUrl" :alt="`${demo.title}：${demo.description}`" loading="lazy" />
+          <div class="demoContent">
+            <span class="demoMeta">{{ demo.meta }}</span>
+            <h3>{{ demo.title }}</h3>
+            <p>{{ demo.description }}</p>
+            <div class="demoActions">
+              <uiButton variant="primary" :icon="IconPlayerPlay" :disabled="creating || opening" @click="previewDemo(demo)">观看成片</uiButton>
+              <uiButton variant="secondary" :icon="IconFolderOpen" :loading="opening" :disabled="creating || opening" @click="openDemo(demo)">打开画布</uiButton>
+            </div>
+          </div>
+        </article>
+      </section>
     </main>
+    <uiDialog v-model="demoPreviewVisible" :title="`${selectedDemo?.title ?? ''} · 第一集`" width="min(1080px, 94vw)" destroyOnClose>
+      <uiMediaPlayer v-if="demoVideoUrl" :src="demoVideoUrl" kind="video" :label="`${selectedDemo?.title ?? ''}第一集完整成片`" />
+    </uiDialog>
     <settings v-model="settingsVisible" />
     <workspacePicker ref="relocationPicker" hideTrigger />
   </div>
@@ -73,13 +91,13 @@ import axios from "axios";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, useUiFeedback } from "@omnistudio-next/ui";
+import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, uiDialog, uiMediaPlayer, useUiFeedback } from "@omnistudio-next/ui";
 import {
   IconSettings, IconUserCircle, IconUsersGroup, IconShieldLock,
   IconArrowUp, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
-  IconTrash, IconFolderPlus, IconFolderOpen,
+  IconTrash, IconFolderPlus, IconFolderOpen, IconPlayerPlay,
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
@@ -108,6 +126,38 @@ const prompt = ref("");
 const workspaceStore = useWorkspaceStore();
 const auth = useAuthStore();
 const { project, projectList } = storeToRefs(workspaceStore);
+type Demo = { id: string; title: string; description: string; meta: string; coverUrl: string; videoUrl: string };
+const demos = ref<Demo[]>([]);
+const selectedDemo = ref<Demo>();
+const demoPreviewVisible = ref(false);
+const demoVideoUrl = computed(() => selectedDemo.value?.videoUrl ?? "");
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get<{ code: number; data: Demo[]; message?: string }>("/api/demos/get");
+    if (data.code !== 200) throw new Error(data.message || "Demo 读取失败");
+    demos.value = data.data;
+  } catch (error) { showError(error instanceof Error ? error.message : "Demo 读取失败"); }
+});
+
+function previewDemo(demo: Demo) {
+  selectedDemo.value = demo;
+  demoPreviewVisible.value = true;
+}
+
+async function openDemo(demo: Demo) {
+  if (creating.value || opening.value) return;
+  opening.value = true;
+  try {
+    const { data } = await axios.post<{ code: number; data: { directory: string; name: string }; message?: string }>("/api/demos/open", { id: demo.id });
+    if (data.code !== 200) throw new Error(data.message || "Demo 打开失败");
+    await workspaceStore.openProject(data.data.directory);
+    workspaceStore.renameProject(data.data.directory, data.data.name);
+    await router.push("/workspace");
+  } catch (error) {
+    showError(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data.message || "Demo 打开失败" : error instanceof Error ? error.message : "Demo 打开失败");
+  } finally { opening.value = false; }
+}
 const workspaceDirectory = ref(project.value?.directory ?? "");
 const placeholderPhrases = [
   "描述你想创作的内容，让灵感从这里开始…",
@@ -261,6 +311,26 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
         display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 24px;
         .projectCard { min-width: 0; padding: 20px 24px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:hover, &:focus-within { border-color: var(--uiBorderControl); } .projectCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; .projectIcon { display: block; width: 20px; height: 20px; object-fit: contain; } .projectActions { display: flex; gap: 4px; } } .projectEntry { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; margin: 0; padding: 0 0 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; &:disabled { cursor: wait; opacity: 0.6; } .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectName { font-size: var(--uiFontTitle); font-weight: 700; } .projectPath { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .projectTime { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); time { min-width: 0; overflow-wrap: anywhere; } } }
         &.listView { grid-template-columns: 1fr; .projectCard { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 24px; .projectCardHeader { margin: 0; } .projectEntry { padding: 0; } .projectTime { max-width: 260px; padding: 0; border: 0; } } }
+      }
+    }
+    .demoCollection {
+      .demoHeader { margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } }
+      .demoCard {
+        display: grid; grid-template-columns: 220px minmax(0, 1fr); max-width: 900px; min-height: 390px; overflow: hidden;
+        border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle);
+        .demoCover { display: block; width: 220px; height: 390px; object-fit: cover; }
+        .demoContent {
+          display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 32px 40px; min-width: 0;
+          .demoMeta { color: var(--uiTextMuted); font-size: var(--uiFontControl); }
+          h3 { margin: 18px 0 12px; font-size: 36px; line-height: 1.2; }
+          p { margin: 0; color: var(--uiTextSecondary); font-size: var(--uiFontBody); }
+          .demoActions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+        }
+        @media (max-width: 620px) {
+          grid-template-columns: minmax(0, 1fr);
+          .demoCover { width: 100%; height: 420px; object-fit: contain; background: #111; }
+          .demoContent { padding: 26px; h3 { font-size: 30px; } }
+        }
       }
     }
   }
