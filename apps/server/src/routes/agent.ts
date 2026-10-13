@@ -42,14 +42,24 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   const controller = new AbortController();
   const questions = u.question.createQuestionContext(cwd, send, () => controller.abort());
   let closed = false;
+  const heartbeat = setInterval(() => {
+    if (closed || res.destroyed || res.writableEnded) return;
+    try {
+      res.write("\n");
+    } catch {
+      close();
+    }
+  }, 15000);
   const close = () => {
     if (closed) return;
     closed = true;
+    clearInterval(heartbeat);
     bridge?.dispose();
     questions.dispose();
     controller.abort();
   };
   req.once("aborted", close);
+  req.once("close", close);
   res.once("close", close);
   try {
     await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { userId: req.authContext!.user.id } }, send);
@@ -57,7 +67,9 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   } catch (error) {
     send({ type: "error", message: error instanceof Error ? error.message : "Agent 运行失败" });
   } finally {
+    clearInterval(heartbeat);
     req.off("aborted", close);
+    req.off("close", close);
     res.off("close", close);
     bridge?.dispose();
     questions.dispose();

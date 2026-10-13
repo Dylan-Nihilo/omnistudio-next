@@ -22,12 +22,12 @@ async function select(event: Event) {
 .uiRadio {
   display: inline-flex; align-items: center; position: relative; gap: 8px; min-height: var(--uiControlMedium); color: var(--uiTextBody); font-size: var(--uiFontControl); cursor: pointer;
   &.isBordered { padding: 8px 12px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusControl); &:has(input:checked) { border-color: var(--uiActionPrimary); background: var(--uiActionSoft); } }
-  input { position: absolute; width: 18px; height: 18px; margin: 0; opacity: 0; }
-  .radioMark { width: 18px; height: 18px; flex-shrink: 0; border: 1px solid var(--uiBorderControl); border-radius: 50%; background: var(--uiBackgroundSubtle); }
+  input { position: absolute; width: 18px; height: 18px; margin: 0; opacity: 0; cursor: inherit; }
+  .radioMark { width: 18px; height: 18px; flex-shrink: 0; border: 1px solid var(--uiBorderControl); border-radius: 50%; background: var(--uiBackgroundSubtle); cursor: inherit; }
   input:checked + .radioMark { border: 5px solid var(--uiActionPrimary); }
   input:focus-visible + .radioMark { outline: 2px solid var(--uiBorderFocus); outline-offset: 3px; }
   .radioLabel {
-    min-width: 0; overflow-wrap: anywhere;
+    min-width: 0; overflow-wrap: anywhere; cursor: inherit;
     &:has(> svg) { display: inline-flex; align-items: center; gap: 6px; }
     :deep(> svg) { display: block; flex-shrink: 0; }
   }

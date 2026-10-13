@@ -34,7 +34,21 @@ async function select(value: UiValue) {
   display: flex; flex-wrap: wrap; gap: 12px; min-width: 0;
   &.isSegmented {
     display: inline-flex; padding: 3px; gap: 3px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle);
-    :deep(.uiRadio) { min-height: 30px; padding: 4px 12px; border-radius: max(0px, calc(var(--uiRadiusControl) - 3px)); &:has(input:checked) { color: var(--uiTextOnAccent); background: var(--uiActionPrimary); } &:has(input:focus-visible) { outline: 2px solid var(--uiBorderFocus); outline-offset: 1px; } .radioMark { display: none; } input { width: 100%; height: 100%; inset: 0; } .radioLabel { display: flex; align-items: center; gap: 6px; } }
+    :deep(.uiRadio) {
+      min-height: 30px; padding: 4px 12px; border-radius: max(0px, calc(var(--uiRadiusControl) - 3px)); cursor: pointer;
+      transition: color 150ms ease, background-color 150ms ease;
+      &:hover:not(:has(input:checked)):not(.isDisabled) { color: var(--uiTextPrimary); background: var(--uiSurfaceHover); }
+      &:has(input:checked) { color: var(--uiTextOnAccent); background: var(--uiActionPrimary); }
+      &:has(input:focus-visible) { outline: 2px solid var(--uiBorderFocus); outline-offset: 1px; }
+      .radioMark { display: none; }
+      input { width: 100%; height: 100%; inset: 0; cursor: pointer; }
+      .radioLabel { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+      &.isDisabled {
+        cursor: not-allowed;
+        input { cursor: not-allowed; }
+        .radioLabel { cursor: not-allowed; }
+      }
+    }
   }
   &.isBlock { display: flex; :deep(.uiRadio) { flex: 1; justify-content: center; } }
 }

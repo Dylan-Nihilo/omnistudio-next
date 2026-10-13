@@ -32,7 +32,7 @@ const reasoningOptions = [
 ];
 const platformModels = usePlatformModelsStore();
 const modelChoices = computed(() => platformModels.modelChoices);
-const modelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: model.label })));
+const modelOptions = computed(() => modelChoices.value.map(model => ({ value: model.value, label: model.label })));
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const reasoningLabel = computed(() => reasoningOptions.find(item => item.value === reasoningEffort.value)?.label ?? "默认");
 watch(selectedModel, () => { reasoningEffort.value = ""; });

@@ -600,6 +600,7 @@ async function sendMessage(source?: AgentMessage) {
   const pendingQuestions = new Map<string, string>();
   const activeChildFiles = new Set<string>();
   const finishStats = anonymousData.startAgent();
+  let activeSessionFile = props.sessionFile;
   try {
     if (!source) senderInput.value?.setModel();
     requestController.signal.throwIfAborted();
@@ -611,6 +612,7 @@ async function sendMessage(source?: AgentMessage) {
       signal: AbortSignal.any([requestController.signal, getSessionSnapshot().signal]),
     });
     for await (const event of readAgentEvents(response, requestController.signal)) {
+      if (event.type === "session") activeSessionFile = event.file;
       // 子任务复用发起委派时的画布与取消通道，界面切换不改变工具执行目标。
       let toolEvent: AgentEvent = event;
       let scope = "";
@@ -665,6 +667,16 @@ async function sendMessage(source?: AgentMessage) {
     emit("sent", mentionPlainText(prompt, mentions) || attachments[0]?.name || "新对话");
   } catch (error) {
     finishStats(requestController.signal.aborted ? "cancelled" : "failed");
+    const targetSessionFile = activeSessionFile || props.sessionFile;
+    if (!requestController.signal.aborted && directory && targetSessionFile) {
+      void fetch("/api/agent/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
+        body: JSON.stringify({ directory, sessionFile: targetSessionFile }),
+        keepalive: true,
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => {});
+    }
     const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
     const message = requestController.signal.aborted ? "已停止生成" : responseMessage || (error instanceof Error ? error.message : "发送失败，请重试");
     if ((source && !accepted) || !ownsStream) { userMessage.error = message; feedback.message({ tone: "error", message: message }); }

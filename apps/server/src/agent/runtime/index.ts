@@ -86,19 +86,19 @@ export async function run(
   const sessionPath = sessionFile ? (await resolveWorkspacePath(sessionsDir, sessionFile)).path : undefined;
   const active = sessionPath ? getActiveAgentSession(sessionPath) : undefined;
   if (active && active.userId !== requireAccount().userId) throw Object.assign(new Error("这个对话正在由另一账户运行，请等待其结束"), { status: 409 });
-  if (active && hasPendingAgentQuestion(active)) {
-    // ACT: 新消息结束旧提问，必须等旧执行释放文件锁后再继续，避免并发写入同一会话。
+  if (active) {
+    if (getParentSessionFile(active.history)) {
+      if (resendFrom) throw Object.assign(new Error("子 Agent 运行时不能重发历史消息"), { status: 409 });
+      if (!active.session?.isStreaming) throw Object.assign(new Error("子 Agent 正在准备或结束回复，请稍后发送"), { status: 409 });
+      if (attachments.length || mentions.length) throw Object.assign(new Error("请等子 Agent 当前回复结束后发送附件或提及"), { status: 400 });
+      assertSkillInvocation(prompt, active.session.resourceLoader.getSkills().skills);
+      await active.session.prompt(prompt.trim(), { streamingBehavior: "steer", expandPromptTemplates: false });
+      send({ type: "accepted" });
+      return;
+    }
+    // ACT: 同一用户在同一会话发送新消息时中止旧运行（覆盖中断残留、提问未决与主动打断），等待旧执行释放文件锁后再启动。
     await active.abort();
     signal?.throwIfAborted();
-  } else if (active) {
-    if (!getParentSessionFile(active.history)) throw Object.assign(new Error("对话正在运行，请等待回复完成"), { status: 409 });
-    if (resendFrom) throw Object.assign(new Error("子 Agent 运行时不能重发历史消息"), { status: 409 });
-    if (!active.session?.isStreaming) throw Object.assign(new Error("子 Agent 正在准备或结束回复，请稍后发送"), { status: 409 });
-    if (attachments.length || mentions.length) throw Object.assign(new Error("请等子 Agent 当前回复结束后发送附件或提及"), { status: 400 });
-    assertSkillInvocation(prompt, active.session.resourceLoader.getSkills().skills);
-    await active.session.prompt(prompt.trim(), { streamingBehavior: "steer", expandPromptTemplates: false });
-    send({ type: "accepted" });
-    return;
   }
   const { provider, runtime } = await createAgentModel(providerId, modelId, thinkingLevel);
   if (sessionPath) {

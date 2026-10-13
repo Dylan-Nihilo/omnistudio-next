@@ -48,11 +48,14 @@ const models = ref<NodeAiModel[]>([]);
 const modelsLoading = ref(false);
 const generating = ref(false);
 const hasText = computed(() => Boolean(outputs.value?.text?.value && outputs.value.text.value.trim()));
+function defaultTextModel(items: NodeAiModel[]) {
+  return items.find(item => item.providerId === "dashscope" && item.modelId === "text/deepseek-v4.1-flash") ?? items[0];
+}
 const selectedModel = computed(() => models.value.find(item => JSON.stringify([item.providerId, item.modelId]) === model.value));
 watch(models, (items) => {
   if (items.length && (!model.value || !selectedModel.value)) {
-    const first = items[0];
-    model.value = first ? JSON.stringify([first.providerId, first.modelId]) : "";
+    const preferred = defaultTextModel(items);
+    model.value = preferred ? JSON.stringify([preferred.providerId, preferred.modelId]) : "";
   }
 }, { immediate: true });
 const modelGroups = computed(() => groupNodeModels(models.value));
@@ -124,8 +127,8 @@ async function loadModels() {
   try {
     models.value = await ai.getModels();
     if (!model.value) {
-      const first = models.value[0];
-      model.value = first ? JSON.stringify([first.providerId, first.modelId]) : "";
+      const preferred = defaultTextModel(models.value);
+      model.value = preferred ? JSON.stringify([preferred.providerId, preferred.modelId]) : "";
     }
   } catch (error) {
     if (error instanceof Error && error.name !== "AbortError") feedback.message({ tone: "error", message: error.message });

@@ -9,7 +9,7 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
   const loading = ref(false);
   const errorMessage = ref("");
   const modelChoices = computed(() => [...textModels.value]
-    .sort((left, right) => Number(!isGptModel(left)) - Number(!isGptModel(right)))
+    .sort((left, right) => Number(!isDefaultTextModel(left)) - Number(!isDefaultTextModel(right)))
     .map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined })));
 
   async function load() {
@@ -30,6 +30,6 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
   return { textModels, mediaModels, loading, errorMessage, modelChoices, load, resetModels };
 });
 
-function isGptModel(model: PlatformModel) {
-  return /gpt/i.test([model.modelId, model.label].join(" "));
+function isDefaultTextModel(model: PlatformModel) {
+  return model.providerId === "dashscope" && model.modelId === "text/deepseek-v4.1-flash";
 }

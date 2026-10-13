@@ -198,6 +198,7 @@ jobs:
             (UUID(), 'utoooSeedance', 'doubao-seedance-2-5-260628', 'Seedance 2.5', 'video', NULL, 1, NULL, 180, UTC_TIMESTAMP(), UTC_TIMESTAMP()),
             (UUID(), 'utoooSeedance', 'doubao-seedance-2-0-260128', 'Seedance 2.0', 'video', NULL, 1, NULL, 190, UTC_TIMESTAMP(), UTC_TIMESTAMP())
           ON DUPLICATE KEY UPDATE enabled = 1, label = VALUES(label), sort_order = VALUES(sort_order), updated_at = UTC_TIMESTAMP();
+          UPDATE platform_models SET sort_order = 30, updated_at = UTC_TIMESTAMP() WHERE provider_id = 'dashscope' AND model_id = 'text/deepseek-v4.1-flash';
           SET @priceBookId = (SELECT active_price_book_version_id FROM platform_pricing_settings WHERE id = 'platform' LIMIT 1);
           INSERT INTO platform_pricing_items (id, price_book_version_id, provider_id, model_id, media_type, unit, credits_per_unit, constraints, created_at, updated_at)
           VALUES
