@@ -40,6 +40,14 @@ export function getActiveAgentSession(path: string) {
   return activeSessions.get(sessionKey(path));
 }
 
+export async function cancelAgentSession(path: string, userId: string) {
+  const active = getActiveAgentSession(path);
+  if (!active) return false;
+  if (active.userId !== userId) throw Object.assign(new Error("这个对话正在由另一账户运行，请等待其结束"), { status: 409 });
+  await active.abort();
+  return true;
+}
+
 export function hasPendingAgentQuestion(active: ActiveAgentSession, visited = new Set<ActiveAgentSession>()): boolean {
   if (visited.has(active)) return false;
   visited.add(active);

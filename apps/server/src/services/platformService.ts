@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase } from "@/db/database";
-import { auditEvents, platformModels, platformProviderConfigs, platformSecrets, priceBookVersions, pricingItems, pricingSettings } from "@/db/schema";
+import { auditEvents, platformModels, platformProviderConfigs, platformSecrets, priceBookVersions, pricingItems, pricingSettings, providerHealth } from "@/db/schema";
 import { requireRootAccount } from "@/utils/accountContext";
 import { encryptPlatformSecret } from "@/utils/platformSecrets";
 import { platformModelCatalog, platformProviders } from "@/utils/ai/platformCatalog";
@@ -66,8 +66,6 @@ export async function savePlatformProvider(input: z.infer<typeof providerInputSc
 export async function savePlatformModel(input: z.infer<typeof modelInputSchema>) {
   const account = requireRootAccount();
   const database = getDatabase();
-  const [provider] = await database.select({ id: platformProviderConfigs.id }).from(platformProviderConfigs).where(eq(platformProviderConfigs.providerId, input.providerId)).limit(1);
-  if (!provider) throw Object.assign(new Error("请先配置这个 API 提供方"), { status: 400 });
   if (input.mediaType !== "text") {
     if (input.apiModelId && input.apiModelId !== input.modelId) throw Object.assign(new Error("媒体模型的上游标识由已安装适配器管理"), { status: 400 });
     const installed = await getMediaProvider(input.providerId);
@@ -75,6 +73,8 @@ export async function savePlatformModel(input: z.infer<typeof modelInputSchema>)
   }
   const now = new Date();
   await database.transaction(async tx => {
+    const [provider] = await tx.select({ id: platformProviderConfigs.id }).from(platformProviderConfigs).where(eq(platformProviderConfigs.providerId, input.providerId)).limit(1).for("update");
+    if (!provider) throw Object.assign(new Error("请先配置这个 API 提供方"), { status: 400 });
     const [existing] = input.id ? await tx.select().from(platformModels).where(eq(platformModels.id, input.id)).limit(1).for("update") : [];
     if (input.id && !existing) throw Object.assign(new Error("模型不存在，请刷新后重试"), { status: 404 });
     if (existing && (existing.providerId !== input.providerId || existing.modelId !== input.modelId || existing.mediaType !== input.mediaType)) throw Object.assign(new Error("已有模型的标识与类型不能更改，请添加新模型并停用旧模型"), { status: 409 });
@@ -82,6 +82,33 @@ export async function savePlatformModel(input: z.infer<typeof modelInputSchema>)
     if (existing) await tx.update(platformModels).set(value).where(eq(platformModels.id, existing.id));
     else await tx.insert(platformModels).values({ id: randomUUID(), providerId: input.providerId, modelId: input.modelId, mediaType: input.mediaType, ...value, createdAt: now });
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.model.save", metadata: { providerId: input.providerId, modelId: input.modelId, enabled: input.enabled }, createdAt: now, updatedAt: now });
+  });
+}
+
+export async function deletePlatformModel(id: string) {
+  const account = requireRootAccount();
+  const database = getDatabase();
+  const now = new Date();
+  await database.transaction(async tx => {
+    const [model] = await tx.select().from(platformModels).where(eq(platformModels.id, id)).limit(1).for("update");
+    if (!model) throw Object.assign(new Error("模型不存在，请刷新后重试"), { status: 404 });
+    await tx.delete(platformModels).where(eq(platformModels.id, id));
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.model.delete", metadata: { providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType }, createdAt: now, updatedAt: now });
+  });
+}
+
+export async function deletePlatformProvider(providerId: string) {
+  const account = requireRootAccount();
+  const now = new Date();
+  await getDatabase().transaction(async tx => {
+    const [provider] = await tx.select().from(platformProviderConfigs).where(eq(platformProviderConfigs.providerId, providerId)).limit(1).for("update");
+    if (!provider) throw Object.assign(new Error("API 提供方不存在，请刷新后重试"), { status: 404 });
+    const models = await tx.select({ id: platformModels.id }).from(platformModels).where(eq(platformModels.providerId, providerId)).for("update");
+    await tx.delete(platformModels).where(eq(platformModels.providerId, providerId));
+    await tx.delete(platformSecrets).where(eq(platformSecrets.id, providerId));
+    await tx.delete(providerHealth).where(eq(providerHealth.providerId, providerId));
+    await tx.delete(platformProviderConfigs).where(eq(platformProviderConfigs.id, provider.id));
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, action: "platform.provider.delete", metadata: { providerId, modelCount: models.length }, createdAt: now, updatedAt: now });
   });
 }
 

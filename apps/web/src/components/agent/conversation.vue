@@ -200,9 +200,10 @@ const remoteRunning = ref(props.initialSession?.running ?? false);
 const stats = ref(props.initialSession?.stats);
 const contextUsage = ref(props.initialSession?.contextUsage);
 const busy = ref(false);
+const stopping = ref(false);
 const compacting = ref(false);
 const deletingId = ref<string>();
-const locked = computed(() => props.disabled || busy.value || deletingId.value !== undefined);
+const locked = computed(() => props.disabled || busy.value || stopping.value || deletingId.value !== undefined);
 const editingId = ref<string>();
 const draftMentions = ref<AgentMention[]>([]);
 const draftMentionPreview = ref<InstanceType<typeof mentionContent>>();
@@ -496,8 +497,22 @@ function stopSenderResize(event: PointerEvent) {
 }
 
 function stopMessage() {
+  if (stopping.value) return;
+  const currentDirectory = directory;
+  const file = props.sessionFile;
+  stopping.value = true;
+  const cancellation = currentDirectory && file
+    ? fetch("/api/agent/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
+      body: JSON.stringify({ directory: currentDirectory, sessionFile: file }),
+      keepalive: true,
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {})
+    : Promise.resolve();
   controller?.abort();
   remoteRunning.value = false;
+  void cancellation.finally(() => { stopping.value = false; });
 }
 
 async function uploadAttachments(attachments: AgentAttachment[], directory: string, signal: AbortSignal) {

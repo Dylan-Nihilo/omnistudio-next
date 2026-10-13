@@ -43,7 +43,9 @@ export function getAdminProjects(userId: string) { return accountRequest<{ direc
 export function getPlatformConfiguration() { return accountRequest<PlatformConfiguration>("GET", "/api/admin/platform/get"); }
 export function initializePlatformCatalog() { return accountRequest("POST", "/api/admin/platform/initializeCatalog"); }
 export function savePlatformProvider(input: { providerId: string; apiUrl: string; protocol: PlatformProvider["config"]["protocol"]; enabled: boolean; apiKey?: string; removeApiKey?: boolean }) { return accountRequest("PUT", "/api/admin/platform/saveProvider", input); }
+export function deletePlatformProvider(providerId: string) { return accountRequest("DELETE", "/api/admin/platform/deleteProvider", { providerId }); }
 export function savePlatformModel(input: Omit<PlatformModel, "id" | "enabled" | "capabilities" | "apiModelId"> & { id?: string; enabled: boolean; capabilities?: Record<string, unknown>; apiModelId?: string }) { return accountRequest("PUT", "/api/admin/platform/saveModel", input); }
+export function deletePlatformModel(id: string) { return accountRequest("DELETE", "/api/admin/platform/deleteModel", { id }); }
 export function publishPlatformPrices(items: ModelPrice[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}) })) }); }
 export function getPlatformAudit() { return accountRequest<AuditEntry[]>("GET", "/api/admin/audit"); }
 
