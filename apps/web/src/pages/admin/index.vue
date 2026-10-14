@@ -22,7 +22,7 @@
                       <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
                     </uiField>
                   </div>
-                  <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10 000 000 token，实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
+                  <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10,000,000 token。<br />实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
                   <p v-if="!textPricingInput(String(row.priceKey))" class="pricingHelp">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p>
                 </div>
                 <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
@@ -74,7 +74,7 @@ const textPriceDraft = ref<Record<string, TextPriceDraft>>({});
 const tokenRateFields: { key: keyof TokenRates; label: string }[] = [{ key: "input", label: "非缓存输入" }, { key: "cacheRead", label: "缓存读取" }, { key: "cacheWrite", label: "缓存写入" }, { key: "output", label: "输出" }];
 // 136笔历史usage按占比缩放，并按最大余数分配为整数，总计1000万token。
 const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0, output: 43_419 };
-const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US").replaceAll(",", " ")}`).join("，");
+const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US")}`).join("，");
 function priceKey(model: { providerId: string; mediaType: string; modelId: string }) { return JSON.stringify([model.providerId, model.mediaType, model.modelId]); }
 const priceRows = computed(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
 const priceGroups = computed(() => {
@@ -208,8 +208,8 @@ onMounted(loadAll);
         display: grid; gap: 12px;
         .pricingHelp { margin: 0; font-size: 12px; color: var(--uiTextMuted); line-height: 1.7; }
         .rateFields {
-          display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 440px;
-          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
+          display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; justify-content: space-between; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
         }
       }
     }
