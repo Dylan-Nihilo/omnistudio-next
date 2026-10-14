@@ -209,7 +209,7 @@ onMounted(loadAll);
         .pricingHelp { margin: 0; font-size: 12px; color: var(--uiTextMuted); line-height: 1.7; }
         .rateFields {
           display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
-          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; justify-content: space-between; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
+          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
         }
       }
     }
