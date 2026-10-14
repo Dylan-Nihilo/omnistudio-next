@@ -6,6 +6,7 @@ import { getDatabase } from "@/db/database";
 import { sessions } from "@/db/schema";
 import { createSession, csrfCookieName, sessionCookieName } from "@/services/authService";
 import { requireActiveAccount } from "@/utils/accountContext";
+import { deploymentContinuationHeaders } from "@/lib/deployment";
 
 const maxBytes = 20 * 1024 * 1024;
 const directory = z.string().min(1).max(4096);
@@ -145,7 +146,7 @@ export async function runAppOperation(name: string, parameters: Record<string, u
   const origin = getMcpRuntime().appOrigin;
   if (!origin) throw new Error("万象点点服务尚未就绪");
   const url = new URL(operation.path, origin);
-  const headers: Record<string, string> = { "x-omnistudio-next-workspace": "1", Origin: origin, Referer: `${origin}/` };
+  const headers: Record<string, string> = { "x-omnistudio-next-workspace": "1", Origin: origin, Referer: `${origin}/`, ...deploymentContinuationHeaders() };
   if (typeof idempotencyKey === "string") headers["Idempotency-Key"] = idempotencyKey;
   let body: string | ArrayBuffer | undefined;
   if (operation.name === "saveAsset") {

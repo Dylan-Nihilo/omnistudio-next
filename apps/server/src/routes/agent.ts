@@ -5,6 +5,7 @@ import type { AgentEvent } from "@/agent/runtime/types";
 import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
+import { retainDeploymentActivity } from "@/lib/deployment";
 
 const inputSchema = z.object({
   prompt: z.string().trim(), directory: z.string().min(1),
@@ -61,6 +62,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   req.once("aborted", close);
   req.once("close", close);
   res.once("close", close);
+  const releaseActivity = retainDeploymentActivity();
   try {
     await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { userId: req.authContext!.user.id } }, send);
     send({ type: "done" });
@@ -74,5 +76,6 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
     bridge?.dispose();
     questions.dispose();
     res.end();
+    releaseActivity();
   }
 });

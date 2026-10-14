@@ -9,6 +9,7 @@ import { readTeam } from "@/utils/teams";
 import { callControl, getConnection } from "@/utils/mcp/control";
 import { authenticateA2a, getA2aSettings, getA2aSignal, getA2aUrl, resolveA2aWorkspace } from "./settings";
 import { requireAccount } from "@/utils/accountContext";
+import { retainDeploymentActivity } from "@/lib/deployment";
 
 export function createA2aRouter() {
   const router = Router();
@@ -29,6 +30,7 @@ export function createA2aRouter() {
         // ACT: 任务由 SDK 保存在单进程内存；仅等待补充的协调者额外保留 Pi 上下文，重启后需重新发起任务。
         const pending = new Map<string, { runner: Awaited<ReturnType<typeof createTeamRunner>>; userId: string }>();
         const execute = async (request: TeamA2aRequest) => {
+          const releaseActivity = retainDeploymentActivity();
           try {
             const signal = AbortSignal.any([request.signal, configurationSignal]);
             signal.throwIfAborted();
@@ -66,6 +68,7 @@ export function createA2aRouter() {
               artifactId: request.taskId, name: "团队结果", parts: [{ text: result.result, mediaType: "text/plain" }],
             })] };
           } catch (error) { pending.delete(request.taskId); throw error; }
+          finally { releaseActivity(); }
         };
         endpoint = { card, signal: configurationSignal, router: createTeamA2aRouter({
           card, authenticate: authenticateA2a, execute,

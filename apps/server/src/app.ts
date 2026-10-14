@@ -8,6 +8,7 @@ import type { Request, Response, NextFunction } from "express";
 import buildRoute from "@/core";
 import { error } from "@/lib/responseFormat";
 import { isRootOperation } from "@/lib/accessPolicy";
+import { deploymentMiddleware } from "@/lib/deployment";
 import desktopRequest from "@/lib/desktop";
 import initializePlugins from "@/utils/plugins/initialize";
 import { acquireServerLease, checkDatabase, hasServerLease, runSqlMigrations } from "@/db/database";
@@ -76,6 +77,7 @@ export async function createApp({
     const origin = request.get("origin");
     if (writing && origin && origin !== `${request.protocol}://${request.get("host")}`) return response.status(403).json(error("不允许跨来源操作", null, 403));
     const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready"
+      || (["GET", "HEAD"].includes(request.method) && request.path.toLowerCase().replace(/\/+$/, "") === "/deployment/status")
       || (["GET", "HEAD"].includes(request.method) && request.path === "/assets/source");
     if (publicPath) return next();
     if (!request.authContext || request.authContext.serviceKind) return response.status(401).json(error("请先登录", null, 401));
@@ -100,6 +102,7 @@ export async function createApp({
   app.use(["/api/workspaces/files/write", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  app.use(deploymentMiddleware);
   app.use("/api/desktop", desktopRequest);
 
   const { default: initializeProviderModels } = await import("@/utils/ai/initialize");

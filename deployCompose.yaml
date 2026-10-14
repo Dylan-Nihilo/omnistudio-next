@@ -2,6 +2,11 @@ services:
   mysql:
     image: public.ecr.aws/docker/library/mysql:8.0
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-omnistudio}
       MYSQL_USER: ${MYSQL_USER:-omnistudio}
@@ -19,6 +24,11 @@ services:
     image: omnistudio-next-app:latest
     restart: unless-stopped
     init: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     depends_on:
       mysql:
         condition: service_healthy

@@ -5,6 +5,7 @@ import { validateFields } from "@/lib/middleware";
 import { success } from "@/lib/responseFormat";
 import u from "@/utils";
 import { requireAccount } from "@/utils/accountContext";
+import { retainDeploymentActivity } from "@/lib/deployment";
 
 const callSchema = z.object({
   method: z.string().min(1).max(64), args: z.array(z.json()).max(128),
@@ -49,6 +50,7 @@ export default Router().post("/", validateFields(inputSchema.shape), async (req,
   req.once("aborted", close);
   req.socket.once("close", close);
   let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const releaseActivity = retainDeploymentActivity();
   try {
     const factory = await u.ffmpeg.createWorkspaceFfmpeg(cwd, controller.signal);
     if (input.operation.method === "prepare") {
@@ -69,5 +71,6 @@ export default Router().post("/", validateFields(inputSchema.shape), async (req,
     req.off("aborted", close);
     req.socket.off("close", close);
     accountSignal?.removeEventListener("abort", close);
+    releaseActivity();
   }
 });

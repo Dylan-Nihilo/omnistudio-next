@@ -48,10 +48,15 @@ jobs:
           docker build --platform linux/amd64 --build-arg "buildCommit=$GITHUB_SHA" \
             -f "$deployContext/deployDockerfile" -t "omnistudio-next-app:$GITHUB_SHA" "$deployContext"
           docker save "omnistudio-next-app:$GITHUB_SHA" | gzip -1 > appImage.tar.gz
+          docker image inspect --format '{{.Size}}' "omnistudio-next-app:$GITHUB_SHA" > imageSize
+          sha256sum appImage.tar.gz | sed 's/appImage.tar.gz/appImagePending.tar.gz/' > imageChecksum
       - uses: actions/upload-artifact@v7
         with:
           name: serverImage
-          path: appImage.tar.gz
+          path: |
+            appImage.tar.gz
+            imageSize
+            imageChecksum
           retention-days: 7
           if-no-files-found: error
 
@@ -59,7 +64,7 @@ jobs:
     needs: build
     if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     concurrency:
       group: serverProduction
       cancel-in-progress: false
@@ -69,9 +74,17 @@ jobs:
       serverPath: ${{ secrets.DEPLOY_PATH }}
       deploySshKey: ${{ secrets.DEPLOY_SSH_KEY }}
       deployKnownHosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-      seedanceApiKey: ${{ secrets.UTOOO_SEEDANCE_API_KEY }}
-      seedancePublicUrl: ${{ vars.OMNISTUDIO_NEXT_PUBLIC_URL }}
+      keepReleases: ${{ vars.DEPLOY_KEEP_RELEASES || '3' }}
+      keepBackups: ${{ vars.DEPLOY_BACKUP_KEEP_COUNT || '7' }}
+      backupDays: ${{ vars.DEPLOY_BACKUP_KEEP_DAYS || '30' }}
+      minFreeGiB: ${{ vars.DEPLOY_MIN_FREE_GIB || '5' }}
+      logSizeMb: ${{ vars.DEPLOY_LOG_SIZE_MB || '20' }}
+      logFiles: ${{ vars.DEPLOY_LOG_FILES || '5' }}
+      drainSeconds: ${{ vars.DEPLOY_DRAIN_SECONDS || '300' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Configure SSH
         run: |
           : "${serverHost:?Configure DEPLOY_HOST}"
@@ -79,168 +92,51 @@ jobs:
           : "${serverPath:?Configure DEPLOY_PATH}"
           : "${deploySshKey:?Configure DEPLOY_SSH_KEY}"
           : "${deployKnownHosts:?Configure DEPLOY_KNOWN_HOSTS}"
-          : "${seedanceApiKey:?Configure UTOOO_SEEDANCE_API_KEY}"
-          : "${seedancePublicUrl:?Configure OMNISTUDIO_NEXT_PUBLIC_URL}"
-          [[ "$seedancePublicUrl" =~ ^https?://[a-zA-Z0-9][a-zA-Z0-9.-]*(:[0-9]+)?/?$ ]]
           [[ "$serverHost" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
           [[ "$serverUser" =~ ^[a-z_][a-z0-9_-]*$ ]]
-          [[ "$serverPath" =~ ^/[a-zA-Z0-9/_-]+$ ]]
+          [[ "$serverPath" =~ ^/[a-zA-Z0-9/_-]+$ && "$serverPath" != / ]]
+          for value in "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds"; do
+            [[ "$value" =~ ^[1-9][0-9]{0,11}$ ]]
+          done
           umask 077
           printf '%s\n' "$deploySshKey" > "$RUNNER_TEMP/deployKey"
           printf '%s\n' "$deployKnownHosts" > "$RUNNER_TEMP/sshKnownHosts"
       - uses: actions/download-artifact@v8
         with:
           name: serverImage
-      - name: Upload image
+          path: serverImage
+      - name: Check disk before upload
         run: |
           sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" -o ConnectTimeout=10)
-          ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
-            "test -f '$serverPath/compose.yaml' && test -f '$serverPath/.env' && mkdir -p '$serverPath/releases/$GITHUB_SHA'"
-          scp "${sshOptions[@]}" appImage.tar.gz "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/"
-          printf '%s' "$seedanceApiKey" | ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
-            "umask 077; cat > '$serverPath/releases/$GITHUB_SHA/utoooSeedanceApiKey'"
-          printf '%s' "$seedancePublicUrl" | ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
-            "umask 077; cat > '$serverPath/releases/$GITHUB_SHA/seedancePublicUrl'"
-      - name: Back up and deploy application
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          archiveBytes=$(stat -c %s serverImage/appImage.tar.gz)
+          imageBytes=$(cat serverImage/imageSize)
+          [[ "$imageBytes" =~ ^[1-9][0-9]{0,11}$ ]]
+          attempt="attempt${GITHUB_RUN_ID}x${GITHUB_RUN_ATTEMPT}"
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash -s -- check "$serverPath" "$GITHUB_SHA" "$attempt" \
+            "$archiveBytes" "$imageBytes" "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds" \
+            < scripts/deployServer.sh
+      - name: Upload image and deployment scripts
         run: |
           sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" -o ConnectTimeout=10)
-          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash -s -- "$serverPath" "$GITHUB_SHA" <<'SH'
-          set -euo pipefail
-          umask 077
-          serverPath=$1
-          releaseCommit=$2
-          [[ "$releaseCommit" =~ ^[a-f0-9]{40}$ ]]
-          cd "$serverPath"
-          exec 9>deployLock
-          flock -n 9
-          releaseDirectory="$serverPath/releases/$releaseCommit"
-          databaseBackup="$releaseDirectory/database.sql.gz"
-          if [ -f "$databaseBackup" ]; then databaseBackup="$releaseDirectory/database$(date -u +%Y%m%d%H%M%S).sql.gz"; fi
-          image="omnistudio-next-app:$releaseCommit"
-          compose=(docker compose -p omnistudio-next --env-file .env -f compose.yaml)
-          appContainer=$("${compose[@]}" ps -q omnistudio-next)
-          mysqlContainer=$("${compose[@]}" ps -q mysql)
-          test -n "$appContainer"
-          test -n "$mysqlContainer"
-          keyFile="$releaseDirectory/utoooSeedanceApiKey"
-          test -s "$keyFile"
-          publicUrlFile="$releaseDirectory/seedancePublicUrl"
-          test -s "$publicUrlFile"
-          {
-            found=0
-            publicUrlFound=0
-            while IFS= read -r line; do
-              case "$line" in
-                UTOOO_SEEDANCE_API_KEY=*) printf 'UTOOO_SEEDANCE_API_KEY='; cat "$keyFile"; printf '\n'; found=1 ;;
-                OMNISTUDIO_NEXT_PUBLIC_URL=*) printf 'OMNISTUDIO_NEXT_PUBLIC_URL='; cat "$publicUrlFile"; printf '\n'; publicUrlFound=1 ;;
-                *) printf '%s\n' "$line" ;;
-              esac
-            done < .env
-            if [ "$found" -eq 0 ]; then printf 'UTOOO_SEEDANCE_API_KEY='; cat "$keyFile"; printf '\n'; fi
-            if [ "$publicUrlFound" -eq 0 ]; then printf 'OMNISTUDIO_NEXT_PUBLIC_URL='; cat "$publicUrlFile"; printf '\n'; fi
-          } > .env.pending
-          chmod 600 .env.pending
-          mv .env.pending .env
-          rm -f "$keyFile"
-          rm -f "$publicUrlFile"
-          previousImage=$(docker inspect --format '{{.Image}}' "$appContainer")
-          printf '%s\n' "$previousImage" > "$releaseDirectory/previousImage"
-          docker load < "$releaseDirectory/appImage.tar.gz"
-          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$releaseCommit"
-          test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
-          test "$(docker image inspect --format '{{index .Config.Labels "com.omnisline.walletCreditPrecision"}}' "$image")" = 6
-
-          writeImage() {
-            printf 'services:\n  omnistudio-next:\n    image: "%s"\n    environment:\n      UTOOO_SEEDANCE_API_KEY: ${UTOOO_SEEDANCE_API_KEY:-}\n      OMNISTUDIO_NEXT_PUBLIC_URL: ${OMNISTUDIO_NEXT_PUBLIC_URL:-}\n' "$1" > releaseCompose.yaml
-          }
-          waitHealthy() {
-            for attempt in {1..60}; do
-              if curl -fsS --max-time 5 http://127.0.0.1:3000/api/auth/setupStatus >/dev/null 2>&1; then return 0; fi
-              sleep 2
-            done
-            return 1
-          }
-          rollback() {
-            exitCode=${1:-$?}
-            trap - ERR
-            trap '' HUP INT TERM
-            set +e
-            previousPrecision=$(docker image inspect --format '{{index .Config.Labels "com.omnisline.walletCreditPrecision"}}' "$previousImage")
-            walletScale=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT MAX(NUMERIC_SCALE) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND ((TABLE_NAME=\"user_wallets\" AND COLUMN_NAME IN (\"balance\",\"frozen\")) OR (TABLE_NAME=\"user_credit_ledger\" AND COLUMN_NAME IN (\"amount\",\"balance_after\",\"frozen_after\")) OR (TABLE_NAME=\"user_generation_jobs\" AND COLUMN_NAME IN (\"quoted_credits\",\"captured_credits\")) OR (TABLE_NAME=\"user_credit_transfers\" AND COLUMN_NAME=\"amount\"))"')
-            precisionStatus=$?
-            if [ "$precisionStatus" -ne 0 ] || ! [[ "$walletScale" =~ ^[0-9]+$ ]] || { [ "$walletScale" -ge 6 ] && [ "$previousPrecision" != 6 ]; }; then
-              if ! "${compose[@]}" stop --timeout 30 omnistudio-next; then echo 'Application stop failed; inspect running containers immediately.'; fi
-              echo "Automatic rollback blocked: wallet precision is incompatible or could not be verified. Database retained; backup path: $databaseBackup. Manual recovery required."
-              exit "$exitCode"
-            fi
-            writeImage "$previousImage"
-            "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
-            if waitHealthy; then echo 'Deployment failed; previous image restored.'; else echo 'Rollback failed; inspect the application on the server.'; fi
-            exit "$exitCode"
-          }
-          # ACT: Never run an integer-wallet image after a precision migration; database recovery stays manual.
-          trap rollback ERR
-          trap 'rollback 130' HUP INT TERM
-          "${compose[@]}" stop --timeout 30 omnistudio-next
-          docker exec "$mysqlContainer" sh -c \
-            'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user="$MYSQL_USER" --single-transaction --quick --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' \
-            | gzip > "$releaseDirectory/databasePending.sql.gz"
-          gzip -t "$releaseDirectory/databasePending.sql.gz"
-          mv "$releaseDirectory/databasePending.sql.gz" "$databaseBackup"
-          writeImage "$image"
-          "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
-          newAppContainer=$("${compose[@]}" -f releaseCompose.yaml ps -q omnistudio-next)
-          if ! waitHealthy; then
-            echo 'New application did not become healthy; diagnostics follow.'
-            docker inspect --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} image={{.Image}}' "$newAppContainer" || true
-            docker logs --tail 120 "$newAppContainer" || true
-            false
-          fi
-          appContainer=$("${compose[@]}" -f releaseCompose.yaml ps -q omnistudio-next)
-          actualImage=$(docker inspect --format '{{.Image}}' "$appContainer")
-          expectedImage=$(docker image inspect --format '{{.Id}}' "$image")
-          if [ "$actualImage" != "$expectedImage" ]; then
-            echo "Application image mismatch: actual=$actualImage expected=$expectedImage"
-            docker inspect --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' "$appContainer"
-            docker logs --tail 100 "$appContainer" || true
-            false
-          fi
-          docker exec -i "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names' <<'SQL'
-          INSERT INTO platform_provider_configs (id, provider_id, enabled, config, secret_ref, created_at, updated_at)
-          VALUES (UUID(), 'utoooSeedance', 1, JSON_OBJECT('apiUrl', 'https://ai-gateway.utooo.com', 'baseUrl', 'https://ai-gateway.utooo.com', 'protocol', 'openai-completions'), 'UTOOO_SEEDANCE_API_KEY', UTC_TIMESTAMP(), UTC_TIMESTAMP())
-          ON DUPLICATE KEY UPDATE enabled = 1, config = VALUES(config), secret_ref = VALUES(secret_ref), updated_at = UTC_TIMESTAMP();
-          UPDATE platform_provider_configs SET enabled = 0, updated_at = UTC_TIMESTAMP() WHERE provider_id = 'jojokey';
-          UPDATE platform_models SET enabled = 0, updated_at = UTC_TIMESTAMP() WHERE provider_id = 'jojokey' OR (provider_id = 'utoooSeedance' AND model_id IN ('doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-mini-260615'));
-          INSERT INTO platform_models (id, provider_id, model_id, label, media_type, api_model_id, enabled, capabilities, sort_order, created_at, updated_at)
-          VALUES
-            (UUID(), 'utoooSeedance', 'doubao-seedance-2-5-260628', 'Seedance 2.5', 'video', NULL, 1, NULL, 180, UTC_TIMESTAMP(), UTC_TIMESTAMP()),
-            (UUID(), 'utoooSeedance', 'doubao-seedance-2-0-260128', 'Seedance 2.0', 'video', NULL, 1, NULL, 190, UTC_TIMESTAMP(), UTC_TIMESTAMP())
-          ON DUPLICATE KEY UPDATE enabled = 1, label = VALUES(label), sort_order = VALUES(sort_order), updated_at = UTC_TIMESTAMP();
-          UPDATE platform_models SET sort_order = 30, updated_at = UTC_TIMESTAMP() WHERE provider_id = 'dashscope' AND model_id = 'text/deepseek-v4.1-flash';
-          SET @priceBookId = (SELECT active_price_book_version_id FROM platform_pricing_settings WHERE id = 'platform' LIMIT 1);
-          INSERT INTO platform_pricing_items (id, price_book_version_id, provider_id, model_id, media_type, unit, credits_per_unit, constraints, created_at, updated_at)
-          VALUES
-            (UUID(), @priceBookId, 'utoooSeedance', 'doubao-seedance-2-5-260628', 'video', 'second', 153.0, JSON_OBJECT('resolutionTiers', JSON_OBJECT('480p', 32, '720p', 68, '1080p', 153)), UTC_TIMESTAMP(), UTC_TIMESTAMP()),
-            (UUID(), @priceBookId, 'utoooSeedance', 'doubao-seedance-2-0-260128', 'video', 'second', 86.0, JSON_OBJECT('resolutionTiers', JSON_OBJECT('480p', 18, '720p', 38, '1080p', 86)), UTC_TIMESTAMP(), UTC_TIMESTAMP())
-          ON DUPLICATE KEY UPDATE unit = VALUES(unit), credits_per_unit = VALUES(credits_per_unit), constraints = VALUES(constraints), updated_at = UTC_TIMESTAMP();
-          SQL
-          enabledCount=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM platform_models m JOIN platform_provider_configs p ON p.provider_id=m.provider_id WHERE m.provider_id=0x75746f6f6f53656564616e6365 AND m.enabled=1 AND p.enabled=1 AND m.model_id IN (0x646f7562616f2d73656564616e63652d322d352d323630363238,0x646f7562616f2d73656564616e63652d322d302d323630313238)"')
-          if [ "$enabledCount" != 2 ]; then
-            echo "Unexpected enabled Seedance model count: $enabledCount"
-            false
-          fi
-          priceCount=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM platform_pricing_items i JOIN platform_pricing_settings s ON s.active_price_book_version_id=i.price_book_version_id WHERE i.provider_id=0x75746f6f6f53656564616e6365 AND i.media_type=\"video\" AND ((i.model_id=0x646f7562616f2d73656564616e63652d322d352d323630363238 AND i.credits_per_unit=153.0) OR (i.model_id=0x646f7562616f2d73656564616e63652d322d302d323630313238 AND i.credits_per_unit=86.0))"')
-          if [ "$priceCount" != 2 ]; then
-            echo "Unexpected active Seedance price count: $priceCount"
-            false
-          fi
-          docker exec "$appContainer" bun -e 'const key = process.env.UTOOO_SEEDANCE_API_KEY?.trim(); if (!key) throw new Error("Seedance API key is not available in application container"); const response = await fetch("https://ai-gateway.utooo.com/v1/models", { headers: { Authorization: `Bearer ${key}` } }); if (!response.ok) throw new Error(`Seedance gateway returned HTTP ${response.status}`); const body = await response.json(); const ids = new Set(Array.isArray(body?.data) ? body.data.map((item) => item?.id) : []); for (const id of ["doubao-seedance-2-5-260628", "doubao-seedance-2-0-260128"]) if (!ids.has(id)) throw new Error(`Seedance model missing from gateway: ${id}`); console.log("Seedance gateway connectivity verified for 2.5 and 2.0");'
-          printf '%s\n' "$releaseCommit" > deployedCommit
-          trap - ERR HUP INT TERM
-          echo "Deployed $releaseCommit"
-          SH
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          scp "${sshOptions[@]}" serverImage/appImage.tar.gz "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/appImagePending.tar.gz"
+          scp "${sshOptions[@]}" serverImage/imageChecksum scripts/deployServer.sh scripts/deploymentRetention.sh \
+            "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/"
+      - name: Drain, back up and deploy
+        run: |
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          archiveBytes=$(stat -c %s serverImage/appImage.tar.gz)
+          imageBytes=$(cat serverImage/imageSize)
+          [[ "$imageBytes" =~ ^[1-9][0-9]{0,11}$ ]]
+          attempt="attempt${GITHUB_RUN_ID}x${GITHUB_RUN_ATTEMPT}"
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash "$serverPath/releases/$GITHUB_SHA/deployServer.sh" \
+            deploy "$serverPath" "$GITHUB_SHA" "$attempt" "$archiveBytes" "$imageBytes" \
+            "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds"
       - name: Remove runner credentials
         if: always()
         run: rm -f "$RUNNER_TEMP/deployKey" "$RUNNER_TEMP/sshKnownHosts"
