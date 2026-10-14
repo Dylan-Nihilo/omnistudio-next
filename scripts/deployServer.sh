@@ -108,6 +108,20 @@ changed=false
 committed=false
 legacyDrain=false
 
+registerManagedImage() {
+  local imageId=$1 commit=$2 healthyAt=$3 directory="$serverPath/managedImages" record
+  [[ "$imageId" =~ ^sha256:[a-f0-9]{64}$ && "$commit" =~ ^[a-f0-9]{40}$ && "$healthyAt" =~ ^[1-9][0-9]{0,10}$ ]] || return 1
+  [[ ! -L "$directory" ]] || return 1
+  mkdir -p -- "$directory" || return 1
+  [[ -d "$directory" && "$(realpath -e -- "$directory")" == "$directory" ]] || return 1
+  record="$directory/image${imageId#sha256:}"
+  [[ ! -L "$record" && ! -L "${record}Pending" ]] || return 1
+  [[ ! -e "$record" || -f "$record" ]] || return 1
+  [[ ! -e "${record}Pending" || -f "${record}Pending" ]] || return 1
+  printf '%s\t%s\n' "$healthyAt" "$commit" > "${record}Pending" || return 1
+  mv -T -- "${record}Pending" "$record"
+}
+
 waitHealthy() {
   local expectedImage=$1 currentContainer currentImage
   for (( healthyAttempt=0; healthyAttempt<60; healthyAttempt++ )); do
@@ -222,6 +236,9 @@ previousRevision=$(docker inspect --format '{{index .Config.Labels "org.opencont
 if [[ "$previousRevision" =~ ^[a-f0-9]{40}$ && -d "$serverPath/releases/$previousRevision" && ! -L "$serverPath/releases/$previousRevision" ]]; then
   printf '%s\n' "$previousImage" > "$serverPath/releases/$previousRevision/imageId"
   if [[ ! -f "$serverPath/releases/$previousRevision/healthyAt" ]]; then date +%s > "$serverPath/releases/$previousRevision/healthyAt"; fi
+  if ! registerManagedImage "$previousImage" "$previousRevision" "$(cat "$serverPath/releases/$previousRevision/healthyAt")"; then
+    echo '::warning::Previous successful image could not be registered; unregistered images will not be removed by ID.' >&2
+  fi
 fi
 stopped=true
 "${compose[@]}" stop --timeout 30 omnistudio-next
@@ -293,6 +310,9 @@ committed=true
 rm -f "$maintenanceFile" "$bootstrapFile"
 trap - ERR HUP INT TERM
 echo "Deployed $releaseCommit with complete backup $attempt."
+if ! registerManagedImage "$expectedImage" "$releaseCommit" "$(cat "$releaseDirectory/healthyAt")"; then
+  echo '::warning::Application is healthy, but immutable image registration failed; inspect managedImages.' >&2
+fi
 if ! bash "$releaseDirectory/deploymentRetention.sh" "$serverPath" "$keepReleases" "$keepBackups" "$backupDays" "$releaseCommit" "$attempt"; then
   echo '::warning::Application is healthy, but retention cleanup failed. Inspect deployment storage.' >&2
 fi

@@ -37,13 +37,24 @@ regularFile "$releaseRoot/$currentCommit/healthyAt" && regularFile "$releaseRoot
 currentImage=$(cat "$releaseRoot/$currentCommit/imageId")
 currentHealthyAt=$(cat "$releaseRoot/$currentCommit/healthyAt")
 [[ $currentImage =~ ^sha256:[a-f0-9]{64}$ && $currentHealthyAt =~ ^[1-9][0-9]{0,10}$ ]] || fail 'Current release metadata is invalid'
+protectedBackupDirectory="$backupRoot/$protectedBackup"
+[[ -d $protectedBackupDirectory && ! -L $protectedBackupDirectory ]] || fail 'Protected backup must be a real directory'
+regularFile "$protectedBackupDirectory/previousImage" || fail 'Rollback image metadata is missing'
+rollbackImage=$(cat "$protectedBackupDirectory/previousImage")
+[[ $rollbackImage =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'Rollback image metadata is invalid'
+managedImageRoot="$serverPath/managedImages"
+if [[ -e $managedImageRoot || -L $managedImageRoot ]]; then
+  [[ -d $managedImageRoot && ! -L $managedImageRoot && $(realpath -e -- "$managedImageRoot") == "$managedImageRoot" ]] || fail 'Managed image root must be a real directory'
+fi
 
 # ACT: The caller holds deployLock; unknown legacy directories and backups are never inferred as managed entries.
 now=$(date +%s)
 backupCutoff=$((now - keepBackupDays * 86400))
 pendingCutoff=$((now - 7 * 86400))
-declare -A protectedImages=([$currentImage]=1)
+declare -A protectedImages=([$currentImage]=1 [$rollbackImage]=1)
 declare -A oldImages=()
+declare -A registeredCommits=()
+declare -A imageRecordPaths=()
 declare -a releaseRecords=()
 declare -a backupRecords=()
 declare -a pendingReleases=()
@@ -76,9 +87,22 @@ for directory in "$releaseRoot"/*; do
   releaseRecords+=("$healthyAt"$'\t'"$commit"$'\t'"$imageId")
 done
 [[ ${#releaseRecords[@]} -gt 0 ]] || fail 'No managed successful releases found'
-mapfile -t releaseRecords < <(printf '%s\n' "${releaseRecords[@]}" | sort -t $'\t' -k1,1nr -k2,2r)
+versionRecords=("${releaseRecords[@]}")
+for recordFile in "$managedImageRoot"/image*; do
+  regularFile "$recordFile" || continue
+  recordName=${recordFile##*/}
+  [[ $recordName =~ ^image[a-f0-9]{64}$ ]] || continue
+  recordValue=$(cat "$recordFile")
+  IFS=$'\t' read -r healthyAt commit extra <<< "$recordValue"
+  [[ $healthyAt =~ ^[1-9][0-9]{0,10}$ && $commit =~ ^[a-f0-9]{40}$ && $recordValue == "$healthyAt"$'\t'"$commit" ]] || continue
+  imageId="sha256:${recordName#image}"
+  registeredCommits[$imageId]=$commit
+  imageRecordPaths[$imageId]=$recordFile
+  versionRecords+=("$healthyAt"$'\t'"$commit"$'\t'"$imageId")
+done
+mapfile -t versionRecords < <(printf '%s\n' "${versionRecords[@]}" | sort -t $'\t' -k1,1nr -k2,2r)
 declare -A keptVersions=([$currentImage]=1)
-for record in "${releaseRecords[@]}"; do
+for record in "${versionRecords[@]}"; do
   IFS=$'\t' read -r healthyAt commit imageId <<< "$record"
   if [[ ${#keptVersions[@]} -lt $keepReleases ]]; then keptVersions[$imageId]=1; fi
 done
@@ -115,17 +139,41 @@ for record in "${releaseRecords[@]}"; do
   [[ $commit != "$currentCommit" && ! ${protectedImages[$imageId]+present} ]] || continue
   oldImages[$imageId]=1
 done
+for imageId in "${!registeredCommits[@]}"; do
+  if [[ ! ${protectedImages[$imageId]+present} ]]; then oldImages[$imageId]=1; fi
+done
 
 while IFS=$'\t' read -r repository tag imageId; do
   [[ $repository == omnistudio-next-app && $tag =~ ^[a-f0-9]{40}$ && ${oldImages[$imageId]+present} && ! ${protectedImages[$imageId]+present} ]] || continue
   referencedContainers=$(docker ps -aq --filter "ancestor=$imageId")
   if [[ -n $referencedContainers ]]; then protectedImages[$imageId]=1; continue; fi
   printf '%s %s:%s\n' "$($dryRun && printf 'Would remove image' || printf 'Removing image')" "$repository" "$tag"
-  if ! $dryRun && ! docker image rm "$repository:$tag"; then
+  if $dryRun; then continue; fi
+  if ! docker image rm "$repository:$tag"; then
     protectedImages[$imageId]=1
     printf 'Image and release archive retained because removal was refused: %s:%s\n' "$repository" "$tag" >&2
+    continue
+  fi
+  if [[ ${imageRecordPaths[$imageId]+present} ]] && remainingImages=$(docker image ls --all --quiet --no-trunc) && [[ $'\n'"$remainingImages"$'\n' != *$'\n'"$imageId"$'\n'* ]]; then
+    removeFile "${imageRecordPaths[$imageId]}"
   fi
 done <<< "$imageRows"
+
+for imageId in "${!registeredCommits[@]}"; do
+  [[ ${oldImages[$imageId]+present} && ! ${protectedImages[$imageId]+present} ]] || continue
+  imageMetadata=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}{{"\t"}}{{json .RepoTags}}{{"\t"}}{{json .RepoDigests}}' "$imageId" 2>/dev/null) || continue
+  IFS=$'\t' read -r revision repoTags repoDigests <<< "$imageMetadata"
+  [[ $revision == "${registeredCommits[$imageId]}" && ( $repoTags == '[]' || $repoTags == null ) && ( $repoDigests == '[]' || $repoDigests == null ) ]] || continue
+  referencedContainers=$(docker ps -aq --filter "ancestor=$imageId")
+  if [[ -n $referencedContainers ]]; then protectedImages[$imageId]=1; continue; fi
+  printf '%s %s\n' "$($dryRun && printf 'Would remove registered image' || printf 'Removing registered image')" "$imageId"
+  if $dryRun || docker image rm "$imageId"; then
+    removeFile "${imageRecordPaths[$imageId]}"
+  else
+    protectedImages[$imageId]=1
+    printf 'Registered image retained because removal was refused: %s\n' "$imageId" >&2
+  fi
+done
 
 for record in "${releaseRecords[@]}"; do
   IFS=$'\t' read -r healthyAt commit imageId <<< "$record"
