@@ -8,26 +8,29 @@
       <section v-else-if="activeTab === 'prices'" class="adminSection">
         <header class="sectionHeader"><div><h2>积分价格</h2><p>{{ configuration?.priceVersion ? `当前价格版本：${configuration.priceVersion}` : '尚未发布价格。配置后，用户才能使用收费模型。' }}</p></div><div class="sectionActions"><uiRadioGroup :modelValue="priceFilter" :options="modelFilterOptions" variant="segmented" aria-label="积分价格类型筛选" @update:modelValue="updatePriceFilter" /><uiButton :disabled="busy || !priceRows.length || missingPrices" :loading="busy" @click="publishPrices">发布新价格</uiButton></div></header>
         <p class="sectionHint">新任务使用新价格，已开始的任务保持原价格。文本按各类实际 token 与配置费率结算，1 元＝10 积分。</p>
-        <uiTable class="priceTable" :rows="filteredPriceRows" :columns="priceColumns" rowKey="priceKey" :emptyText="priceFilter === 'all' ? '暂无已启用的模型' : '当前类型没有已启用的模型'" label="模型积分价格">
-          <template #cell="{ row, column }">
-            <span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span>
-            <span v-else-if="column.key === 'unit'">{{ priceUnit(row) }}</span>
-            <div v-else-if="column.key === 'creditsPerUnit'" class="priceEditor">
-              <div v-if="row.mediaType === 'text'" class="tokenPricing">
-                <p class="pricingHelp">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p>
-                <div class="rateFields">
-                  <uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="field.key === 'input' || field.key === 'output'">
-                    <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
-                  </uiField>
+        <component v-for="group in priceGroups" :is="group.key === 'disabled' ? 'details' : 'div'" :key="group.key" class="priceGroup" :class="{ disabledPrices: group.key === 'disabled' }">
+          <summary v-if="group.key === 'disabled'"><uiTag tone="error">已停用模型（{{ group.rows.length }}）</uiTag></summary>
+          <uiTable class="priceTable" :rows="group.rows" :columns="priceColumns" rowKey="priceKey" :emptyText="priceFilter === 'all' ? '暂无已启用的模型' : '当前类型没有已启用的模型'" :label="group.key === 'disabled' ? '已停用模型积分价格' : '模型积分价格'">
+            <template #cell="{ row, column }">
+              <span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span>
+              <span v-else-if="column.key === 'unit'">{{ priceUnit(row) }}</span>
+              <div v-else-if="column.key === 'creditsPerUnit'" class="priceEditor">
+                <div v-if="row.mediaType === 'text'" class="tokenPricing">
+                  <p class="pricingHelp">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p>
+                  <div class="rateFields">
+                    <uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="field.key === 'input' || field.key === 'output'">
+                      <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
+                    </uiField>
+                  </div>
+                  <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10 000 000 token，实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
+                  <p v-if="!textPricingInput(String(row.priceKey))" class="pricingHelp">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p>
                 </div>
-                <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10 000 000 token，实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
-                <p v-if="!textPricingInput(String(row.priceKey))" class="pricingHelp">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p>
+                <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
               </div>
-              <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
-            </div>
-            <span v-else>{{ row[column.key] }}</span>
-          </template>
-        </uiTable>
+              <span v-else>{{ row[column.key] }}</span>
+            </template>
+          </uiTable>
+        </component>
         <p v-if="missingPrices" class="sectionHint">请为所有已启用模型填写完整有效的价格。</p>
       </section>
       <extensionPanel v-else-if="activeTab === 'extensions'" /><section v-else class="adminSection"><header class="sectionHeader"><h2>管理审计</h2><p>最近 200 条平台操作记录。</p></header><uiTable :rows="audit" :columns="auditColumns" emptyText="还没有操作记录" label="平台审计"><template #cell="{ row, column }"><span v-if="column.key === 'actorUserId'">{{ userName(String(row.actorUserId)) }}</span><span v-else-if="column.key === 'createdAt'">{{ new Date(String(row.createdAt)).toLocaleString('zh-CN', { hour12: false }) }}</span><span v-else-if="column.key === 'metadata'" class="auditDetails">{{ auditText(row.metadata) }}</span><span v-else>{{ auditLabels[String(row.action)] ?? row.action }}</span></template></uiTable></section>
@@ -74,7 +77,10 @@ const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0
 const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US").replaceAll(",", " ")}`).join("，");
 function priceKey(model: { providerId: string; mediaType: string; modelId: string }) { return JSON.stringify([model.providerId, model.mediaType, model.modelId]); }
 const priceRows = computed(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
-const filteredPriceRows = computed(() => priceRows.value.filter(model => model.enabled && (priceFilter.value === "all" || model.mediaType === priceFilter.value)));
+const priceGroups = computed(() => {
+  const rows = priceRows.value.filter(model => priceFilter.value === "all" || model.mediaType === priceFilter.value);
+  return [{ key: "enabled", rows: rows.filter(model => model.enabled) }, { key: "disabled", rows: rows.filter(model => !model.enabled) }].filter(group => group.key === "enabled" || group.rows.length);
+});
 const filteredModels = computed(() => { const models = configuration.value?.models ?? []; return modelFilter.value === "all" ? models : models.filter(model => model.mediaType === modelFilter.value); });
 const missingPrices = computed(() => priceRows.value.some(model => model.enabled && (model.mediaType === "text" ? !textPricingInput(model.priceKey) : priceDraft.value[model.priceKey] == null)));
 const userColumns: UiColumn[] = [{ key: "displayName", label: "用户", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "role", label: "身份", width: 80, align: "center" }, { key: "available", label: "可用积分", width: 115, align: "center" }, { key: "frozen", label: "冻结", width: 90, align: "center" }, { key: "status", label: "状态", width: 85, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
@@ -189,6 +195,9 @@ onMounted(loadAll);
   .credentialBadge { font-family: var(--uiFontMono, monospace); font-size: 13px; color: var(--uiTextSecondary); letter-spacing: 0.5px; }
   .roleLabel { color: var(--uiTextMuted); }
   .auditDetails { font-size: 12px; overflow-wrap: anywhere; }
+  .priceGroup {
+    &.disabledPrices { margin-top: 20px; summary { padding: 12px 0; cursor: pointer; color: var(--uiTextMuted); } }
+  }
   .priceTable {
     :deep(table) { min-width: 950px; }
     .priceEditor {
