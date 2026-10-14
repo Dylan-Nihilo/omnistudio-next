@@ -4,7 +4,7 @@ export const platformProviders = [
   { providerId: "kaizoClaude", apiUrl: "https://kaizo.top", protocol: "anthropic-messages" as const, secretRef: "KAIZO_CLAUDE_API_KEY", config: { baseUrl: "https://kaizo.top" } },
   { providerId: "openheapImage", apiUrl: "https://openheapstack.com/v1", protocol: "openai-completions" as const, secretRef: "OPENHEAP_IMAGE_API_KEY", config: { baseUrl: "https://openheapstack.com/v1" } },
   { providerId: "dashscope", apiUrl: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", protocol: "openai-completions" as const, secretRef: "DASHSCOPE_API_KEY", config: {} },
-  { providerId: "dashscopeVideo", apiUrl: "https://ws-y50erldsvnjf0okr.cn-beijing.maas.aliyuncs.com/api/v1", protocol: "openai-completions" as const, secretRef: "DASHSCOPE_VIDEO_API_KEY", config: { baseUrl: "https://ws-y50erldsvnjf0okr.cn-beijing.maas.aliyuncs.com/api/v1" } },
+  { providerId: "dashscopeVideo", apiUrl: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/api/v1", protocol: "openai-completions" as const, secretRef: "DASHSCOPE_VIDEO_API_KEY", config: { baseUrl: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/api/v1" } },
 ];
 
 export const platformModelCatalog: Array<{ providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video"; apiModelId?: string; capabilities?: Record<string, boolean>; sortOrder: number }> = [

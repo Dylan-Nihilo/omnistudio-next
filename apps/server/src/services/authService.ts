@@ -166,7 +166,7 @@ export async function createAccount(input: { email: string; displayName: string;
     const passwordHash = await hashPassword(input.password);
     await database.transaction(async tx => {
       await tx.insert(users).values({ id: userId, email, displayName: input.displayName.trim(), passwordHash, status: "active", createdAt: now, updatedAt: now });
-      await tx.insert(wallets).values({ id: randomUUID(), userId, balance: 0, frozen: 0, createdAt: now, updatedAt: now });
+      await tx.insert(wallets).values({ id: randomUUID(), userId, balance: "0.000000", frozen: "0.000000", createdAt: now, updatedAt: now });
       if (root) await tx.insert(platformRoles).values({ id: randomUUID(), userId, role: "root", createdAt: now, updatedAt: now });
       if (input.inviteToken) {
         const [invitation] = await tx.select().from(teamInvitations).where(and(eq(teamInvitations.tokenHash, hashSecret(input.inviteToken)), isNull(teamInvitations.acceptedAt), isNull(teamInvitations.revokedAt))).limit(1).for("update");

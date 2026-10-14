@@ -23,6 +23,7 @@ import * as a2aSettings from "@/agent/a2a/settings";
 import * as personalization from "@/utils/personalization";
 import * as mentionFiles from "@/agent/mentionFiles";
 import * as demos from "@/utils/demos";
+import * as billingCredits from "@/utils/billing/credits";
 
 export default {
   assets,
@@ -51,4 +52,5 @@ export default {
   personalization,
   mentionFiles,
   demos,
+  billingCredits,
 };

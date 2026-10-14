@@ -26,11 +26,26 @@ export async function createAgentModel(providerId: string, modelId: string, thin
   const streamSimple = runtime.streamSimple.bind(runtime);
   runtime.stream = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
-    return createChargedStream({ providerId, modelId, model: selected, context, signal: options?.signal }, signal => stream<Api>({ ...selected, id: model.id }, context, { ...options, signal }));
+    const requestOptions = { ...options, maxTokens: options?.maxTokens ?? selected.maxTokens };
+    return createChargedStream({ providerId, modelId, model: selected, context, fetch: options?.fetch, signal: options?.signal }, (signal, recordPayload, guardedFetch) => stream<Api>({ ...selected, id: model.id }, context, {
+      ...requestOptions, signal, fetch: guardedFetch,
+      onPayload: async (payload, requestModel) => {
+        const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;
+        await recordPayload(finalPayload);
+        return finalPayload;
+      },
+    }));
   };
   runtime.streamSimple = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
-    return createChargedStream({ providerId, modelId, model: selected, context, signal: options?.signal }, signal => streamSimple({ ...selected, id: model.id }, context, { ...options, signal }));
+    return createChargedStream({ providerId, modelId, model: selected, context, fetch: options?.fetch, signal: options?.signal }, (signal, recordPayload, guardedFetch) => streamSimple({ ...selected, id: model.id }, context, {
+      ...options, signal, fetch: guardedFetch,
+      onPayload: async (payload, requestModel) => {
+        const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;
+        await recordPayload(finalPayload);
+        return finalPayload;
+      },
+    }));
   };
   return { ...configured, runtime };
 }

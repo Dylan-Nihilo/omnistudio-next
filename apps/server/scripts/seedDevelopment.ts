@@ -33,7 +33,7 @@ await database.insert(teams).values({ id: teamId, name: "开发团队", ownerUse
   .onDuplicateKeyUpdate({ set: { updatedAt: now } });
 await database.insert(teamMembers).values({ id: randomUUID(), teamId, userId, role: "owner", createdAt: now, updatedAt: now })
   .onDuplicateKeyUpdate({ set: { updatedAt: now } });
-await database.insert(wallets).values({ id: randomUUID(), userId, balance: 100000, frozen: 0, createdAt: now, updatedAt: now })
+await database.insert(wallets).values({ id: randomUUID(), userId, balance: "100000.000000", frozen: "0.000000", createdAt: now, updatedAt: now })
   .onDuplicateKeyUpdate({ set: { updatedAt: now } });
 const [seedWallet] = await database.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
 if (seedWallet) {

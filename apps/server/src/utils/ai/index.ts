@@ -121,22 +121,28 @@ export function streamAi(
     maxTokens: configuredModel.maxOutputTokens,
   };
   // ACT: 不按模型名预判附件能力；按供应商协议传递，是否支持由上游接口决定。
-  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, signal, idempotencyKey }, streamSignal => aiApis[provider.protocol].streamSimple(model, context, {
+  const maxTokens = configuredModel.maxOutputTokens;
+  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
     apiKey: provider.apiKey,
     signal: streamSignal,
-    onPayload: references.length ? (payload) => {
+    fetch: guardedFetch,
+    maxTokens,
+    onPayload: async (payload) => {
+      if (!references.length) { await recordPayload(payload); return payload; }
       const body = payload as Record<string, unknown>;
       const field = provider.protocol === "openai-responses" ? "input" : "messages";
       const messages = body[field] as { role: string; content: unknown }[];
       // ACT: 后续 Anthropic 工具结果也使用 user 角色，附件只补充到最初的输入。
       const firstUser = messages.findIndex(message => message.role === "user");
       const attachmentContent = referenceContent(provider.protocol, "", references).slice(1);
-      return { ...body, [field]: messages.map((message, index) => index === firstUser
+      const finalPayload = { ...body, [field]: messages.map((message, index) => index === firstUser
         ? { ...message, content: [
           ...(Array.isArray(message.content) ? message.content : referenceContent(provider.protocol, String(message.content ?? ""), [])),
           ...attachmentContent,
         ] }
         : message) };
-    } : undefined,
+      await recordPayload(finalPayload);
+      return finalPayload;
+    },
   }));
 }

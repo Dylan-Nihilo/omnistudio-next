@@ -12,13 +12,13 @@ const rules = [
     type: "input",
     field: "baseUrl" as const,
     title: "请求地址",
-    value: "https://ws-y50erldsvnjf0okr.cn-beijing.maas.aliyuncs.com/api/v1",
-    props: { placeholder: "https://ws-y50erldsvnjf0okr.cn-beijing.maas.aliyuncs.com/api/v1" },
+    value: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/api/v1",
+    props: { placeholder: "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/api/v1" },
   },
 ] as const;
 
 const upstreamModel = "MiniMax/MiniMax-H3";
-const defaultBaseUrl = "https://ws-y50erldsvnjf0okr.cn-beijing.maas.aliyuncs.com/api/v1";
+const defaultBaseUrl = "https://ws-v856jk108cwj3i2c.cn-beijing.maas.aliyuncs.com/api/v1";
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("百炼视频响应格式错误");

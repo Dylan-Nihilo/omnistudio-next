@@ -1,14 +1,18 @@
 import { authClient, type ApiResponse, type AuthTeam } from "@/lib/authApi";
 import { getSessionSnapshot } from "@/lib/sessionState";
 
-export type Wallet = { id: string; userId: string; balance: number; frozen: number; available: number; total: number };
-export type LedgerEntry = { id: string; kind: string; amount: number; balanceAfter: number; frozenAfter: number; reason?: string | null; createdAt: string };
+export type Wallet = { id: string; userId: string; balance: string; frozen: string; available: string; total: string };
+export type LedgerEntry = { id: string; jobId?: string | null; kind: string; amount: string; balanceAfter: string; frozenAfter: string; reason?: string | null; metadata?: unknown; createdAt: string };
 export type TeamMember = { id: string; email: string; displayName: string; status: "active" | "disabled"; role: "owner" | "member" };
 export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: string; mimeType: string; bytes: number; createdAt: string };
-export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: number; frozen: number; available: number };
+export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean; maskedApiKey?: string | null };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
-export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: Record<string, unknown> };
+export type TokenRates = { input: string; cacheRead: string | null; cacheWrite: string | null; output: string };
+export type TextPricingInput = { ratesPerMillion: TokenRates };
+export type TextPricing = TextPricingInput & { billingRule: "textTokenV2" | "textTokenV3" };
+export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: Record<string, unknown> & { textPricing?: TextPricing } };
+export type PlatformPriceInput = Omit<ModelPrice, "unit"> & { textPricing?: TextPricingInput };
 export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[] };
 export type AuditEntry = { id: string; actorUserId: string | null; action: string; metadata: unknown; createdAt: string };
 
@@ -46,7 +50,7 @@ export function savePlatformProvider(input: { providerId: string; apiUrl: string
 export function deletePlatformProvider(providerId: string) { return accountRequest("DELETE", "/api/admin/platform/deleteProvider", { providerId }); }
 export function savePlatformModel(input: Omit<PlatformModel, "id" | "enabled" | "capabilities" | "apiModelId"> & { id?: string; enabled: boolean; capabilities?: Record<string, unknown>; apiModelId?: string }) { return accountRequest("PUT", "/api/admin/platform/saveModel", input); }
 export function deletePlatformModel(id: string) { return accountRequest("DELETE", "/api/admin/platform/deleteModel", { id }); }
-export function publishPlatformPrices(items: ModelPrice[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}) })) }); }
+export function publishPlatformPrices(items: PlatformPriceInput[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints, textPricing }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) })) }); }
 export function getPlatformAudit() { return accountRequest<AuditEntry[]>("GET", "/api/admin/audit"); }
 
 export async function uploadTeamFile(teamId: string, file: File) {

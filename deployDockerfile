@@ -2,6 +2,7 @@ FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
 ARG buildCommit
 LABEL org.opencontainers.image.revision=$buildCommit
+LABEL com.omnisline.walletCreditPrecision="6"
 
 WORKDIR /app
 

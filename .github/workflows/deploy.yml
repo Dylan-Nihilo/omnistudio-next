@@ -116,6 +116,8 @@ jobs:
           exec 9>deployLock
           flock -n 9
           releaseDirectory="$serverPath/releases/$releaseCommit"
+          databaseBackup="$releaseDirectory/database.sql.gz"
+          if [ -f "$databaseBackup" ]; then databaseBackup="$releaseDirectory/database$(date -u +%Y%m%d%H%M%S).sql.gz"; fi
           image="omnistudio-next-app:$releaseCommit"
           compose=(docker compose -p omnistudio-next --env-file .env -f compose.yaml)
           appContainer=$("${compose[@]}" ps -q omnistudio-next)
@@ -145,17 +147,10 @@ jobs:
           rm -f "$publicUrlFile"
           previousImage=$(docker inspect --format '{{.Image}}' "$appContainer")
           printf '%s\n' "$previousImage" > "$releaseDirectory/previousImage"
-          if [ ! -f "$releaseDirectory/database.sql.gz" ]; then
-            docker exec "$mysqlContainer" sh -c \
-              'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user="$MYSQL_USER" --single-transaction --quick --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' \
-              | gzip > "$releaseDirectory/databasePending.sql.gz"
-            gzip -t "$releaseDirectory/databasePending.sql.gz"
-            mv "$releaseDirectory/databasePending.sql.gz" "$releaseDirectory/database.sql.gz"
-          fi
-          gzip -t "$releaseDirectory/database.sql.gz"
           docker load < "$releaseDirectory/appImage.tar.gz"
           test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$releaseCommit"
           test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
+          test "$(docker image inspect --format '{{index .Config.Labels "com.omnisline.walletCreditPrecision"}}' "$image")" = 6
 
           writeImage() {
             printf 'services:\n  omnistudio-next:\n    image: "%s"\n    environment:\n      UTOOO_SEEDANCE_API_KEY: ${UTOOO_SEEDANCE_API_KEY:-}\n      OMNISTUDIO_NEXT_PUBLIC_URL: ${OMNISTUDIO_NEXT_PUBLIC_URL:-}\n' "$1" > releaseCompose.yaml
@@ -172,14 +167,28 @@ jobs:
             trap - ERR
             trap '' HUP INT TERM
             set +e
+            previousPrecision=$(docker image inspect --format '{{index .Config.Labels "com.omnisline.walletCreditPrecision"}}' "$previousImage")
+            walletScale=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT MAX(NUMERIC_SCALE) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND ((TABLE_NAME=\"user_wallets\" AND COLUMN_NAME IN (\"balance\",\"frozen\")) OR (TABLE_NAME=\"user_credit_ledger\" AND COLUMN_NAME IN (\"amount\",\"balance_after\",\"frozen_after\")) OR (TABLE_NAME=\"user_generation_jobs\" AND COLUMN_NAME IN (\"quoted_credits\",\"captured_credits\")) OR (TABLE_NAME=\"user_credit_transfers\" AND COLUMN_NAME=\"amount\"))"')
+            precisionStatus=$?
+            if [ "$precisionStatus" -ne 0 ] || ! [[ "$walletScale" =~ ^[0-9]+$ ]] || { [ "$walletScale" -ge 6 ] && [ "$previousPrecision" != 6 ]; }; then
+              if ! "${compose[@]}" stop --timeout 30 omnistudio-next; then echo 'Application stop failed; inspect running containers immediately.'; fi
+              echo "Automatic rollback blocked: wallet precision is incompatible or could not be verified. Database retained; backup path: $databaseBackup. Manual recovery required."
+              exit "$exitCode"
+            fi
             writeImage "$previousImage"
             "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
             if waitHealthy; then echo 'Deployment failed; previous image restored.'; else echo 'Rollback failed; inspect the application on the server.'; fi
             exit "$exitCode"
           }
-          # ACT: Image rollback leaves SQL migrations in place; retain the SQL backup for manual database recovery.
+          # ACT: Never run an integer-wallet image after a precision migration; database recovery stays manual.
           trap rollback ERR
           trap 'rollback 130' HUP INT TERM
+          "${compose[@]}" stop --timeout 30 omnistudio-next
+          docker exec "$mysqlContainer" sh -c \
+            'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user="$MYSQL_USER" --single-transaction --quick --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' \
+            | gzip > "$releaseDirectory/databasePending.sql.gz"
+          gzip -t "$releaseDirectory/databasePending.sql.gz"
+          mv "$releaseDirectory/databasePending.sql.gz" "$databaseBackup"
           writeImage "$image"
           "${compose[@]}" -f releaseCompose.yaml up -d --no-build --no-deps omnistudio-next
           newAppContainer=$("${compose[@]}" -f releaseCompose.yaml ps -q omnistudio-next)
