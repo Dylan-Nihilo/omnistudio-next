@@ -8,7 +8,7 @@
       <section v-else-if="activeTab === 'prices'" class="adminSection">
         <header class="sectionHeader"><div><h2>积分价格</h2><p>{{ configuration?.priceVersion ? `当前价格版本：${configuration.priceVersion}` : '尚未发布价格。配置后，用户才能使用收费模型。' }}</p></div><div class="sectionActions"><uiRadioGroup :modelValue="priceFilter" :options="modelFilterOptions" variant="segmented" aria-label="积分价格类型筛选" @update:modelValue="updatePriceFilter" /><uiButton :disabled="busy || !priceRows.length || missingPrices" :loading="busy" @click="publishPrices">发布新价格</uiButton></div></header>
         <p class="sectionHint">新任务使用新价格，已开始的任务保持原价格。文本按各类实际 token 与配置费率结算，1 元＝10 积分。</p>
-        <uiTable class="priceTable" :rows="filteredPriceRows" :columns="priceColumns" rowKey="priceKey" :emptyText="priceFilter === 'all' ? '请先添加平台模型' : '当前类型没有模型'" label="模型积分价格">
+        <uiTable class="priceTable" :rows="filteredPriceRows" :columns="priceColumns" rowKey="priceKey" :emptyText="priceFilter === 'all' ? '暂无已启用的模型' : '当前类型没有已启用的模型'" label="模型积分价格">
           <template #cell="{ row, column }">
             <span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span>
             <span v-else-if="column.key === 'unit'">{{ priceUnit(row) }}</span>
@@ -16,7 +16,7 @@
               <div v-if="row.mediaType === 'text'" class="tokenPricing">
                 <p class="pricingHelp">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p>
                 <div class="rateFields">
-                  <uiField v-for="field in tokenRateFields" :key="field.key" :label="field.label" :required="field.key === 'input' || field.key === 'output'">
+                  <uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="field.key === 'input' || field.key === 'output'">
                     <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
                   </uiField>
                 </div>
@@ -74,10 +74,10 @@ const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0
 const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US").replaceAll(",", " ")}`).join("，");
 function priceKey(model: { providerId: string; mediaType: string; modelId: string }) { return JSON.stringify([model.providerId, model.mediaType, model.modelId]); }
 const priceRows = computed(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
-const filteredPriceRows = computed(() => priceFilter.value === "all" ? priceRows.value : priceRows.value.filter(model => model.mediaType === priceFilter.value));
+const filteredPriceRows = computed(() => priceRows.value.filter(model => model.enabled && (priceFilter.value === "all" || model.mediaType === priceFilter.value)));
 const filteredModels = computed(() => { const models = configuration.value?.models ?? []; return modelFilter.value === "all" ? models : models.filter(model => model.mediaType === modelFilter.value); });
 const missingPrices = computed(() => priceRows.value.some(model => model.enabled && (model.mediaType === "text" ? !textPricingInput(model.priceKey) : priceDraft.value[model.priceKey] == null)));
-const userColumns: UiColumn[] = [{ key: "displayName", label: "用户" }, { key: "email", label: "邮箱" }, { key: "role", label: "身份", width: 80 }, { key: "available", label: "可用积分", width: 115, align: "right" }, { key: "frozen", label: "冻结", width: 90, align: "right" }, { key: "status", label: "状态", width: 85 }, { key: "actions", label: "操作", width: 360, align: "right" }];
+const userColumns: UiColumn[] = [{ key: "displayName", label: "用户", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "role", label: "身份", width: 80, align: "center" }, { key: "available", label: "可用积分", width: 115, align: "center" }, { key: "frozen", label: "冻结", width: 90, align: "center" }, { key: "status", label: "状态", width: 85, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
 const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", width: 150, align: "center" }, { key: "apiUrl", label: "API 地址", width: 300, align: "left" }, { key: "credential", label: "访问凭据", width: 200, align: "center" }, { key: "enabled", label: "状态", width: 95, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 110, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "creditsPerUnit", label: "价格配置", width: 450 }];
@@ -184,7 +184,7 @@ onMounted(loadAll);
   min-width: 0;
   .sectionHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px; h2 { margin: 0 0 8px; font-size: 18px; } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .sectionActions { display: flex; gap: 8px; flex-wrap: wrap; } }
   .modelHeader { margin-top: 36px; }
-  .rowActions { display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+  .rowActions { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
   .actionGroup { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; flex-wrap: nowrap; }
   .credentialBadge { font-family: var(--uiFontMono, monospace); font-size: 13px; color: var(--uiTextSecondary); letter-spacing: 0.5px; }
   .roleLabel { color: var(--uiTextMuted); }
@@ -193,11 +193,15 @@ onMounted(loadAll);
     :deep(table) { min-width: 950px; }
     .priceEditor {
       display: grid; gap: 12px;
+      :deep(input) { text-align: center; }
       .mediaPriceInput { width: 200px; max-width: 100%; justify-self: center; }
       .tokenPricing {
         display: grid; gap: 12px;
         .pricingHelp { margin: 0; font-size: 12px; color: var(--uiTextMuted); line-height: 1.7; }
-        .rateFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; :deep(input) { text-align: center; } }
+        .rateFields {
+          display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 440px;
+          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
+        }
       }
     }
   }
