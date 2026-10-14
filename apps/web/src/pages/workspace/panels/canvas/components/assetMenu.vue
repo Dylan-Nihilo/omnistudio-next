@@ -11,7 +11,7 @@ import shareAssetDialog from "@/components/account/shareAssetDialog.vue";
 import { uiDropdown, useUiFeedback, isUiCancelledError, type UiMenuItem, type UiValue } from "@omnistudio-next/ui";
 import { IconDownload, IconEdit, IconTrash, IconFolder, IconFolderPlus } from "@tabler/icons-vue";
 
-type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[] };
+type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[]; status?: string };
 const feedback = useUiFeedback();
 const props = defineProps<{ entries: AssetEntry[] }>();
 const emit = defineEmits<{ changed: [path?: string, target?: string] }>();
@@ -39,8 +39,8 @@ const menuItems = computed<UiMenuItem[]>(() => {
       { value: "newFolder", label: "新建文件夹", icon: IconFolderPlus, disabled: busy.value },
       ...moveFolders.value.map(item => ({ value: "move:" + item.path, label: item.label, icon: IconFolder, disabled: busy.value || destinationDisabled(item.path) })),
     ] },
-    ...(entry.type === "file" ? [{ value: "download", label: "下载", icon: IconDownload, divided: true }] : []),
-    ...(entry.type === "file" ? [{ value: "share", label: "上传到团队空间", disabled: busy.value }] : []),
+    ...(entry.type === "file" ? [{ value: "download", label: "下载", icon: IconDownload, divided: true, disabled: busy.value || entry.status !== "Active" }] : []),
+    ...(entry.type === "file" ? [{ value: "share", label: "上传到团队空间", disabled: busy.value || entry.status !== "Active" }] : []),
     { value: "rename", label: "重命名", icon: IconEdit, disabled: busy.value },
     { value: "delete", label: "删除", icon: IconTrash, disabled: busy.value || !!entry.children?.length },
   ];

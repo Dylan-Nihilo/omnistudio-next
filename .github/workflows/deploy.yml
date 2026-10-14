@@ -70,6 +70,7 @@ jobs:
       deploySshKey: ${{ secrets.DEPLOY_SSH_KEY }}
       deployKnownHosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
       seedanceApiKey: ${{ secrets.UTOOO_SEEDANCE_API_KEY }}
+      seedancePublicUrl: ${{ vars.OMNISTUDIO_NEXT_PUBLIC_URL }}
     steps:
       - name: Configure SSH
         run: |
@@ -79,6 +80,8 @@ jobs:
           : "${deploySshKey:?Configure DEPLOY_SSH_KEY}"
           : "${deployKnownHosts:?Configure DEPLOY_KNOWN_HOSTS}"
           : "${seedanceApiKey:?Configure UTOOO_SEEDANCE_API_KEY}"
+          : "${seedancePublicUrl:?Configure OMNISTUDIO_NEXT_PUBLIC_URL}"
+          [[ "$seedancePublicUrl" =~ ^https?://[a-zA-Z0-9][a-zA-Z0-9.-]*(:[0-9]+)?/?$ ]]
           [[ "$serverHost" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
           [[ "$serverUser" =~ ^[a-z_][a-z0-9_-]*$ ]]
           [[ "$serverPath" =~ ^/[a-zA-Z0-9/_-]+$ ]]
@@ -97,6 +100,8 @@ jobs:
           scp "${sshOptions[@]}" appImage.tar.gz "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/"
           printf '%s' "$seedanceApiKey" | ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
             "umask 077; cat > '$serverPath/releases/$GITHUB_SHA/utoooSeedanceApiKey'"
+          printf '%s' "$seedancePublicUrl" | ssh "${sshOptions[@]}" "$serverUser@$serverHost" \
+            "umask 077; cat > '$serverPath/releases/$GITHUB_SHA/seedancePublicUrl'"
       - name: Back up and deploy application
         run: |
           sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
@@ -119,19 +124,25 @@ jobs:
           test -n "$mysqlContainer"
           keyFile="$releaseDirectory/utoooSeedanceApiKey"
           test -s "$keyFile"
+          publicUrlFile="$releaseDirectory/seedancePublicUrl"
+          test -s "$publicUrlFile"
           {
             found=0
+            publicUrlFound=0
             while IFS= read -r line; do
               case "$line" in
                 UTOOO_SEEDANCE_API_KEY=*) printf 'UTOOO_SEEDANCE_API_KEY='; cat "$keyFile"; printf '\n'; found=1 ;;
+                OMNISTUDIO_NEXT_PUBLIC_URL=*) printf 'OMNISTUDIO_NEXT_PUBLIC_URL='; cat "$publicUrlFile"; printf '\n'; publicUrlFound=1 ;;
                 *) printf '%s\n' "$line" ;;
               esac
             done < .env
             if [ "$found" -eq 0 ]; then printf 'UTOOO_SEEDANCE_API_KEY='; cat "$keyFile"; printf '\n'; fi
+            if [ "$publicUrlFound" -eq 0 ]; then printf 'OMNISTUDIO_NEXT_PUBLIC_URL='; cat "$publicUrlFile"; printf '\n'; fi
           } > .env.pending
           chmod 600 .env.pending
           mv .env.pending .env
           rm -f "$keyFile"
+          rm -f "$publicUrlFile"
           previousImage=$(docker inspect --format '{{.Image}}' "$appContainer")
           printf '%s\n' "$previousImage" > "$releaseDirectory/previousImage"
           if [ ! -f "$releaseDirectory/database.sql.gz" ]; then
@@ -147,7 +158,7 @@ jobs:
           test "$(docker image inspect --format '{{.Architecture}}' "$image")" = amd64
 
           writeImage() {
-            printf 'services:\n  omnistudio-next:\n    image: "%s"\n    environment:\n      UTOOO_SEEDANCE_API_KEY: ${UTOOO_SEEDANCE_API_KEY:-}\n' "$1" > releaseCompose.yaml
+            printf 'services:\n  omnistudio-next:\n    image: "%s"\n    environment:\n      UTOOO_SEEDANCE_API_KEY: ${UTOOO_SEEDANCE_API_KEY:-}\n      OMNISTUDIO_NEXT_PUBLIC_URL: ${OMNISTUDIO_NEXT_PUBLIC_URL:-}\n' "$1" > releaseCompose.yaml
           }
           waitHealthy() {
             for attempt in {1..60}; do

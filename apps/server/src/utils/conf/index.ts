@@ -4,8 +4,9 @@ import { mkdirSync, realpathSync } from "node:fs";
 import { accountContext, requireAccount } from "@/utils/accountContext";
 import type { RemoteTeam } from "@/utils/teams";
 import type { A2aSettings } from "@/agent/a2a/settings";
+import type { SeedanceLibrary } from "@/utils/assets";
 
-const config = new conf<{ settings: Record<string, unknown>; toolConfigs: Record<string, Record<string, unknown>>; nodeConfigs: Record<string, Record<string, unknown>>; remoteConnections: Record<string, RemoteTeam>; a2a: A2aSettings }>({
+const config = new conf<{ settings: Record<string, unknown>; toolConfigs: Record<string, Record<string, unknown>>; nodeConfigs: Record<string, Record<string, unknown>>; remoteConnections: Record<string, RemoteTeam>; a2a: A2aSettings; seedanceLibrary: SeedanceLibrary }>({
   cwd: process.env.OMNISTUDIO_NEXT_DATA_DIR ?? process.env.TOONFLOW_DATA_DIR ?? resolve(import.meta.dirname, "../../../../../data"),
   configName: "settings",
   configFileMode: 0o600,

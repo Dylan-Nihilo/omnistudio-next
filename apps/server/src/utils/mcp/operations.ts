@@ -106,7 +106,7 @@ export const appOperations: {
     parameters: z.strictObject({ name: skillName }), refresh: { type: "skill", nameField: "name" },
   },
   {
-    name: "listAssets", description: "列出全局素材库的文件和文件夹树；与工作区 asstes 目录不同。", method: "GET", path: "/api/assets/list", parameters: z.strictObject({}),
+    name: "listAssets", description: "列出当前账户字节素材库的文件夹及入库状态；仅 Active 素材可引用，与项目 assets 目录不同。", method: "GET", path: "/api/assets/list", parameters: z.strictObject({}),
   },
   {
     name: "createAssetDirectory", description: "在全局素材库创建文件夹，path 为素材库内相对路径。", method: "POST", path: "/api/assets/mkdir", parameters: z.strictObject({ path }),
@@ -121,7 +121,7 @@ export const appOperations: {
     name: "readAsset", description: "读取不超过 20 MB 的全局素材文件，返回 base64 和 MIME 类型。", method: "GET", path: "/api/assets/read", parameters: z.strictObject({ path }),
   },
   {
-    name: "saveAsset", description: "以 base64 上传不超过 20 MB 的文件到全局素材库；不覆盖已有文件，父文件夹须存在。", method: "PUT", path: "/api/assets/save", parameters: z.strictObject({ path, base64 }),
+    name: "saveAsset", description: "以 base64 提交不超过 20 MB 的图片、视频或音频到字节素材库审核；须配置本服务公网源地址，不覆盖已有文件，父文件夹须存在。", method: "PUT", path: "/api/assets/save", parameters: z.strictObject({ path, base64 }),
   },
   {
     name: "listAgentSessions", description: "列出目标工作区的内置 Agent 历史对话。directory 由 target.directory 注入。", method: "GET", path: "/api/agent/list", parameters: z.strictObject({ directory }),

@@ -15,8 +15,8 @@ const fileMimeTypes: Record<string, string> = {
   json: "application/json", xml: "application/xml", html: "text/html", css: "text/css", js: "text/javascript", ndjson: "application/x-ndjson",
 };
 
-export function startAssetDrag(event: DragEvent, entry: { type: string; path: string }) {
-  if (entry.type !== "file" || !event.dataTransfer) return;
+export function startAssetDrag(event: DragEvent, entry: { type: string; path: string; status?: string }) {
+  if (entry.type !== "file" || entry.status !== "Active" || !event.dataTransfer) return;
   event.dataTransfer.effectAllowed = "copy";
   event.dataTransfer.setData(assetDragType, entry.path);
 }

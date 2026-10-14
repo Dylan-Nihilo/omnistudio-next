@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { copyFile, lstat, mkdir, realpath, rename, unlink, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, readFile, realpath, rename, rmdir, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { requireAccount } from "@/utils/accountContext";
 import { getDataDirectory } from "@/utils/conf";
 import { lockWorkspaceFiles, resolveWorkspacePath } from "@/utils/workspace/files";
 import { isSafeSegment } from "@/utils/skills/files";
-import { getAssetsDirectory } from "@/utils/assets";
+import { createDirectory, getAsset, getAssetsDirectory, saveAsset } from "@/utils/assets";
 
 export const maxTeamAssetBytes = 100 * 1024 * 1024;
 export const teamAssetNameSchema = z.string().trim().min(1).max(255).refine(isSafeSegment, "文件名不能包含路径、特殊字符或系统保留名称");
@@ -51,6 +51,7 @@ export async function uploadTeamAsset(teamId: string, name: string, mimeType: st
   let bytes: number;
   if (Buffer.isBuffer(source)) bytes = source.byteLength;
   else {
+    if (!source.directory) await getAsset(source.path);
     const root = source.directory ? await authorizeProjectDirectory(source.directory) : await getAssetsDirectory();
     sourcePath = (await resolveWorkspacePath(root, source.path)).path;
     const info = await lstat(sourcePath);
@@ -90,11 +91,17 @@ export async function uploadTeamAsset(teamId: string, name: string, mimeType: st
   }
 }
 
-export async function importTeamAsset(id: string, directory?: string, targetDirectory = directory ? "assets" : "") {
+export async function importTeamAsset(id: string, directory?: string, targetDirectory = directory ? "assets" : "", origin?: string) {
   const { asset, path } = await readTeamAsset(id);
   const personal = directory ? await authorizeProjectDirectory(directory) : await getAssetsDirectory();
   const target = `${targetDirectory ? targetDirectory + "/" : ""}${randomUUID()}/${asset.name}`;
   const result = await resolveWorkspacePath(personal, target, true);
+  if (!directory) {
+    const folder = target.split("/").slice(0, -1).join("/");
+    await createDirectory(folder);
+    try { return await saveAsset(target, await readFile(path), origin); }
+    catch (error) { await rmdir(dirname(result.path)); throw error; }
+  }
   const release = lockWorkspaceFiles([result.path]);
   try {
     await mkdir(dirname(result.path), { recursive: true, mode: 0o700 });

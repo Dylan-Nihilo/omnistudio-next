@@ -4,7 +4,7 @@ import { extname } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import type { AgentMention } from "@/agent/runtime/types";
-import { getAssetsDirectory } from "@/utils/assets";
+import { getAsset, getAssetsDirectory } from "@/utils/assets";
 import { lockWorkspaceFiles, resolveWorkspacePath } from "@/utils/workspace/files";
 
 const mediaTypes = new Set(["IMAGE", "MASK", "VIDEO", "AUDIO", "FILE"]);
@@ -79,6 +79,7 @@ export async function snapshotMentions(cwd: string, mentions: AgentMention[], sa
       if (previous && !media) { result.push(mention); continue; }
       if (!media && mention.source.kind !== "asset") { result.push(mention); continue; }
       const globalAsset = mention.source.kind === "asset" && !previous;
+      if (globalAsset && mention.source.kind === "asset") await getAsset(mention.source.path);
       const root = globalAsset ? await getAssetsDirectory() : cwd;
       const relativePath = globalAsset && mention.source.kind === "asset" ? mention.source.path : media!.url;
       let source: string;

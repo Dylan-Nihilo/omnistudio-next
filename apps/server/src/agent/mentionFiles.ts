@@ -7,7 +7,6 @@ import type { AgentMention } from "./runtime/types";
 
 type StoredCanvas = { revision: string; nodes: MentionCanvasNode[]; byId: Map<string, MentionCanvasNode> };
 const canvasCache = new Map<string, { revision: string; bytes: number; value: Promise<StoredCanvas> }>();
-const assetSearches = new Map<string, { key: string; offset: number; touched: number; busy: boolean; iterator: AsyncGenerator<MentionAsset>; timer: ReturnType<typeof setTimeout> }>();
 
 async function readMentionText(directory: string, relativePath: string) {
   const { path } = await u.workspaceFile.resolveWorkspacePath(directory, relativePath);
@@ -80,80 +79,28 @@ export async function storedMentionOutput(directory: string, canvasId: string, n
   return outputId === undefined ? mentionNodeOutputs(node) : createCanvasMention(node, canvasId, outputId, path => readMentionText(directory, path));
 }
 
-async function* walkAssets(directory: string, path: string, recursive: boolean, depth = 0): AsyncGenerator<MentionAsset> {
-  if (depth > 64) return;
-  const resolved = await u.workspaceFile.resolveWorkspacePath(directory, path);
-  const entries = await opendir(resolved.path);
-  for await (const entry of entries) {
-    if (!entry.isFile() && !entry.isDirectory()) continue;
-    const relativePath = path && path !== "." ? `${path}/${entry.name}` : entry.name;
-    yield { name: entry.name, path: relativePath, type: entry.isDirectory() ? "directory" : "file",
-      ...(entry.isFile() ? { dataType: mentionAssetType(entry.name)?.dataType } : {}) };
-    if (recursive && entry.isDirectory()) yield* walkAssets(directory, relativePath, true, depth + 1);
-  }
-}
-
 export async function queryMentionAssets(options: MentionQuery & { path?: string }) {
   options.signal?.throwIfAborted();
-  const directory = await u.assets.getAssetsDirectory();
-  const path = options.path || ".";
-  await u.workspaceFile.resolveWorkspacePath(directory, path);
+  const path = options.path && options.path !== "." ? options.path : "";
   const query = options.query?.trim().toLocaleLowerCase() ?? "";
-  const key = JSON.stringify([directory, path, query]);
-  for (const [id, search] of assetSearches) if (Date.now() - search.touched > 60000) {
-    assetSearches.delete(id);
-    clearTimeout(search.timer);
-    void search.iterator.return(undefined).catch(() => {});
+  const offset = Number(options.cursor ?? 0);
+  if (!Number.isSafeInteger(offset) || offset < 0) throw Object.assign(new Error("分页已失效，请重新搜索"), { status: 409 });
+  function flatten(entries: Awaited<ReturnType<typeof u.assets.listAssets>>): MentionAsset[] {
+    return entries.flatMap(entry => [...(entry.type === "directory" || entry.status === "Active" ? [{ name: entry.name, path: entry.path, type: entry.type,
+      ...(entry.type === "file" ? { dataType: mentionAssetType(entry.name)?.dataType } : {}) }] : []), ...flatten(entry.children ?? [])]);
   }
-  let id: string;
-  if (options.cursor) {
-    const cursor = options.cursor.split(":");
-    id = cursor[0]!;
-    const search = assetSearches.get(id);
-    if (!search || search.key !== key || String(search.offset) !== cursor[1]) throw Object.assign(new Error("分页已失效，请重新搜索"), { status: 409 });
-  } else {
-    id = crypto.randomUUID();
-    const iterator = walkAssets(directory, path, !!query);
-    const timer = setTimeout(() => { assetSearches.delete(id); void iterator.return(undefined).catch(() => {}); }, 60000);
-    timer.unref();
-    assetSearches.set(id, { key, offset: 0, touched: Date.now(), busy: false, iterator, timer });
-    // ACT: 素材搜索保留至多四个短期目录迭代器，避免每页重新递归遍历整个素材库。
-    while (assetSearches.size > 4) {
-      const oldest = assetSearches.keys().next().value!;
-      const removed = assetSearches.get(oldest)!;
-      assetSearches.delete(oldest);
-      clearTimeout(removed.timer);
-      void removed.iterator.return(undefined).catch(() => {});
-    }
-  }
-  const search = assetSearches.get(id)!;
-  if (search.busy) throw Object.assign(new Error("上一页仍在读取，请稍后重试"), { status: 409 });
-  search.busy = true;
-  const items: MentionAsset[] = [];
+  const matches = flatten(await u.assets.listAssets()).filter(item => {
+    if (path && !item.path.startsWith(path + "/")) return false;
+    return query ? item.type === "file" && `${item.name} ${item.path}`.toLocaleLowerCase().includes(query)
+      : item.path.split("/").slice(0, -1).join("/") === path;
+  });
+  options.signal?.throwIfAborted();
   const limit = Math.max(1, Math.min(50, options.limit ?? 20));
-  let done = false;
-  try {
-    for (let scanned = 0; scanned < 2000 && items.length < limit; scanned++) {
-      options.signal?.throwIfAborted();
-      const next = await search.iterator.next();
-      if (next.done) { done = true; break; }
-      search.offset++;
-      const item = next.value;
-      if (!query || (item.type === "file" && `${item.name} ${item.path}`.toLocaleLowerCase().includes(query))) items.push(item);
-    }
-    search.touched = Date.now();
-    search.timer.refresh();
-    if (done) { assetSearches.delete(id); clearTimeout(search.timer); }
-    return { items, ...(!done ? { nextCursor: `${id}:${search.offset}` } : {}) };
-  } catch (error) {
-    assetSearches.delete(id);
-    clearTimeout(search.timer);
-    await search.iterator.return(undefined);
-    throw error;
-  } finally { search.busy = false; }
+  return { items: matches.slice(offset, offset + limit), ...(offset + limit < matches.length ? { nextCursor: String(offset + limit) } : {}) };
 }
 
 export async function selectMentionAsset(relativePath: string): Promise<AgentMention> {
+  await u.assets.getAsset(relativePath);
   const directory = await u.assets.getAssetsDirectory();
   const { path } = await u.workspaceFile.resolveWorkspacePath(directory, relativePath);
   const info = await stat(path);

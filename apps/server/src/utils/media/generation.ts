@@ -7,6 +7,7 @@ import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformMo
 import { reserveGeneration, settleGeneration } from "@/services/billingService";
 import { authorizeProjectDirectory } from "@/services/accountService";
 import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
+import { referenceForBytes } from "@/utils/assets";
 
 const maxMediaSize = 100 * 1024 * 1024;
 const mediaExtensions: Record<string, string> = {
@@ -71,7 +72,9 @@ function detectMimeType(bytes: Uint8Array, fallback: string) {
   return ({ "image/jpg": "image/jpeg", "audio/mp3": "audio/mpeg", "audio/x-wav": "audio/wav", "audio/wave": "audio/wav", "audio/x-flac": "audio/flac" } as Record<string, string>)[mimeType] ?? mimeType;
 }
 
-export async function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal): Promise<Extract<MediaInput, { type: "base64" }>> {
+export function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal): Promise<Extract<MediaInput, { type: "base64" }>>;
+export function readReference(cwd: string, reference: MediaReference, mediaType: string, signal: AbortSignal | undefined, providerId: string): Promise<MediaInput>;
+export async function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal, providerId?: string): Promise<MediaInput> {
   signal?.throwIfAborted();
   const { path } = await resolveWorkspacePath(cwd, reference.path);
   const info = await stat(path);
@@ -80,6 +83,10 @@ export async function readReference(cwd: string, reference: MediaReference, medi
   if (!bytes.length || bytes.length > maxMediaSize) invalid("参考媒体为空或超过 100 MB");
   const mimeType = detectMimeType(bytes, reference.mimeType);
   if (!mimeType.startsWith(`${mediaType}/`)) invalid(`参考媒体类型须为 ${mediaType}`);
+  if (providerId === "utoooSeedance") {
+    const asset = await referenceForBytes(bytes, mimeType);
+    if (asset) return asset;
+  }
   return { type: "base64", data: bytes.toString("base64"), mimeType };
 }
 
@@ -167,7 +174,7 @@ export async function generateMedia(
   let outputCompleted = false;
   const result: GeneratedMedia[] = [];
   try {
-    const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal))) : undefined;
+    const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal, request.providerId))) : undefined;
     const images = await references(request.images, "image");
     signal?.throwIfAborted();
     const assets = mediaType === "audio"
@@ -180,8 +187,8 @@ export async function generateMedia(
       : await provider.generateVideo!({
         model: request.modelId, prompt: request.prompt, images,
         videos: await references(request.videos, "video"), audios: await references(request.audios, "audio"),
-        firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal) : undefined,
-        lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal) : undefined,
+        firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal, request.providerId) : undefined,
+        lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal, request.providerId) : undefined,
         ratio: request.ratio, resolution: request.resolution, duration: request.duration,
         generateAudio: request.generateAudio, mode: request.mode,
       });

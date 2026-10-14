@@ -61,7 +61,7 @@ export async function createApp({
 
   if (process.env.NODE_ENV === "dev") {
     await buildRoute();
-    logger.token("safeUrl", request => (request.url ?? "").replace(/([?&](?:token|apiKey|secret)=)[^&]*/gi, "$1[REDACTED]"));
+    logger.token("safeUrl", request => (request.url ?? "").replace(/([?&](?:token|apiKey|secret|signature)=)[^&]*/gi, "$1[REDACTED]"));
     app.use(logger(":method :safeUrl :status :response-time ms - :res[content-length]"));
   }
   const { attachAuthContext, requireRoot } = await import("@/middleware/authContext");
@@ -75,7 +75,8 @@ export async function createApp({
     const writing = !["GET", "HEAD", "OPTIONS"].includes(request.method);
     const origin = request.get("origin");
     if (writing && origin && origin !== `${request.protocol}://${request.get("host")}`) return response.status(403).json(error("不允许跨来源操作", null, 403));
-    const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready";
+    const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready"
+      || (["GET", "HEAD"].includes(request.method) && request.path === "/assets/source");
     if (publicPath) return next();
     if (!request.authContext || request.authContext.serviceKind) return response.status(401).json(error("请先登录", null, 401));
     const expectedAccount = request.get("x-account-id") ?? request.query.accountId;
@@ -95,7 +96,8 @@ export async function createApp({
     next();
   });
   app.use("/a2a", express.json({ limit: "2mb" }));
-  app.use(["/api/workspaces/files/write", "/api/assets/save", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
+  app.use("/api/assets/save", express.raw({ type: "application/octet-stream", limit: "200mb" }));
+  app.use(["/api/workspaces/files/write", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
   app.use("/api/desktop", desktopRequest);

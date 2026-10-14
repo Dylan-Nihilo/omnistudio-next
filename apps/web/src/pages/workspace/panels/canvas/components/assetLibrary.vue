@@ -5,13 +5,14 @@
     <div class="libraryScroll">
       <uiTree ref="assetTree" :data="assetNodes" :currentNodeKey="folder === '.' ? undefined : folder" :filterNodeMethod="filterEntry" defaultExpandAll label="素材文件" @nodeClick="node => selectFolder(assetEntry(node))">
         <template #default="{ node }">
-          <div class="assetEntry" :title="node.label" :draggable="assetEntry(node).type === 'file'" @dragstart.stop="startAssetDrag($event, assetEntry(node))" @dblclick.stop="openPreview(assetEntry(node))" @contextmenu="openItemMenu($event, assetEntry(node))">
+          <div class="assetEntry" :title="assetEntry(node).error || node.label" :draggable="assetEntry(node).type === 'file' && assetEntry(node).status === 'Active'" @dragstart.stop="startAssetDrag($event, assetEntry(node))" @dblclick.stop="openPreview(assetEntry(node))" @contextmenu="openItemMenu($event, assetEntry(node))">
             <icon-folder-filled v-if="assetEntry(node).type === 'directory'" class="folderIcon" :size="24" />
-            <uiImage v-else-if="mediaKind(assetEntry(node)) === 'image'" class="assetThumbnail" :src="assetUrl(String(node.value))" :alt="node.label" fit="cover" loading="lazy" draggable="false" @click.stop="openPreview(assetEntry(node))"><template #error><icon-photo :size="22" /></template></uiImage>
+            <uiImage v-else-if="mediaKind(assetEntry(node)) === 'image' && assetEntry(node).status === 'Active'" class="assetThumbnail" :src="assetUrl(String(node.value))" :alt="node.label" fit="cover" loading="lazy" draggable="false" @click.stop="openPreview(assetEntry(node))"><template #error><icon-photo :size="22" /></template></uiImage>
             <span v-else class="fileIcon"><icon-music v-if="mediaKind(assetEntry(node)) === 'audio'" :size="22" /><icon-video v-else-if="mediaKind(assetEntry(node)) === 'video'" :size="22" /><icon-file v-else :size="22" /></span>
             <div v-if="assetEntry(node).draft" class="folderNameInput"><uiInput ref="folderInput" v-model="newFolderName" size="small" aria-label="文件夹名称" :disabled="folderSaving" @click.stop @keydown.stop @keydown.enter.prevent="!$event.isComposing && saveFolder()" @keydown.esc.prevent="cancelFolder" @blur="saveFolder" /></div>
             <span v-else class="assetName">{{ node.label }}</span>
-            <uiIconButton v-if="mediaKind(assetEntry(node))" size="small" :icon="IconEye" :label="'预览 ' + node.label" title="预览（也可双击素材）" @click.stop="openPreview(assetEntry(node))" />
+            <span v-if="assetEntry(node).status" class="assetStatus" :title="assetEntry(node).error">{{ assetEntry(node).status === 'Active' ? '已就绪' : assetEntry(node).status === 'Processing' ? '入库中' : '未通过' }}</span>
+            <uiIconButton v-if="mediaKind(assetEntry(node)) && assetEntry(node).status === 'Active'" size="small" :icon="IconEye" :label="'预览 ' + node.label" title="预览（也可双击素材）" @click.stop="openPreview(assetEntry(node))" />
             <uiIconButton v-if="!assetEntry(node).draft" size="small" :icon="IconDots" :label="'更多 ' + node.label" title="更多" @click.stop="openItemMenu($event, assetEntry(node))" />
           </div>
         </template>
@@ -43,7 +44,7 @@ import useWorkspaceFiles from "@/lib/workspaceFiles";
 import assetMenu from "./assetMenu.vue";
 import { useAuthStore } from "@/stores/auth";
 
-type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[]; draft?: boolean };
+type AssetEntry = { name: string; path: string; type: "file" | "directory"; children?: AssetEntry[]; draft?: boolean; status?: string; error?: string; mimeType?: string };
 type AssetOutput = { label: string; output: NodeOutput };
 
 const feedback = useUiFeedback();
@@ -70,7 +71,8 @@ const assetMenuRef = ref<InstanceType<typeof assetMenu>>();
 const previewAsset = ref<{ name: string; url: string; kind: "image" | "audio" | "video" }>();
 const previewError = ref("");
 let loadRequest = 0;
-onBeforeUnmount(() => { loadRequest++; });
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => { loadRequest++; clearTimeout(refreshTimer); });
 
 function assetUrl(path: string) {
   return `/api/assets/read?path=${encodeURIComponent(path)}&accountId=${encodeURIComponent(auth.user?.id ?? '')}`;
@@ -78,12 +80,16 @@ function assetUrl(path: string) {
 
 function mediaKind(entry: AssetEntry) {
   if (entry.type !== "file" || entry.draft) return;
+  if (entry.mimeType?.startsWith("image/")) return "image";
+  if (entry.mimeType?.startsWith("audio/")) return "audio";
+  if (entry.mimeType?.startsWith("video/")) return "video";
   if (/\.(avif|apng|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(entry.name)) return "image";
   if (/\.(mp3|wav|ogg|opus|flac|m4a|aac)$/i.test(entry.name)) return "audio";
   if (/\.(mp4|m4v|webm|mov|mkv|avi|ogv)$/i.test(entry.name)) return "video";
 }
 
 function openPreview(entry: AssetEntry) {
+  if (entry.status !== "Active") return;
   const kind = mediaKind(entry);
   if (!kind) return;
   previewError.value = "";
@@ -174,6 +180,7 @@ function directoryEntries(items: AssetEntry[]): AssetEntry[] {
 }
 
 async function loadEntries() {
+  clearTimeout(refreshTimer);
   const request = ++loadRequest;
   try {
     const { data } = await axios.get<{ data: { entries: AssetEntry[] } }>("/api/assets/list");
@@ -181,6 +188,8 @@ async function loadEntries() {
     entries.value = data.data.entries;
     await nextTick();
     if (request === loadRequest) assetTree.value?.filter(searchQuery.value);
+    function processing(items: AssetEntry[]): boolean { return items.some(item => item.status === "Processing" || processing(item.children ?? [])); }
+    if (visible.value && processing(entries.value)) refreshTimer = setTimeout(() => loadEntries().catch(showError), 5000);
   } catch (error) {
     if (request === loadRequest) throw error;
   }
@@ -193,6 +202,8 @@ function showError(error: unknown) {
 watch(visible, opened => {
   if (opened) loadEntries().catch(showError);
   else {
+    loadRequest++;
+    clearTimeout(refreshTimer);
     cancelFolder();
     previewAsset.value = undefined;
   }
@@ -234,7 +245,11 @@ async function createAssetFolder(parent: string, name: string) {
 }
 
 async function openSave(label: string, items: AssetOutput[]) {
-  outputs.value = items;
+  outputs.value = items.filter(item => ["IMAGE", "MASK", "VIDEO", "AUDIO"].includes(item.output.dataType));
+  if (!outputs.value.length) {
+    feedback.message({ tone: "error", message: "字节素材库仅支持图片、视频和音频" });
+    return;
+  }
   selectedOutput.value = 0;
   assetName.value = label.endsWith(extension.value) ? label : `${label}${extension.value}`;
   saveDirectory.value = folder.value;
@@ -260,7 +275,7 @@ async function saveAsset() {
       : new Blob([String(output.value)]);
     await axios.put("/api/assets/save", content, { params: { path }, headers: { "Content-Type": "application/octet-stream" } });
     saveVisible.value = false;
-    feedback.message({ tone: "success", message: "已保存到素材库" });
+    feedback.message({ tone: "success", message: "已提交字节素材入库，审核完成后可使用" });
     await loadEntries();
   } catch (error) {
     showError(error);
@@ -277,7 +292,7 @@ defineExpose({ openSave });
   display: flex; flex-direction: column; gap: 16px; width: min(360px, calc(100vw - 32px)); max-height: calc(100dvh - 260px); padding: 16px;
   border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); box-shadow: var(--uiShadowPopover);
   .libraryHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; h3 { margin: 0; color: var(--uiTextPrimary); font-size: var(--uiFontTitle); font-weight: 600; } .libraryActions { display: flex; gap: 4px; } }
-  .libraryScroll { min-height: 0; overflow: auto; overscroll-behavior: contain; :deep(.treeRow) { padding-inline-end: 0; } .assetEntry { display: flex; align-items: center; gap: 8px; min-width: 0; &[draggable="true"] { cursor: grab; } .folderIcon { flex-shrink: 0; color: var(--uiTextMuted); } .assetThumbnail, .fileIcon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--uiRadiusControl); color: var(--uiTextMuted); background: var(--uiBackgroundSubtle); } .assetName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .folderNameInput { flex: 1; min-width: 0; } } }
+  .libraryScroll { min-height: 0; overflow: auto; overscroll-behavior: contain; :deep(.treeRow) { padding-inline-end: 0; } .assetEntry { display: flex; align-items: center; gap: 8px; min-width: 0; &[draggable="true"] { cursor: grab; } .folderIcon { flex-shrink: 0; color: var(--uiTextMuted); } .assetThumbnail, .fileIcon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--uiRadiusControl); color: var(--uiTextMuted); background: var(--uiBackgroundSubtle); } .assetName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .assetStatus { flex-shrink: 0; color: var(--uiTextMuted); font-size: var(--uiFontCaption); } .folderNameInput { flex: 1; min-width: 0; } } }
   .audioPreview { flex-shrink: 0; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); .audioHeader { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--uiFontControl); } } }
 }
 .saveForm {
