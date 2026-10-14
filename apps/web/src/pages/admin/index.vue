@@ -1,5 +1,5 @@
 <template>
-  <accountShell title="平台管理" eyebrow="root" description="管理平台 API、模型与个人积分账户。">
+  <accountShell class="adminPage" title="平台管理" eyebrow="root" description="管理平台 API、模型与个人积分账户。">
     <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAll">刷新平台数据</uiButton><uiButton tag="a" href="#/teams" variant="ghost">查看团队空间</uiButton></template>
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <uiTabs :modelValue="activeTab" :options="tabs" label="平台管理" @update:modelValue="value => typeof value === 'string' && (activeTab = value)">
@@ -20,10 +20,10 @@
                     <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
                   </uiField>
                 </div>
-                <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10 000 000 token，实际消耗积分：{{ textExampleCredits(String(row.priceKey)) }}。</p>
+                <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10 000 000 token，实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
                 <p v-if="!textPricingInput(String(row.priceKey))" class="pricingHelp">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p>
               </div>
-              <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
+              <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
             </div>
             <span v-else>{{ row[column.key] }}</span>
           </template>
@@ -115,7 +115,7 @@ function textExampleCredits(key: string): string {
 function priceUnit(row: Record<string, unknown>): string {
   if (row.mediaType === "video") return "每秒";
   if (row.mediaType === "image") return "每张";
-  if (row.mediaType === "text") return "每百万 token，按实际用量";
+  if (row.mediaType === "text") return "每百万 token";
   const price = configuration.value?.prices.find(item => priceKey(item) === String(row.priceKey));
   return price?.unit === "10k_tokens" ? "旧规则：每万 token" : "旧规则：每万字符";
 }
@@ -174,6 +174,9 @@ onMounted(loadAll);
 </script>
 
 <style lang="scss" scoped>
+.adminPage {
+  :deep(.uiTable th) { text-align: center !important; }
+}
 .pageError { color: var(--uiStatusError); margin: 0 0 20px; font-size: var(--uiFontControl); line-height: 1.6; overflow-wrap: anywhere; }
 .adminSection {
   min-width: 0;
@@ -188,6 +191,7 @@ onMounted(loadAll);
     :deep(table) { min-width: 950px; }
     .priceEditor {
       display: grid; gap: 12px;
+      .mediaPriceInput { width: 200px; max-width: 100%; justify-self: center; }
       .tokenPricing {
         display: grid; gap: 12px;
         .pricingHelp { margin: 0; font-size: 12px; color: var(--uiTextMuted); line-height: 1.7; }

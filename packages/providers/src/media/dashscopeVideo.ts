@@ -85,6 +85,8 @@ async function generateVideo(request: VideoRequest, context: ProviderContext<{ a
   if (!Number.isInteger(duration) || duration < 4 || duration > 12) throw new Error("百炼 MiniMax H3 时长须为 4 到 12 秒的整数");
   const resolution = (request.resolution ?? "768P").toUpperCase();
   if (resolution !== "768P" && resolution !== "2K") throw new Error("百炼 MiniMax H3 仅支持 768P 或 2K");
+  const ratio = request.ratio ?? "16:9";
+  if (!["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"].includes(ratio)) throw new Error("百炼 MiniMax H3 比例须为 16:9、4:3、1:1、3:4、9:16 或 21:9");
   const response = await context.tool.fetch(`${baseUrl}/services/aigc/video-generation/video-synthesis`, {
     method: "POST",
     headers: {
@@ -95,7 +97,7 @@ async function generateVideo(request: VideoRequest, context: ProviderContext<{ a
     body: JSON.stringify({
       model: upstreamModel,
       input: { prompt: request.prompt },
-      parameters: { duration, resolution, prompt_extend: true, watermark: request.watermark ?? false },
+      parameters: { duration, resolution, ratio, prompt_extend: true, watermark: request.watermark ?? false },
     }),
     signal,
   });
@@ -111,7 +113,7 @@ async function generateVideo(request: VideoRequest, context: ProviderContext<{ a
 export default {
   id: "dashscopeVideo",
   label: "百炼视频",
-  version: "1.0.0",
+  version: "1.0.1",
   apiUrl: defaultBaseUrl,
   protocol: "openai-completions",
   readme: "百炼原生视频接口，当前适配 MiniMax H3 文生视频。",

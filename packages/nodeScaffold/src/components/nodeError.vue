@@ -8,7 +8,7 @@
     <div v-if="explanation || explanationError" class="explanation" aria-live="polite">
       <div class="errorLabel">{{ explanationError ? "暂时无法解释" : "AI 解释" }}</div>
       <div class="explanationText" tabindex="0">{{ explanationError || explanation }}</div>
-      <div v-if="explanation && !explanationError" class="explanationHint">由 {{ modelLabel }} 解释，原因是推测，供排查参考。</div>
+      <div v-if="explanation && !explanationError" class="explanationHint">由 <strong>{{ modelLabel }}</strong> 解释，原因是推测，供排查参考。</div>
     </div>
   </div>
 </template>
@@ -36,7 +36,7 @@ async function explainError() {
     // ACT: 沿用生成节点的首个文本模型默认值；不额外维护一份模型偏好。
     const model = (await ai.getModels(signal))[0];
     if (!model) throw new Error("请先在设置中添加文本模型，再重试 AI 解释。");
-    modelLabel.value = `${model.providerLabel} / ${model.label}`;
+    modelLabel.value = model.label;
     const result = await ai.generate({
       providerId: model.providerId,
       modelId: model.modelId,
