@@ -9,5 +9,6 @@ const inputSchema = z.object({ providerId: z.string().min(1).max(100), modelId: 
 export default Router().post("/", requireAuth, async (request, response) => {
   const input = inputSchema.safeParse(request.body);
   if (!input.success) return response.status(422).json(error("参数错误", input.error.issues, 422));
-  response.json(success(await quoteCredits(input.data.providerId, input.data.modelId, input.data.mediaType, input.data.units, undefined, input.data.size)));
+  const quote = await quoteCredits(input.data.providerId, input.data.modelId, input.data.mediaType, input.data.units, undefined, input.data.size);
+  response.json(success({ credits: quote.credits, unit: quote.unit }));
 });

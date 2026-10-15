@@ -8,7 +8,8 @@ export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: 
 export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: number; frozen: number; available: number };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean; maskedApiKey?: string | null };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
-export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: Record<string, unknown> };
+export type PriceConstraints = Record<string, unknown> & { resolutionTiers?: Record<string, number>; sizeTiers?: Record<string, number> };
+export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: PriceConstraints };
 export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[] };
 export type AuditEntry = { id: string; actorUserId: string | null; action: string; metadata: unknown; createdAt: string };
 
