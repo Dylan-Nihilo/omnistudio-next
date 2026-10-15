@@ -155,7 +155,7 @@ import axios from "axios";
 import {
   IconArrowUp, IconArrowDown, IconAtom, IconCopy,
   IconCircleDashed, IconPencil, IconPlayerStopFilled, IconX, IconLoader2,
-  IconTrash, IconLayoutGrid, IconMovie, IconPhoto, IconArrowUpRight, IconUsersGroup,
+  IconTrash, IconLayoutGrid, IconMovie, IconPhoto, IconArrowUpRight, IconUsersGroup, IconSparkles,
 } from "@tabler/icons-vue";
 import { uiButton, uiPopover, uiProgress, useUiFeedback } from "@omnistudio-next/ui";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
@@ -175,6 +175,7 @@ import anonymousData from "@/lib/anonymousData";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 import { getSessionSnapshot } from "@/lib/sessionState";
 import type { AgentAttachment, AgentConversation, AgentMessage } from "./types";
 import type { AgentEvent, AgentMention } from "@omnistudio-next/server/agent/types";
@@ -277,11 +278,25 @@ const selectedModelChoice = computed(() => modelChoices.value.find(item => item.
 const contextWindow = computed(() => contextUsage.value?.contextWindow ?? selectedModelChoice.value?.contextWindow ?? 262144);
 const contextPercent = computed(() => (contextUsage.value?.tokens ?? 0) / contextWindow.value * 100);
 const inputTokens = computed(() => stats.value ? stats.value.tokens.input + stats.value.tokens.cacheRead + stats.value.tokens.cacheWrite : 0);
-const welcomeSuggestions = [
+const onboardingStore = useOnboardingStore();
+const welcomeSuggestions = computed(() => [
+  {
+    label: "新手实战：一键搭建完整漫剧管线",
+    description: "分镜 -> 画面定妆(gpt-image-2 1K) -> 动态漫剧(doubao 4s)",
+    icon: IconSparkles,
+    prompt: onboardingStore.directorPromptText,
+  },
   { label: "搭建创作画布", description: "把创意串成清晰的节点流程", icon: IconLayoutGrid, prompt: "帮我搭建一个创作画布，先和我确认需要的节点与流程。" },
   { label: "梳理故事分镜", description: "拆解故事，安排画面与镜头", icon: IconMovie, prompt: "帮我把故事整理成分镜，先和我确认故事内容、时长和画面风格。" },
   { label: "生成图片素材", description: "为角色和场景寻找视觉方向", icon: IconPhoto, prompt: "帮我生成图片素材，先和我确认画面内容、风格和使用的模型。" },
-];
+]);
+watch(() => onboardingStore.shouldAutoFillAgent, async shouldFill => {
+  if (shouldFill) {
+    onboardingStore.shouldAutoFillAgent = false;
+    await nextTick();
+    await fillPrompt(onboardingStore.directorPromptText);
+  }
+});
 watch([locked, () => props.active], ([locked, active]) => {
   getSender()?.setEditable(active && !locked, false);
 });

@@ -26,6 +26,7 @@ declare module 'vue' {
     Ffmpeg: typeof import('./../components/settings/panels/pluginMarket/ffmpeg.vue')['default']
     FfmpegRequired: typeof import('./../components/settings/ffmpegRequired.vue')['default']
     General: typeof import('./../components/settings/panels/general/index.vue')['default']
+    HomeTour: typeof import('./../components/onboarding/homeTour.vue')['default']
     IconArrowUpRight: typeof import('@tabler/icons-vue')['IconArrowUpRight']
     IconBorderRadius: typeof import('@tabler/icons-vue')['IconBorderRadius']
     IconExternalLink: typeof import('@tabler/icons-vue')['IconExternalLink']
@@ -47,10 +48,8 @@ declare module 'vue' {
     Menu: typeof import('./../components/agent/menu.vue')['default']
     MessageMarkdown: typeof import('./../components/messageMarkdown.vue')['default']
     ModelPopover: typeof import('./../components/modelPopover.vue')['default']
-    OnboardingWelcome: typeof import('./../components/onboarding/onboardingWelcome.vue')['default']
     Personalization: typeof import('./../components/settings/panels/personalization.vue')['default']
     Privacy: typeof import('./../components/settings/panels/privacy.vue')['default']
-    QuestHud: typeof import('./../components/onboarding/questHud.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SessionGuard: typeof import('./../components/auth/sessionGuard.vue')['default']
@@ -60,5 +59,6 @@ declare module 'vue' {
     ToolMessage: typeof import('./../components/agent/toolMessage.vue')['default']
     Ui: typeof import('./../components/settings/panels/ui.vue')['default']
     UpdateBox: typeof import('./../components/updateBox.vue')['default']
+    WorkspaceTour: typeof import('./../components/onboarding/workspaceTour.vue')['default']
   }
 }

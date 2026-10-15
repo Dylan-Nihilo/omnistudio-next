@@ -93,7 +93,7 @@
     </uiDialog>
     <settings v-model="settingsVisible" />
     <workspacePicker ref="relocationPicker" hideTrigger />
-    <onboardingWelcome />
+    <homeTour />
   </div>
 </template>
 
@@ -122,7 +122,7 @@ import settings from "@/components/settings/index.vue";
 import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
 import inkUnderline from "@omnistudio-next/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
-import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
+import homeTour from "@/components/onboarding/homeTour.vue";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 
 const onboardingStore = useOnboardingStore();
@@ -162,7 +162,7 @@ async function handleSignOut() {
 }
 
 onMounted(async () => {
-  onboardingStore.checkShouldTrigger();
+  onboardingStore.checkHomeTrigger();
   try {
     const { data } = await axios.get<{ code: number; data: Demo[]; message?: string }>("/api/demos/get");
     if (data.code !== 200) throw new Error(data.message || "Demo 读取失败");
@@ -295,6 +295,7 @@ async function createProject(fromPrompt = true) {
     if (fromPrompt && prompt.value.trim()) {
       workspaceStore.pendingAgentMessage = { directory: workspaceStore.project!.directory, prompt: prompt.value, model: selectedModel.value, reasoningEffort: reasoningEffort.value };
     }
+    onboardingStore.completeHomeTour();
     await router.push("/workspace");
   } catch (err) {
     showError(axios.isAxiosError<{ message?: string }>(err)

@@ -14,7 +14,7 @@
         </div>
         <div v-else class="previewFallback">
           <div class="filmIcon">🎬</div>
-          <span>镜头渲染已就绪 · {{ activeTheme.title }}</span>
+          <span>镜头渲染已就绪 · 雨夜拔刀</span>
         </div>
       </div>
 
@@ -25,11 +25,11 @@
         </div>
         <div class="billingRow costRow">
           <span>本次实战出片消耗</span>
-          <strong>-{{ activeTheme.estimatedCredits.total }} 积分</strong>
+          <strong>-21 积分</strong>
         </div>
         <div class="billingRow balanceRow">
           <span>当前可用余额</span>
-          <span class="finalBalance">~{{ 100 - activeTheme.estimatedCredits.total }} 积分</span>
+          <span class="finalBalance">~79 积分</span>
         </div>
       </div>
 
@@ -53,16 +53,15 @@ import { useOnboardingStore } from "@/stores/onboardingStore";
 
 const router = useRouter();
 const onboardingStore = useOnboardingStore();
-const visible = computed(() => onboardingStore.currentStep === "completed");
-const activeTheme = computed(() => onboardingStore.activeTheme);
+const visible = computed(() => onboardingStore.showCelebration);
 const videoUrl = computed(() => onboardingStore.generatedVideoUrl);
 
 function handleStay() {
-  onboardingStore.advanceToStep("idle");
+  onboardingStore.closeCelebration();
 }
 
 async function handleCreateOwn() {
-  onboardingStore.advanceToStep("idle");
+  onboardingStore.closeCelebration();
   await router.push("/home");
 }
 </script>

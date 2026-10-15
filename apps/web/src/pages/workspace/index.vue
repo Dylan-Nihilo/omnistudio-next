@@ -11,7 +11,7 @@
     </div>
     <floatingAgent v-model="agentVisible" :topOffset="headerHeight" @resize="agentWidth = $event" />
     <settings v-model="settingsVisible" />
-    <questHud />
+    <workspaceTour />
     <celebrationModal />
   </main>
 </template>
@@ -30,8 +30,9 @@ import anonymousData from "@/lib/anonymousData";
 import canvasPanel from "./panels/canvas/canvasHost.vue";
 import workspaceMenu from "./components/workspaceMenu.vue";
 import floatingAgent from "./components/floatingAgent.vue";
-import questHud from "@/components/onboarding/questHud.vue";
+import workspaceTour from "@/components/onboarding/workspaceTour.vue";
 import celebrationModal from "@/components/onboarding/celebrationModal.vue";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 
 const documentPanel = defineAsyncComponent(() => import("./panels/document/index.vue"));
 
@@ -45,7 +46,14 @@ watch(headerElement, (element, _previous, onCleanup) => {
   onCleanup(() => observer.disconnect());
 }, { flush: "post" });
 const activePanel = ref<"canvas" | "document">("canvas");
-onMounted(() => anonymousData.track("workspace.canvas"));
+const onboardingStore = useOnboardingStore();
+onMounted(() => {
+  anonymousData.track("workspace.canvas");
+  onboardingStore.checkWorkspaceTrigger();
+});
+watch(() => onboardingStore.shouldAutoFillAgent, shouldAutoFill => {
+  if (shouldAutoFill) agentVisible.value = true;
+});
 const workspaceStore = useWorkspaceStore();
 const panelOptions = [
   { label: "画布", value: "canvas", icon: IconLayoutDashboard },

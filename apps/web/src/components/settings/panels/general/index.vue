@@ -80,8 +80,8 @@ const onboardingStore = useOnboardingStore();
 const edgeColorOptions = [{ value: "none", label: "关闭" }, { value: "theme", label: "跟随主题色" }, { value: "custom", label: "自选颜色" }];
 
 async function handleRestartOnboarding() {
-  await onboardingStore.restartOnboarding();
-  feedback.message({ tone: "success", message: "新手引导已重置，已为你唤起题材选择" });
+  await onboardingStore.resetOnboarding();
+  feedback.message({ tone: "success", message: "新手引导已重置，已为你开启全流程漫游引导" });
   await router.push("/home");
 }
 </script>
