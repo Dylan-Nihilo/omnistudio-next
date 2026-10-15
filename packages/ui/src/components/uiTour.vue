@@ -39,9 +39,26 @@ watch([dialog, card, visible, step], async ([element, panel, opened, activeStep]
   if (cancelled) return;
   cleanup = autoUpdate(target, panel, async () => {
     const bounds = target.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      spotlight.value = undefined;
+      cardStyle.value = { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
+      return;
+    }
     spotlight.value = { left: bounds.left - 4 + "px", top: bounds.top - 4 + "px", width: bounds.width + 8 + "px", height: bounds.height + 8 + "px" };
-    const { x, y } = await computePosition(target, panel, { placement: "bottom-start", strategy: "fixed", middleware: [offset(12), flip({ padding: 12 }), shift({ padding: 12 })] });
-    if (!cancelled) cardStyle.value = { left: x + "px", top: y + "px" };
+    const placement = activeStep.placement ?? "bottom-start";
+    const { x, y } = await computePosition(target, panel, { placement, strategy: "fixed", middleware: [offset(12), flip({ padding: 16 }), shift({ padding: 16, crossAxis: true })] });
+    if (!cancelled) {
+      const pad = 16;
+      const cardWidth = panel.offsetWidth || 380;
+      const cardHeight = panel.offsetHeight || 180;
+      const minX = pad;
+      const minY = pad;
+      const maxX = Math.max(minX, window.innerWidth - cardWidth - pad);
+      const maxY = Math.max(minY, window.innerHeight - cardHeight - pad);
+      const safeX = Math.min(Math.max(minX, x), maxX);
+      const safeY = Math.min(Math.max(minY, y), maxY);
+      cardStyle.value = { left: `${safeX}px`, top: `${safeY}px` };
+    }
   });
 }, { flush: "post" });
 watch(currentIndex, value => emit("change", value));

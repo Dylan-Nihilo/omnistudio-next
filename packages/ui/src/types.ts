@@ -23,5 +23,5 @@ export type UiTreeNode = {
   disabled?: boolean;
   data?: unknown;
 };
-export type UiTourStep = { target?: HTMLElement | (() => HTMLElement | null); title: string; description?: string };
+export type UiTourStep = { target?: HTMLElement | (() => HTMLElement | null); title: string; description?: string; placement?: UiPlacement };
 export type UiDropPosition = "before" | "inside" | "after";

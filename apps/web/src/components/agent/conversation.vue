@@ -293,8 +293,14 @@ const welcomeSuggestions = computed(() => [
 watch(() => onboardingStore.shouldAutoFillAgent, async shouldFill => {
   if (shouldFill) {
     onboardingStore.shouldAutoFillAgent = false;
-    await nextTick();
-    await fillPrompt(onboardingStore.directorPromptText);
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await nextTick();
+      if (senderInput.value && !locked.value) {
+        await fillPrompt(onboardingStore.directorPromptText);
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 60));
+    }
   }
 });
 watch([locked, () => props.active], ([locked, active]) => {
@@ -418,9 +424,10 @@ async function fillPrompt(prompt: string) {
   const input = senderInput.value;
   if (!input || locked.value) return;
   draftMentions.value = [];
-  input.setModel([[{ type: "Write", text: prompt }]], false);
+  const model: RichInputModel = prompt.split("\n").map(line => [{ type: "Write", text: line }]);
+  input.setModel(model, false);
   await nextTick();
-  if (senderInput.value === input) input.getEditor()?.commands.focus("end");
+  input.getEditor()?.commands.focus("end");
 }
 
 async function copyMessage(content: string) {

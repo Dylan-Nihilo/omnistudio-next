@@ -54,6 +54,9 @@ onMounted(() => {
 watch(() => onboardingStore.shouldAutoFillAgent, shouldAutoFill => {
   if (shouldAutoFill) agentVisible.value = true;
 });
+watch(() => onboardingStore.workspaceTourActive, active => {
+  if (active) agentVisible.value = true;
+}, { immediate: true });
 const workspaceStore = useWorkspaceStore();
 const panelOptions = [
   { label: "画布", value: "canvas", icon: IconLayoutDashboard },

@@ -65,20 +65,25 @@ export const useOnboardingStore = defineStore("onboarding", () => {
   const currentTheme = computed(() => onboardingThemes[selectedThemeKey.value]);
   const directorPromptText = computed(() => currentTheme.value.directorPromptText);
 
+  const homeWelcomed = ref(false);
+
   function checkHomeTrigger() {
-    if (isCompleted.value) return false;
+    if (isCompleted.value || homeWelcomed.value) return false;
+    homeWelcomed.value = true;
     welcomeModalVisible.value = true;
     return true;
   }
 
   function startGuidedOnboarding(themeKey?: OnboardingThemeKey) {
     if (themeKey) selectedThemeKey.value = themeKey;
+    homeWelcomed.value = true;
     welcomeModalVisible.value = false;
     homeTourActive.value = true;
   }
 
   function completeHomeTour() {
     homeTourActive.value = false;
+    homeWelcomed.value = true;
   }
 
   function checkWorkspaceTrigger() {
@@ -87,12 +92,15 @@ export const useOnboardingStore = defineStore("onboarding", () => {
     return true;
   }
 
-  function completeWorkspaceTour() {
+  async function completeWorkspaceTour() {
     workspaceTourActive.value = false;
     shouldAutoFillAgent.value = true;
+    homeWelcomed.value = true;
+    await saveSettings(() => ({ onboardingCompleted: true }));
   }
 
   async function skipAllOnboarding() {
+    homeWelcomed.value = true;
     welcomeModalVisible.value = false;
     homeTourActive.value = false;
     workspaceTourActive.value = false;
@@ -102,6 +110,7 @@ export const useOnboardingStore = defineStore("onboarding", () => {
   }
 
   async function resetOnboarding() {
+    homeWelcomed.value = false;
     await saveSettings(() => ({ onboardingCompleted: false }));
     welcomeModalVisible.value = true;
     homeTourActive.value = false;
