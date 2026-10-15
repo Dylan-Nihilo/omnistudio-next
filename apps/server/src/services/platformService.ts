@@ -7,6 +7,7 @@ import { requireRootAccount } from "@/utils/accountContext";
 import { encryptPlatformSecret, maskApiKey, readPlatformSecret } from "@/utils/platformSecrets";
 import { platformModelCatalog, platformProviders } from "@/utils/ai/platformCatalog";
 import { getMediaProvider, listMediaProviders } from "@/utils/media/provider";
+import { platformConfig } from "@/utils/conf";
 import u from "@/utils";
 
 const apiUrl = z.url({ protocol: /^https?$/ }).max(2048).refine(value => {
@@ -51,6 +52,49 @@ export const pricesInputSchema = z.strictObject({ items: z.array(z.strictObject(
   if (item.mediaType !== "text" && item.creditsPerUnit === undefined) context.addIssue({ code: "custom", path: ["creditsPerUnit"], message: "请填写模型价格" });
 })).min(1).max(1000) });
 
+export const defaultModelItemSchema = z.strictObject({
+  providerId: z.string().min(1).max(100),
+  modelId: z.string().min(1).max(200),
+}).nullable().optional();
+
+export const defaultModelsInputSchema = z.strictObject({
+  defaultModels: z.strictObject({
+    text: defaultModelItemSchema,
+    image: defaultModelItemSchema,
+    video: defaultModelItemSchema,
+  }),
+});
+
+export type DefaultModelsInput = z.infer<typeof defaultModelsInputSchema>;
+
+export function getPlatformDefaultModels(): {
+  text?: { providerId: string; modelId: string } | null;
+  image?: { providerId: string; modelId: string } | null;
+  video?: { providerId: string; modelId: string } | null;
+} {
+  const defaults = platformConfig.get("platformDefaultModels") as {
+    text?: { providerId: string; modelId: string } | null;
+    image?: { providerId: string; modelId: string } | null;
+    video?: { providerId: string; modelId: string } | null;
+  } | undefined;
+  return defaults ?? { text: null, image: null, video: null };
+}
+
+export async function savePlatformDefaultModels(input: DefaultModelsInput) {
+  const account = requireRootAccount();
+  const database = getDatabase();
+  const now = new Date();
+  platformConfig.set("platformDefaultModels", input.defaultModels);
+  await database.insert(auditEvents).values({
+    id: randomUUID(),
+    actorUserId: account.userId,
+    action: "platform.defaultModels.save",
+    metadata: input.defaultModels,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 export async function getPlatformConfiguration() {
   requireRootAccount();
   const database = getDatabase();
@@ -85,6 +129,7 @@ export async function getPlatformConfiguration() {
     providers: providersWithSecrets,
     models, prices, priceVersion: version?.version ?? null,
     mediaProviders: mediaProviders.map(provider => ({ id: provider.id, label: provider.label, models: provider.models })),
+    defaultModels: getPlatformDefaultModels(),
   };
 }
 

@@ -15,7 +15,12 @@ export type TextPricing = TextPricingInput & { billingRule: "textTokenV2" | "tex
 export type PriceConstraints = Record<string, unknown> & { textPricing?: TextPricing; resolutionTiers?: Record<string, number>; sizeTiers?: Record<string, number> };
 export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: PriceConstraints };
 export type PlatformPriceInput = Omit<ModelPrice, "unit"> & { textPricing?: TextPricingInput };
-export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[] };
+export type PlatformDefaultModels = {
+  text?: { providerId: string; modelId: string } | null;
+  image?: { providerId: string; modelId: string } | null;
+  video?: { providerId: string; modelId: string } | null;
+};
+export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[]; defaultModels?: PlatformDefaultModels };
 export type AuditEntry = { id: string; actorUserId: string | null; action: string; metadata: unknown; createdAt: string };
 
 async function accountRequest<T>(method: "GET" | "POST" | "PUT" | "DELETE", url: string, data?: unknown, params?: Record<string, unknown>, idempotencyKey?: string) {
@@ -55,6 +60,7 @@ export function savePlatformModel(input: Omit<PlatformModel, "id" | "enabled" | 
 export function deletePlatformModel(id: string) { return accountRequest("DELETE", "/api/admin/platform/deleteModel", { id }); }
 export function publishPlatformPrices(items: PlatformPriceInput[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints, textPricing }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) })) }); }
 export function getPlatformAudit() { return accountRequest<AuditEntry[]>("GET", "/api/admin/audit"); }
+export function savePlatformDefaultModels(defaultModels: PlatformDefaultModels) { return accountRequest("PUT", "/api/admin/platform/saveDefaultModels", { defaultModels }); }
 
 export async function uploadTeamFile(teamId: string, file: File) {
   if (file.size > 100 * 1024 * 1024) throw new Error("单个文件不能超过 100 MB");

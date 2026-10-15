@@ -4,6 +4,8 @@ import { getDatabase } from "@/db/database";
 import { platformModels, platformProviderConfigs } from "@/db/schema";
 import { readPlatformSecret } from "@/utils/platformSecrets";
 
+import { getPlatformDefaultModels } from "@/services/platformService";
+
 export const platformProviderSchema = z.object({
   apiUrl: z.url({ protocol: /^https?$/ }),
   protocol: z.enum(["openai-completions", "openai-responses", "anthropic-messages"]),
@@ -30,7 +32,18 @@ export async function listPlatformModels(mediaType?: PlatformModel["mediaType"])
     protocolConfig: platformProviderConfigs.config,
   }).from(platformModels).innerJoin(platformProviderConfigs, eq(platformProviderConfigs.providerId, platformModels.providerId))
     .where(and(...filters, eq(platformProviderConfigs.enabled, 1))).orderBy(asc(platformModels.sortOrder), asc(platformModels.label));
-  return rows.map(({ protocolConfig, ...model }) => ({ ...model, protocol: providerConfig(protocolConfig).protocol }));
+  const defaultModels = getPlatformDefaultModels();
+  const sorted = rows.map(({ protocolConfig, ...model }) => ({ ...model, protocol: providerConfig(protocolConfig).protocol }));
+  sorted.sort((left, right) => {
+    const defaultForLeft = defaultModels[left.mediaType as keyof typeof defaultModels];
+    const isLeftDefault = defaultForLeft && defaultForLeft.providerId === left.providerId && defaultForLeft.modelId === left.modelId;
+    const defaultForRight = defaultModels[right.mediaType as keyof typeof defaultModels];
+    const isRightDefault = defaultForRight && defaultForRight.providerId === right.providerId && defaultForRight.modelId === right.modelId;
+    if (isLeftDefault && !isRightDefault) return -1;
+    if (!isLeftDefault && isRightDefault) return 1;
+    return 0;
+  });
+  return sorted;
 }
 
 export async function getPlatformModel(providerId: string, modelId: string, mediaType: PlatformModel["mediaType"]) {

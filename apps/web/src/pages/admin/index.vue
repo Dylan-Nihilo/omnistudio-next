@@ -4,7 +4,40 @@
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <uiTabs :modelValue="activeTab" :options="tabs" label="平台管理" @update:modelValue="value => typeof value === 'string' && (activeTab = value)">
       <section v-if="activeTab === 'users'" class="adminSection"><header class="sectionHeader"><div><h2>用户与个人积分</h2><p>只有 root 拥有平台管理权限，团队 owner 不具备平台管理权限。</p></div><div class="sectionActions"><uiSelect :modelValue="workspaceFilter" :options="workspaceOptions" aria-label="按工作区筛选" @update:modelValue="updateWorkspaceFilter" /></div></header><uiTable :rows="filteredUsers" :columns="userColumns" :loading="loading" emptyText="还没有用户" label="平台用户"><template #cell="{ row, column }"><span v-if="column.key === 'role'" class="roleLabel">{{ row.isRoot ? 'root' : '用户' }}</span><span v-else-if="column.key === 'workspace'" class="workspaceNames">{{ userWorkspaceLabel(row as AdminUser) }}</span><uiTag v-else-if="column.key === 'status'" :tone="row.status === 'active' ? 'success' : 'error'">{{ row.status === 'active' ? '正常' : '已停用' }}</uiTag><span v-else-if="column.key === 'available' || column.key === 'frozen'">{{ formatCredits(String(row[column.key])) }}</span><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton size="small" variant="ghost" :disabled="busy" @click="openCredits(row as AdminUser)">调整积分</uiButton><uiButton size="small" variant="ghost" :disabled="busy" @click="showProjects(row as AdminUser)">查看项目</uiButton><uiButton size="small" variant="ghost" :disabled="busy" @click="openPassword(row as AdminUser)">重置密码</uiButton><uiButton v-if="!row.isRoot" size="small" :variant="row.status === 'active' ? 'danger' : 'secondary'" :disabled="busy" @click="toggleUser(row as AdminUser)">{{ row.status === 'active' ? '停用' : '恢复' }}</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable></section>
-      <section v-else-if="activeTab === 'api'" class="adminSection"><header class="sectionHeader"><div><h2>API 提供方</h2><p>凭据仅显示配置状态，留空不会覆盖已保存的凭据。</p></div><div class="sectionActions"><uiButton variant="secondary" :disabled="busy" @click="initializeCatalog">添加内置模型目录</uiButton><uiButton :disabled="busy" @click="editProvider()">添加 API</uiButton></div></header><uiTable :rows="configuration?.providers ?? []" :columns="providerColumns" :loading="loading" emptyText="还没有配置 API" label="平台 API"><template #cell="{ row, column }"><span v-if="column.key === 'apiUrl'">{{ (row.config as PlatformProvider['config']).apiUrl }}</span><span v-else-if="column.key === 'credential'" class="credentialBadge" :title="providerCredential(row)">{{ providerCredential(row) }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editProvider(row as PlatformProvider)">配置 API</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteProvider(row as PlatformProvider)">删除</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable><header class="sectionHeader modelHeader"><div><h2>平台模型</h2><p>用户只能使用平台启用的模型。</p></div><div class="sectionActions"><uiRadioGroup :modelValue="modelFilter" :options="modelFilterOptions" variant="segmented" aria-label="模型类型筛选" @update:modelValue="updateModelFilter" /><uiButton :disabled="busy || !configuration?.providers.length" @click="editModel()">添加模型</uiButton></div></header><uiTable :rows="filteredModels" :columns="modelColumns" :emptyText="modelFilter === 'all' ? '先配置 API，再添加模型' : '当前类型没有模型'" label="平台模型"><template #cell="{ row, column }"><span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editModel(row as PlatformModel)">编辑模型</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteModel(row as PlatformModel)">删除</uiButton></div><span v-else>{{ row[column.key] ?? '—' }}</span></template></uiTable></section>
+      <section v-else-if="activeTab === 'api'" class="adminSection">
+        <header class="sectionHeader"><div><h2>API 提供方</h2><p>凭据仅显示配置状态，留空不会覆盖已保存的凭据。</p></div><div class="sectionActions"><uiButton variant="secondary" :disabled="busy" @click="initializeCatalog">添加内置模型目录</uiButton><uiButton :disabled="busy" @click="editProvider()">添加 API</uiButton></div></header>
+        <uiTable :rows="configuration?.providers ?? []" :columns="providerColumns" :loading="loading" emptyText="还没有配置 API" label="平台 API"><template #cell="{ row, column }"><span v-if="column.key === 'apiUrl'">{{ (row.config as PlatformProvider['config']).apiUrl }}</span><span v-else-if="column.key === 'credential'" class="credentialBadge" :title="providerCredential(row)">{{ providerCredential(row) }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editProvider(row as PlatformProvider)">配置 API</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteProvider(row as PlatformProvider)">删除</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable>
+        <div class="defaultModelsCard">
+          <header class="sectionHeader defaultModelsHeader">
+            <div>
+              <h2>默认模型配置</h2>
+              <p>配置全平台文本对话与创作、图片生成、视频生成的默认首选模型。</p>
+            </div>
+            <div class="sectionActions">
+              <uiButton variant="secondary" :disabled="busy" :loading="busy" @click="submitDefaultModels">保存默认模型</uiButton>
+            </div>
+          </header>
+          <div class="defaultModelsGrid">
+            <uiField label="默认文本模型">
+              <template #default="{ id }">
+                <uiSelect :id="id" :modelValue="defaultTextModel" :options="defaultTextModelOptions" :disabled="busy" @update:modelValue="value => typeof value === 'string' && (defaultTextModel = value)" />
+              </template>
+            </uiField>
+            <uiField label="默认图片模型">
+              <template #default="{ id }">
+                <uiSelect :id="id" :modelValue="defaultImageModel" :options="defaultImageModelOptions" :disabled="busy" @update:modelValue="value => typeof value === 'string' && (defaultImageModel = value)" />
+              </template>
+            </uiField>
+            <uiField label="默认视频模型">
+              <template #default="{ id }">
+                <uiSelect :id="id" :modelValue="defaultVideoModel" :options="defaultVideoModelOptions" :disabled="busy" @update:modelValue="value => typeof value === 'string' && (defaultVideoModel = value)" />
+              </template>
+            </uiField>
+          </div>
+        </div>
+        <header class="sectionHeader modelHeader"><div><h2>平台模型</h2><p>用户只能使用平台启用的模型。</p></div><div class="sectionActions"><uiRadioGroup :modelValue="modelFilter" :options="modelFilterOptions" variant="segmented" aria-label="模型类型筛选" @update:modelValue="updateModelFilter" /><uiButton :disabled="busy || !configuration?.providers.length" @click="editModel()">添加模型</uiButton></div></header>
+        <uiTable :rows="filteredModels" :columns="modelColumns" :emptyText="modelFilter === 'all' ? '先配置 API，再添加模型' : '当前类型没有模型'" label="平台模型"><template #cell="{ row, column }"><span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editModel(row as PlatformModel)">编辑模型</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteModel(row as PlatformModel)">删除</uiButton></div><span v-else>{{ row[column.key] ?? '—' }}</span></template></uiTable>
+      </section>
       <section v-else-if="activeTab === 'prices'" class="adminSection">
         <header class="sectionHeader"><div><h2>积分价格</h2><p>{{ configuration?.priceVersion ? `当前价格版本：${configuration.priceVersion}` : '尚未发布价格。配置后，用户才能使用收费模型。' }}</p></div><div class="sectionActions"><uiRadioGroup :modelValue="priceFilter" :options="modelFilterOptions" variant="segmented" aria-label="积分价格类型筛选" @update:modelValue="updatePriceFilter" /><uiButton :disabled="busy || !priceRows.length || missingPrices" :loading="busy" @click="publishPrices">发布新价格</uiButton></div></header>
         <p class="sectionHint">新任务使用新价格，已开始的任务保持原价格。文本按各类实际 token 与配置费率结算，视频可按分辨率配置积分，1 元＝10 积分。</p>
@@ -47,7 +80,7 @@ import accountShell from "@/components/account/accountShell.vue";
 import extensionPanel from "./extensionPanel.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { getAdminUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, type AdminUser, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints } from "@/lib/accountApi";
+import { getAdminUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, savePlatformDefaultModels, type AdminUser, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints, type PlatformDefaultModels } from "@/lib/accountApi";
 import { creditMicros, formatCredits } from "@/lib/creditFormat";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
@@ -63,6 +96,56 @@ type ModelFilter = "all" | Exclude<PlatformModel["mediaType"], "audio">;
 const modelFilter = ref<ModelFilter>("all"); const priceFilter = ref<ModelFilter>("all"); const modelFilterOptions = [{ value: "all", label: "全部" }, ...mediaOptions];
 const providerOptions = computed(() => configuration.value?.providers.map(provider => ({ value: provider.providerId, label: provider.providerId })) ?? []);
 const mediaModelOptions = computed(() => configuration.value?.mediaProviders.find(provider => provider.id === modelProviderId.value)?.models.filter(model => model.type === mediaType.value).map(model => ({ value: model.id, label: model.label ?? model.id })) ?? []);
+const defaultTextModel = ref("");
+const defaultImageModel = ref("");
+const defaultVideoModel = ref("");
+function buildDefaultModelOptions(type: "text" | "image" | "video", selectedVal: string) {
+  const models = (configuration.value?.models ?? []).filter(m => m.mediaType === type && m.enabled);
+  const options = [
+    { value: "", label: "未指定（默认使用列表首项）" },
+    ...models.map(m => ({
+      value: JSON.stringify([m.providerId, m.modelId]),
+      label: `${m.label}（${m.providerId}）`,
+    })),
+  ];
+  if (selectedVal && !options.some(opt => opt.value === selectedVal)) {
+    try {
+      const [providerId, modelId] = JSON.parse(selectedVal);
+      options.push({ value: selectedVal, label: `${modelId}（${providerId} - 已停用或缺失）` });
+    } catch {}
+  }
+  return options;
+}
+const defaultTextModelOptions = computed(() => buildDefaultModelOptions("text", defaultTextModel.value));
+const defaultImageModelOptions = computed(() => buildDefaultModelOptions("image", defaultImageModel.value));
+const defaultVideoModelOptions = computed(() => buildDefaultModelOptions("video", defaultVideoModel.value));
+function parseModelChoice(value: string): { providerId: string; modelId: string } | null {
+  if (!value) return null;
+  try {
+    const [providerId, modelId] = JSON.parse(value);
+    if (typeof providerId === "string" && typeof modelId === "string") return { providerId, modelId };
+  } catch {}
+  return null;
+}
+async function submitDefaultModels() {
+  busy.value = true;
+  errorMessage.value = "";
+  try {
+    const input: PlatformDefaultModels = {
+      text: parseModelChoice(defaultTextModel.value),
+      image: parseModelChoice(defaultImageModel.value),
+      video: parseModelChoice(defaultVideoModel.value),
+    };
+    await savePlatformDefaultModels(input);
+    await loadAll();
+    await refreshModels();
+    feedback.message({ tone: "success", message: "默认模型配置已保存" });
+  } catch (error) {
+    errorMessage.value = errorText(error);
+  } finally {
+    busy.value = false;
+  }
+}
 const priceDraft = ref<Record<string, number | null>>({});
 type TextPriceDraft = { input: string; cacheRead: string; cacheWrite: string; output: string };
 const textPriceDraft = ref<Record<string, TextPriceDraft>>({});
@@ -104,7 +187,7 @@ const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", wi
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 160, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "configDetails", label: "配置详情", width: 320 }, { key: "creditsPerUnit", label: "价格配置", width: 150, align: "center" }];
 const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180 }, { key: "actorUserId", label: "操作者", width: 150 }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180 }];
-const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录" };
+const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录", "platform.defaultModels.save": "配置默认模型" };
 function errorText(error: unknown) { return axios.isAxiosError(error) ? error.response?.data?.message || "连接中断，请刷新后确认结果" : error instanceof Error ? error.message : "操作失败，请重试"; }
 function userName(id: string) { return users.value.find(user => user.id === id)?.displayName ?? id; }
 function providerCredential(row: unknown): string { const provider = row as PlatformProvider; return provider.maskedApiKey || (provider.apiKeyConfigured ? "已配置" : "未配置"); }
@@ -225,6 +308,10 @@ async function loadAll() {
       if (entries.length) tiers[key] = entries.map(([resolution, credits]) => ({ resolution, credits }));
     }
     users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; tierDrafts.value = tiers; configuration.value = platform;
+    const defaults = platform.defaultModels;
+    defaultTextModel.value = defaults?.text ? JSON.stringify([defaults.text.providerId, defaults.text.modelId]) : "";
+    defaultImageModel.value = defaults?.image ? JSON.stringify([defaults.image.providerId, defaults.image.modelId]) : "";
+    defaultVideoModel.value = defaults?.video ? JSON.stringify([defaults.video.providerId, defaults.video.modelId]) : "";
   } catch (error) { errorMessage.value = errorText(error); } finally { loading.value = false; }
 }
 async function refreshModels() { invalidateNodeModels("language"); invalidateNodeModels("media"); await usePlatformModelsStore().load(); }
@@ -267,7 +354,7 @@ async function publishPrices() {
     }
     items.push({ providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, creditsPerUnit: finalCreditsPerUnit, ...(Object.keys(constraints).length ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) });
   }
-  const free = items.filter(item => item.textPricing ? Object.values(item.textPricing.ratesPerMillion).every(rate => rate == null || creditMicros(rate) === 0n) : item.creditsPerUnit === 0).length;
+  const free = items.filter(item => item.textPricing ? (Object.values(item.textPricing.ratesPerMillion) as (string | null)[]).every(rate => rate == null || creditMicros(rate) === 0n) : item.creditsPerUnit === 0).length;
   try { await feedback.confirm(`发布 ${items.length} 个模型的新价格？${free ? `其中 ${free} 个模型不扣积分。` : ''}已开始的任务按原价格结算。`, "发布模型积分价格", { confirmButtonText: "发布新价格", cancelButtonText: "继续编辑" }); busy.value = true; await publishPlatformPrices(items); await loadAll(); }
   catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); }
   finally { busy.value = false; }
@@ -283,6 +370,21 @@ onMounted(loadAll);
 .adminSection {
   min-width: 0;
   .sectionHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px; h2 { margin: 0 0 8px; font-size: 18px; } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .sectionActions { display: flex; gap: 8px; flex-wrap: wrap; } }
+  .defaultModelsCard {
+    margin-top: 36px;
+    padding: 20px;
+    border: 1px solid var(--uiBorderControl);
+    border-radius: var(--uiRadiusCard);
+    background: var(--uiSurfaceRaised);
+    .defaultModelsHeader {
+      margin: 0 0 16px;
+    }
+    .defaultModelsGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+  }
   .modelHeader { margin-top: 36px; }
   .rowActions { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
   .actionGroup { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; flex-wrap: nowrap; }
@@ -305,6 +407,7 @@ onMounted(loadAll);
 .dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } .rateFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; } }
 .projectList { display: grid; gap: 12px; }
 .tierList { display: grid; gap: 12px; .tierHeader, .tierRow { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; align-items: center; gap: 8px; } .tierHeader { color: var(--uiTextMuted); font-size: 12px; padding: 0 8px; } .tierActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; :deep(button) { width: 100%; } } }
+@media (max-width: 900px) { .adminSection .defaultModelsCard .defaultModelsGrid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .adminSection .sectionHeader { flex-direction: column; } }
 @media (max-width: 520px) { .dialogForm .rateFields { grid-template-columns: 1fr; } }
 </style>
