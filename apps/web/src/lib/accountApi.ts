@@ -3,9 +3,10 @@ import { getSessionSnapshot } from "@/lib/sessionState";
 
 export type Wallet = { id: string; userId: string; balance: string; frozen: string; available: string; total: string };
 export type LedgerEntry = { id: string; jobId?: string | null; kind: string; amount: string; balanceAfter: string; frozenAfter: string; reason?: string | null; metadata?: unknown; createdAt: string };
-export type TeamMember = { id: string; email: string; displayName: string; status: "active" | "disabled"; role: "owner" | "member" };
+export type TeamMember = { id: string; email: string; displayName: string; status: "active" | "disabled"; role: "owner" | "member"; available: string };
 export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: string; mimeType: string; bytes: number; createdAt: string };
-export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string };
+export type AdminWorkspace = { id: string; name: string; status: "active" | "archived" };
+export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string; workspaces: AdminWorkspace[] };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean; maskedApiKey?: string | null };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
 export type TokenRates = { input: string; cacheRead: string | null; cacheWrite: string | null; output: string };
@@ -27,6 +28,7 @@ export function getWallet(userId?: string) { return accountRequest<Wallet>("GET"
 export function getLedger(userId?: string) { return accountRequest<LedgerEntry[]>("GET", "/api/billing/ledger", undefined, userId ? { userId } : undefined); }
 export function getTeams() { return accountRequest<AuthTeam[]>("GET", "/api/account/teams/list"); }
 export function getMembers(teamId: string) { return accountRequest<TeamMember[]>("GET", "/api/account/teams/members", undefined, { teamId }); }
+export function getTeamMemberLedger(teamId: string, userId: string, limit = 100) { return accountRequest<LedgerEntry[]>("GET", "/api/account/teams/ledger", undefined, { teamId, userId, limit }); }
 export function createTeam(name: string) { return accountRequest<AuthTeam>("POST", "/api/account/teams/create", { name }); }
 export function inviteMember(teamId: string, email: string) { return accountRequest<{ token: string; expiresAt: string }>("POST", "/api/account/teams/invite", { teamId, email }); }
 export function acceptInvite(token: string) { return accountRequest<{ teamId: string }>("POST", "/api/account/teams/acceptInvite", { token }); }

@@ -66,11 +66,28 @@ export async function listLedger(userId = requireAccount().userId, limit = 100) 
   return rows.map(({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }) => ({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }));
 }
 
-export async function listAdminUsers() {
+export async function listAdminUsers(workspaceId?: string) {
   requireRootAccount();
-  const rows = await getDatabase().select({ id: users.id, email: users.email, displayName: users.displayName, status: users.status, balance: wallets.balance, frozen: wallets.frozen, role: platformRoles.role })
+  const database = getDatabase();
+  const rows = await database.select({ id: users.id, email: users.email, displayName: users.displayName, status: users.status, balance: wallets.balance, frozen: wallets.frozen, role: platformRoles.role })
     .from(users).innerJoin(wallets, eq(wallets.userId, users.id)).leftJoin(platformRoles, and(eq(platformRoles.userId, users.id), eq(platformRoles.role, "root"))).orderBy(asc(users.email));
-  return rows.map(({ role, ...user }) => ({ ...user, isRoot: role === "root", available: u.billingCredits.formatCredits(u.billingCredits.parseCredits(user.balance) - u.billingCredits.parseCredits(user.frozen)) }));
+  const workspaceRows = await database.select({ userId: teamMembers.userId, id: teams.id, name: teams.name, status: teams.status })
+    .from(teamMembers).innerJoin(teams, eq(teams.id, teamMembers.teamId)).orderBy(asc(teams.name));
+  const workspacesByUser = new Map<string, { id: string; name: string; status: "active" | "archived" }[]>();
+  for (const workspace of workspaceRows) {
+    const list = workspacesByUser.get(workspace.userId) ?? [];
+    list.push({ id: workspace.id, name: workspace.name, status: workspace.status });
+    workspacesByUser.set(workspace.userId, list);
+  }
+  return rows.filter(user => !workspaceId || workspacesByUser.get(user.id)?.some(workspace => workspace.id === workspaceId)).map(({ role, ...user }) => {
+    const workspaces = workspacesByUser.get(user.id) ?? [];
+    return {
+      ...user,
+      isRoot: role === "root",
+      available: u.billingCredits.formatCredits(u.billingCredits.parseCredits(user.balance) - u.billingCredits.parseCredits(user.frozen)),
+      workspaces,
+    };
+  });
 }
 
 async function activePriceBook() {

@@ -1,8 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDatabase, hashSecret } from "@/db/database";
-import { auditEvents, teamInvitations, teamMembers, teams, users } from "@/db/schema";
+import { auditEvents, creditLedger, teamInvitations, teamMembers, teams, users, wallets } from "@/db/schema";
 import { requireAccount } from "@/utils/accountContext";
+import u from "@/utils";
 
 export async function listUserTeams() {
   const account = requireAccount();
@@ -36,8 +37,21 @@ export async function createTeam(name: string) {
 
 export async function listTeamMembers(teamId: string) {
   await requireTeamAccess(teamId);
-  return getDatabase().select({ id: users.id, email: users.email, displayName: users.displayName, status: users.status, role: teamMembers.role })
-    .from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).where(eq(teamMembers.teamId, teamId)).orderBy(asc(users.displayName));
+  const rows = await getDatabase().select({ id: users.id, email: users.email, displayName: users.displayName, status: users.status, role: teamMembers.role, balance: wallets.balance, frozen: wallets.frozen })
+    .from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).leftJoin(wallets, eq(wallets.userId, users.id)).where(eq(teamMembers.teamId, teamId)).orderBy(asc(users.displayName));
+  return rows.map(({ balance, frozen, ...member }) => ({ ...member, available: u.billingCredits.formatCredits(u.billingCredits.parseCredits(balance ?? "0") - u.billingCredits.parseCredits(frozen ?? "0")) }));
+}
+
+export async function listTeamMemberLedger(teamId: string, userId: string, limit = 100) {
+  await requireTeamAccess(teamId);
+  const [member] = await getDatabase().select({ id: teamMembers.id }).from(teamMembers)
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))).limit(1);
+  if (!member) throw Object.assign(new Error("这个用户不是团队成员"), { status: 404 });
+  const [wallet] = await getDatabase().select({ id: wallets.id }).from(wallets).where(eq(wallets.userId, userId)).limit(1);
+  if (!wallet) throw Object.assign(new Error("个人积分账户不存在"), { status: 404 });
+  const rows = await getDatabase().select().from(creditLedger).where(eq(creditLedger.walletId, wallet.id))
+    .orderBy(desc(creditLedger.createdAt), desc(creditLedger.id)).limit(Math.min(Math.max(Math.floor(limit), 1), 200));
+  return rows.map(({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }) => ({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }));
 }
 
 export async function inviteTeamMember(teamId: string, email: string) {
