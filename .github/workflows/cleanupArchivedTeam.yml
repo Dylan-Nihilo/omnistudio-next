@@ -55,37 +55,29 @@ jobs:
           fi
 
           echo "=========================================="
-          echo "1. 线上数据库全部团队列表 (user_teams)"
+          echo "1. 目标已解散的工作区 (id = 966a70f2-00b3-42d2-b301-8a0109d4df14)"
           echo "=========================================="
-          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status, created_at FROM user_teams;"'
+          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "
+            SELECT id, name, owner_user_id, status FROM user_teams WHERE id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\";
+          "'
 
           echo "=========================================="
-          echo "2. 目标已解散的工作区 (status = archived)"
+          echo "2. 正在执行彻底删除该已解散工作区及其关联成员数据..."
           echo "=========================================="
-          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status FROM user_teams WHERE status = \"archived\";"'
+          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "
+            DELETE FROM user_team_members WHERE team_id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\";
+            DELETE FROM user_team_invitations WHERE team_id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\";
+            DELETE FROM user_team_assets WHERE team_id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\";
+            DELETE FROM user_credit_transfers WHERE team_id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\";
+            DELETE FROM user_teams WHERE id = \"966a70f2-00b3-42d2-b301-8a0109d4df14\" AND status = \"archived\";
+          "'
 
-          if [[ "$action" == "delete" ]]; then
-            echo "=========================================="
-            echo "3. 正在执行删除已解散的科技部工作区..."
-            echo "=========================================="
-            docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "
-              CREATE TEMPORARY TABLE target_teams AS
-                SELECT id FROM user_teams WHERE status = \"archived\" AND (name LIKE \"%科技部%\" OR name LIKE \"%中食信息%\");
-
-              SELECT * FROM target_teams;
-
-              DELETE FROM user_team_members WHERE team_id IN (SELECT id FROM target_teams);
-              DELETE FROM user_team_invitations WHERE team_id IN (SELECT id FROM target_teams);
-              DELETE FROM user_team_assets WHERE team_id IN (SELECT id FROM target_teams);
-              DELETE FROM user_credit_transfers WHERE team_id IN (SELECT id FROM target_teams);
-              DELETE FROM user_teams WHERE id IN (SELECT id FROM target_teams);
-            "'
-
-            echo "=========================================="
-            echo "4. 删除后剩余的全部团队列表 (user_teams)"
-            echo "=========================================="
-            docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status, created_at FROM user_teams;"'
-          fi
+          echo "=========================================="
+          echo "3. 删除后剩余的全部团队列表 (user_teams)"
+          echo "=========================================="
+          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "
+            SELECT id, name, owner_user_id, status, created_at FROM user_teams;
+          "'
           EOF
 
       - name: Clean runner credentials
