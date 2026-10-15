@@ -61,7 +61,7 @@
               <img class="projectIcon" :src="markUrl" alt="" aria-hidden="true" />
               <div class="projectActions">
                 <uiIconButton size="small" :icon="IconEdit" :disabled="creating || opening" :label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
-                <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="workspaceStore.removeProject(project.directory)" />
+                <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="removeProject(project)" />
               </div>
             </div>
             <button class="projectEntry" type="button" :disabled="creating || opening" :aria-label="`打开项目 ${project.name}`" @click="openProject(project)">
@@ -94,6 +94,7 @@
     <settings v-model="settingsVisible" />
     <workspacePicker ref="relocationPicker" hideTrigger />
     <homeTour />
+    <onboardingWelcome @selectTheme="handleSelectTheme" />
   </div>
 </template>
 
@@ -123,7 +124,8 @@ import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
 import inkUnderline from "@omnistudio-next/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
 import homeTour from "@/components/onboarding/homeTour.vue";
-import { useOnboardingStore } from "@/stores/onboardingStore";
+import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
+import { useOnboardingStore, type OnboardingTheme } from "@/stores/onboardingStore";
 
 const onboardingStore = useOnboardingStore();
 const feedback = useUiFeedback();
@@ -273,6 +275,26 @@ async function renameProject(project: Project) {
     inputValidator: value => !!value?.trim() || "项目名称不能为空",
   }).catch(() => null);
   if (result) workspaceStore.renameProject(project.directory, result.value);
+}
+
+async function removeProject(project: Project) {
+  const confirmed = await feedback.confirm(
+    `确定要从列表中移除项目“${project.name}”吗？\n（仅从最近打开记录中移除，不会删除磁盘上的项目文件夹及内容）`,
+    "移除项目",
+    {
+      danger: true,
+      confirmButtonText: "确认移除",
+      cancelButtonText: "取消",
+    }
+  ).then(() => true, () => false);
+
+  if (confirmed) {
+    workspaceStore.removeProject(project.directory);
+  }
+}
+
+function handleSelectTheme(theme: OnboardingTheme) {
+  prompt.value = theme.prompt;
 }
 
 async function createProject(fromPrompt = true) {

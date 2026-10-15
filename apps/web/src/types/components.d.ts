@@ -48,6 +48,7 @@ declare module 'vue' {
     Menu: typeof import('./../components/agent/menu.vue')['default']
     MessageMarkdown: typeof import('./../components/messageMarkdown.vue')['default']
     ModelPopover: typeof import('./../components/modelPopover.vue')['default']
+    OnboardingWelcome: typeof import('./../components/onboarding/onboardingWelcome.vue')['default']
     Personalization: typeof import('./../components/settings/panels/personalization.vue')['default']
     Privacy: typeof import('./../components/settings/panels/privacy.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
