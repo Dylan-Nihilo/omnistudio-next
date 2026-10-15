@@ -11,6 +11,8 @@
     </div>
     <floatingAgent v-model="agentVisible" :topOffset="headerHeight" @resize="agentWidth = $event" />
     <settings v-model="settingsVisible" />
+    <questHud />
+    <celebrationModal />
   </main>
 </template>
 
@@ -28,6 +30,8 @@ import anonymousData from "@/lib/anonymousData";
 import canvasPanel from "./panels/canvas/canvasHost.vue";
 import workspaceMenu from "./components/workspaceMenu.vue";
 import floatingAgent from "./components/floatingAgent.vue";
+import questHud from "@/components/onboarding/questHud.vue";
+import celebrationModal from "@/components/onboarding/celebrationModal.vue";
 
 const documentPanel = defineAsyncComponent(() => import("./panels/document/index.vue"));
 

@@ -93,6 +93,7 @@
     </uiDialog>
     <settings v-model="settingsVisible" />
     <workspacePicker ref="relocationPicker" hideTrigger />
+    <onboardingWelcome />
   </div>
 </template>
 
@@ -121,7 +122,10 @@ import settings from "@/components/settings/index.vue";
 import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
 import inkUnderline from "@omnistudio-next/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
+import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 
+const onboardingStore = useOnboardingStore();
 const feedback = useUiFeedback();
 const promptInput = ref<InstanceType<typeof uiTextarea>>();
 const projectSection = ref<HTMLElement>();
@@ -158,6 +162,7 @@ async function handleSignOut() {
 }
 
 onMounted(async () => {
+  onboardingStore.checkShouldTrigger();
   try {
     const { data } = await axios.get<{ code: number; data: Demo[]; message?: string }>("/api/demos/get");
     if (data.code !== 200) throw new Error(data.message || "Demo 读取失败");

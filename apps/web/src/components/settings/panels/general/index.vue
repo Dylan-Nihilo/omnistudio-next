@@ -52,15 +52,38 @@
         </div>
       </div>
     </section>
+    <section class="settingSection" aria-labelledby="onboardingTitle">
+      <div class="settingHeader">
+        <div class="settingInfo">
+          <h3 id="onboardingTitle">新手导演训练营</h3>
+          <p class="description">重置新手引导状态并重新体验从分镜到生图再到成片的 2 分钟全流程指引。</p>
+        </div>
+        <uiButton variant="secondary" size="small" @click="handleRestartOnboarding">
+          重新体验
+        </uiButton>
+      </div>
+    </section>
     <canvasShortcuts />
   </div>
 </template>
 
 <script setup lang="ts">
-import { uiSwitch, uiSelect, uiColorPicker } from "@omnistudio-next/ui";
+import { useRouter } from "vue-router";
+import { uiSwitch, uiSelect, uiColorPicker, uiButton, useUiFeedback } from "@omnistudio-next/ui";
 import { defaultUiSettings, generalSettings, uiSettings, updateGeneralSettings, updateUiSettings } from "@/stores/settings";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 import canvasShortcuts from "./canvasShortcuts.vue";
+
+const router = useRouter();
+const feedback = useUiFeedback();
+const onboardingStore = useOnboardingStore();
 const edgeColorOptions = [{ value: "none", label: "关闭" }, { value: "theme", label: "跟随主题色" }, { value: "custom", label: "自选颜色" }];
+
+async function handleRestartOnboarding() {
+  await onboardingStore.restartOnboarding();
+  feedback.message({ tone: "success", message: "新手引导已重置，已为你唤起题材选择" });
+  await router.push("/home");
+}
 </script>
 
 <style lang="scss" scoped>
