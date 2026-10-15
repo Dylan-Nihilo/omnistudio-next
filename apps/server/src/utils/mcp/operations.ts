@@ -33,7 +33,7 @@ export const appOperations: {
   refresh?: { type: "node" | "tool" | "skill"; nameField?: string };
 }[] = [
   { name: "getPersonalWallet", description: "读取调用者自己的可用与冻结积分。", method: "GET", path: "/api/billing/wallet", parameters: z.strictObject({}) },
-  { name: "getPersonalLedger", description: "读取调用者自己的积分流水。", method: "GET", path: "/api/billing/ledger", parameters: z.strictObject({}) },
+  { name: "getPersonalLedger", description: "读取调用者自己的用户侧积分流水；只返回变动、余额、冻结积分、用途和时间，不包含平台价格簿或渠道成本字段。", method: "GET", path: "/api/billing/ledger", parameters: z.strictObject({}) },
   { name: "listUserTeams", description: "列出调用者可以访问的团队。", method: "GET", path: "/api/account/teams/list", parameters: z.strictObject({}) },
   { name: "listTeamMembers", description: "读取自己所属团队的成员。", method: "GET", path: "/api/account/teams/members", parameters: z.strictObject({ teamId: z.uuid() }) },
   { name: "listTeamAssets", description: "读取自己所属团队主动共享的资产，不收集个人资产。", method: "GET", path: "/api/account/teamAssets/list", parameters: z.strictObject({ teamId: z.uuid() }) },

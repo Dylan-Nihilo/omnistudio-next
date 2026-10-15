@@ -7,7 +7,7 @@
       <section v-else-if="activeTab === 'api'" class="adminSection"><header class="sectionHeader"><div><h2>API 提供方</h2><p>凭据仅显示配置状态，留空不会覆盖已保存的凭据。</p></div><div class="sectionActions"><uiButton variant="secondary" :disabled="busy" @click="initializeCatalog">添加内置模型目录</uiButton><uiButton :disabled="busy" @click="editProvider()">添加 API</uiButton></div></header><uiTable :rows="configuration?.providers ?? []" :columns="providerColumns" :loading="loading" emptyText="还没有配置 API" label="平台 API"><template #cell="{ row, column }"><span v-if="column.key === 'apiUrl'">{{ (row.config as PlatformProvider['config']).apiUrl }}</span><span v-else-if="column.key === 'credential'" class="credentialBadge" :title="providerCredential(row)">{{ providerCredential(row) }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editProvider(row as PlatformProvider)">配置 API</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteProvider(row as PlatformProvider)">删除</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable><header class="sectionHeader modelHeader"><div><h2>平台模型</h2><p>用户只能使用平台启用的模型。</p></div><div class="sectionActions"><uiRadioGroup :modelValue="modelFilter" :options="modelFilterOptions" variant="segmented" aria-label="模型类型筛选" @update:modelValue="updateModelFilter" /><uiButton :disabled="busy || !configuration?.providers.length" @click="editModel()">添加模型</uiButton></div></header><uiTable :rows="filteredModels" :columns="modelColumns" :emptyText="modelFilter === 'all' ? '先配置 API，再添加模型' : '当前类型没有模型'" label="平台模型"><template #cell="{ row, column }"><span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editModel(row as PlatformModel)">编辑模型</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteModel(row as PlatformModel)">删除</uiButton></div><span v-else>{{ row[column.key] ?? '—' }}</span></template></uiTable></section>
       <section v-else-if="activeTab === 'prices'" class="adminSection">
         <header class="sectionHeader"><div><h2>积分价格</h2><p>{{ configuration?.priceVersion ? `当前价格版本：${configuration.priceVersion}` : '尚未发布价格。配置后，用户才能使用收费模型。' }}</p></div><div class="sectionActions"><uiRadioGroup :modelValue="priceFilter" :options="modelFilterOptions" variant="segmented" aria-label="积分价格类型筛选" @update:modelValue="updatePriceFilter" /><uiButton :disabled="busy || !priceRows.length || missingPrices" :loading="busy" @click="publishPrices">发布新价格</uiButton></div></header>
-        <p class="sectionHint">新任务使用新价格，已开始的任务保持原价格。文本按各类实际 token 与配置费率结算，1 元＝10 积分。</p>
+        <p class="sectionHint">新任务使用新价格，已开始的任务保持原价格。文本按各类实际 token 与配置费率结算，视频可按分辨率配置积分，1 元＝10 积分。</p>
         <component v-for="group in priceGroups" :is="group.key === 'disabled' ? 'details' : 'div'" :key="group.key" class="priceGroup" :class="{ disabledPrices: group.key === 'disabled' }">
           <summary v-if="group.key === 'disabled'"><uiTag tone="error">已停用模型（{{ group.rows.length }}）</uiTag></summary>
           <uiTable class="priceTable" :rows="group.rows" :columns="priceColumns" rowKey="priceKey" :emptyText="priceFilter === 'all' ? '暂无已启用的模型' : '当前类型没有已启用的模型'" :label="group.key === 'disabled' ? '已停用模型积分价格' : '模型积分价格'">
@@ -27,6 +27,10 @@
                 </div>
                 <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
               </div>
+              <div v-else-if="column.key === 'resolutionTiers'" class="tierCell">
+                <span v-if="row.mediaType !== 'video'" class="sectionHint">—</span>
+                <template v-else><span class="tierSummary">{{ resolutionSummary(row as PriceRow) }}</span><uiButton size="small" variant="ghost" :disabled="busy" @click="openResolutionPricing(row as PriceRow)">配置档位</uiButton></template>
+              </div>
               <span v-else>{{ row[column.key] }}</span>
             </template>
           </uiTable>
@@ -40,6 +44,7 @@
     <uiDialog v-model="projectsVisible" :title="`${selectedUser?.displayName ?? ''} 的个人项目`" :width="680"><p v-if="projectsLoading" class="sectionHint">正在读取项目…</p><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><div class="projectList"><uiButton v-for="project in projects" :key="project.directory" variant="secondary" :disabled="busy" @click="openProject(project)"><span>{{ project.name }}</span><icon-arrow-up-right :size="16" aria-hidden="true" /></uiButton><p v-if="!projects.length && !projectsLoading" class="sectionHint">这个账户还没有项目。</p></div></uiDialog>
     <uiDialog v-model="providerVisible" title="配置平台 API" :width="600" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitProvider"><uiField label="提供方标识" required><template #default="{ id }"><uiInput :id="id" v-model.trim="providerId" required :readonly="providerEditing" :disabled="busy" placeholder="如 myProvider" /></template></uiField><uiField label="API 地址" required><template #default="{ id }"><uiInput :id="id" v-model.trim="apiUrl" type="url" required :disabled="busy" /></template></uiField><uiField label="文本接口协议"><uiRadioGroup v-model="protocol" :options="protocolOptions" variant="segmented" /></uiField><uiField label="API 凭据" :help="currentMaskedApiKey ? `已保存凭据：${currentMaskedApiKey}（留空保留原凭据）` : undefined"><template #default="{ id }"><uiInput :id="id" v-model="apiKey" type="password" autocomplete="off" showPassword :disabled="busy || removeApiKey" :placeholder="currentMaskedApiKey ? `已配置：${currentMaskedApiKey}，留空保留原凭据` : (credentialConfigured ? '已配置，留空保留原凭据' : '填写此 API 的访问凭据')" /></template></uiField><uiCheckbox v-if="credentialConfigured" v-model="removeApiKey" :disabled="busy">移除已保存的凭据</uiCheckbox><uiCheckbox v-model="providerEnabled" :disabled="busy">启用此 API</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :loading="busy" :disabled="busy || !providerId || !apiUrl">保存 API 配置</uiButton></form></uiDialog>
     <uiDialog v-model="modelVisible" title="配置平台模型" :width="640" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitModel"><uiField label="API 提供方" required><template #default="{ id }"><uiSelect :id="id" :modelValue="modelProviderId" :options="providerOptions" :disabled="busy || !!editingModelId" @update:modelValue="value => typeof value === 'string' && (modelProviderId = value)" /></template></uiField><uiField label="类型"><uiRadioGroup v-model="mediaType" :options="mediaOptions" variant="segmented" :disabled="!!editingModelId" /></uiField><uiField label="平台模型标识" required><template #default="{ id }"><uiInput v-if="mediaType === 'text'" :id="id" v-model.trim="modelId" required :readonly="!!editingModelId" :disabled="busy" /><uiSelect v-else :id="id" :modelValue="modelId" :options="mediaModelOptions" :disabled="busy || !!editingModelId" placeholder="选择适配器支持的模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></template></uiField><uiField label="显示名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="modelLabel" required :disabled="busy" /></template></uiField><uiField v-if="mediaType === 'text'" label="上游模型标识"><template #default="{ id }"><uiInput :id="id" v-model.trim="apiModelId" :disabled="busy" placeholder="留空使用平台模型标识" /></template></uiField><uiField label="排序"><uiNumberInput v-model="sortOrder" :min="-100000" :max="100000" :step="1" :precision="0" :disabled="busy" /></uiField><uiCheckbox v-model="modelEnabled" :disabled="busy">启用此模型</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :disabled="busy || !modelProviderId || !modelId || !modelLabel" :loading="busy">保存模型配置</uiButton></form></uiDialog>
+    <uiDialog v-model="resolutionVisible" :title="`${resolutionModel?.label ?? ''} 的分辨率价格`" :width="620" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="saveResolutionPricing"><p class="sectionHint">每个分辨率填写每秒积分，名称不区分大小写且不能重复。档位积分必须是正整数，保存后最高档会同步到单位积分，作为未知分辨率的兜底价格。</p><div class="tierList"><div v-for="(tier, index) in resolutionDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" placeholder="如 768P、1080P" :disabled="busy" :aria-label="`第 ${index + 1} 个分辨率`" /><uiNumberInput v-model="tier.credits" :min="1" :max="1000000000" :step="1" :precision="0" :disabled="busy" :aria-label="`${tier.resolution || '分辨率'} 每秒积分`" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy" @click="removeResolutionTier(index)">删除</uiButton></div><uiButton htmlType="button" variant="secondary" :disabled="busy" @click="addResolutionTier">新增分辨率</uiButton></div><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :disabled="busy" :loading="busy">保存分辨率价格</uiButton></form></uiDialog>
   </accountShell>
 </template>
 
@@ -52,7 +57,7 @@ import accountShell from "@/components/account/accountShell.vue";
 import extensionPanel from "./extensionPanel.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { getAdminUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, type AdminUser, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput } from "@/lib/accountApi";
+import { getAdminUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, type AdminUser, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints } from "@/lib/accountApi";
 import { creditMicros, formatCredits } from "@/lib/creditFormat";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
@@ -71,12 +76,19 @@ const mediaModelOptions = computed(() => configuration.value?.mediaProviders.fin
 const priceDraft = ref<Record<string, number | null>>({});
 type TextPriceDraft = { input: string; cacheRead: string; cacheWrite: string; output: string };
 const textPriceDraft = ref<Record<string, TextPriceDraft>>({});
+type PriceRow = PlatformModel & { priceKey: string };
+type ResolutionModelRef = { priceKey: string; label?: string };
+type ResolutionTierDraft = { resolution: string; credits: number | null };
+const resolutionDrafts = ref<Record<string, ResolutionTierDraft[]>>({});
+const resolutionVisible = ref(false);
+const resolutionModel = ref<ResolutionModelRef>();
+const resolutionDraft = ref<ResolutionTierDraft[]>([]);
 const tokenRateFields: { key: keyof TokenRates; label: string }[] = [{ key: "input", label: "非缓存输入" }, { key: "cacheRead", label: "缓存读取" }, { key: "cacheWrite", label: "缓存写入" }, { key: "output", label: "输出" }];
 // 136笔历史usage按占比缩放，并按最大余数分配为整数，总计1000万token。
 const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0, output: 43_419 };
 const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US")}`).join("，");
 function priceKey(model: { providerId: string; mediaType: string; modelId: string }) { return JSON.stringify([model.providerId, model.mediaType, model.modelId]); }
-const priceRows = computed(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
+const priceRows = computed<PriceRow[]>(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
 const priceGroups = computed(() => {
   const rows = priceRows.value.filter(model => priceFilter.value === "all" || model.mediaType === priceFilter.value);
   return [{ key: "enabled", rows: rows.filter(model => model.enabled) }, { key: "disabled", rows: rows.filter(model => !model.enabled) }].filter(group => group.key === "enabled" || group.rows.length);
@@ -86,7 +98,7 @@ const missingPrices = computed(() => priceRows.value.some(model => model.enabled
 const userColumns: UiColumn[] = [{ key: "displayName", label: "用户", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "role", label: "身份", width: 80, align: "center" }, { key: "available", label: "可用积分", width: 115, align: "center" }, { key: "frozen", label: "冻结", width: 90, align: "center" }, { key: "status", label: "状态", width: 85, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
 const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", width: 150, align: "center" }, { key: "apiUrl", label: "API 地址", width: 300, align: "left" }, { key: "credential", label: "访问凭据", width: 200, align: "center" }, { key: "enabled", label: "状态", width: 95, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
-const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 110, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "creditsPerUnit", label: "价格配置", width: 450 }];
+const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 110, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "creditsPerUnit", label: "价格配置", width: 450 }, { key: "resolutionTiers", label: "分辨率档位", width: 230, align: "center" }];
 const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180 }, { key: "actorUserId", label: "操作者", width: 150 }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180 }];
 const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录" };
 function errorText(error: unknown) { return axios.isAxiosError(error) ? error.response?.data?.message || "连接中断，请刷新后确认结果" : error instanceof Error ? error.message : "操作失败，请重试"; }
@@ -127,12 +139,48 @@ function priceUnit(row: Record<string, unknown>): string {
   const price = configuration.value?.prices.find(item => priceKey(item) === String(row.priceKey));
   return price?.unit === "10k_tokens" ? "旧规则：每万 token" : "旧规则：每万字符";
 }
+function resolutionTiers(price: { constraints?: PriceConstraints }) {
+  const tiers = price.constraints?.resolutionTiers;
+  return tiers && typeof tiers === "object" ? tiers : {};
+}
+function resolutionSummary(row: { priceKey: string }) {
+  const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
+  const tiers = resolutionDrafts.value[row.priceKey] ?? Object.entries(resolutionTiers(price ?? {})).map(([resolution, credits]) => ({ resolution, credits }));
+  return tiers.length ? tiers.map(tier => `${tier.resolution}：${tier.credits ?? "—"}`).join(" · ") : "未配置";
+}
+function openResolutionPricing(row: { priceKey: string; label?: string }) {
+  const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
+  const tiers = resolutionDrafts.value[row.priceKey] ?? Object.entries(resolutionTiers(price ?? {})).map(([resolution, credits]) => ({ resolution, credits }));
+  resolutionModel.value = row;
+  resolutionDraft.value = tiers.map(tier => ({ ...tier }));
+  resolutionVisible.value = true;
+  dialogError.value = "";
+}
+function addResolutionTier() { resolutionDraft.value.push({ resolution: "", credits: null }); }
+function removeResolutionTier(index: number) { resolutionDraft.value.splice(index, 1); }
+function saveResolutionPricing() {
+  const tiers = resolutionDraft.value.map(tier => ({ resolution: tier.resolution.trim(), credits: tier.credits }));
+  const names = new Set<string>();
+  for (const tier of tiers) {
+    const name = tier.resolution.toUpperCase();
+    if (!name || name.length > 32) { dialogError.value = "分辨率名称不能为空且不能超过 32 个字符"; return; }
+    if (names.has(name)) { dialogError.value = "分辨率名称不能重复"; return; }
+    if (!Number.isSafeInteger(tier.credits) || tier.credits! <= 0) { dialogError.value = "档位积分必须是正整数"; return; }
+    names.add(name);
+  }
+  const key = resolutionModel.value?.priceKey;
+  if (!key) return;
+  resolutionDrafts.value[key] = tiers;
+  if (tiers.length) priceDraft.value[key] = Math.max(...tiers.map(tier => tier.credits!));
+  resolutionVisible.value = false;
+}
 async function loadAll() {
   loading.value = true; errorMessage.value = "";
   try {
     const [people, platform, events] = await Promise.all([getAdminUsers(), getPlatformConfiguration(), getPlatformAudit()]);
     const prices: Record<string, number | null> = {};
     const textPrices: Record<string, TextPriceDraft> = {};
+    const tiers: Record<string, ResolutionTierDraft[]> = {};
     for (const model of platform.models) {
       const key = priceKey(model);
       const price = platform.prices.find(item => priceKey(item) === key);
@@ -141,7 +189,14 @@ async function loadAll() {
       const pricing = price?.constraints?.textPricing;
       textPrices[key] = { input: pricing?.ratesPerMillion.input ?? "", cacheRead: pricing?.ratesPerMillion.cacheRead ?? "", cacheWrite: pricing?.ratesPerMillion.cacheWrite ?? "", output: pricing?.ratesPerMillion.output ?? "" };
     }
-    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; configuration.value = platform;
+    for (const model of platform.models) {
+      if (model.mediaType !== "video") continue;
+      const key = priceKey(model);
+      const price = platform.prices.find(item => priceKey(item) === key);
+      const entries = Object.entries(resolutionTiers(price ?? {}));
+      if (entries.length) tiers[key] = entries.map(([resolution, credits]) => ({ resolution, credits }));
+    }
+    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; resolutionDrafts.value = tiers; configuration.value = platform;
   } catch (error) { errorMessage.value = errorText(error); } finally { loading.value = false; }
 }
 async function refreshModels() { invalidateNodeModels("language"); invalidateNodeModels("media"); await usePlatformModelsStore().load(); }
@@ -169,9 +224,20 @@ async function publishPrices() {
     const creditsPerUnit = textPricing ? 0 : priceDraft.value[model.priceKey];
     if (creditsPerUnit == null) continue;
     const previous = configuration.value?.prices.find(item => priceKey(item) === model.priceKey);
-    const constraints = { ...previous?.constraints };
+    const { resolutionTiers: previousResolutionTiers, ...constraints } = previous?.constraints ?? {};
     delete constraints.textPricing;
-    items.push({ providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, creditsPerUnit, ...(Object.keys(constraints).length ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) });
+    let finalCreditsPerUnit = creditsPerUnit;
+    if (model.mediaType === "video") {
+      const resolutionDraft = model.priceKey in resolutionDrafts.value ? resolutionDrafts.value[model.priceKey] : undefined;
+      const resolutionValues = resolutionDraft ?? (previousResolutionTiers ? Object.entries(previousResolutionTiers).map(([resolution, credits]) => ({ resolution, credits })) : []);
+      if (resolutionDraft) {
+        if (resolutionValues.length) constraints.resolutionTiers = Object.fromEntries(resolutionValues.map(tier => [tier.resolution.trim(), tier.credits!]));
+      } else if (previousResolutionTiers) {
+        constraints.resolutionTiers = previousResolutionTiers;
+      }
+      if (resolutionValues.length) finalCreditsPerUnit = Math.max(...resolutionValues.map(tier => tier.credits!));
+    }
+    items.push({ providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, creditsPerUnit: finalCreditsPerUnit, ...(Object.keys(constraints).length ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) });
   }
   const free = items.filter(item => item.textPricing ? Object.values(item.textPricing.ratesPerMillion).every(rate => rate == null || creditMicros(rate) === 0n) : item.creditsPerUnit === 0).length;
   try { await feedback.confirm(`发布 ${items.length} 个模型的新价格？${free ? `其中 ${free} 个模型不扣积分。` : ''}已开始的任务按原价格结算。`, "发布模型积分价格", { confirmButtonText: "发布新价格", cancelButtonText: "继续编辑" }); busy.value = true; await publishPlatformPrices(items); await loadAll(); }
@@ -199,7 +265,7 @@ onMounted(loadAll);
     &.disabledPrices { margin-top: 20px; summary { padding: 12px 0; cursor: pointer; color: var(--uiTextMuted); } }
   }
   .priceTable {
-    :deep(table) { min-width: 950px; }
+    :deep(table) { min-width: 1150px; }
     .priceEditor {
       display: grid; gap: 12px;
       :deep(input) { text-align: center; }
@@ -215,8 +281,10 @@ onMounted(loadAll);
     }
   }
 }
+.tierCell { display: flex; align-items: center; gap: 8px; min-width: 0; .tierSummary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextSecondary); font-size: 12px; } }
 .sectionHint { color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
 .dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } }
 .projectList { display: grid; gap: 12px; }
+.tierList { display: grid; gap: 12px; .tierRow { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; align-items: center; gap: 8px; } }
 @media (max-width: 700px) { .adminSection .sectionHeader { flex-direction: column; } }
 </style>

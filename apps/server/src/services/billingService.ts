@@ -62,7 +62,8 @@ export async function getWallet(userId = requireAccount().userId) {
 
 export async function listLedger(userId = requireAccount().userId, limit = 100) {
   const wallet = await getWallet(userId);
-  return getDatabase().select().from(creditLedger).where(eq(creditLedger.walletId, wallet.id)).orderBy(desc(creditLedger.createdAt), desc(creditLedger.id)).limit(Math.min(Math.max(Math.floor(limit), 1), 200));
+  const rows = await getDatabase().select().from(creditLedger).where(eq(creditLedger.walletId, wallet.id)).orderBy(desc(creditLedger.createdAt), desc(creditLedger.id)).limit(Math.min(Math.max(Math.floor(limit), 1), 200));
+  return rows.map(({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }) => ({ id, kind, amount, balanceAfter, frozenAfter, reason, createdAt }));
 }
 
 export async function listAdminUsers() {

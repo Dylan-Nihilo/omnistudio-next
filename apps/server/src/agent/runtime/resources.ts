@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DefaultResourceLoader, SettingsManager, type ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { buildSystemPrompt } from "@/agent/runtime/prompt";
+import { agentConfidentialPolicy, buildSystemPrompt } from "@/agent/runtime/prompt";
 import { loadAgentSkills } from "@/agent/skills";
 import { resolveWorkspacePath } from "@/utils/workspace/files";
 import { isMemoryEnabled, readDocument } from "@/utils/personalization";
@@ -42,6 +42,7 @@ export async function createAgentResources(cwd: string, tools: ToolDefinition[],
     appendSystemPrompt: [
       globalAgents.content.trim() ? `## 全局协作规范（AGENTS.md）\n${globalAgents.content}` : "",
       memory.content.trim() ? `## 全局长期记忆\n以下是跨对话保存的偏好与事实，使用前核对适用项目，以用户本轮要求为准。\n<global_memory>\n${memory.content}\n</global_memory>` : "",
+      agentConfidentialPolicy,
     ].filter(Boolean),
   });
   await resourceLoader.reload();
