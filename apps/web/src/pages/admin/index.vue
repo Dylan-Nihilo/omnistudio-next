@@ -14,22 +14,12 @@
             <template #cell="{ row, column }">
               <span v-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span>
               <span v-else-if="column.key === 'unit'">{{ priceUnit(row) }}</span>
-              <div v-else-if="column.key === 'creditsPerUnit'" class="priceEditor">
-                <div v-if="row.mediaType === 'text'" class="tokenPricing">
-                  <p class="pricingHelp">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p>
-                  <div class="rateFields">
-                    <uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="field.key === 'input' || field.key === 'output'">
-                      <template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[String(row.priceKey)]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy" @update:modelValue="value => setTextPriceField(String(row.priceKey), field.key, value)" /></template>
-                    </uiField>
-                  </div>
-                  <p class="pricingHelp" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10,000,000 token。<br />实际消耗积分：<strong>{{ textExampleCredits(String(row.priceKey)) }}</strong>。</p>
-                  <p v-if="!textPricingInput(String(row.priceKey))" class="pricingHelp">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p>
-                </div>
-                <uiNumberInput v-else v-model="priceDraft[String(row.priceKey)]" class="mediaPriceInput" :min="0" :max="1000000000" :step="0.5" :precision="1" :disabled="busy" :aria-label="`${row.label} 的积分价格`" />
+              <div v-else-if="column.key === 'configDetails'" class="configDetails">
+                <uiButton v-if="row.mediaType === 'text'" size="small" variant="ghost" :disabled="busy" @click="openPriceConfig(row as PriceRow, true)">查看配置</uiButton>
+                <span v-else class="priceSummary">{{ priceSummary(row as PriceRow) }}</span>
               </div>
-              <div v-else-if="column.key === 'resolutionTiers'" class="tierCell">
-                <span v-if="row.mediaType !== 'video'" class="sectionHint">—</span>
-                <template v-else><span class="tierSummary">{{ resolutionSummary(row as PriceRow) }}</span><uiButton size="small" variant="ghost" :disabled="busy" @click="openResolutionPricing(row as PriceRow)">配置档位</uiButton></template>
+              <div v-else-if="column.key === 'creditsPerUnit'" class="priceEditor">
+                <uiButton v-if="row.mediaType === 'text' || row.mediaType === 'image' || row.mediaType === 'video'" size="small" variant="secondary" :disabled="busy" @click="openPriceConfig(row as PriceRow)">修改配置</uiButton>
               </div>
               <span v-else>{{ row[column.key] }}</span>
             </template>
@@ -44,7 +34,7 @@
     <uiDialog v-model="projectsVisible" :title="`${selectedUser?.displayName ?? ''} 的个人项目`" :width="680"><p v-if="projectsLoading" class="sectionHint">正在读取项目…</p><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><div class="projectList"><uiButton v-for="project in projects" :key="project.directory" variant="secondary" :disabled="busy" @click="openProject(project)"><span>{{ project.name }}</span><icon-arrow-up-right :size="16" aria-hidden="true" /></uiButton><p v-if="!projects.length && !projectsLoading" class="sectionHint">这个账户还没有项目。</p></div></uiDialog>
     <uiDialog v-model="providerVisible" title="配置平台 API" :width="600" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitProvider"><uiField label="提供方标识" required><template #default="{ id }"><uiInput :id="id" v-model.trim="providerId" required :readonly="providerEditing" :disabled="busy" placeholder="如 myProvider" /></template></uiField><uiField label="API 地址" required><template #default="{ id }"><uiInput :id="id" v-model.trim="apiUrl" type="url" required :disabled="busy" /></template></uiField><uiField label="文本接口协议"><uiRadioGroup v-model="protocol" :options="protocolOptions" variant="segmented" /></uiField><uiField label="API 凭据" :help="currentMaskedApiKey ? `已保存凭据：${currentMaskedApiKey}（留空保留原凭据）` : undefined"><template #default="{ id }"><uiInput :id="id" v-model="apiKey" type="password" autocomplete="off" showPassword :disabled="busy || removeApiKey" :placeholder="currentMaskedApiKey ? `已配置：${currentMaskedApiKey}，留空保留原凭据` : (credentialConfigured ? '已配置，留空保留原凭据' : '填写此 API 的访问凭据')" /></template></uiField><uiCheckbox v-if="credentialConfigured" v-model="removeApiKey" :disabled="busy">移除已保存的凭据</uiCheckbox><uiCheckbox v-model="providerEnabled" :disabled="busy">启用此 API</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :loading="busy" :disabled="busy || !providerId || !apiUrl">保存 API 配置</uiButton></form></uiDialog>
     <uiDialog v-model="modelVisible" title="配置平台模型" :width="640" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitModel"><uiField label="API 提供方" required><template #default="{ id }"><uiSelect :id="id" :modelValue="modelProviderId" :options="providerOptions" :disabled="busy || !!editingModelId" @update:modelValue="value => typeof value === 'string' && (modelProviderId = value)" /></template></uiField><uiField label="类型"><uiRadioGroup v-model="mediaType" :options="mediaOptions" variant="segmented" :disabled="!!editingModelId" /></uiField><uiField label="平台模型标识" required><template #default="{ id }"><uiInput v-if="mediaType === 'text'" :id="id" v-model.trim="modelId" required :readonly="!!editingModelId" :disabled="busy" /><uiSelect v-else :id="id" :modelValue="modelId" :options="mediaModelOptions" :disabled="busy || !!editingModelId" placeholder="选择适配器支持的模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></template></uiField><uiField label="显示名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="modelLabel" required :disabled="busy" /></template></uiField><uiField v-if="mediaType === 'text'" label="上游模型标识"><template #default="{ id }"><uiInput :id="id" v-model.trim="apiModelId" :disabled="busy" placeholder="留空使用平台模型标识" /></template></uiField><uiField label="排序"><uiNumberInput v-model="sortOrder" :min="-100000" :max="100000" :step="1" :precision="0" :disabled="busy" /></uiField><uiCheckbox v-model="modelEnabled" :disabled="busy">启用此模型</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :disabled="busy || !modelProviderId || !modelId || !modelLabel" :loading="busy">保存模型配置</uiButton></form></uiDialog>
-    <uiDialog v-model="resolutionVisible" :title="`${resolutionModel?.label ?? ''} 的分辨率价格`" :width="620" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="saveResolutionPricing"><p class="sectionHint">每个分辨率填写每秒积分，名称不区分大小写且不能重复。档位积分必须是正整数，保存后最高档会同步到单位积分，作为未知分辨率的兜底价格。</p><div class="tierList"><div v-for="(tier, index) in resolutionDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" placeholder="如 768P、1080P" :disabled="busy" :aria-label="`第 ${index + 1} 个分辨率`" /><uiNumberInput v-model="tier.credits" :min="1" :max="1000000000" :step="1" :precision="0" :disabled="busy" :aria-label="`${tier.resolution || '分辨率'} 每秒积分`" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy" @click="removeResolutionTier(index)">删除</uiButton></div><uiButton htmlType="button" variant="secondary" :disabled="busy" @click="addResolutionTier">新增分辨率</uiButton></div><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :disabled="busy" :loading="busy">保存分辨率价格</uiButton></form></uiDialog>
+    <uiDialog v-model="priceConfigVisible" :title="`${priceConfigModel?.label ?? ''} 的价格配置`" :width="620" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="savePriceConfig"><template v-if="priceConfigType === 'text'"><p class="sectionHint">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p><div class="rateFields"><uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="!priceConfigReadOnly && (field.key === 'input' || field.key === 'output')"><template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[priceConfigKey]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy || priceConfigReadOnly" @update:modelValue="value => setTextPriceField(priceConfigKey, field.key, value)" /></template></uiField></div><p class="sectionHint" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10,000,000 token。<br />实际消耗积分：<strong>{{ textExampleCredits(priceConfigKey) }}</strong>。</p><p v-if="!priceConfigReadOnly && !textPricingInput(priceConfigKey)" class="sectionHint">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p></template><template v-else><p class="sectionHint">{{ priceConfigType === 'image' ? '可按图片尺寸设置每张积分；保存后最高档会同步为基础价格。' : '可按视频分辨率设置每秒积分；保存后最高档会同步为未知分辨率的兜底价格。' }}</p><div class="tierList"><div class="tierHeader"><span>{{ priceConfigType === 'image' ? '尺寸' : '分辨率' }}</span><span>价格</span><span aria-hidden="true"></span></div><div v-for="(tier, index) in tierDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" :placeholder="priceConfigType === 'image' ? '如 1K、2K、4K' : '如 768P、1080P'" :disabled="busy" :aria-label="`第 ${index + 1} 个${priceConfigType === 'image' ? '尺寸' : '分辨率'}`" /><uiNumberInput v-model="tier.credits" :min="1" :max="1000000000" :step="1" :precision="0" :disabled="busy" :aria-label="`${tier.resolution || (priceConfigType === 'image' ? '尺寸' : '分辨率')} ${priceConfigType === 'image' ? '每张' : '每秒'}积分`" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy" @click="removeTier(index)">删除</uiButton></div><div class="tierActions"><uiButton htmlType="button" variant="secondary" :disabled="busy" @click="addTier">新增{{ priceConfigType === 'image' ? '尺寸' : '分辨率' }}</uiButton><uiButton htmlType="submit" :disabled="busy" :loading="busy">保存价格配置</uiButton></div></div></template><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton v-if="priceConfigType === 'text' && !priceConfigReadOnly" htmlType="submit" :disabled="busy" :loading="busy">保存价格配置</uiButton></form></uiDialog>
   </accountShell>
 </template>
 
@@ -77,12 +67,14 @@ const priceDraft = ref<Record<string, number | null>>({});
 type TextPriceDraft = { input: string; cacheRead: string; cacheWrite: string; output: string };
 const textPriceDraft = ref<Record<string, TextPriceDraft>>({});
 type PriceRow = PlatformModel & { priceKey: string };
-type ResolutionModelRef = { priceKey: string; label?: string };
 type ResolutionTierDraft = { resolution: string; credits: number | null };
-const resolutionDrafts = ref<Record<string, ResolutionTierDraft[]>>({});
-const resolutionVisible = ref(false);
-const resolutionModel = ref<ResolutionModelRef>();
-const resolutionDraft = ref<ResolutionTierDraft[]>([]);
+const tierDrafts = ref<Record<string, ResolutionTierDraft[]>>({});
+const priceConfigVisible = ref(false);
+const priceConfigModel = ref<PriceRow>();
+const priceConfigReadOnly = ref(false);
+const priceConfigKey = computed(() => priceConfigModel.value?.priceKey ?? "");
+const priceConfigType = computed(() => priceConfigModel.value?.mediaType);
+const tierDraft = ref<ResolutionTierDraft[]>([]);
 const tokenRateFields: { key: keyof TokenRates; label: string }[] = [{ key: "input", label: "非缓存输入" }, { key: "cacheRead", label: "缓存读取" }, { key: "cacheWrite", label: "缓存写入" }, { key: "output", label: "输出" }];
 // 136笔历史usage按占比缩放，并按最大余数分配为整数，总计1000万token。
 const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0, output: 43_419 };
@@ -98,7 +90,7 @@ const missingPrices = computed(() => priceRows.value.some(model => model.enabled
 const userColumns: UiColumn[] = [{ key: "displayName", label: "用户", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "role", label: "身份", width: 80, align: "center" }, { key: "available", label: "可用积分", width: 115, align: "center" }, { key: "frozen", label: "冻结", width: 90, align: "center" }, { key: "status", label: "状态", width: 85, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
 const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", width: 150, align: "center" }, { key: "apiUrl", label: "API 地址", width: 300, align: "left" }, { key: "credential", label: "访问凭据", width: 200, align: "center" }, { key: "enabled", label: "状态", width: 95, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
-const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 110, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "creditsPerUnit", label: "价格配置", width: 450 }, { key: "resolutionTiers", label: "分辨率档位", width: 230, align: "center" }];
+const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 160, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "configDetails", label: "配置详情", width: 320 }, { key: "creditsPerUnit", label: "价格配置", width: 150, align: "center" }];
 const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180 }, { key: "actorUserId", label: "操作者", width: 150 }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180 }];
 const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录" };
 function errorText(error: unknown) { return axios.isAxiosError(error) ? error.response?.data?.message || "连接中断，请刷新后确认结果" : error instanceof Error ? error.message : "操作失败，请重试"; }
@@ -139,40 +131,64 @@ function priceUnit(row: Record<string, unknown>): string {
   const price = configuration.value?.prices.find(item => priceKey(item) === String(row.priceKey));
   return price?.unit === "10k_tokens" ? "旧规则：每万 token" : "旧规则：每万字符";
 }
-function resolutionTiers(price: { constraints?: PriceConstraints }) {
-  const tiers = price.constraints?.resolutionTiers;
-  return tiers && typeof tiers === "object" ? tiers : {};
+function priceTiers(price: { constraints?: PriceConstraints }, mediaType: "image" | "video") {
+  const source = mediaType === "image" ? price.constraints?.sizeTiers : price.constraints?.resolutionTiers;
+  return source && typeof source === "object" ? source : {};
 }
-function resolutionSummary(row: { priceKey: string }) {
-  const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
-  const tiers = resolutionDrafts.value[row.priceKey] ?? Object.entries(resolutionTiers(price ?? {})).map(([resolution, credits]) => ({ resolution, credits }));
-  return tiers.length ? tiers.map(tier => `${tier.resolution}：${tier.credits ?? "—"}`).join(" · ") : "未配置";
+function defaultImageTiers(price: { constraints?: PriceConstraints }, basePrice: number | null | undefined) {
+  const tiers = priceTiers(price, "image");
+  const fallback = basePrice ?? null;
+  return ["1K", "2K", "4K"].map(resolution => ({ resolution, credits: typeof tiers[resolution] === "number" ? tiers[resolution] : fallback }));
 }
-function openResolutionPricing(row: { priceKey: string; label?: string }) {
+function priceTierSummary(row: PriceRow) {
+  if (row.mediaType !== "image" && row.mediaType !== "video") return "";
   const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
-  const tiers = resolutionDrafts.value[row.priceKey] ?? Object.entries(resolutionTiers(price ?? {})).map(([resolution, credits]) => ({ resolution, credits }));
-  resolutionModel.value = row;
-  resolutionDraft.value = tiers.map(tier => ({ ...tier }));
-  resolutionVisible.value = true;
+  const tiers = tierDrafts.value[row.priceKey] ?? Object.entries(priceTiers(price ?? {}, row.mediaType)).map(([resolution, credits]) => ({ resolution, credits }));
+  return tiers.length ? tiers.map(tier => `${tier.resolution}：${tier.credits == null ? "—" : `${tier.credits}积分`}`).join(" · ") : "未配置档位";
+}
+function priceSummary(row: PriceRow) {
+  if (row.mediaType === "text") return "";
+  if (row.mediaType !== "image" && row.mediaType !== "video") return `基础价格：${priceDraft.value[row.priceKey] ?? "未配置"}`;
+  const summary = priceTierSummary(row);
+  return summary === "未配置档位" ? `基础价格：${priceDraft.value[row.priceKey] == null ? "未配置" : `${priceDraft.value[row.priceKey]}积分`}` : summary;
+}
+function openPriceConfig(row: PriceRow, readOnly = false) {
+  priceConfigModel.value = row;
+  priceConfigReadOnly.value = readOnly;
   dialogError.value = "";
+  if (row.mediaType !== "text") {
+    const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
+    const tiers = tierDrafts.value[row.priceKey] ?? (row.mediaType === "image" ? defaultImageTiers(price ?? {}, priceDraft.value[row.priceKey]) : Object.entries(priceTiers(price ?? {}, "video")).map(([resolution, credits]) => ({ resolution, credits })));
+    tierDraft.value = tiers.map(tier => ({ ...tier }));
+  }
+  priceConfigVisible.value = true;
 }
-function addResolutionTier() { resolutionDraft.value.push({ resolution: "", credits: null }); }
-function removeResolutionTier(index: number) { resolutionDraft.value.splice(index, 1); }
-function saveResolutionPricing() {
-  const tiers = resolutionDraft.value.map(tier => ({ resolution: tier.resolution.trim(), credits: tier.credits }));
+function addTier() { tierDraft.value.push({ resolution: "", credits: null }); }
+function removeTier(index: number) { tierDraft.value.splice(index, 1); }
+function savePriceConfig() {
+  const model = priceConfigModel.value;
+  if (!model) return;
+  if (priceConfigReadOnly.value) { priceConfigVisible.value = false; return; }
+  if (model.mediaType === "text") {
+    if (!textPricingInput(model.priceKey)) { dialogError.value = "请输入有效积分费率（0～10 亿，最多 6 位小数）"; return; }
+    priceConfigVisible.value = false;
+    return;
+  }
+  const tiers = tierDraft.value.map(tier => ({ resolution: tier.resolution.trim(), credits: tier.credits }));
   const names = new Set<string>();
+  if (model.mediaType === "image" && tiers.length !== 3) { dialogError.value = "图片必须配置 1K、2K、4K 三档积分"; return; }
   for (const tier of tiers) {
     const name = tier.resolution.toUpperCase();
-    if (!name || name.length > 32) { dialogError.value = "分辨率名称不能为空且不能超过 32 个字符"; return; }
-    if (names.has(name)) { dialogError.value = "分辨率名称不能重复"; return; }
+    if (!name || name.length > 32) { dialogError.value = `${model.mediaType === "image" ? "尺寸" : "分辨率"}名称不能为空且不能超过 32 个字符`; return; }
+    if (names.has(name)) { dialogError.value = `${model.mediaType === "image" ? "尺寸" : "分辨率"}名称不能重复`; return; }
     if (!Number.isSafeInteger(tier.credits) || tier.credits! <= 0) { dialogError.value = "档位积分必须是正整数"; return; }
     names.add(name);
   }
-  const key = resolutionModel.value?.priceKey;
-  if (!key) return;
-  resolutionDrafts.value[key] = tiers;
-  if (tiers.length) priceDraft.value[key] = Math.max(...tiers.map(tier => tier.credits!));
-  resolutionVisible.value = false;
+  if (model.mediaType === "image" && ["1K", "2K", "4K"].some(name => !names.has(name))) { dialogError.value = "图片必须配置 1K、2K、4K 三档积分"; return; }
+  const normalizedTiers = tiers.map(tier => ({ ...tier, resolution: model.mediaType === "image" ? tier.resolution.toUpperCase() : tier.resolution }));
+  tierDrafts.value[model.priceKey] = normalizedTiers;
+  if (tiers.length) priceDraft.value[model.priceKey] = Math.max(...tiers.map(tier => tier.credits!));
+  priceConfigVisible.value = false;
 }
 async function loadAll() {
   loading.value = true; errorMessage.value = "";
@@ -190,13 +206,13 @@ async function loadAll() {
       textPrices[key] = { input: pricing?.ratesPerMillion.input ?? "", cacheRead: pricing?.ratesPerMillion.cacheRead ?? "", cacheWrite: pricing?.ratesPerMillion.cacheWrite ?? "", output: pricing?.ratesPerMillion.output ?? "" };
     }
     for (const model of platform.models) {
-      if (model.mediaType !== "video") continue;
+      if (model.mediaType !== "video" && model.mediaType !== "image") continue;
       const key = priceKey(model);
       const price = platform.prices.find(item => priceKey(item) === key);
-      const entries = Object.entries(resolutionTiers(price ?? {}));
+      const entries = model.mediaType === "image" ? Object.entries(priceTiers(price ?? {}, "image")) : Object.entries(priceTiers(price ?? {}, "video"));
       if (entries.length) tiers[key] = entries.map(([resolution, credits]) => ({ resolution, credits }));
     }
-    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; resolutionDrafts.value = tiers; configuration.value = platform;
+    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; tierDrafts.value = tiers; configuration.value = platform;
   } catch (error) { errorMessage.value = errorText(error); } finally { loading.value = false; }
 }
 async function refreshModels() { invalidateNodeModels("language"); invalidateNodeModels("media"); await usePlatformModelsStore().load(); }
@@ -224,18 +240,18 @@ async function publishPrices() {
     const creditsPerUnit = textPricing ? 0 : priceDraft.value[model.priceKey];
     if (creditsPerUnit == null) continue;
     const previous = configuration.value?.prices.find(item => priceKey(item) === model.priceKey);
-    const { resolutionTiers: previousResolutionTiers, ...constraints } = previous?.constraints ?? {};
+    const { resolutionTiers: previousResolutionTiers, sizeTiers: previousSizeTiers, ...constraints } = previous?.constraints ?? {};
     delete constraints.textPricing;
     let finalCreditsPerUnit = creditsPerUnit;
-    if (model.mediaType === "video") {
-      const resolutionDraft = model.priceKey in resolutionDrafts.value ? resolutionDrafts.value[model.priceKey] : undefined;
-      const resolutionValues = resolutionDraft ?? (previousResolutionTiers ? Object.entries(previousResolutionTiers).map(([resolution, credits]) => ({ resolution, credits })) : []);
-      if (resolutionDraft) {
-        if (resolutionValues.length) constraints.resolutionTiers = Object.fromEntries(resolutionValues.map(tier => [tier.resolution.trim(), tier.credits!]));
-      } else if (previousResolutionTiers) {
-        constraints.resolutionTiers = previousResolutionTiers;
+    if (model.mediaType === "image" || model.mediaType === "video") {
+      const previousTiers = model.mediaType === "image" ? previousSizeTiers : previousResolutionTiers;
+      const draftTiers = tierDrafts.value[model.priceKey];
+      const tierValues = draftTiers ?? (previousTiers ? Object.entries(previousTiers).map(([resolution, credits]) => ({ resolution, credits })) : []);
+      if (tierValues.length) {
+        if (model.mediaType === "image") constraints.sizeTiers = Object.fromEntries(tierValues.map(tier => [tier.resolution.trim().toUpperCase(), tier.credits!]));
+        else constraints.resolutionTiers = Object.fromEntries(tierValues.map(tier => [tier.resolution.trim(), tier.credits!]));
+        finalCreditsPerUnit = Math.max(...tierValues.map(tier => tier.credits!));
       }
-      if (resolutionValues.length) finalCreditsPerUnit = Math.max(...resolutionValues.map(tier => tier.credits!));
     }
     items.push({ providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, creditsPerUnit: finalCreditsPerUnit, ...(Object.keys(constraints).length ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) });
   }
@@ -267,24 +283,16 @@ onMounted(loadAll);
   .priceTable {
     :deep(table) { min-width: 1150px; }
     .priceEditor {
-      display: grid; gap: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
       :deep(input) { text-align: center; }
-      .mediaPriceInput { width: 200px; max-width: 100%; justify-self: center; }
-      .tokenPricing {
-        display: grid; gap: 12px;
-        .pricingHelp { margin: 0; font-size: 12px; color: var(--uiTextMuted); line-height: 1.7; }
-        .rateFields {
-          display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
-          .rateField { display: grid; grid-template-columns: 82px minmax(0, 120px); align-items: center; gap: 8px; :deep(.fieldLabel) { white-space: nowrap; } }
-        }
-      }
     }
   }
 }
-.tierCell { display: flex; align-items: center; gap: 8px; min-width: 0; .tierSummary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextSecondary); font-size: 12px; } }
+.configDetails { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; .priceSummary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextSecondary); font-size: 12px; } }
 .sectionHint { color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
-.dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } }
+.dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } .rateFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; } }
 .projectList { display: grid; gap: 12px; }
-.tierList { display: grid; gap: 12px; .tierRow { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; align-items: center; gap: 8px; } }
+.tierList { display: grid; gap: 12px; .tierHeader, .tierRow { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; align-items: center; gap: 8px; } .tierHeader { color: var(--uiTextMuted); font-size: 12px; padding: 0 8px; } .tierActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; :deep(button) { width: 100%; } } }
 @media (max-width: 700px) { .adminSection .sectionHeader { flex-direction: column; } }
+@media (max-width: 520px) { .dialogForm .rateFields { grid-template-columns: 1fr; } }
 </style>
