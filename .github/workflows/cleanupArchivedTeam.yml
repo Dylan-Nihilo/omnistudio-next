@@ -1,0 +1,93 @@
+name: Cleanup Archived Team
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "操作模式 (inspect: 仅查询, delete: 执行删除)"
+        type: choice
+        options:
+          - inspect
+          - delete
+        default: inspect
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Configure SSH
+        env:
+          serverHost: ${{ secrets.DEPLOY_HOST }}
+          serverUser: ${{ secrets.DEPLOY_USER }}
+          serverPath: ${{ secrets.DEPLOY_PATH }}
+          deploySshKey: ${{ secrets.DEPLOY_SSH_KEY }}
+          deployKnownHosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          printf '%s\n' "$deploySshKey" > "$RUNNER_TEMP/deployKey"
+          printf '%s\n' "$deployKnownHosts" > "$RUNNER_TEMP/sshKnownHosts"
+
+      - name: Query or Delete Archived Team
+        env:
+          serverHost: ${{ secrets.DEPLOY_HOST }}
+          serverUser: ${{ secrets.DEPLOY_USER }}
+          serverPath: ${{ secrets.DEPLOY_PATH }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash -s -- "$serverPath" "$ACTION" << 'EOF'
+          set -e
+          serverPath="$1"
+          action="$2"
+          cd "$serverPath"
+
+          mysqlContainer=$(docker compose -p omnistudio-next --env-file .env -f compose.yaml ps -q mysql)
+          if [[ -z "$mysqlContainer" ]]; then
+            echo "ERROR: mysql container not found"
+            exit 1
+          fi
+
+          echo "=========================================="
+          echo "1. 线上数据库全部团队列表 (user_teams)"
+          echo "=========================================="
+          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status, created_at FROM user_teams;"'
+
+          echo "=========================================="
+          echo "2. 目标已解散的工作区 (status = archived)"
+          echo "=========================================="
+          docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status FROM user_teams WHERE status = \"archived\";"'
+
+          if [[ "$action" == "delete" ]]; then
+            echo "=========================================="
+            echo "3. 正在执行删除已解散的科技部工作区..."
+            echo "=========================================="
+            docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "
+              CREATE TEMPORARY TABLE target_teams AS
+                SELECT id FROM user_teams WHERE status = \"archived\" AND (name LIKE \"%科技部%\" OR name LIKE \"%中食信息%\");
+
+              SELECT * FROM target_teams;
+
+              DELETE FROM user_team_members WHERE team_id IN (SELECT id FROM target_teams);
+              DELETE FROM user_team_invitations WHERE team_id IN (SELECT id FROM target_teams);
+              DELETE FROM user_team_assets WHERE team_id IN (SELECT id FROM target_teams);
+              DELETE FROM user_credit_transfers WHERE team_id IN (SELECT id FROM target_teams);
+              DELETE FROM user_teams WHERE id IN (SELECT id FROM target_teams);
+            "'
+
+            echo "=========================================="
+            echo "4. 删除后剩余的全部团队列表 (user_teams)"
+            echo "=========================================="
+            docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" -e "SELECT id, name, owner_user_id, status, created_at FROM user_teams;"'
+          fi
+          EOF
+
+      - name: Clean runner credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deployKey" "$RUNNER_TEMP/sshKnownHosts"
