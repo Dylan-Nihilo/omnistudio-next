@@ -16,7 +16,7 @@
             {{ index === 0 ? "参数" : "结果" }}
             <uiIconButton v-if="!data.markdown" size="small" :icon="IconCopy" :label="index === 0 ? '复制工具参数' : '复制工具结果'" @click="emit('copy', data.content)" />
           </span>
-          <messageMarkdown v-if="data.markdown" class="toolData" :class="{ toolError: index === 1 && tool.status === 'error' }" :content="data.markdown" :codeOptions="toolCodeOptions" />
+          <messageMarkdown v-if="data.markdown" class="toolData" :class="{ toolError: index === 1 && tool.status === 'error' }" :content="data.markdown" :codeOptions="toolCodeOptions" :directory="directory" />
           <pre v-else class="toolData toolPlain" :class="{ toolError: index === 1 && tool.status === 'error' }" tabindex="0" :aria-label="index === 0 ? '工具参数' : '工具结果'">{{ data.content }}</pre>
         </template>
       </template>
