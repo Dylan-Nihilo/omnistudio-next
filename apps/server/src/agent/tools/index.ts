@@ -1,4 +1,4 @@
-import { listMediaModels, generateMedia } from "@/utils/media/generation";
+import { listMediaModels, generateMedia, estimateMediaCredits } from "@/utils/media/generation";
 import { createWorkspaceFfmpeg } from "@/utils/ffmpeg";
 import { dirname, join, relative, resolve } from "node:path";
 import {
@@ -33,6 +33,7 @@ export function createAgentToolContext(cwd: string, config: Record<string, unkno
       generateImage: (request, signal) => generateMedia(cwd, "image", request, signal, billing),
       generateVideo: (request, signal) => generateMedia(cwd, "video", request, signal, billing),
       generateAudio: (request, signal) => generateMedia(cwd, "audio", request, signal, billing),
+      estimateCredits: (input) => estimateMediaCredits(input.providerId, input.modelId, input.mediaType, input),
     },
     sdk: { defineTool, createReadToolDefinition, createWriteToolDefinition, createEditToolDefinition, createLsToolDefinition, detectSupportedImageMimeTypeFromFile },
   };

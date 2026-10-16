@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ToolDefinition, ToolPlugin } from "@omnistudio-next/tools-scaffold/runtime";
-import { imageGenerationSchema, listMediaModelsSchema, videoGenerationSchema } from "./runtime";
+import { imageGenerationSchema, listMediaModelsSchema, videoGenerationSchema, estimateCreditsSchema } from "./runtime";
 
 const configSchema = z.object({
   allowImage: z.boolean().default(true),
@@ -20,7 +20,7 @@ const plugin: ToolPlugin = {
     const listTool: ToolDefinition = {
       name: "listMediaModels",
       label: "查询媒体模型",
-      description: "查询已允许生成的媒体模型，返回 providerId、modelId、类型、模式及支持的画幅、时长、分辨率和原生音频能力。生成前先查询，不能猜测模型 ID。",
+      description: "查询已允许生成的媒体模型，返回 providerId、modelId、类型、模式、画幅、时长、分辨率、原生音频能力及公开积分定价。生成前先查询，不能猜测模型 ID。",
       parameters: z.toJSONSchema(listMediaModelsSchema, { io: "input", target: "draft-07" }),
       async execute(_id, params, signal) {
         listMediaModelsSchema.parse(params);
@@ -29,7 +29,20 @@ const plugin: ToolPlugin = {
         return { content: [{ type: "text", text: JSON.stringify(result) }], details: result };
       },
     };
-    return [listTool, ...generationTools.map<ToolDefinition>(operation => ({
+    const estimateTool: ToolDefinition = {
+      name: "estimateMediaCredits",
+      label: "预估算力消耗",
+      description: "查询指定模型在对应规格（如图片分辨率、视频时长或分辨率）下单次生成预计消耗的积分。生成前用于向用户明确说明预估算力，不含任何底价或成本。",
+      parameters: z.toJSONSchema(estimateCreditsSchema, { io: "input", target: "draft-07" }),
+      async execute(_id, params) {
+        const input = estimateCreditsSchema.parse(params);
+        if (!media.estimateCredits) return { content: [{ type: "text", text: "当前无法查询积分预估" }], details: undefined };
+        const result = await media.estimateCredits(input);
+        if (!result) return { content: [{ type: "text", text: "该模型尚未配置公开积分价格，算力消耗未知" }], details: undefined };
+        return { content: [{ type: "text", text: `预计消耗 ${result.credits} 积分（${result.formatted}）` }], details: result };
+      },
+    };
+    return [listTool, estimateTool, ...generationTools.map<ToolDefinition>(operation => ({
       name: operation.name,
       label: operation.label,
       description: `${operation.description}providerId 和 modelId 必须来自 listMediaModels。引用素材的 path 及 outputDirectory 均为工作区相对路径；省略输出目录使用默认媒体目录。等待生成完成后返回已保存的文件路径，不返回 Base64。`,

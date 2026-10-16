@@ -132,6 +132,30 @@ export async function quoteCredits(providerId: string, modelId: string, mediaTyp
   return { credits: u.billingCredits.formatCredits(u.billingCredits.parseCredits(credits)), priceBookVersionId: id, unit: item.unit, creditsPerUnit, billingRule: "legacy" };
 }
 
+export async function getActivePricingItems() {
+  try {
+    const database = getDatabase();
+    const id = await activePriceBook();
+    if (!id) return [];
+    return await database.select().from(pricingItems).where(eq(pricingItems.priceBookVersionId, id));
+  } catch {
+    return [];
+  }
+}
+
+export async function estimateMediaCredits(providerId: string, modelId: string, mediaType: GenerationMediaType, options: { size?: string; duration?: number; units?: number } = {}) {
+  try {
+    const units = mediaType === "video" ? Math.max(1, options.duration ?? 5) : (options.units ?? 1);
+    const quote = await quoteCredits(providerId, modelId, mediaType, units, undefined, options.size);
+    return {
+      credits: Number(quote.credits),
+      formatted: `${Number(quote.credits)} 积分`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; idempotencyKey: string; requestSnapshot: unknown }) {
   const account = requireAccount();
   if (input.userId !== account.userId) invalid("生成任务只能使用调用者自己的积分", 403);

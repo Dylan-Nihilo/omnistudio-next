@@ -82,6 +82,9 @@ export interface MediaModel {
   durationResolutionMap?: { duration: number[]; resolution: string[] }[];
   audio?: boolean | "optional";
   voices?: { title: string; voice: string }[];
+  creditsPerUnit?: number;
+  sizeTiers?: Record<string, number>;
+  resolutionTiers?: Record<string, number>;
 }
 
 export interface MediaReference {
@@ -124,6 +127,7 @@ export interface MediaContext {
   generateImage(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
   generateVideo(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
   generateAudio(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
+  estimateCredits?(input: { providerId: string; modelId: string; mediaType: "image" | "video" | "audio"; size?: string; duration?: number; units?: number }): Promise<{ credits: number; formatted: string } | null>;
 }
 
 export interface QuestionField {

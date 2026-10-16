@@ -248,6 +248,20 @@ async function resizeImage(event: Event) {
   updateNodeInternals();
 }
 
+function calculateEstimatedCredits() {
+  const choice = selectedModel.value;
+  if (!choice) return null;
+  const size = (data.value.size || "2K").trim().toUpperCase();
+  if (choice.sizeTiers && size in choice.sizeTiers) {
+    const credits = choice.sizeTiers[size];
+    return credits != null ? `${credits} 积分` : null;
+  }
+  if (choice.creditsPerUnit !== undefined && choice.creditsPerUnit !== null) {
+    return `${choice.creditsPerUnit} 积分`;
+  }
+  return null;
+}
+
 function getConfig() {
   return {
     config: {
@@ -255,6 +269,7 @@ function getConfig() {
       modelId: selectedModel.value?.modelId ?? "",
       size: data.value.size,
       ratio: data.value.ratio,
+      estimatedCredits: calculateEstimatedCredits(),
     },
     models: models.value,
   };
@@ -262,7 +277,7 @@ function getConfig() {
 
 nodeTools.register({
   name: "getConfig",
-  description: "读取此图片生成节点的当前模型、分辨率、比例及可选图片模型能力，不含密钥；未声明分辨率或比例时分别使用 2K、16:9",
+  description: "读取此图片生成节点的当前模型、分辨率、比例、预估算力消耗（estimatedCredits，格式如'20 积分'，未配置价格时为 null）及可选图片模型能力，不含密钥；未声明分辨率或比例时分别使用 2K、16:9",
   parameters: z.strictObject({}),
   async execute(_args, { signal }) {
     signal?.throwIfAborted();

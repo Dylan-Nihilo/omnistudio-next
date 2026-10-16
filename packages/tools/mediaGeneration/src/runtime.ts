@@ -51,3 +51,12 @@ export const audioGenerationSchema = z.strictObject({
   format: z.string().trim().min(1).max(64).optional(),
   sampleRate: z.number().int().positive().optional(),
 });
+export const estimateCreditsSchema = z.strictObject({
+  providerId: sharedFields.providerId,
+  modelId: sharedFields.modelId,
+  mediaType: z.enum(["image", "video", "audio"]),
+  size: z.string().trim().min(1).max(64).optional(),
+  duration: z.number().finite().positive().max(3600).optional(),
+  units: z.number().finite().positive().optional(),
+});
+

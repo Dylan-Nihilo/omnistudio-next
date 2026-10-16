@@ -302,6 +302,21 @@ async function resizeVideo(event: Event) {
   updateNodeInternals();
 }
 
+function calculateEstimatedCredits() {
+  const choice = selectedModel.value;
+  if (!choice) return null;
+  const resolution = (data.value.resolution || "768P").trim();
+  const duration = data.value.duration ?? 5;
+  const tier = choice.resolutionTiers?.[resolution];
+  if (tier !== undefined && tier !== null) {
+    return `${duration * tier} 积分`;
+  }
+  if (choice.creditsPerUnit !== undefined && choice.creditsPerUnit !== null) {
+    return `${duration * choice.creditsPerUnit} 积分`;
+  }
+  return null;
+}
+
 function getConfig() {
   return {
     config: {
@@ -312,6 +327,7 @@ function getConfig() {
       ratio: data.value.ratio,
       mode: selectedMode.value,
       generateAudio: data.value.generateAudio,
+      estimatedCredits: calculateEstimatedCredits(),
     },
     models: models.value,
     ratios: ratioOptions,
@@ -321,7 +337,7 @@ function getConfig() {
 
 nodeTools.register({
   name: "getConfig",
-  description: "读取此视频生成节点的当前配置、可选视频模型能力、通用比例及适合当前引用的模式，不含密钥；时长与分辨率须符合 durationResolutionMap",
+  description: "读取此视频生成节点的当前配置、预估算力消耗（estimatedCredits，格式如'150 积分'，未配置价格时为 null）、可选视频模型能力、通用比例及适合当前引用的模式，不含密钥；时长与分辨率须符合 durationResolutionMap",
   parameters: z.strictObject({}),
   async execute(_args, { signal }) {
     signal?.throwIfAborted();

@@ -4,10 +4,12 @@ import type { GeneratedMedia, MediaGenerationRequest, MediaModel, MediaReference
 import { getMediaProvider, listMediaProviders, loadMediaProviderSource } from "@/utils/media/provider";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformModels } from "@/services/modelService";
-import { reserveGeneration, settleGeneration } from "@/services/billingService";
+import { getActivePricingItems, estimateMediaCredits, reserveGeneration, settleGeneration } from "@/services/billingService";
 import { authorizeProjectDirectory } from "@/services/accountService";
 import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
 import { referenceForBytes } from "@/utils/assets";
+
+export { estimateMediaCredits };
 
 const maxMediaSize = 100 * 1024 * 1024;
 const mediaExtensions: Record<string, string> = {
@@ -31,12 +33,15 @@ function imageOptions(value: unknown, pattern: RegExp) {
 export async function listMediaModels(): Promise<MediaModel[]> {
   const catalog = await listPlatformModels();
   const installedProviders = await listMediaProviders();
+  const pricingItems = await getActivePricingItems();
   return catalog.flatMap(model => {
     if (model.mediaType === "text") return [];
     const provider = installedProviders.find(item => item.id === model.providerId);
     if (!provider) return [];
     const sourceModel = provider?.models.find(item => item.id === model.modelId && item.type === model.mediaType);
     const capabilities = model.capabilities && typeof model.capabilities === "object" && !Array.isArray(model.capabilities) ? model.capabilities as Record<string, unknown> : {};
+    const priceItem = pricingItems.find(item => item.providerId === model.providerId && item.modelId === model.modelId && item.mediaType === model.mediaType);
+    const constraints = priceItem?.constraints && typeof priceItem.constraints === "object" && !Array.isArray(priceItem.constraints) ? priceItem.constraints as Record<string, unknown> : null;
     return [{
       providerId: model.providerId, providerLabel: provider?.label ?? model.providerId, modelId: model.modelId, label: model.label,
       type: model.mediaType, mode: sourceModel?.mode ?? capabilities.mode, durationResolutionMap: sourceModel?.durationResolutionMap ?? capabilities.durationResolutionMap,
@@ -45,6 +50,11 @@ export async function listMediaModels(): Promise<MediaModel[]> {
       ...(model.mediaType === "image" ? {
         imageSizes: imageOptions(sourceModel?.imageSizes ?? capabilities.imageSizes, /^[^\u0000-\u001f\u007f]+$/),
         imageRatios: imageOptions(sourceModel?.imageRatios ?? capabilities.imageRatios, /^[1-9]\d{0,3}:[1-9]\d{0,3}$/),
+      } : {}),
+      ...(priceItem ? {
+        creditsPerUnit: priceItem.creditsPerUnit,
+        sizeTiers: (constraints?.sizeTiers as Record<string, number> | undefined) ?? undefined,
+        resolutionTiers: (constraints?.resolutionTiers as Record<string, number> | undefined) ?? undefined,
       } : {}),
     } as MediaModel];
   });
