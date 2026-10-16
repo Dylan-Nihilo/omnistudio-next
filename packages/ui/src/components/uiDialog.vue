@@ -30,7 +30,9 @@
           <svg v-if="!fullscreenModel" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
           <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6m0 0v6m0-6-7 7m17-11h-6m0 0V4m0 6 7-7m-7 17v-6m0 0h6m-6 0 7 7M10 4v6m0 0H4m6 0L3 3"/></svg>
         </uiButton>
-        <uiButton v-if="showClose" class="closeButton" variant="ghost" size="small" :disabled="closePending" aria-label="关闭弹窗" @click="requestClose">×</uiButton>
+        <uiButton v-if="showClose" class="closeButton" variant="ghost" size="small" :disabled="closePending" aria-label="关闭弹窗" @click="requestClose">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </uiButton>
       </div>
     </header></slot>
     <div v-if="!destroyOnClose || visible" class="dialogBody"><slot /></div>
@@ -161,6 +163,9 @@ html:has(dialog.uiDialog:modal) { overflow: hidden; }
 
 <style scoped lang="scss">
 .uiDialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
   height: fit-content;
@@ -179,12 +184,12 @@ html:has(dialog.uiDialog:modal) { overflow: hidden; }
 
   .dialogHeader {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--uiSpace16);
     padding: var(--uiSpace24) var(--uiSpace24) var(--uiSpace16);
     .dialogTitle { flex: 1; min-width: 0; margin: 0; font-size: var(--uiFontHeading); line-height: 1.6; overflow-wrap: anywhere; }
     .dialogHeaderActions { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
-    .fullscreenButton {
+    .fullscreenButton, .closeButton {
       flex-shrink: 0;
       width: 32px;
       height: 32px;
@@ -194,7 +199,6 @@ html:has(dialog.uiDialog:modal) { overflow: hidden; }
       justify-content: center;
       svg { display: block; }
     }
-    .closeButton { flex-shrink: 0; width: 32px; height: 32px; padding: 0; font-size: 24px; line-height: 1; }
   }
   .dialogBody { min-height: 0; padding: 0 var(--uiSpace24); overflow: auto; overscroll-behavior: contain; }
   .dialogFooter {

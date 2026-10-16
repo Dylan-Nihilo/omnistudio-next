@@ -9,7 +9,7 @@
     </button>
     <uiIconButton v-if="removable" class="removeAttachment" size="small" :icon="IconX" :label="`移除 ${attachment.name}`" title="移除附件" @click="emit('remove')" />
     <uiImageViewer v-model="imagePreviewVisible" :urls="thumbnailUrl ? [thumbnailUrl] : []" :title="attachment.name" />
-    <uiDialog v-model="videoPreviewVisible" :title="attachment.name" width="min(800px, 90vw)" destroyOnClose><uiMediaPlayer v-if="videoPreviewVisible" :src="thumbnailUrl" kind="video" :label="attachment.name" /></uiDialog>
+    <uiDialog v-model="videoPreviewVisible" :title="attachment.name" width="min(800px, 90vw)" showFullscreen destroyOnClose><uiMediaPlayer v-if="videoPreviewVisible" :src="thumbnailUrl" kind="video" :label="attachment.name" /></uiDialog>
   </div>
 </template>
 

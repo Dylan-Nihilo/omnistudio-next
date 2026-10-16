@@ -88,7 +88,7 @@
         </article>
       </section>
     </main>
-    <uiDialog v-model="demoPreviewVisible" :title="`${selectedDemo?.title ?? ''} · 第一集`" width="min(1080px, 94vw)" destroyOnClose>
+    <uiDialog v-model="demoPreviewVisible" :title="`${selectedDemo?.title ?? ''} · 第一集`" width="min(1080px, 94vw)" showFullscreen destroyOnClose>
       <uiMediaPlayer v-if="demoVideoUrl" :src="demoVideoUrl" kind="video" :label="`${selectedDemo?.title ?? ''}第一集完整成片`" />
     </uiDialog>
     <settings v-model="settingsVisible" />

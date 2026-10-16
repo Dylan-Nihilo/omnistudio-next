@@ -10,12 +10,12 @@ export function useNodeGeneration(outputs: Readonly<Ref<NodeOutputs>>, cancel: (
     status: status.value,
     outputs: outputs.value,
     ...(error.value ? { error: error.value } : {}),
-    ...(status.value === "running" ? { hint: "任务正在后台生成中，无需频繁轮询，等待生成完成后会自动更新状态" } : {}),
+    ...(status.value === "running" ? { hint: "任务正在生成中，生成工具会自动等待完成；只有用户明确询问进度时才查询状态" } : {}),
   });
 
   nodeTools.register({
     name: "getGenerationStatus",
-    description: "查询本次打开节点后的生成状态（idle/running/succeeded/failed）、当前输出和最近一次生成错误。当前输出可能来自之前的生成；idle 不表示没有历史输出，只有 succeeded 表示本次生成成功。注意：生成工具默认已自动等待完成，严禁在紧凑死循环中高频轮询此工具",
+    description: "查询本次打开节点后的生成状态（idle/running/succeeded/failed）、当前输出和最近一次生成错误。当前输出可能来自之前的生成；idle 不表示没有历史输出，只有 succeeded 表示本次生成成功。生成工具会自动等待完成；仅在用户明确询问进度时查询，严禁高频轮询",
     parameters: z.strictObject({}),
     execute: getStatus,
   });

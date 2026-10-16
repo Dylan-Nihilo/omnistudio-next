@@ -57,7 +57,7 @@
     </a>
 
     <!-- 视频播放弹窗 -->
-    <uiDialog v-model="videoDialogVisible" :title="videoTitle" :width="800" @closed="closeVideo">
+    <uiDialog v-model="videoDialogVisible" :title="videoTitle" :width="800" showFullscreen @closed="closeVideo">
       <uiMediaPlayer v-if="videoUrl" :src="videoUrl" kind="video" />
     </uiDialog>
 

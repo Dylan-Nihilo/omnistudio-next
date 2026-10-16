@@ -1,6 +1,6 @@
 <template>
   <span class="mentionContent"><template v-for="(part, index) in parts" :key="index"><uiTooltip v-if="part.mention" :content="sourceLabel(part.mention)" ><button class="mentionTag" type="button" :aria-label="`预览 ${mentionName(part.mention)}`" @click="preview(part.mention.id)"><mentionThumbnail v-if="mentionThumbnailProps(part.mention).thumbnail" class="inlineMentionThumbnail" v-bind="mentionThumbnailProps(part.mention)" :directory="directory"><icon-at :size="13" /></mentionThumbnail><icon-at v-else :size="13" /><span class="mentionLabel">{{ mentionName(part.mention) }}</span></button></uiTooltip><template v-else>{{ part.text }}</template></template></span>
-  <uiDialog v-model="previewVisible" :title="selected?.label || '提及内容'" width="min(720px, 90vw)" destroyOnClose>
+  <uiDialog v-model="previewVisible" :title="selected?.label || '提及内容'" width="min(720px, 90vw)" showFullscreen destroyOnClose>
     <div v-if="selected" class="mentionPreview">
       <p class="mentionSource">{{ sourceLabel(selected) }}</p>
       <p v-if="loading || error" :role="error ? 'alert' : 'status'">{{ loading ? '正在读取…' : error }}</p>
