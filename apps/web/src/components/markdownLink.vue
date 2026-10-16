@@ -1,5 +1,6 @@
 <template>
   <span class="markdownLinkWrapper">
+    <!-- 工作区视频链接：渲染为可点击播放的交互胶囊 -->
     <a
       v-if="isWorkspaceVideo"
       class="workspaceMediaLink"
@@ -13,6 +14,7 @@
       <icon-player-play :size="13" class="playIcon" />
     </a>
 
+    <!-- 工作区图片链接：渲染为可点击查看大图的链接 -->
     <a
       v-else-if="isWorkspaceImage"
       class="workspaceMediaLink"
@@ -26,6 +28,7 @@
       <icon-zoom-in :size="13" class="playIcon" />
     </a>
 
+    <!-- 工作区其他文件链接：点击下载或获取 -->
     <a
       v-else-if="isWorkspaceFile"
       class="workspaceFileLink"
@@ -39,6 +42,7 @@
       <icon-download :size="13" class="playIcon" />
     </a>
 
+    <!-- 外部标准超链接 -->
     <a
       v-else
       class="externalLink"
@@ -52,10 +56,12 @@
       <icon-external-link :size="13" class="extIcon" />
     </a>
 
+    <!-- 视频播放弹窗 -->
     <uiDialog v-model="videoDialogVisible" :title="videoTitle" :width="800" @closed="closeVideo">
       <uiMediaPlayer v-if="videoUrl" :src="videoUrl" kind="video" />
     </uiDialog>
 
+    <!-- 图片预览弹窗 -->
     <uiImageViewer v-model="imageViewerVisible" :urls="imageUrl ? [imageUrl] : []" :title="title || '图片预览'" />
   </span>
 </template>
@@ -66,20 +72,24 @@ import { IconMovie, IconPlayerPlay, IconPhoto, IconZoomIn, IconFile, IconDownloa
 import { uiDialog, uiImageViewer, uiMediaPlayer } from "@omnistudio-next/ui";
 import { NodeList, type LinkNodeRendererProps } from "vue-stream-markdown";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 const props = defineProps<{ link: LinkNodeRendererProps; directory: string }>();
+const workspaceStore = useWorkspaceStore();
+
+const effectiveDirectory = computed(() => props.directory || workspaceStore.project?.directory || "");
 
 const rawUrl = computed(() => props.link.node.url?.trim().replace(/^<|>$/g, "") ?? "");
 const title = computed(() => props.link.node.title ?? "");
 
 const isExternal = computed(() => /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(rawUrl.value));
 
-const videoRegex = /\.(mp4|webm|mov|mkv|m4v)(?:[?#]|$)/i;
-const imageRegex = /\.(png|jpe?g|gif|webp|svg|bmp)(?:[?#]|$)/i;
+const videoRegex = /\.(mp4|webm|mov|mkv|m4v|ogv)(?:[?#]|$)/i;
+const imageRegex = /\.(avif|apng|png|jpe?g|gif|webp|svg|bmp)(?:[?#]|$)/i;
 
-const isWorkspaceVideo = computed(() => !isExternal.value && !!props.directory && videoRegex.test(rawUrl.value));
-const isWorkspaceImage = computed(() => !isExternal.value && !!props.directory && imageRegex.test(rawUrl.value));
-const isWorkspaceFile = computed(() => !isExternal.value && !!props.directory);
+const isWorkspaceVideo = computed(() => !isExternal.value && !!effectiveDirectory.value && videoRegex.test(rawUrl.value));
+const isWorkspaceImage = computed(() => !isExternal.value && !!effectiveDirectory.value && imageRegex.test(rawUrl.value));
+const isWorkspaceFile = computed(() => !isExternal.value && !!effectiveDirectory.value);
 
 const videoDialogVisible = ref(false);
 const videoUrl = ref("");
@@ -87,12 +97,13 @@ const videoTitle = ref("视频预览");
 let videoRelease: (() => void) | undefined;
 
 async function openVideo() {
-  if (!props.directory) return;
+  const dir = effectiveDirectory.value;
+  if (!dir) return;
   const rawPath = rawUrl.value.split(/[?#]/, 1)[0]!;
   const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
   videoTitle.value = path.split("/").pop() || "视频预览";
   try {
-    const preview = useWorkspaceFiles(props.directory).acquireUrl(path, "video/mp4");
+    const preview = useWorkspaceFiles(dir).acquireUrl(path, "video/mp4");
     videoRelease?.();
     videoRelease = preview.release;
     videoUrl.value = await preview.url;
@@ -114,11 +125,12 @@ const imageUrl = ref("");
 let imageRelease: (() => void) | undefined;
 
 async function openImage() {
-  if (!props.directory) return;
+  const dir = effectiveDirectory.value;
+  if (!dir) return;
   const rawPath = rawUrl.value.split(/[?#]/, 1)[0]!;
   const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
   try {
-    const preview = useWorkspaceFiles(props.directory).acquireUrl(path);
+    const preview = useWorkspaceFiles(dir).acquireUrl(path);
     imageRelease?.();
     imageRelease = preview.release;
     imageUrl.value = await preview.url;
@@ -129,12 +141,13 @@ async function openImage() {
 }
 
 async function downloadWorkspaceFile() {
-  if (!props.directory) return;
+  const dir = effectiveDirectory.value;
+  if (!dir) return;
   const rawPath = rawUrl.value.split(/[?#]/, 1)[0]!;
   const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
   const fileName = path.split("/").pop() || "download";
   try {
-    const preview = useWorkspaceFiles(props.directory).acquireUrl(path);
+    const preview = useWorkspaceFiles(dir).acquireUrl(path);
     const resolvedUrl = await preview.url;
     const anchor = document.createElement("a");
     anchor.href = resolvedUrl;

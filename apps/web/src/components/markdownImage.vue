@@ -1,11 +1,20 @@
 <template>
   <div class="markdownImageWrapper">
-    <div v-if="failed" class="markdownImageFailed" role="img" aria-label="图片加载失败">
-      <icon-photo-off :size="18" />
-      <span>图片加载失败</span>
+    <div
+      v-if="failed"
+      class="markdownImageFailed"
+      role="button"
+      tabindex="0"
+      aria-label="图片加载失败，点击重试"
+      title="点击重新加载图片"
+      @click="triggerManualRetry"
+      @keydown.enter="triggerManualRetry">
+      <icon-refresh v-if="loading" class="isLoading" :size="16" />
+      <icon-photo-off v-else :size="16" />
+      <span>{{ loading ? '正在重试加载…' : '图片加载失败（点击重试）' }}</span>
     </div>
     <div v-else-if="loading && !imageUrl" class="markdownImageLoading" role="status" aria-label="正在加载图片">
-      <icon-loader-2 class="isLoading" :size="18" />
+      <icon-loader-2 class="isLoading" :size="16" />
       <span>加载图片中…</span>
     </div>
     <figure v-else-if="imageUrl" class="markdownImageFigure">
@@ -31,12 +40,16 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { IconLoader2, IconPhotoOff, IconZoomIn } from "@tabler/icons-vue";
+import { IconLoader2, IconPhotoOff, IconZoomIn, IconRefresh } from "@tabler/icons-vue";
 import { uiImageViewer } from "@omnistudio-next/ui";
 import type { ImageNodeRendererProps } from "vue-stream-markdown";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 const props = defineProps<{ image: ImageNodeRendererProps; directory: string }>();
+const workspaceStore = useWorkspaceStore();
+
+const effectiveDirectory = computed(() => props.directory || workspaceStore.project?.directory || "");
 
 const imageUrl = ref("");
 const loading = ref(false);
@@ -45,6 +58,7 @@ const viewerVisible = ref(false);
 const lastLoadedKey = ref("");
 
 let cleanupRelease: (() => void) | undefined;
+let activeToken = 0;
 
 const rawUrl = computed(() => props.image.node.url?.trim().replace(/^<|>$/g, "") ?? "");
 const alt = computed(() => String(props.image.node.alt ?? ""));
@@ -53,71 +67,101 @@ const title = computed(() => String(props.image.node.title ?? ""));
 const isExternal = computed(() => /^(?:[a-z][a-z\d+.-]*:|\/\/|data:|blob:)/i.test(rawUrl.value));
 
 function handleImgError() {
-  failed.value = true;
+  if (imageUrl.value && !isExternal.value) {
+    imageUrl.value = "";
+    lastLoadedKey.value = "";
+    void triggerManualRetry();
+  } else {
+    failed.value = true;
+  }
 }
 
-watch(
-  () => [props.directory, rawUrl.value] as const,
-  async ([directory, url], _prev, onCleanup) => {
-    if (!url) {
-      imageUrl.value = "";
-      return;
-    }
+async function triggerManualRetry() {
+  if (loading.value) return;
+  lastLoadedKey.value = "";
+  failed.value = false;
+  await fetchImage(effectiveDirectory.value, rawUrl.value);
+}
 
-    if (isExternal.value) {
-      imageUrl.value = url;
+async function fetchImage(directory: string, url: string) {
+  const token = ++activeToken;
+  if (!url) {
+    cleanupRelease?.();
+    cleanupRelease = undefined;
+    imageUrl.value = "";
+    loading.value = false;
+    failed.value = false;
+    return;
+  }
+
+  if (isExternal.value) {
+    cleanupRelease?.();
+    cleanupRelease = undefined;
+    imageUrl.value = url;
+    failed.value = false;
+    loading.value = false;
+    return;
+  }
+
+  if (!directory) {
+    cleanupRelease?.();
+    cleanupRelease = undefined;
+    imageUrl.value = "";
+    loading.value = true;
+    return;
+  }
+
+  const rawPath = url.split(/[?#]/, 1)[0]!;
+  const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
+  const key = `${directory}:${path}`;
+
+  if (lastLoadedKey.value === key && imageUrl.value) {
+    return;
+  }
+
+  loading.value = true;
+  failed.value = false;
+
+  // ACT: 针对后端刚生成文件的时延窗口，自动重试最多 4 次（间隔 400ms, 800ms, 1200ms, 2000ms）
+  const retryDelays = [400, 800, 1200, 2000];
+  let attempt = 0;
+
+  while (token === activeToken) {
+    try {
+      const preview = useWorkspaceFiles(directory).acquireUrl(path);
+      cleanupRelease?.();
+      cleanupRelease = preview.release;
+      const resolvedUrl = await preview.url;
+      if (token !== activeToken) return;
+      imageUrl.value = resolvedUrl;
+      lastLoadedKey.value = key;
       failed.value = false;
       loading.value = false;
       return;
-    }
-
-    if (!directory) {
-      imageUrl.value = "";
-      return;
-    }
-
-    const rawPath = url.split(/[?#]/, 1)[0]!;
-    const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
-    const key = `${directory}:${path}`;
-
-    if (lastLoadedKey.value === key && imageUrl.value) {
-      return;
-    }
-
-    let cancelled = false;
-    let release = () => {};
-
-    onCleanup(() => {
-      cancelled = true;
-      release();
-    });
-
-    loading.value = true;
-    failed.value = false;
-
-    try {
-      const preview = useWorkspaceFiles(directory).acquireUrl(path);
-      release = preview.release;
-      cleanupRelease = preview.release;
-      const resolvedUrl = await preview.url;
-      if (!cancelled) {
-        imageUrl.value = resolvedUrl;
-        lastLoadedKey.value = key;
-      }
     } catch {
-      if (!cancelled) {
+      if (token !== activeToken) return;
+      if (attempt < retryDelays.length) {
+        const delay = retryDelays[attempt++]!;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
         failed.value = true;
-      }
-    } finally {
-      if (!cancelled) {
         loading.value = false;
+        return;
       }
     }
+  }
+}
+
+watch(
+  () => [effectiveDirectory.value, rawUrl.value] as const,
+  ([directory, url]) => {
+    void fetchImage(directory, url);
   },
   { immediate: true }
 );
 
 onBeforeUnmount(() => {
+  activeToken++;
   cleanupRelease?.();
   cleanupRelease = undefined;
 });
@@ -135,7 +179,7 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: 1px solid var(--uiBorderDefault);
     border-radius: var(--uiRadiusControl);
     background: var(--uiBackgroundSubtle);
@@ -149,6 +193,14 @@ onBeforeUnmount(() => {
 
   .markdownImageFailed {
     color: var(--uiTextSecondary);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background: var(--uiBackgroundSurface);
+      border-color: var(--uiActionPrimary);
+      color: var(--uiActionPrimary);
+    }
   }
 
   .markdownImageFigure {

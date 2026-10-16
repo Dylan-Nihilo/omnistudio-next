@@ -2,8 +2,7 @@
   <div class="messageMarkdown">
     <markdown
       v-for="(chunk, index) in chunks"
-      :key="index + '-' + !!definitions"
-      v-memo="[chunk, streaming && index === chunks.length - 1, codeOptions, directory]"
+      :key="index + '-' + !!definitions + '-' + (streaming ? 'streaming' : 'static')"
       class="markdownChunk"
       :content="chunk"
       :mode="streaming && index === chunks.length - 1 ? 'streaming' : 'static'"
@@ -58,7 +57,28 @@ const hardenOptions = computed(() => ({
 const shikiOptions: ShikiOptions = { theme: ["github-light", "github-dark"] };
 const cdnOptions = { shiki: false } as const;
 const keepChunk = (value: string) => [value];
-const blocks = computed(() => parseMarkdownIntoBlocks(props.content));
+const workspaceMediaPath = /^assets\/[^<>]+\.(?:avif|apng|bmp|gif|jpe?g|png|svg|webp|mp4|m4v|webm|mov|mkv|ogv)$/i;
+const workspaceImagePath = /\.(?:avif|apng|bmp|gif|jpe?g|png|svg|webp)$/i;
+
+const normalizedContent = computed(() => {
+  let text = props.content;
+  // ACT: 工作区媒体必须进入 Markdown 节点渲染器；AST 会把裸的尖括号路径当普通文本。
+  text = text.replace(/(?<![\(\["'`])(?:<|&lt;)\s*(assets\/[^<>]*?\.(?:avif|apng|bmp|gif|jpe?g|png|svg|webp|mp4|m4v|webm|mov|mkv|ogv))\s*(?:>|&gt;)/gi, (match, value: string, offset: number) => {
+    if (/\]\(\s*$/.test(text.slice(Math.max(0, offset - 32), offset))) return match;
+    const path = value.replace(/\s+/g, "").replaceAll("\\", "/");
+    if (!workspaceMediaPath.test(path)) return match;
+    return workspaceImagePath.test(path)
+      ? `![${path}](${path})`
+      : `[视频：${path}](${path})`;
+  });
+  // 兼容旧回复中单独一行的裸工作区媒体路径。
+  text = text.replace(/(^|[\r\n])([ \t]*)(assets\/[^\s<>]+\.(?:avif|apng|bmp|gif|jpe?g|png|svg|webp|mp4|m4v|webm|mov|mkv|ogv))([ \t]*)(?=[\r\n]|$)/gi, (_match, prefix: string, indent: string, path: string) => {
+    return `${prefix}${indent}${workspaceImagePath.test(path) ? `![${path}](${path})` : `[视频：${path}](${path})`}`;
+  });
+  return text;
+});
+
+const blocks = computed(() => parseMarkdownIntoBlocks(normalizedContent.value));
 const definitionParser = new MarkdownAstParser({ mode: "static" });
 const isDefinition = (block: string) => /^ {0,3}\[(?!\^)[^\]\n]+\]:/.test(block)
   && definitionParser.markdownToAst(block).children.every(node => node.type === "definition");

@@ -5,9 +5,12 @@ import { getSessionSnapshot } from "@/lib/sessionState";
 
 type WorkspaceEntry = { name: string; path: string; type: "file" | "directory" };
 const client = axios.create({ baseURL: "/api/workspaces/files", headers: { "x-omnistudio-next-workspace": "1" } });
-const fileUrls = new Map<string, { directory: string; path: string; url: Promise<string>; users: number }>();
+const fileUrls = new Map<string, { directory: string; path: string; url: Promise<string>; users: number; revokeTimer?: ReturnType<typeof setTimeout> }>();
 window.addEventListener("omnistudio-next:account-changed", () => {
-  for (const entry of fileUrls.values()) void entry.url.then(url => URL.revokeObjectURL(url), () => {});
+  for (const entry of fileUrls.values()) {
+    if (entry.revokeTimer) clearTimeout(entry.revokeTimer);
+    void entry.url.then(url => URL.revokeObjectURL(url), () => {});
+  }
   fileUrls.clear();
 });
 
@@ -21,7 +24,11 @@ function invalidateUrls(directory: string, path: string) {
   path = cachePath(path);
   for (const [key, entry] of fileUrls) {
     const entryPath = cachePath(entry.path);
-    if (cachePath(entry.directory) === directory && (entryPath === path || entryPath.startsWith(`${path}/`))) fileUrls.delete(key);
+    if (cachePath(entry.directory) === directory && (entryPath === path || entryPath.startsWith(`${path}/`))) {
+      if (entry.revokeTimer) clearTimeout(entry.revokeTimer);
+      void entry.url.then(url => URL.revokeObjectURL(url), () => {});
+      fileUrls.delete(key);
+    }
   }
 }
 
@@ -65,6 +72,10 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
       void url.catch(() => { if (fileUrls.get(key) === current) fileUrls.delete(key); });
     }
     const current = entry;
+    if (current.revokeTimer) {
+      clearTimeout(current.revokeTimer);
+      current.revokeTimer = undefined;
+    }
     current.users++;
     let released = false;
     return {
@@ -73,9 +84,12 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
         if (released) return;
         released = true;
         if (--current.users) return;
-        if (fileUrls.get(key) === current) fileUrls.delete(key);
-        // 等待中的读取也要在最后一个使用者离开后释放，不撤销其他节点仍使用的 URL。
-        void current.url.then(url => URL.revokeObjectURL(url), () => {});
+        // ACT: 延迟 30 秒释放，避免虚拟滚动、流式 Markdown 重构或频繁切换临时卸载导致已展示图片立即失效报错。
+        current.revokeTimer = setTimeout(() => {
+          if (current.users > 0) return;
+          if (fileUrls.get(key) === current) fileUrls.delete(key);
+          void current.url.then(url => URL.revokeObjectURL(url), () => {});
+        }, 30000);
       },
     };
   }
