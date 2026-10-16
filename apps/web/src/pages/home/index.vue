@@ -298,11 +298,14 @@ function handleSelectTheme(theme: OnboardingTheme) {
 }
 
 async function createProject(fromPrompt = true) {
-  if (creating.value || opening.value || (fromPrompt && !workspaceDirectory.value)) return;
+  if (creating.value || opening.value) return;
   creating.value = true;
   try {
     let path = workspaceDirectory.value;
-    if (!fromPrompt) {
+    if (!path) {
+      path = await (fromPrompt ? promptWorkspacePicker.value : relocationPicker.value)?.chooseDirectory() ?? "";
+      if (!path) return;
+    } else if (!fromPrompt) {
       const confirmed = await feedback.confirm("请选择一个空文件夹作为项目目录，画布和素材将保存在其中。", "添加项目", {
         confirmButtonText: "选择空文件夹", cancelButtonText: "取消",
       }).then(() => true, () => false);
@@ -310,9 +313,21 @@ async function createProject(fromPrompt = true) {
       path = await relocationPicker.value?.chooseDirectory() ?? "";
       if (!path) return;
     }
-    const { directory, empty } = await useWorkspaceFiles(path).list();
-    if (!empty) return feedback.message({ tone: "warning", message: "该文件夹不为空，请重新选择空文件夹；已有项目请使用“导入项目”或点击项目列表打开。" });
-    await useWorkspaceFiles(directory).writeJson("画布1.json", { toonflowCanvas: true, nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }, true);
+    const { directory, entries } = await useWorkspaceFiles(path).list();
+    const systemFiles = new Set([".ds_store", "thumbs.db", "desktop.ini"]);
+    const userEntries = entries.filter(entry => !systemFiles.has(entry.name.toLowerCase()) && !entry.name.startsWith("._"));
+    const hasCanvas1 = entries.some(entry => entry.name === "画布1.json");
+    const isExistingProject = userEntries.some(entry => entry.name.endsWith(".json"))
+      || projectList.value.some(p => p.directory === directory)
+      || project.value?.directory === directory;
+
+    if (userEntries.length > 0 && !isExistingProject && !onboardingStore.homeTourActive) {
+      return feedback.message({ tone: "warning", message: "该文件夹不为空且不包含漫剧项目，请重新选择空文件夹或已有项目目录。" });
+    }
+
+    if (!hasCanvas1 && !isExistingProject) {
+      await useWorkspaceFiles(directory).writeJson("画布1.json", { toonflowCanvas: true, nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }, true);
+    }
     await workspaceStore.openProject(directory);
     if (fromPrompt && prompt.value.trim()) {
       workspaceStore.pendingAgentMessage = { directory: workspaceStore.project!.directory, prompt: prompt.value, model: selectedModel.value, reasoningEffort: reasoningEffort.value };
