@@ -12,33 +12,49 @@ const props = defineProps<{ image: ImageNodeRendererProps; directory: string }>(
 const imageUrl = ref("");
 const loading = ref(false);
 const failed = ref(false);
-const workspaceImage = computed(() => !!props.image.node.url && !/^(?:[a-z][a-z\d+.-]*:|[\\/]|#)/i.test(props.image.node.url));
+const lastLoadedKey = ref("");
+
+const cleanUrl = computed(() => props.image.node.url?.trim().replace(/^<|>$/g, "") ?? "");
+const workspaceImage = computed(() => !!cleanUrl.value && !/^(?:[a-z][a-z\d+.-]*:|[\\/]|#)/i.test(cleanUrl.value));
 const resolvedNode = computed(() => workspaceImage.value
-  ? { ...props.image.node, url: imageUrl.value, loading: !imageUrl.value && (!!props.image.node.loading || loading.value) }
+  ? { ...props.image.node, url: imageUrl.value || cleanUrl.value, loading: !imageUrl.value }
   : props.image.node);
 const { parsedNodes, provideContext } = useContext();
 // ACT: 工作区图片按单张预览；多图切换需集中维护解析后的地址，避免直接请求原始相对路径。
 provideContext({ parsedNodes: computed(() => workspaceImage.value ? [resolvedNode.value] : parsedNodes.value) });
 
-watch(() => [props.directory, props.image.node.url, props.image.node.loading] as const, async ([directory, url, streaming], _previous, onCleanup) => {
-  if (!workspaceImage.value) return;
-  if (streaming && !/\.[a-zA-Z0-9]{2,5}(?:[?#]|$)/i.test(url)) return;
-  imageUrl.value = "";
-  loading.value = true;
-  failed.value = false;
-  let cancelled = false;
-  let release = () => {};
-  onCleanup(() => { cancelled = true; release(); });
-  try {
-    const path = decodeURIComponent(url.split(/[?#]/, 1)[0]!);
-    const preview = useWorkspaceFiles(directory).acquireUrl(path);
-    release = preview.release;
-    const resolvedUrl = await preview.url;
-    if (!cancelled) imageUrl.value = resolvedUrl;
-  } catch {
-    if (!cancelled) failed.value = true;
-  } finally {
-    if (!cancelled) loading.value = false;
-  }
-}, { immediate: true });
+watch(
+  () => [props.directory, cleanUrl.value] as const,
+  async ([directory, url], _previous, onCleanup) => {
+    if (!workspaceImage.value) return;
+    const rawPath = url.split(/[?#]/, 1)[0]!;
+    const path = decodeURIComponent(rawPath).replaceAll("\\", "/");
+    const key = `${directory}:${path}`;
+    if (lastLoadedKey.value === key && imageUrl.value) return;
+
+    let cancelled = false;
+    let release = () => {};
+    onCleanup(() => {
+      cancelled = true;
+      release();
+    });
+
+    loading.value = true;
+    failed.value = false;
+    try {
+      const preview = useWorkspaceFiles(directory).acquireUrl(path);
+      release = preview.release;
+      const resolvedUrl = await preview.url;
+      if (!cancelled) {
+        imageUrl.value = resolvedUrl;
+        lastLoadedKey.value = key;
+      }
+    } catch {
+      if (!cancelled) failed.value = true;
+    } finally {
+      if (!cancelled) loading.value = false;
+    }
+  },
+  { immediate: true }
+);
 </script>
