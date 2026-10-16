@@ -192,7 +192,7 @@ const feedback = useUiFeedback();
 const senderInput = ref<InstanceType<typeof promptInput>>();
 const draftModel = ref<RichInputModel>([]);
 const draftText = ref("");
-const directory = workspaceStore.project?.directory;
+const directory = computed(() => workspaceStore.project?.directory ?? "");
 const draftAttachments = ref<AgentAttachment[]>([]);
 const createCanvasContext = inject<(() => CanvasContext | undefined) | undefined>("canvas", undefined);
 const messages = ref<AgentMessage[]>((props.initialSession?.messages ?? []).map(message => ({ ...message })));
@@ -473,10 +473,10 @@ async function deleteMessage(item: AgentMessage) {
   deletingId.value = item.id;
   try {
     if (item.entryId || item.replyTo) {
-      if (!directory || !props.sessionFile) throw new Error("请重新打开对话后再删除");
+      if (!directory.value || !props.sessionFile) throw new Error("请重新打开对话后再删除");
       const { data } = await axios.delete<{ code: number; data: AgentConversation; message?: string }>("/api/agent/message", {
         data: {
-          directory, sessionFile: props.sessionFile,
+          directory: directory.value, sessionFile: props.sessionFile,
           ...(item.replyTo ? { replyTo: item.replyTo } : { entryIds: [item.entryId!] }),
         },
         headers: { "x-omnistudio-next-workspace": "1" },
@@ -520,7 +520,7 @@ function stopSenderResize(event: PointerEvent) {
 
 function stopMessage() {
   if (stopping.value) return;
-  const currentDirectory = directory;
+  const currentDirectory = directory.value;
   const file = props.sessionFile;
   stopping.value = true;
   const cancellation = currentDirectory && file
@@ -562,12 +562,12 @@ async function sendCanvasResult(event: Extract<AgentEvent, { type: "canvasCall" 
   try {
     if (!canvasContext) throw new Error("当前页面没有激活的画布");
     const result = await canvasContext.call(event, signal);
-    body = JSON.stringify({ directory, callId: event.callId, result: result ?? null });
+    body = JSON.stringify({ directory: directory.value, callId: event.callId, result: result ?? null });
   } catch (error) {
-    body = JSON.stringify({ directory, callId: event.callId, error: (error instanceof Error && error.message ? error.message : "画布操作失败").slice(0, 8000) });
+    body = JSON.stringify({ directory: directory.value, callId: event.callId, error: (error instanceof Error && error.message ? error.message : "画布操作失败").slice(0, 8000) });
   }
   const cancelled = signal.aborted;
-  if (cancelled) body = JSON.stringify({ directory, callId: event.callId, error: "画布操作已取消" });
+  if (cancelled) body = JSON.stringify({ directory: directory.value, callId: event.callId, error: "画布操作已取消" });
   const response = await fetch("/api/agent/canvasResult", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
@@ -597,7 +597,7 @@ async function sendMessage(source?: AgentMessage) {
   const resendFrom = source ? source.entryId ?? messages.value.slice(resendIndex + 1).find(item => item.role === "user" && item.entryId)?.entryId : undefined;
   if (locked.value || !instance || (!prompt && !attachments.length)) return;
   const model = selectedModelChoice.value;
-  if (!directory) return feedback.message({ tone: "warning", message: "请先打开项目" });
+  if (!directory.value) return feedback.message({ tone: "warning", message: "请先打开项目" });
   if (!model) return feedback.message({ tone: "warning", message: "请先选择模型" });
 
   const requestController = new AbortController();
@@ -626,11 +626,11 @@ async function sendMessage(source?: AgentMessage) {
   try {
     if (!source) senderInput.value?.setModel();
     requestController.signal.throwIfAborted();
-    await uploadAttachments(attachments, directory, requestController.signal);
+    await uploadAttachments(attachments, directory.value, requestController.signal);
     const response = await fetch("/api/agent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
-      body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, tools: canvasContext.tools } : undefined }),
+      body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory: directory.value, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, tools: canvasContext.tools } : undefined }),
       signal: AbortSignal.any([requestController.signal, getSessionSnapshot().signal]),
     });
     for await (const event of readAgentEvents(response, requestController.signal)) {
@@ -690,11 +690,11 @@ async function sendMessage(source?: AgentMessage) {
   } catch (error) {
     finishStats(requestController.signal.aborted ? "cancelled" : "failed");
     const targetSessionFile = activeSessionFile || props.sessionFile;
-    if (!requestController.signal.aborted && directory && targetSessionFile) {
+    if (!requestController.signal.aborted && directory.value && targetSessionFile) {
       void fetch("/api/agent/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
-        body: JSON.stringify({ directory, sessionFile: targetSessionFile }),
+        body: JSON.stringify({ directory: directory.value, sessionFile: targetSessionFile }),
         keepalive: true,
         signal: AbortSignal.timeout(5000),
       }).catch(() => {});
@@ -712,7 +712,7 @@ async function sendMessage(source?: AgentMessage) {
     for (const callId of pendingQuestions.values()) {
       void fetch("/api/agent/answer", {
         method: "POST", headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken },
-        body: JSON.stringify({ directory, callId, cancelled: true }), keepalive: true,
+        body: JSON.stringify({ directory: directory.value, callId, cancelled: true }), keepalive: true,
       }).catch(() => {});
     }
     if (ownsStream && !forwarded) stream.finish();
@@ -755,7 +755,7 @@ onBeforeUnmount(() => { controller?.abort(); senderResize = undefined; });
 watch(() => !props.initialSession?.parentFile && !!workspaceStore.pendingAgentMessage && props.active && !locked.value && !!senderInput.value && !!createCanvasContext?.(), async ready => {
   const message = workspaceStore.pendingAgentMessage;
   const instance = getSender();
-  if (!ready || !message || !instance || message.directory !== directory) return;
+  if (!ready || !message || !instance || message.directory !== directory.value) return;
   workspaceStore.pendingAgentMessage = null;
   await fillPrompt(message.prompt);
   if (getSender() === instance && props.active) void sendMessage();

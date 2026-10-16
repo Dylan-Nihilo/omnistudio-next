@@ -11,6 +11,7 @@
       :shikiOptions="shikiOptions"
       :codeOptions="codeOptions"
       :linkOptions="{ safetyCheck: false }"
+      :hardenOptions="hardenOptions"
       :cdnOptions="cdnOptions"
       :components="markdownOverlays"
       :nodeRenderers="nodeRenderers"
@@ -23,19 +24,41 @@
 import { computed, h } from "vue";
 import { Markdown, parseMarkdownIntoBlocks } from "vue-stream-markdown";
 import { MarkdownAstParser } from "@markmend/ast";
-import type { CodeOptions, ImageNodeRendererProps, ShikiOptions } from "vue-stream-markdown";
+import type { CodeOptions, ImageNodeRendererProps, LinkNodeRendererProps, ShikiOptions } from "vue-stream-markdown";
 import "vue-stream-markdown/index.css";
 import "vue-stream-markdown/theme.css";
 import markdownOverlays from "./markdownOverlays";
 import markdownImage from "./markdownImage.vue";
+import markdownLink from "./markdownLink.vue";
 
-const { content, streaming = false, codeOptions, directory } = defineProps<{ content: string; streaming?: boolean; codeOptions?: CodeOptions; directory?: string }>();
-const renderImage = (image: ImageNodeRendererProps) => h(markdownImage, { image, directory: directory! });
-const nodeRenderers = computed(() => directory ? { image: renderImage } : {});
+const props = withDefaults(defineProps<{
+  content: string;
+  streaming?: boolean;
+  codeOptions?: CodeOptions;
+  directory?: string;
+}>(), {
+  streaming: false,
+});
+
+const renderImage = (image: ImageNodeRendererProps) => h(markdownImage, { image, directory: props.directory ?? "" });
+const renderLink = (link: LinkNodeRendererProps) => h(markdownLink, { link, directory: props.directory ?? "" });
+
+const nodeRenderers = computed(() => ({
+  image: renderImage,
+  link: renderLink,
+}));
+
+const hardenOptions = computed(() => ({
+  allowedProtocols: ["*"],
+  allowedLinkPrefixes: ["*"],
+  allowedImagePrefixes: ["*"],
+  defaultOrigin: typeof window !== "undefined" ? window.location.origin : "http://localhost",
+}));
+
 const shikiOptions: ShikiOptions = { theme: ["github-light", "github-dark"] };
 const cdnOptions = { shiki: false } as const;
 const keepChunk = (value: string) => [value];
-const blocks = computed(() => parseMarkdownIntoBlocks(content));
+const blocks = computed(() => parseMarkdownIntoBlocks(props.content));
 const definitionParser = new MarkdownAstParser({ mode: "static" });
 const isDefinition = (block: string) => /^ {0,3}\[(?!\^)[^\]\n]+\]:/.test(block)
   && definitionParser.markdownToAst(block).children.every(node => node.type === "definition");
