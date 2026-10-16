@@ -6,11 +6,16 @@ export function useNodeGeneration(outputs: Readonly<Ref<NodeOutputs>>, cancel: (
   const status = ref<"idle" | "running" | "succeeded" | "failed">("idle");
   const error = ref("");
   const generating = computed(() => status.value === "running");
-  const getStatus = () => ({ status: status.value, outputs: outputs.value, ...(error.value ? { error: error.value } : {}) });
+  const getStatus = () => ({
+    status: status.value,
+    outputs: outputs.value,
+    ...(error.value ? { error: error.value } : {}),
+    ...(status.value === "running" ? { hint: "任务正在后台生成中，无需频繁轮询，等待生成完成后会自动更新状态" } : {}),
+  });
 
   nodeTools.register({
     name: "getGenerationStatus",
-    description: "查询本次打开节点后的生成状态（idle/running/succeeded/failed）、当前输出和最近一次生成错误。当前输出可能来自之前的生成；idle 不表示没有历史输出，只有 succeeded 表示本次生成成功",
+    description: "查询本次打开节点后的生成状态（idle/running/succeeded/failed）、当前输出和最近一次生成错误。当前输出可能来自之前的生成；idle 不表示没有历史输出，只有 succeeded 表示本次生成成功。注意：生成工具默认已自动等待完成，严禁在紧凑死循环中高频轮询此工具",
     parameters: z.strictObject({}),
     execute: getStatus,
   });
@@ -42,5 +47,5 @@ export function useNodeGeneration(outputs: Readonly<Ref<NodeOutputs>>, cancel: (
     }
   }
 
-  return { generating, run };
+  return { status, error, generating, run, getStatus };
 }

@@ -330,11 +330,32 @@ nodeTools.register({
 
 nodeTools.register({
   name: "generateImage",
-  description: "启动此节点的后台图片生成，使用当前提示词、模型、分辨率、比例和参考图片；立即返回已开始，用 getGenerationStatus 查询完成结果，cancelGeneration 停止生成",
-  parameters: z.strictObject({}),
-  execute(_args, { signal }) {
+  description: "启动此节点的图片生成，使用当前提示词、模型、分辨率、比例和参考图片；默认等待生成完成并直接返回结果，也可指定 wait: false 异步后台生成后用 getGenerationStatus 查询",
+  parameters: z.strictObject({
+    wait: z.boolean().default(true).describe("是否等待生成完成（默认 true 直接等待并返回完成结果，严禁自行写循环频繁轮询）"),
+  }),
+  async execute(args, { signal }) {
     signal?.throwIfAborted();
-    return startGeneration();
+    const wait = args.wait ?? true;
+    await startGeneration();
+    if (wait && generation) {
+      const onAbort = () => generationController?.abort();
+      signal?.addEventListener("abort", onAbort, { once: true });
+      try {
+        await generation;
+      } finally {
+        signal?.removeEventListener("abort", onAbort);
+      }
+      signal?.throwIfAborted();
+      if (generationState.status.value === "succeeded" && outputs.value.image) {
+        return { status: "succeeded", output: outputs.value.image };
+      }
+      if (generationState.error.value) {
+        throw new Error(generationState.error.value);
+      }
+      throw new Error("图片生成未成功或已取消");
+    }
+    return { status: "generating" };
   },
 });
 </script>
