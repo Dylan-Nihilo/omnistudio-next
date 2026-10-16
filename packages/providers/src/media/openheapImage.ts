@@ -40,6 +40,22 @@ function sizeValue(request: ImageRequest) {
   throw new Error("图片分辨率须为 1K、2K、4K 或宽x高像素尺寸");
 }
 
+function wait(signal?: AbortSignal, milliseconds = 2000) {
+  signal?.throwIfAborted();
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, milliseconds);
+    const abort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
 async function generate(request: ImageRequest, context: ProviderContext<{ apiKey: string; baseUrl: string }>) {
   const apiKey = context.config.apiKey.trim();
   if (!apiKey) throw new Error("平台模型凭证未配置");
@@ -47,27 +63,39 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
   const size = sizeValue(request);
   const headers = { Authorization: `Bearer ${apiKey}` };
   const references = request.images ?? [];
-  let response: Response;
-  if (references.length) {
-    const form = new FormData();
-    form.append("model", request.model);
-    form.append("prompt", request.prompt);
-    form.append("size", size);
-    for (const [index, image] of references.entries()) {
-      const mimeType = image.mimeType || "image/png";
-      const extension = mimeType.split("/")[1] || "png";
-      form.append("image", new File([mediaBytes(image) as unknown as BlobPart], `reference-${index}.${extension}`, { type: mimeType }));
+  const maxAttempts = 3;
+  let response: Response | undefined;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    context.signal?.throwIfAborted();
+    if (references.length) {
+      const form = new FormData();
+      form.append("model", request.model);
+      form.append("prompt", request.prompt);
+      form.append("size", size);
+      for (const [index, image] of references.entries()) {
+        const mimeType = image.mimeType || "image/png";
+        const extension = mimeType.split("/")[1] || "png";
+        form.append("image", new File([mediaBytes(image) as unknown as BlobPart], `reference-${index}.${extension}`, { type: mimeType }));
+      }
+      response = await context.tool.fetch(`${baseUrl}/images/edits`, { method: "POST", headers, body: form, signal: context.signal });
+    } else {
+      response = await context.tool.fetch(`${baseUrl}/images/generations`, {
+        method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: request.model, prompt: request.prompt, size, n: 1 }), signal: context.signal,
+      });
     }
-    response = await context.tool.fetch(`${baseUrl}/images/edits`, { method: "POST", headers, body: form, signal: context.signal });
-  } else {
-    response = await context.tool.fetch(`${baseUrl}/images/generations`, {
-      method: "POST", headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: request.model, prompt: request.prompt, size, n: 1 }), signal: context.signal,
-    });
+    if (response.status === 429 && attempt < maxAttempts) {
+      await wait(context.signal, attempt * 2000);
+      continue;
+    }
+    break;
   }
-  if (!response.ok) {
-    const message = context.tool.errorMessage(await response.text());
-    throw new Error(`OpenHeap 图片请求失败：HTTP ${response.status}${message ? `，${message}` : ""}`);
+  if (!response || !response.ok) {
+    const message = response ? context.tool.errorMessage(await response.text()) : "";
+    if (response?.status === 429) {
+      throw new Error(`OpenHeap 供应商并发限流（HTTP 429 Too many requests），当前模型通道并发已满或调用过频，已自动重试未果，请稍候再试或切换其他图片模型`);
+    }
+    throw new Error(`OpenHeap 图片请求失败：HTTP ${response?.status ?? 500}${message ? `，${message}` : ""}`);
   }
   const result = object(await response.json());
   const item = Array.isArray(result.data) ? object(result.data[0]) : undefined;
