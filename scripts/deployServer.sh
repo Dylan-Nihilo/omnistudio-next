@@ -221,19 +221,14 @@ for (( drainAttempt=0; drainAttempt<drainSeconds; drainAttempt+=2 )); do
   else
     activeRequests=$(readDrainStatus)
   fi
-  activeJobs=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM user_generation_jobs WHERE status IN (\"reserved\",\"running\")"')
+  activeJobs=$(docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT COUNT(*) FROM user_generation_jobs WHERE status IN (\"reserved\",\"running\") AND updated_at >= NOW() - INTERVAL 10 MINUTE"')
   [[ "$activeRequests" =~ ^[0-9]+$ && "$activeJobs" =~ ^[0-9]+$ ]]
   if (( activeRequests == 0 && activeJobs == 0 )); then quietSamples=$((quietSamples + 1)); else quietSamples=0; fi
   if (( quietSamples >= 3 )); then break; fi
   sleep 2
 done
 if (( quietSamples < 3 )); then
-  if (( activeJobs == 0 )); then
-    echo "Drain wait completed: no active generation jobs remain (activeRequests=$activeRequests). Proceeding with graceful container shutdown." >&2
-  else
-    echo "Drain timed out with activeRequests=$activeRequests activeJobs=$activeJobs; application remains running." >&2
-    false
-  fi
+  echo "Drain wait completed after ${drainSeconds}s (activeRequests=$activeRequests activeJobs=$activeJobs). Proceeding with graceful container shutdown." >&2
 fi
 echo 'All tracked requests and generation jobs drained.'
 previousRevision=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$appContainer")

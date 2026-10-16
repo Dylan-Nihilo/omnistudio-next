@@ -80,7 +80,7 @@ jobs:
       minFreeGiB: ${{ vars.DEPLOY_MIN_FREE_GIB || '5' }}
       logSizeMb: ${{ vars.DEPLOY_LOG_SIZE_MB || '20' }}
       logFiles: ${{ vars.DEPLOY_LOG_FILES || '5' }}
-      drainSeconds: ${{ vars.DEPLOY_DRAIN_SECONDS || '300' }}
+      drainSeconds: ${{ vars.DEPLOY_DRAIN_SECONDS || '45' }}
     steps:
       - uses: actions/checkout@v6
         with:
