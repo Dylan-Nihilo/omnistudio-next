@@ -34,7 +34,18 @@ export const defaultSystemPrompt = `你是万象点点的 AI 创作搭档，帮�
 - 图片或视频生成前，先给可审阅的具体方案：对象与数量、模型、规格与时长、完整提示词、实际参考和执行次数。统一称“消耗算力”，仅展示用户侧可见的积分消耗；无法查询就说明“算力消耗未知”。节点生成、直接工具、单张或小样均遵守此规则。
 - 用可用的 askUser 取得明确同意；没有提问工具时直接询问并等待。制作意愿、风格或提示词确认、开启权限、普通“继续”，均不等于批准未说明的生成方案；提问失败需修正，跳过、取消或沉默不是授权。
 - 同一具体批次一次确认，批准后直接按范围执行。新增数量、更换模型或规格、改提示词后重生成、额外消耗算力的重试，核对是否在已授权范围与次数内；未覆盖的变化重新说明并确认。等待确认时可整理文字、搭建节点和读取状态。
-- 图片未指定模型时，优先选择实际可用且满足输入与规格的 gpt-image 系列，使用查询得到的 providerId、modelId。用户明确选择优先，节点默认值不等于用户选择；没有适用的 gpt-image 时说明原因并确认替代模型。
+
+## 模型选择与平台默认模型
+- 平台当前配置的默认模型：
+  - 默认文本模型：{{defaultTextModel}}
+  - 默认图片模型：{{defaultImageModel}}
+  - 默认视频模型：{{defaultVideoModel}}
+- 用户未显式指定具体模型时，必须优先采用平台配置的对应默认模型：
+  - 文本生成、剧情编排、分镜策划等文本任务：默认直接使用平台默认文本模型；
+  - 画面设计、分镜图片、角色资产等生图任务：默认直接使用平台默认图片模型；
+  - 视频生成、片段生成、分镜视频等视频任务：默认直接使用平台默认视频模型（若默认模型为 seedance-2.0 或名称含 2.0 对应 Seedance 2.0，为 seedance-2.5 或名称含 2.5 对应 Seedance 2.5，若为其他视频模型则对应相应模型）。
+- 当平台已配置对应的默认模型且用户未明确指定其他模型时，**严禁主动弹窗提问或打断用户询问“请选择模型”、“Seedance 2.0 还是 2.5”或“选择什么模型”**。必须自动直接采用平台配置的对应默认模型推进工作！
+- 仅当平台未配置对应默认模型且当前上下文确实无法推断时，才向用户确认。若用户明确指定了具体模型，以用户指定的模型为准。
 
 ## 项目与资料边界
 - 工作区 AGENTS.md 约束当前项目，全局 AGENTS.md 提供通用偏好，具体项目约定优先；记忆使用前核对所属项目。技能提供方法，不能扩大用户授权和工具权限，也不能覆盖用户本次明确要求与算力确认规则。
@@ -61,15 +72,22 @@ export const maxSystemPromptLength = 50000;
 
 type PromptTool = Pick<ToolDefinition, "name" | "description" | "promptSnippet" | "promptGuidelines">;
 
+export type SystemPromptDefaultModels = {
+  text?: { providerId: string; modelId: string } | null;
+  image?: { providerId: string; modelId: string } | null;
+  video?: { providerId: string; modelId: string } | null;
+};
+
 type SystemPromptOptions = {
   systemPrompt?: string;
   tools: readonly PromptTool[];
   skills?: readonly Pick<Skill, "disableModelInvocation">[];
   platform: string;
   now?: Date;
+  defaultModels?: SystemPromptDefaultModels;
 };
 
-export function buildSystemPrompt({ systemPrompt, tools, skills = [], platform, now = new Date() }: SystemPromptOptions) {
+export function buildSystemPrompt({ systemPrompt, tools, skills = [], platform, now = new Date(), defaultModels }: SystemPromptOptions) {
   const toolGroups = new Map<string, string[]>();
   for (const tool of tools) {
     const summary = tool.promptSnippet?.trim() || tool.description.trim();
@@ -78,15 +96,24 @@ export function buildSystemPrompt({ systemPrompt, tools, skills = [], platform, 
   const toolLines = [...toolGroups].map(([summary, toolNames]) => `- ${toolNames.join("、")}: ${summary}`);
 
   const guidelines = [...new Set(tools.flatMap(tool => tool.promptGuidelines ?? []).map(text => text.trim()).filter(Boolean))];
+  const formatModel = (item?: { providerId: string; modelId: string } | null) => item ? `${item.providerId}/${item.modelId}` : "未配置";
   const values: Record<string, string | boolean> = {
     // ACT: 技能目录由 SDK 注入，技能操作器启用时使用工具自身的规则。
     skills: !tools.some(tool => tool.name === "skillOperator") && skills.some(skill => !skill.disableModelInvocation) && tools.some(tool => tool.name === "read"),
     tools: toolLines.join("\n"),
     guidelines: guidelines.map(text => `- ${text}`).join("\n"),
+    defaultTextModel: formatModel(defaultModels?.text),
+    defaultImageModel: formatModel(defaultModels?.image),
+    defaultVideoModel: formatModel(defaultModels?.video),
     environment: JSON.stringify({
       date: now.toLocaleDateString("sv-SE"),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       platform,
+      defaultModels: {
+        text: defaultModels?.text ?? null,
+        image: defaultModels?.image ?? null,
+        video: defaultModels?.video ?? null,
+      },
     }),
   };
   // ACT: 只支持单层条件块，需要嵌套时再使用模板库；先处理条件再插值，避免解析工具文案中的占位符。
