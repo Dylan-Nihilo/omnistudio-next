@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
+FROM debian:bookworm-slim
 
 ARG buildCommit
 LABEL org.opencontainers.image.revision=$buildCommit
