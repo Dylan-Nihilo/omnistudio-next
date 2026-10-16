@@ -71,7 +71,8 @@ export function useCanvasTools(options: {
         canvasSignal.throwIfAborted();
         id = options.getCanvasBinding().id;
         const changesCanvas = request.name === "addCanvas" || request.name === "switchCanvas" || request.name === "renameCanvas";
-        const callSignal = AbortSignal.any([workspaceSignal, ...(changesCanvas ? [] : [canvasSignal]), AbortSignal.timeout(120000), ...(signal ? [signal] : [])]);
+        const timeoutMs = request.name === "nodeTools" ? 900000 : 120000;
+        const callSignal = AbortSignal.any([workspaceSignal, ...(changesCanvas ? [] : [canvasSignal]), AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]);
         callSignal.throwIfAborted();
         let cancel = () => {};
         try {

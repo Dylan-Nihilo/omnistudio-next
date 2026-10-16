@@ -33,7 +33,8 @@ export function createCanvasContext(cwd: string, canvas: CanvasInfo, send: (even
             else resolve(result);
           };
           const abort = () => finish({ error: "画布调用已取消" });
-          const timer = setTimeout(() => finish({ error: "画布调用超时，请确认画布仍然打开" }), 120000);
+          const timeoutMs = request.name === "nodeTools" ? 900000 : 180000;
+          const timer = setTimeout(() => finish({ error: "画布调用超时，请确认画布仍然打开" }), timeoutMs);
           pendingCalls.set(callId, { cwd, finish });
           activeCalls.add(callId);
           signal?.addEventListener("abort", abort, { once: true });
