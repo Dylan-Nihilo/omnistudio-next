@@ -73,9 +73,14 @@ export function deploymentMiddleware(request: Request, response: Response, next:
   const activity = { token: randomBytes(16).toString("hex"), references: 1 };
   activities.set(activity.token, activity);
   let finished = false;
+  const timeoutId = setTimeout(() => {
+    if (!finished) finish();
+  }, 300_000);
+  timeoutId.unref();
   const finish = () => {
     if (finished) return;
     finished = true;
+    clearTimeout(timeoutId);
     response.off("finish", finish);
     response.off("close", finish);
     releaseActivity(activity);
