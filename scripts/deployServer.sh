@@ -127,6 +127,19 @@ changed=false
 committed=false
 legacyDrain=false
 
+writeMaintenanceFile() {
+  printf '%s' "$deploymentToken" | docker exec -i "$appContainer" sh -c 'set -e; umask 077; cat > /app/data/deploymentMaintenance; if [ "$(id -u)" = 0 ]; then chown 10001:10001 /app/data/deploymentMaintenance; fi'
+}
+
+removeMaintenanceFiles() {
+  local currentContainer
+  currentContainer=$("${compose[@]}" ps -q omnistudio-next 2>/dev/null || true)
+  if [[ -n "$currentContainer" ]]; then
+    docker exec --user 0 "$currentContainer" sh -c 'rm -f /app/data/deploymentMaintenance' || true
+  fi
+  rm -f "$maintenanceFile" "$bootstrapFile" 2>/dev/null || true
+}
+
 registerManagedImage() {
   local imageId=$1 commit=$2 healthyAt=$3 directory="$serverPath/managedImages" record
   [[ "$imageId" =~ ^sha256:[a-f0-9]{64}$ && "$commit" =~ ^[a-f0-9]{40}$ && "$healthyAt" =~ ^[1-9][0-9]{0,10}$ ]] || return 1
@@ -225,7 +238,7 @@ rollback() {
       done
       if [[ -f "$backupDirectory/deployedCommit" ]]; then cp "$backupDirectory/deployedCommit" deployedCommit || rollbackOk=false; else rm -f deployedCommit || rollbackOk=false; fi
       if [[ "$rollbackOk" == true ]]; then
-        rm -f "$maintenanceFile" "$bootstrapFile"
+        removeMaintenanceFiles
         echo 'Deployment failed; previous application image and Compose configuration restored.' >&2
       else
         echo "Rollback metadata restoration failed. Maintenance retained; inspect $backupDirectory." >&2
@@ -234,13 +247,13 @@ rollback() {
       echo "Rollback failed. Maintenance retained; inspect containers and $backupDirectory." >&2
     fi
   else
-    rm -f "$maintenanceFile" "$bootstrapFile"
+    removeMaintenanceFiles
   fi
   exit "$exitCode"
 }
 trap 'rollback $?' ERR
 trap 'rollback 130' HUP INT TERM
-printf '%s' "$deploymentToken" > "$maintenanceFile"
+writeMaintenanceFile
 
 readDrainStatus() {
   docker exec "$appContainer" bun -e 'const fs = await import("node:fs"); const token = fs.readFileSync("/app/data/deploymentMaintenance", "utf8"); const response = await fetch("http://127.0.0.1:3000/api/deployment/status", { headers: { "x-deployment-token": token }, signal: AbortSignal.timeout(5000) }); if (!response.ok) process.exit(1); const body = await response.json(); const status = body.data; if (status?.maintenance !== true || !Number.isInteger(status.activeRequests) || status.activeRequests < 0) process.exit(1); console.log(status.activeRequests);'
@@ -357,7 +370,7 @@ mv "$releaseDirectory/healthyAtPending" "$releaseDirectory/healthyAt"
 printf '%s\n' "$releaseCommit" > deployedCommitPending
 mv deployedCommitPending deployedCommit
 committed=true
-rm -f "$maintenanceFile" "$bootstrapFile"
+removeMaintenanceFiles
 trap - ERR HUP INT TERM
 echo "Deployed $releaseCommit with complete backup $attempt."
 if ! registerManagedImage "$expectedImage" "$releaseCommit" "$(cat "$releaseDirectory/healthyAt")"; then
