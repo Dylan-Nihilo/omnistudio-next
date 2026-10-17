@@ -71,7 +71,7 @@ jobs:
           }
           JS
       - name: 下载各平台产物
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef833 # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: omnistudio-next-${{ needs.build.outputs.version }}-*
           path: artifacts
