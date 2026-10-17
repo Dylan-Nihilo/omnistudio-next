@@ -57,7 +57,7 @@ export async function createApp({
   app.use((_request, response, next) => {
     response.setHeader("X-Content-Type-Options", "nosniff");
     response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    if (process.env.NODE_ENV === "production") response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    if (Reflect.get(process.env, "NODE_ENV") === "production") response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     next();
   });
 
