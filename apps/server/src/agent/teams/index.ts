@@ -7,6 +7,7 @@ import { createAgentToolContext } from "@/agent/tools";
 import { addUsage, emptyUsage, runSubAgent, type SubAgentModel } from "@/agent/runtime/subAgent";
 import { readTeam, saveUserTeamResource } from "@/utils/teams";
 import { loadTool, validateToolConfig } from "@/utils/plugins/tools";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const resourceSchema = z.strictObject({
   action: z.enum(["list", "read", "write"]),
@@ -96,7 +97,7 @@ export async function createTeamRunner(options: SubAgentModel & {
             if (tasks.some(task => !member.delegates!.includes(task.member))) throw new Error("不能委派给未授权的成员");
             const outputs = await Promise.all(tasks.map(async task => {
               try { return await runMember(task.member, task.task, childSignal, depth + 1); }
-              catch (error) { return { result: { name: task.member, status: childSignal?.aborted ? "cancelled" as const : "error" as const, result: error instanceof Error ? error.message : String(error) } }; }
+              catch (error) { return { result: { name: task.member, status: childSignal?.aborted ? "cancelled" as const : "error" as const, result: formatAgentError(error instanceof Error ? error.message : String(error)) } }; }
             }));
             const usage = emptyUsage();
             for (const output of outputs) if ("usage" in output) addUsage(usage, output.usage);

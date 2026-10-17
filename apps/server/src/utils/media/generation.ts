@@ -8,6 +8,8 @@ import { getActivePricingItems, estimateMediaCredits, reserveGeneration, settleG
 import { authorizeProjectDirectory } from "@/services/accountService";
 import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
 import { referenceForBytes } from "@/utils/assets";
+import { acquireConcurrency } from "@/lib/concurrency";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 export { estimateMediaCredits };
 
@@ -20,7 +22,7 @@ const mediaExtensions: Record<string, string> = {
   "audio/flac": "flac", "audio/aac": "aac", "audio/mp4": "m4a", "audio/opus": "opus", "audio/pcm": "pcm",
 };
 
-export type GenerationBillingContext = { userId: string; idempotencyKey?: string };
+export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void };
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -161,6 +163,8 @@ export async function generateMedia(
   if (account.signal) signal = AbortSignal.any([account.signal, ...(signal ? [signal] : [])]);
   signal?.throwIfAborted();
   if (billing && billing.userId !== account.userId) invalid("媒体生成只能使用调用者自己的积分", 403);
+  const releaseConcurrency = billing?.concurrencyRelease ?? acquireConcurrency("media");
+  try {
   const directory = await authorizeProjectDirectory(cwd);
   const outputDirectory = request.outputDirectory ?? "assets/generated";
   await resolveWorkspacePath(directory, outputDirectory, true);
@@ -224,10 +228,13 @@ export async function generateMedia(
     await settleGeneration(reserved.job.id, true, { directory, files: result });
     return result;
   } catch (err) {
-    console.error("[generateMedia Error]", err);
+    console.error("[generateMedia Error]", formatAgentError(err instanceof Error ? err.message : "媒体生成失败", request.providerId));
     // ACT: 只回滚本次创建的文件，保留目录中已有的节点资源。
     if (!outputCompleted) await Promise.all(written.map(path => unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; })));
-    await settleGeneration(reserved.job.id, false, { error: err instanceof Error ? err.message : "媒体生成失败" });
+    await settleGeneration(reserved.job.id, false, { error: formatAgentError(err instanceof Error ? err.message : "媒体生成失败", request.providerId) });
     throw err;
+  }
+  } finally {
+    releaseConcurrency();
   }
 }

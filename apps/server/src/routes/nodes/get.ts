@@ -2,6 +2,7 @@ import u from "@/utils";
 import { readdir } from "node:fs/promises";
 import { Router } from "express";
 import { success } from "@/lib/responseFormat";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ export default router.get("/", async (req, res) => {
       const name = file.name.slice(0, -7);
       const metadata = await u.nodePlugins.readNode(name).catch((err: NodeJS.ErrnoException) => {
         if (err.code === "ENOENT") return null;
-        return { name, displayName: name, version: "", author: "", readme: "", github: "", configRules: [], loadError: err instanceof Error ? err.message : "节点文件无法读取" };
+        return { name, displayName: name, version: "", author: "", readme: "", github: "", configRules: [], loadError: formatAgentError(err instanceof Error ? err.message : "节点文件无法读取") };
       });
       if (metadata === null) return null;
       return {

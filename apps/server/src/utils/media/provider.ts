@@ -9,6 +9,7 @@ import conf from "@/utils/conf";
 import { convertAudio } from "@/utils/media/audioProcessor";
 import { createWorkspaceFfmpeg } from "@/utils/ffmpeg";
 import { lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 type Expression = Extract<ReturnType<typeof parseExpression>, { type: "ParenthesizedExpression" }>["expression"];
 type ObjectExpression = Extract<Expression, { type: "ObjectExpression" }>;
@@ -231,7 +232,7 @@ export async function listMediaProviders() {
       } catch (error) {
         // ACT: 元数据损坏不影响其他供应商；仍保留原文版本，允许用户明确删除。
         const { source, ...file } = current;
-        return { ...file, label: current.id, version: "", readme: "", models: [], loadError: error instanceof Error ? error.message : "供应商文件无法读取" };
+        return { ...file, label: current.id, version: "", readme: "", models: [], loadError: formatAgentError(error instanceof Error ? error.message : "供应商文件无法读取") };
       }
     }));
 }

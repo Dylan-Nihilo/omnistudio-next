@@ -74,6 +74,9 @@ cp -n .env.example .env
 | `OMNISTUDIO_NEXT_UI_SERVER_ORIGIN` | Web 开发代理的后端地址，默认 `http://127.0.0.1:3000` |
 | `OMNISTUDIO_NEXT_DATA_DIR` | 可选数据目录；未设置时使用仓库根目录 `data/` |
 | `OMNISTUDIO_NEXT_TRUSTED_PROXIES` | 可选可信反向代理来源 IP，逗号分隔；未设置时不信任转发头 |
+| `OMNISTUDIO_NEXT_AGENT_CONCURRENCY` / `OMNISTUDIO_NEXT_MEDIA_CONCURRENCY` | Agent 与媒体生成进程内并发上限，默认 `8` / `4`，超限返回 `429` |
+| `OMNISTUDIO_NEXT_FFMPEG_CONCURRENCY` / `OMNISTUDIO_NEXT_UPLOAD_CONCURRENCY` | FFmpeg 与大文件上传进程内并发上限，默认 `2` / `8`，超限返回 `429` |
+| `OMNISTUDIO_NEXT_ALLOW_PRIVATE_REMOTE_URLS` | 生产环境默认禁止插件/A2A 访问内网、回环和链路本地地址；仅在明确需要内网互联且已限制出站网络时设为 `1` |
 
 在开发工作区构建自有组件与内置插件，再启动 Web 和 Server。`dev:plugins` 会覆盖开发数据目录中的同名节点与工具，请把修改保存在 `packages/` 源码中：
 
@@ -138,7 +141,7 @@ GitHub Actions 的 `Server pipeline` 在提交 PR、推送 `master` 或手动运
 | Secret | 内容 |
 | --- | --- |
 | `DEPLOY_HOST` | 服务器地址，如 `182.92.173.156` |
-| `DEPLOY_USER` | SSH 用户，如 `root` |
+| `DEPLOY_USER` | 专用非 root SSH 部署用户（需有 Docker 权限），如 `omnistudio-deploy` |
 | `DEPLOY_PATH` | 已部署目录，如 `/opt/omnistudio-next` |
 | `DEPLOY_SSH_KEY` | 仅用于此流水线的 SSH 私钥；对应公钥须加入部署用户的 `authorized_keys` |
 | `DEPLOY_KNOWN_HOSTS` | 经核实的服务器 SSH 主机公钥记录；不得用临时扫描替代核实 |

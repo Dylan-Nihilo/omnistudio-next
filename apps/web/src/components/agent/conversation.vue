@@ -149,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, reactive, ref, watch, type ComponentPublicInstance } from "vue";
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, reactive, ref, watch, type ComponentPublicInstance } from "vue";
 import { defaultRangeExtractor, observeElementRect, useVirtualizer } from "@tanstack/vue-virtual";
 import axios from "axios";
 import {
@@ -181,7 +181,8 @@ import type { AgentAttachment, AgentConversation, AgentMessage } from "./types";
 import type { AgentEvent, AgentMention } from "@omnistudio-next/server/agent/types";
 import { createConversationStream, readAgentEvents } from "./replyStream";
 import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
-import messageMarkdown from "@/components/messageMarkdown.vue";
+
+const messageMarkdown = defineAsyncComponent(() => import("@/components/messageMarkdown.vue"));
 
 const props = defineProps<{ active: boolean; initialSession: AgentConversation | null; sessionFile?: string; disabled: boolean }>();
 const emit = defineEmits<{ session: [file: string]; sent: [prompt: string]; event: [event: AgentEvent] }>();

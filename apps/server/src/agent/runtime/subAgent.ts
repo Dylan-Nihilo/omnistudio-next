@@ -60,7 +60,7 @@ export async function runSubAgent(options: SubAgentModel & {
           onTool({ id, name: tool.name, status: "success", result: output.content.filter(part => part.type === "text").map(part => part.text).join("\n") });
           return output;
         } catch (error) {
-          onTool({ id, name: tool.name, status: signal.aborted ? "interrupted" : "error", result: error instanceof Error ? error.message : String(error) });
+          onTool({ id, name: tool.name, status: signal.aborted ? "interrupted" : "error", result: formatAgentError(error instanceof Error ? error.message : String(error)) });
           throw error;
         }
       },
@@ -96,7 +96,7 @@ export async function runSubAgent(options: SubAgentModel & {
   } catch (error) {
     result.status = signal.aborted ? "cancelled" : "error";
     const reason = signal.aborted ? signal.reason : error;
-    result.result = reason instanceof Error ? reason.message : "子任务执行失败";
+    result.result = reason instanceof Error ? formatAgentError(reason.message) : "子任务执行失败";
   } finally {
     signal.removeEventListener("abort", abort);
     if (session) {

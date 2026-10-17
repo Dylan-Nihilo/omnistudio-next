@@ -1,6 +1,22 @@
-import fg from "fast-glob";
 import path from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+
+async function collectRouteFiles(directory: string, sourceRoot: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.isSymbolicLink()) continue;
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectRouteFiles(entryPath, sourceRoot)));
+    } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+      files.push(path.relative(sourceRoot, entryPath));
+    }
+  }
+
+  return files;
+}
 
 function fileNameToRoutePath(fileName: string): string {
   let routePath = fileName.replace(/\.(ts)$/, "");
@@ -15,7 +31,7 @@ function fileNameToRoutePath(fileName: string): string {
 export default async function generateRouter(): Promise<void> {
   const sourceRoot = import.meta.dirname;
   const routerPath = path.join(sourceRoot, "router.ts");
-  const entries = (await fg(["routes/**/*.ts"], { cwd: sourceRoot })).sort((a, b) => a.localeCompare(b));
+  const entries = (await collectRouteFiles(path.join(sourceRoot, "routes"), sourceRoot)).sort((a, b) => a.localeCompare(b));
 
   const importLines: string[] = [];
   const routeLines: string[] = [];

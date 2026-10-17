@@ -129,8 +129,8 @@ export async function createDirectory(path: string) {
   finally { release(); }
 }
 
-async function sourceSignature(userId: string, path: string, hash: string, expires: string) {
-  return createHmac("sha256", (await credentials()).apiKey).update(JSON.stringify([userId, path, hash, expires])).digest("hex");
+function sourceSignature(userId: string, path: string, hash: string, expires: string, secret: string) {
+  return createHmac("sha256", secret).update(JSON.stringify([userId, path, hash, expires])).digest("hex");
 }
 
 async function sourceUrl(path: string, hash: string, origin?: string) {
@@ -138,17 +138,21 @@ async function sourceUrl(path: string, hash: string, origin?: string) {
   try { base = new URL(process.env.OMNISTUDIO_NEXT_PUBLIC_URL || origin || ""); }
   catch { return invalid("字节入库需要公网素材地址，请配置 OMNISTUDIO_NEXT_PUBLIC_URL", 503); }
   if (!/^https?:$/.test(base.protocol) || base.username || base.password || /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i.test(base.hostname)) invalid("当前本地地址无法由字节访问，入库需要指向本服务的公网地址", 503);
+  const { apiKey } = await credentials();
+  if (!apiKey) invalid("素材源地址暂不可用", 503);
   const userId = requireAccount().userId;
   const expires = String(Date.now() + 24 * 60 * 60 * 1000);
   const url = new URL("/api/assets/source", base);
-  url.search = new URLSearchParams({ userId, path, hash, expires, signature: await sourceSignature(userId, path, hash, expires) }).toString();
+  url.search = new URLSearchParams({ userId, path, hash, expires, signature: await sourceSignature(userId, path, hash, expires, apiKey) }).toString();
   return url.href;
 }
 
 export async function readSource(userId: string, path: string, hash: string, expires: string, signature: string) {
   const deadline = Number(expires);
   if (!Number.isSafeInteger(deadline) || deadline <= Date.now() || deadline > Date.now() + 24 * 60 * 60 * 1000) invalid("素材源地址已失效", 403);
-  const expected = await sourceSignature(userId, path, hash, expires);
+  const { apiKey } = await credentials();
+  if (!apiKey) invalid("素材源地址暂不可用", 503);
+  const expected = await sourceSignature(userId, path, hash, expires, apiKey);
   if (!/^[a-f0-9]{64}$/.test(signature) || !timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) invalid("素材源地址签名无效", 403);
   const root = await getAssetsDirectory(userId);
   const result = await resolveWorkspacePath(root, path);

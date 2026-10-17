@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 
 ARG buildCommit
 LABEL org.opencontainers.image.revision=$buildCommit
@@ -8,15 +8,20 @@ WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates ffmpeg \
+    && groupadd --system --gid 10001 omnistudio \
+    && useradd --system --uid 10001 --gid 10001 --home-dir /app --no-create-home omnistudio \
     && rm -rf /var/lib/apt/lists/*
 
 COPY bun /usr/local/bin/bun
 COPY build /app/build
-RUN chmod +x /usr/local/bin/bun && mkdir -p /app/data/workspaces/myProject
+RUN chmod +x /usr/local/bin/bun \
+    && mkdir -p /app/data/workspaces/myProject \
+    && chown -R omnistudio:omnistudio /app/data
 
 ENV NODE_ENV=production
 ENV OMNISTUDIO_NEXT_DATA_DIR=/app/data
 ENV OMNISTUDIO_NEXT_PLUGIN_REVISION=$buildCommit
 
+USER omnistudio
 EXPOSE 3000
 CMD ["/usr/local/bin/bun", "build/server/index.js"]

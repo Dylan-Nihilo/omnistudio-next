@@ -4,6 +4,7 @@ import type { AssistantMessage, AssistantMessageEventStream, Context, Model, Api
 import { requireEnabledPlatformModel } from "@/services/modelService";
 import { markGenerationStarted, reserveGeneration, settleGeneration } from "@/services/billingService";
 import { accountContext, nextGenerationKey, requireAccount } from "@/utils/accountContext";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 function estimateLegacyTextUnits(messages: unknown): number {
   const serialized = JSON.stringify(messages, (_key, value) => {
@@ -116,11 +117,11 @@ export function createChargedStream(input: { providerId: string; modelId: string
       output.push({ type: "done", reason: message.stopReason, message });
       output.end(message);
     } catch (error) {
-      console.error("[createChargedStream Error]", error);
-      let message = signal?.aborted ? "模型请求已取消" : error instanceof Error ? error.message : "模型服务请求失败，请稍后重试";
+      console.error("[createChargedStream Error]", formatAgentError(error instanceof Error ? error.message : "模型服务请求失败，请稍后重试", input.providerId));
+      let message = signal?.aborted ? "模型请求已取消" : formatAgentError(error instanceof Error ? error.message : "模型服务请求失败，请稍后重试", input.providerId);
       if (jobId) {
         try { await settleGeneration(jobId, false, { ...(hasRecordedUsage(latestMessage) ? { usage: latestMessage!.usage } : { usageMissing: true }), ...(latestMessage ? { message: latestMessage } : {}), error: message }); }
-        catch (settlementError) { message += `；积分结算失败：${settlementError instanceof Error ? settlementError.message : "请联系管理员"}`; }
+        catch { message += "；积分结算失败，请联系管理员"; }
       }
       const failure: AssistantMessage = { role: "assistant", content: latestMessage?.content ?? [], api: input.model.api, provider: input.model.provider, model: input.model.id, timestamp: Date.now(), stopReason: signal?.aborted ? "aborted" : "error", errorMessage: message, usage: latestMessage?.usage ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } };
       output.push({ type: "error", reason: failure.stopReason as "error" | "aborted", error: failure });

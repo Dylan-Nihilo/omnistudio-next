@@ -4,8 +4,15 @@ import type { DownloadState, FfmpegMode, SourceId } from "@omnistudio-next/ffmpe
 import conf from "@/utils/conf";
 import { requireAccount } from "@/utils/accountContext";
 import { authorizeProjectDirectory } from "@/services/accountService";
+import * as ffmpeg from "@omnistudio-next/ffmpeg";
+import { acquireConcurrency } from "@/lib/concurrency";
+import { formatAgentError } from "@/agent/runtime/errors";
 
-export { executeRemoteFfmpeg } from "@omnistudio-next/ffmpeg";
+export async function executeRemoteFfmpeg(...args: Parameters<typeof ffmpeg.executeRemoteFfmpeg>) {
+  const releaseConcurrency = acquireConcurrency("ffmpeg");
+  try { return await ffmpeg.executeRemoteFfmpeg(...args); }
+  finally { releaseConcurrency(); }
+}
 
 const directory = join(dirname(conf.path), "ffmpeg", target);
 let download: DownloadState = { phase: "idle", received: 0 };
@@ -73,7 +80,7 @@ export function startDownload(source: SourceId) {
   }).catch((error: unknown) => {
     download = active.signal.aborted
       ? { phase: "cancelled", received: 0 }
-      : { phase: "error", received: 0, error: error instanceof Error ? error.message : String(error) };
+      : { phase: "error", received: 0, error: formatAgentError(error instanceof Error ? error.message : String(error)) };
   }).finally(() => { controller = undefined; });
   return download;
 }

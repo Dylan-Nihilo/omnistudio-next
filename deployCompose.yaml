@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: public.ecr.aws/docker/library/mysql:8.0
+    image: public.ecr.aws/docker/library/mysql@sha256:62fb722c78b24245ddff1796a0fcee4a49cc5b87e0aaaf20c92d1da9e0a2497b
     restart: unless-stopped
     logging:
       driver: json-file
@@ -24,6 +24,8 @@ services:
     image: omnistudio-next-app:latest
     restart: unless-stopped
     init: true
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:
@@ -32,6 +34,12 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://127.0.0.1:3000/api/auth/setupStatus'); if (!response.ok) process.exit(1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -40,6 +48,10 @@ services:
       DATABASE_URL: mysql://${MYSQL_USER:-omnistudio}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-omnistudio}
       MYSQL_CONNECTION_LIMIT: ${MYSQL_CONNECTION_LIMIT:-10}
       MYSQL_CONNECT_TIMEOUT_MS: ${MYSQL_CONNECT_TIMEOUT_MS:-10000}
+      OMNISTUDIO_NEXT_AGENT_CONCURRENCY: ${OMNISTUDIO_NEXT_AGENT_CONCURRENCY:-8}
+      OMNISTUDIO_NEXT_MEDIA_CONCURRENCY: ${OMNISTUDIO_NEXT_MEDIA_CONCURRENCY:-4}
+      OMNISTUDIO_NEXT_FFMPEG_CONCURRENCY: ${OMNISTUDIO_NEXT_FFMPEG_CONCURRENCY:-2}
+      OMNISTUDIO_NEXT_UPLOAD_CONCURRENCY: ${OMNISTUDIO_NEXT_UPLOAD_CONCURRENCY:-8}
       UTOOO_SEEDANCE_API_KEY: ${UTOOO_SEEDANCE_API_KEY:-}
       OMNISTUDIO_NEXT_PUBLIC_URL: ${OMNISTUDIO_NEXT_PUBLIC_URL:-}
 

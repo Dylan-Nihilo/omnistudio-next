@@ -5,6 +5,7 @@ import conf from "@/utils/conf";
 import { requireRootAccount } from "@/utils/accountContext";
 import { decodeText, requireNewerVersion, skillZip } from "@/utils/plugins/install";
 import { isWithin } from "@/utils/workspace/files";
+import { formatAgentError } from "@/agent/runtime/errors";
 import { agentsDirectory, checkName, fingerprint, installRecord, maxBytes, readFiles, validateFiles, withTeamFiles } from "./files";
 
 const require = createRequire(import.meta.url);
@@ -81,7 +82,7 @@ export async function installTeam(fileName: string, bytes: Uint8Array, force = f
       return { name };
     } finally {
       if (temporary && !preserveBackup && temporary !== root && isWithin(root, temporary)) {
-        await rm(temporary, { recursive: true, force: true }).catch(error => console.warn(`团队安装暂存目录清理失败：${temporary}`, error));
+        await rm(temporary, { recursive: true, force: true }).catch(error => console.warn("团队安装暂存目录清理失败", formatAgentError(error instanceof Error ? error.message : "清理失败")));
       }
     }
   });

@@ -163,7 +163,10 @@ async function applyCanvas(canvasId: string, directory: string, signal?: AbortSi
   activeCanvasId.value = "";
   setNodes(nextCanvas.flow.nodes);
   // 命中宽度由画布统一配置，不使用旧文件中的覆盖值。
-  setEdges(nextCanvas.flow.edges.map(({ interactionWidth, ...edge }) => edge));
+  setEdges(nextCanvas.flow.edges.map(({ interactionWidth, ...edge }) => ({
+    ...edge,
+    ...(edge.type === "simple-bezier" ? { type: "simplebezier" } : {}),
+  })));
   await setViewport(nextCanvas.flow.viewport);
   await nextTick();
   checkCanvasDirectory(directory);

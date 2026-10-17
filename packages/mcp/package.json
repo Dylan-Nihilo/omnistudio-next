@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./skill": { "types": "./src/skill.d.ts", "default": "./skills/omniStudioNext/SKILL.md" }
+    "./skill": {
+      "types": "./src/skill.d.ts",
+      "default": "./skills/omniStudioNext/SKILL.md"
+    }
   },
   "bin": {
     "omnistudio-next-mcp": "./src/stdio.ts"
@@ -15,10 +18,10 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@modelcontextprotocol/client": "^2.0.0",
-    "@modelcontextprotocol/core": "^2.0.0",
-    "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/client": "2.2.0",
+    "@modelcontextprotocol/core": "2.2.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "zod": "^4.6.2"
   },
   "peerDependencies": {

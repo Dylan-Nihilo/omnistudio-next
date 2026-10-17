@@ -6,6 +6,8 @@ import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
 import { retainDeploymentActivity } from "@/lib/deployment";
+import { formatAgentError } from "@/agent/runtime/errors";
+import { acquireConcurrency } from "@/lib/concurrency";
 
 const inputSchema = z.object({
   prompt: z.string().trim(), directory: z.string().min(1),
@@ -32,6 +34,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const cwd = await u.workspace.resolveWorkspace(req, directory);
+  const releaseConcurrency = acquireConcurrency("agent");
   res.set({ "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
   res.flushHeaders();
   const send = (event: AgentEvent) => {
@@ -67,7 +70,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
     await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { userId: req.authContext!.user.id } }, send);
     send({ type: "done" });
   } catch (error) {
-    send({ type: "error", message: error instanceof Error ? error.message : "Agent 运行失败" });
+    send({ type: "error", message: formatAgentError(error instanceof Error ? error.message : "Agent 运行失败", options.providerId) });
   } finally {
     clearInterval(heartbeat);
     req.off("aborted", close);
@@ -77,5 +80,6 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
     questions.dispose();
     res.end();
     releaseActivity();
+    releaseConcurrency();
   }
 });

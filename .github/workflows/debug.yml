@@ -72,12 +72,12 @@ jobs:
       matrix: ${{ steps.config.outputs.matrix }}
       commit: ${{ steps.checkout.outputs.commit }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         id: checkout
         with:
           ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: package.json
       - name: 校验构建参数
@@ -118,7 +118,7 @@ jobs:
       releaseMode: ${{ inputs.generatePatch && '--auto' || '--initial' }}
       macCodesign: ${{ matrix.target == 'macArm64' && '1' || '0' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # ACT: 签名只使用触发工作流的代码，避免额外 ref 引入未审查的 PR 代码。
           ref: ${{ matrix.target == 'macArm64' && github.sha || needs.prepare.outputs.commit }}
@@ -132,7 +132,7 @@ jobs:
             echo '::error::ARM 签名不能构建其他提交。请选择对应的工作流分支或标签，并将 ref 留空。'
             exit 1
           fi
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: package.json
       - name: 确认运行器系统与架构
@@ -280,7 +280,7 @@ jobs:
           done
       - name: 上传构建产物
         id: artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: omnistudio-next-${{ needs.prepare.outputs.version }}-${{ matrix.target }}
           path: ${{ matrix.releaseFolder }}/${{ needs.prepare.outputs.version }}/

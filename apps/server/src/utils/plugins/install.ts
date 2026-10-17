@@ -9,6 +9,8 @@ import { parseTool, toolsDirectory } from "@/utils/plugins/tools";
 import { isSafeSegment } from "@/utils/skills/files";
 import { getSkillVersion, loadSkillDirectory, parseSkillManifest } from "@/utils/skills/loader";
 import { isWithin, lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
+import { parseRemoteUrl, remoteUrlPolicyMessage, safeRemoteFetch } from "@/lib/remoteUrl";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const maxBytes = 20 * 1024 * 1024;
 const require = createRequire(import.meta.url);
@@ -36,14 +38,9 @@ function nodeVersion(source: string) {
   catch { return undefined; }
 }
 
-function remoteAddress(value: string) {
-  let address: URL;
-  try { address = new URL(value); }
-  catch { return invalid("下载地址格式无效，请提供完整的 HTTP / HTTPS 文件地址"); }
-  if (!["http:", "https:"].includes(address.protocol) || address.username || address.password) {
-    invalid("仅支持不含账号密码的 HTTP / HTTPS 地址");
-  }
-  return address;
+function remoteAddress(value: string, base?: URL) {
+  try { return parseRemoteUrl(value, base); }
+  catch (error) { invalid(error instanceof Error ? error.message : "下载地址格式无效，请提供完整的 HTTP / HTTPS 文件地址"); }
 }
 
 async function readBounded(stream: ReadableStream<Uint8Array>, limit: number, message: string) {
@@ -67,13 +64,15 @@ async function download(url: string, limit: number, label: string) {
   const signal = AbortSignal.timeout(30_000);
   try {
     for (let redirects = 0; redirects <= 5; redirects++) {
-      const response = await fetch(address, { signal, redirect: "manual" });
+      let response: Response;
+      try { response = await safeRemoteFetch(address, { signal }); }
+      catch (error) { invalid(`${label}下载失败：${error instanceof Error ? error.message : remoteUrlPolicyMessage()}`, 502); }
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get("location");
         await response.body?.cancel();
         if (!location) invalid(`${label}下载失败：服务器重定向响应缺少 Location 地址`, 502);
         if (redirects === 5) invalid(`${label}下载失败：重定向超过 5 次，请使用文件的直接下载地址`, 502);
-        try { address = remoteAddress(new URL(location, address).href); }
+        try { address = remoteAddress(location, address); }
         catch { invalid(`${label}下载失败：重定向目标不是有效的 HTTP / HTTPS 地址`, 502); }
         continue;
       }
@@ -427,7 +426,7 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
   } finally {
     try {
       if (temporary && !preserveBackup && temporary !== root && isWithin(root, temporary)) {
-        await rm(temporary, { recursive: true, force: true }).catch(error => console.warn(`技能安装暂存目录清理失败：${temporary}`, error));
+        await rm(temporary, { recursive: true, force: true }).catch(error => console.warn("技能安装暂存目录清理失败", formatAgentError(error instanceof Error ? error.message : "清理失败")));
       }
     } finally { release(); }
   }

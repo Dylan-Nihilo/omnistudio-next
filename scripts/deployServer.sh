@@ -26,8 +26,18 @@ done
 (( keepReleases >= 3 && keepReleases <= 100 && keepBackups >= 7 && keepBackups <= 1000 && backupDays >= 1 && backupDays <= 3650 ))
 (( minFreeGiB >= 5 && minFreeGiB <= 100000 && logSizeMb <= 1000 && logFiles <= 100 && drainSeconds >= 30 && drainSeconds <= 600 ))
 cd "$serverPath"
-test -f compose.yaml
-test -f .env
+[[ -f compose.yaml && ! -L compose.yaml ]]
+[[ -f .env && ! -L .env ]]
+if [[ -e releaseCompose.yaml ]]; then [[ -f releaseCompose.yaml && ! -L releaseCompose.yaml ]]; fi
+backupEncryptionKey="$serverPath/backupEncryption.key"
+backupEncryptionEnabled=false
+if [[ -e "$backupEncryptionKey" || -L "$backupEncryptionKey" ]]; then
+  [[ -f "$backupEncryptionKey" && ! -L "$backupEncryptionKey" && -s "$backupEncryptionKey" ]]
+  command -v openssl >/dev/null
+  keyMode=$(stat -c %a "$backupEncryptionKey")
+  [[ "$keyMode" =~ ^[0-7]+$ ]] && (( (8#$keyMode & 077) == 0 ))
+  backupEncryptionEnabled=true
+fi
 for directory in releases backups; do
   [[ ! -L "$directory" ]]
   mkdir -p "$directory"
@@ -50,7 +60,7 @@ for directory in "$dataPath" "$mysqlPath" "$dockerPath"; do
 done
 
 checkSpace() {
-  local dataBytes mysqlBytes reserveBytes deployRequired dockerRequired freeBytes
+  local dataBytes mysqlBytes reserveBytes deployRequired dockerRequired freeBytes freeInodes path
   dataBytes=$(du -sb "$dataPath" | cut -f1)
   mysqlBytes=$(du -sb "$mysqlPath" | cut -f1)
   reserveBytes=$(( minFreeGiB * 1024 * 1024 * 1024 ))
@@ -65,10 +75,19 @@ checkSpace() {
   fi
   freeBytes=$(df -PB1 "$serverPath" | awk 'NR == 2 { print $4 }')
   (( freeBytes >= deployRequired )) || { echo "Insufficient deployment disk space: available=$freeBytes required=$deployRequired" >&2; return 1; }
+  for path in "$serverPath" "$dataPath" "$mysqlPath" "$dockerPath"; do
+    freeInodes=$(df -Pi "$path" | awk 'NR == 2 { print $4 }')
+    [[ "$freeInodes" =~ ^[0-9]+$ && freeInodes -gt 0 ]] || { echo "Insufficient filesystem inodes: path=$path available=$freeInodes" >&2; return 1; }
+  done
   echo "Disk preflight passed: available=$freeBytes required=$deployRequired"
 }
 
 checkSpace
+if [[ "$backupEncryptionEnabled" == true ]]; then
+  echo "Backup archive encryption enabled: $backupEncryptionKey"
+else
+  echo "Backup archive encryption disabled; create $backupEncryptionKey to encrypt future backups." >&2
+fi
 if [[ "$mode" == check ]]; then
   date +%s > "$releaseDirectory/managedAt"
   exit 0
@@ -146,6 +165,28 @@ waitMysqlHealthy() {
 
 schemaFingerprint() {
   docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" --database="$MYSQL_DATABASE" --batch --skip-column-names -e "SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COALESCE(COLUMN_DEFAULT,\"NULL\"),EXTRA,COALESCE(COLLATION_NAME,\"NULL\") FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME,ORDINAL_POSITION; SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COALESCE(COLUMN_NAME,\"NULL\"),COALESCE(SUB_PART,0) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX; SELECT id,checksum FROM omnistudio_schema_migrations ORDER BY id"' | sha256sum | cut -d ' ' -f1
+}
+
+encryptBackupFile() {
+  local source=$1 encrypted="$1.encryptedPending"
+  if ! openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$source" -out "$encrypted" -pass "file:$backupEncryptionKey"; then
+    rm -f "$encrypted"
+    return 1
+  fi
+  chmod 600 "$encrypted"
+  mv -f "$encrypted" "$source"
+}
+
+migrateDataOwnership() {
+  docker run --rm --volumes-from "$appContainer" --user 0 --entrypoint /bin/sh "$previousImage" -c '
+    # ACT: the marker avoids recursively scanning a potentially large workspace on every deploy.
+    # Files introduced with another owner after migration require an operator-owned permission repair.
+    if [ -d /app/data ] && [ ! -e /app/data/.omnistudioDataOwnership ]; then
+      chown -R 10001:10001 /app/data
+      : > /app/data/.omnistudioDataOwnership
+      chown 10001:10001 /app/data/.omnistudioDataOwnership
+    fi
+  '
 }
 
 rollback() {
@@ -241,6 +282,7 @@ if [[ "$previousRevision" =~ ^[a-f0-9]{40}$ && -d "$serverPath/releases/$previou
 fi
 stopped=true
 "${compose[@]}" stop --timeout 30 omnistudio-next
+migrateDataOwnership
 docker exec "$mysqlContainer" sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump --user="$MYSQL_USER" --single-transaction --quick --routines --triggers --no-tablespaces "$MYSQL_DATABASE"' | gzip > "$backupDirectory/databasePending.sql.gz"
 gzip -t "$backupDirectory/databasePending.sql.gz"
 mv "$backupDirectory/databasePending.sql.gz" "$backupDirectory/database.sql.gz"
@@ -252,8 +294,17 @@ schemaFingerprint > "$backupDirectory/schemaFingerprint"
 configFiles=(environment compose.yaml previousImage schemaFingerprint)
 if [[ "$hadOverride" == true ]]; then configFiles+=(releaseCompose.yaml); fi
 if [[ -f "$backupDirectory/deployedCommit" ]]; then configFiles+=(deployedCommit); fi
+if [[ "$backupEncryptionEnabled" == true ]]; then
+  printf '%s\n' 'openssl-aes-256-cbc-pbkdf2-iter600000' > "$backupDirectory/encryption"
+  configFiles+=(encryption)
+fi
 tar -C "$backupDirectory" -czf "$backupDirectory/deploymentConfig.tar.gz" "${configFiles[@]}"
 gzip -t "$backupDirectory/deploymentConfig.tar.gz"
+if [[ "$backupEncryptionEnabled" == true ]]; then
+  encryptBackupFile "$backupDirectory/database.sql.gz"
+  encryptBackupFile "$backupDirectory/appData.tar.gz"
+  encryptBackupFile "$backupDirectory/deploymentConfig.tar.gz"
+fi
 (cd "$backupDirectory" && sha256sum database.sql.gz appData.tar.gz deploymentConfig.tar.gz > checksums)
 date +%s > "$backupDirectory/complete"
 checkSpace

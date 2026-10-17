@@ -8,6 +8,25 @@ import postcssConfig from "../../postcss.config.ts";
 
 const serverOrigin = process.env.OMNISTUDIO_NEXT_UI_SERVER_ORIGIN ?? process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3000";
 
+const vendorChunkGroups: Record<string, string[]> = {
+  vendorVue: ["vue", "vue-router", "pinia"],
+  vendorUi: ["element-plus", "tdesign-vue-next", "@tdesign-vue-next/chat", "@tabler/icons-vue"],
+  vendorCanvas: ["@vue-flow", "@dagrejs/dagre", "cytoscape"],
+  vendorEditor: ["@tiptap", "prosemirror"],
+  vendorMarkdown: ["vue-stream-markdown", "shiki", "@markmend"],
+  vendorAi: ["@earendil-works"],
+};
+
+function getVendorChunk(id: string) {
+  const normalizedId = id.replaceAll("\\", "/");
+  const marker = "/node_modules/";
+  const packagePath = normalizedId.includes(marker) ? normalizedId.split(marker).pop() ?? "" : "";
+  if (!packagePath) return;
+  for (const [chunkName, packagePrefixes] of Object.entries(vendorChunkGroups)) {
+    if (packagePrefixes.some(prefix => packagePath === prefix || packagePath.startsWith(`${prefix}/`))) return chunkName;
+  }
+}
+
 export default defineConfig({
   cacheDir: process.env.OMNISTUDIO_NEXT_UI_CACHE_DIR ?? process.env.TOONFLOW_UI_CACHE_DIR,
   css: { postcss: postcssConfig },
@@ -47,6 +66,9 @@ export default defineConfig({
   build: {
     outDir: "../../build/web",
     emptyOutDir: true,
+    rollupOptions: {
+      output: { manualChunks: getVendorChunk },
+    },
   },
   plugins: [
     vue(),

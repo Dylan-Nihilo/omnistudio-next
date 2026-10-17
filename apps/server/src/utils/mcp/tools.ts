@@ -14,6 +14,7 @@ import { isWithin, lockWorkspaceFiles, protectWorkspaceRoot, renameWorkspaceFile
 import { authorizeProjectDirectory, getPersonalProjectRoot } from "@/services/accountService";
 import { requireAccount } from "@/utils/accountContext";
 import { isRootOperation } from "@/lib/accessPolicy";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const targetSchema = z.strictObject({ connectionId: z.uuid().optional(), directory: z.string().min(1).max(4096).optional(), canvasId: z.string().min(1).max(256).optional() });
 const requestSchema = z.strictObject({ target: targetSchema.optional(), args: z.record(z.string(), z.unknown()) });
@@ -111,7 +112,7 @@ export async function getMcpTools(): Promise<McpTool[]> {
   const canvasStub: CanvasContext = { id: "mcp", tools: [], async call() { throw new Error("尚未绑定画布"); } };
   // ACT: 插件损坏时仍保留应用管理工具，允许读取错误并修复插件。
   const definitions = await createAgentTools(await getPersonalProjectRoot(), canvasStub).catch(error => {
-    pluginError = error instanceof Error ? error.message : String(error);
+    pluginError = formatAgentError(error instanceof Error ? error.message : String(error));
     return [];
   });
   for (const definition of definitions) {
@@ -194,7 +195,7 @@ export async function getMcpTools(): Promise<McpTool[]> {
         try { await callControl(connection.id, "refreshResources", {
           type: operation.refresh.type, name,
         }, signal); }
-        catch (error) { refreshErrors.push(error instanceof Error ? error.message : String(error)); }
+        catch (error) { refreshErrors.push(formatAgentError(error instanceof Error ? error.message : String(error))); }
       }
     }
     return { result: redactSecrets(result), ...(refreshErrors.length ? { refreshErrors } : {}) };

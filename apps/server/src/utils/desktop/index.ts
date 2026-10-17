@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import type { Request } from "express";
 import conf from "@/utils/conf";
 import type { DesktopRuntime, updateSnapshot } from "@/types/desktop";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const updateBaseUrls = {
   official: "https://github.com/Dylan-Nihilo/omnistudio-next/releases/latest/download",
@@ -129,7 +130,7 @@ export async function downloadDesktopUpdate(req: Request): Promise<void> {
     const update = updater.updateInfo();
     if (update?.error || !update?.updateReady) throw new Error(update?.error || "更新包尚未准备完成，请重试。");
   } catch (error) {
-    state.updateError = error instanceof Error ? error.message : String(error);
+    state.updateError = formatAgentError(error instanceof Error ? error.message : String(error));
     throw error;
   } finally {
     state.downloadingUpdate = false;
@@ -157,7 +158,7 @@ export async function applyDesktopUpdate(req: Request): Promise<void> {
     // ACT: 成功后宿主即将退出，保持互斥直到进程结束。
   } catch (error) {
     state.applyingUpdate = false;
-    state.updateError = error instanceof Error ? error.message : String(error);
+    state.updateError = formatAgentError(error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

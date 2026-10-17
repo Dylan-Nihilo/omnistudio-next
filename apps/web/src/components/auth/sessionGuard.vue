@@ -30,5 +30,5 @@ async function leaveAccount() {
 </script>
 
 <style lang="scss" scoped>
-.sessionRecovery { display: grid; gap: 16px; p { margin: 0; color: var(--uiTextBody); line-height: 1.7; overflow-wrap: anywhere; } .recoveryError { color: var(--uiStatusError); } }
+.sessionRecovery { display: grid; gap: 16px; p { margin: 0; color: var(--uiTextBody); line-height: 1.7; overflow-wrap: anywhere; } .recoveryError { color: var(--uiStatusError); } > .uiButton { justify-self: start; } }
 </style>

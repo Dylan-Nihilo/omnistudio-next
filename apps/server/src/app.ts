@@ -12,6 +12,8 @@ import { deploymentMiddleware } from "@/lib/deployment";
 import desktopRequest from "@/lib/desktop";
 import initializePlugins from "@/utils/plugins/initialize";
 import { acquireServerLease, checkDatabase, hasServerLease, runSqlMigrations } from "@/db/database";
+import { formatAgentError } from "@/agent/runtime/errors";
+import { concurrencyMiddleware } from "@/lib/concurrency";
 
 export async function createApp({
   webRoot,
@@ -52,6 +54,11 @@ export async function createApp({
   if (dataDirectory && agentsRoot) await initializePlugins(resolve(dataDirectory, "agents"), agentsRoot);
   const app = express();
   if (trustedProxies.length) app.set("trust proxy", trustedProxies);
+  app.use((_request, response, next) => {
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
 
   await runSqlMigrations();
   await checkDatabase();
@@ -62,7 +69,7 @@ export async function createApp({
 
   if (process.env.NODE_ENV === "dev") {
     await buildRoute();
-    logger.token("safeUrl", request => (request.url ?? "").replace(/([?&](?:token|apiKey|secret|signature)=)[^&]*/gi, "$1[REDACTED]"));
+    logger.token("safeUrl", request => (request.url ?? "").replace(/([?&](?:token|api[_-]?key|secret|signature|authorization|cookie|password|access[_-]?token)=)[^&]*/gi, "$1[REDACTED]"));
     app.use(logger(":method :safeUrl :status :response-time ms - :res[content-length]"));
   }
   const { attachAuthContext, requireRoot } = await import("@/middleware/authContext");
@@ -73,7 +80,9 @@ export async function createApp({
   });
   app.use(attachAuthContext);
   app.use("/api", async (request, response, next) => {
-    const writing = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+    // 工作区校验会登记项目目录，虽然保留 GET 兼容现有客户端，也必须按写操作执行来源与 CSRF 校验。
+    const isWorkspaceCheck = request.path.replace(/\/+$/, "") === "/workspaces/check";
+    const writing = !["GET", "HEAD", "OPTIONS"].includes(request.method) || isWorkspaceCheck;
     const origin = request.get("origin");
     if (writing && origin && origin !== `${request.protocol}://${request.get("host")}`) return response.status(403).json(error("不允许跨来源操作", null, 403));
     const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready"
@@ -98,10 +107,13 @@ export async function createApp({
     next();
   });
   app.use("/a2a", express.json({ limit: "2mb" }));
+  app.use(["/api/assets/save", "/api/workspaces/files/write", "/api/account/teamAssets/upload"], concurrencyMiddleware("upload"));
   app.use("/api/assets/save", express.raw({ type: "application/octet-stream", limit: "200mb" }));
   app.use(["/api/workspaces/files/write", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
-  app.use(express.json({ limit: "100mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  // JSON 接口目前最大的声明输入是技能包的 20 MB 文件（Base64 后约 28 MB）；
+  // 收紧解析器上限，避免普通请求在高并发下被放大到 100 MB 内存占用。
+  app.use(express.json({ limit: "32mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "2mb", parameterLimit: 1000 }));
   app.use(deploymentMiddleware);
   app.use("/api/desktop", desktopRequest);
 
@@ -125,11 +137,11 @@ export async function createApp({
   app.use(express.static(webRoot));
 
   // 错误处理
-  app.use((err: Error & { status?: number }, request: Request, response: Response, next: NextFunction) => {
+  app.use((err: Error & { status?: number; retryAfter?: number }, request: Request, response: Response, next: NextFunction) => {
     if (response.headersSent) return next(err);
     const code = (err as NodeJS.ErrnoException).code ?? (err.cause as NodeJS.ErrnoException | undefined)?.code;
     const status = err.status || ({ ENOENT: 404, ENOTDIR: 404, EEXIST: 409, ENOTEMPTY: 409, EACCES: 403, EPERM: 403, ER_DUP_ENTRY: 409 }[code ?? ""] ?? 500);
-    console.error("请求处理失败", err);
+    console.error("请求处理失败", { name: err.name, status: err.status, code, message: formatAgentError(err.message || "操作失败") });
     const message =
       {
         ENOENT: "找不到这个文件或文件夹，可能已被移动、删除，或者位置选错了。",
@@ -140,7 +152,8 @@ export async function createApp({
         EPERM: "系统不允许这次操作。文件可能正在被其他程序使用，请关闭后重试。",
         EISDIR: "你选中的是文件夹，但这里需要的是文件。请重新选择具体文件。",
         ER_DUP_ENTRY: "这个记录已存在，请刷新后重试。",
-      }[code ?? ""] ?? (status === 413 ? "文件或请求内容过大，请缩小后重试。" : err.message || "操作失败，请稍后重试。");
+      }[code ?? ""] ?? (status === 413 ? "文件或请求内容过大，请缩小后重试。" : status === 500 && process.env.NODE_ENV === "production" ? "操作失败，请稍后重试。" : formatAgentError(err.message || "操作失败，请稍后重试"));
+    if (Number.isSafeInteger(err.retryAfter) && err.retryAfter! > 0) response.set("Retry-After", String(err.retryAfter));
     response.status(status).json(error(message, code ? { code } : null, status));
   });
 

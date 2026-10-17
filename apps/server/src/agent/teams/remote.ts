@@ -3,6 +3,7 @@ import type { Usage } from "@earendil-works/pi-ai";
 import { createTeamA2aClient, SendMessageRequest, GetTaskRequest, CancelTaskRequest, TaskState, Role, type Message, type Task, type Artifact } from "@omnistudio-next/teams-scaffold/a2a";
 import { emptyUsage, type SubAgentResult } from "@/agent/runtime/subAgent";
 import { getRemoteTeam } from "@/utils/teams";
+import { safeRemoteFetch } from "@/lib/remoteUrl";
 
 export async function runRemoteTeam(options: {
   name: string;
@@ -87,7 +88,7 @@ export async function runRemoteTeam(options: {
     if (!remote.enabled) throw new Error(`远端团队 ${name} 已禁用`);
     client = await createTeamA2aClient({
       url: remote.cardUrl, token: remote.token,
-      fetch: ((input, init) => fetch(input, { ...init, signal: init?.signal ?? signal })) as typeof fetch,
+      fetch: ((input, init) => safeRemoteFetch(input, { ...init, signal: init?.signal ?? signal })) as typeof fetch,
     });
     const card = await client.getAgentCard({ signal });
     signal?.throwIfAborted();

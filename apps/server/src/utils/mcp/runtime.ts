@@ -6,6 +6,7 @@ import type { Express } from "express";
 import conf, { getAccountDirectory, platformConfig } from "@/utils/conf";
 import { accountContext } from "@/utils/accountContext";
 import { getMcpSettings } from "@/utils/mcp/control";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 let runtime: { app: Express; appOrigin: string; server?: Server; url?: string; port?: number; preferredPort?: number; file?: string; command: string; entry: string; error?: string } | undefined;
 let reloadQueue = Promise.resolve();
@@ -16,7 +17,7 @@ function removeRuntime(file?: string) {
   try {
     if (JSON.parse(readFileSync(file, "utf8")).pid === process.pid) rmSync(file, { force: true });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("清理 MCP 运行信息失败：", error);
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error("清理 MCP 运行信息失败", { name: (error as Error).name, code: (error as NodeJS.ErrnoException).code });
   }
 }
 
@@ -80,7 +81,7 @@ export function reloadMcpRuntime() {
     } catch (error) {
       server.close();
       removeRuntime(file);
-      current.error = `MCP 端口切换失败${current.url ? "，继续使用原地址" : ""}：${error instanceof Error ? error.message : String(error)}`;
+      current.error = formatAgentError(`MCP 端口切换失败${current.url ? "，继续使用原地址" : ""}：${error instanceof Error ? error.message : String(error)}`);
       console.error(current.error);
     }
   });
@@ -109,7 +110,7 @@ export function getMcpRuntime() {
 conf.onDidChange("settings", (next, previous) => {
   if (JSON.stringify(next?.mcp) === JSON.stringify(previous?.mcp)) return;
   saveRuntime();
-  void reloadMcpRuntime().catch(error => console.error("重载 MCP 失败：", error));
+  void reloadMcpRuntime().catch(error => console.error("重载 MCP 失败", formatAgentError(error instanceof Error ? error.message : "重载失败")));
 });
 
 process.once("exit", () => removeRuntime(runtime?.file));

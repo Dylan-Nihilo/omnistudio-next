@@ -4,6 +4,7 @@ import type { Context, Message } from "@earendil-works/pi-ai";
 import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const textPart = z.object({ type: z.literal("text"), text: z.string(), textSignature: z.string().optional() });
 const imagePart = z.object({ type: z.literal("image"), data: z.string(), mimeType: z.string().startsWith("image/") });
@@ -89,7 +90,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
       send({ type: "done", message });
     } catch (error) {
       if (!res.headersSent) throw error;
-      send?.({ type: "error", message: error instanceof Error ? error.message : "模型请求失败" });
+      send?.({ type: "error", message: formatAgentError(error instanceof Error ? error.message : "模型请求失败", configured.catalog.providerId, [configured.provider.apiKey]) });
     } finally {
       res.end();
     }

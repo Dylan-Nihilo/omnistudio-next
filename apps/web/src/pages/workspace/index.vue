@@ -27,13 +27,13 @@ import settings from "@/components/settings/index.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";
 import anonymousData from "@/lib/anonymousData";
-import canvasPanel from "./panels/canvas/canvasHost.vue";
 import workspaceMenu from "./components/workspaceMenu.vue";
-import floatingAgent from "./components/floatingAgent.vue";
 import workspaceTour from "@/components/onboarding/workspaceTour.vue";
 import celebrationModal from "@/components/onboarding/celebrationModal.vue";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 
+const canvasPanel = defineAsyncComponent(() => import("./panels/canvas/canvasHost.vue"));
+const floatingAgent = defineAsyncComponent(() => import("./components/floatingAgent.vue"));
 const documentPanel = defineAsyncComponent(() => import("./panels/document/index.vue"));
 
 const feedback = useUiFeedback();

@@ -60,7 +60,7 @@ declare -a backupRecords=()
 declare -a pendingReleases=()
 declare -a pendingBackups=()
 releaseFiles=(appImage.tar.gz appImagePending.tar.gz imageChecksum deployServer.sh deploymentRetention.sh managedAt healthyAt healthyAtPending imageId imageIdPending)
-backupFiles=(environment compose.yaml releaseCompose.yaml deployedCommit previousImage releaseImageId releaseHealthyAt releaseArchive.tar.gz checksums schemaFingerprint createdAt databasePending.sql.gz appDataPending.tar.gz database.sql.gz appData.tar.gz deploymentConfig.tar.gz complete)
+backupFiles=(environment compose.yaml releaseCompose.yaml deployedCommit previousImage releaseImageId releaseHealthyAt releaseArchive.tar.gz checksums schemaFingerprint encryption createdAt databasePending.sql.gz appDataPending.tar.gz database.sql.gz database.sql.gz.encryptedPending appData.tar.gz appData.tar.gz.encryptedPending deploymentConfig.tar.gz deploymentConfig.tar.gz.encryptedPending complete)
 containerList=$(docker ps -aq)
 if [[ -n $containerList ]]; then
   mapfile -t containerIds <<< "$containerList"

@@ -144,5 +144,5 @@ export async function removeTeamAsset(id: string) {
     try { if (moved && !completed) await rename(temporary, path); }
     finally { release(); }
   }
-  await unlink(temporary).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") console.error("清理已删除团队资产失败", error); });
+  await unlink(temporary).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") console.error("清理已删除团队资产失败", { name: error.name, code: error.code }); });
 }

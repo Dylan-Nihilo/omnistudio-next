@@ -25,12 +25,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onErrorCaptured, ref, shallowRef, watch, type Component } from "vue";
+import { computed, defineAsyncComponent, onErrorCaptured, ref, shallowRef, watch, type Component } from "vue";
 import { loadToolComponent } from "@omnistudio-next/tools-scaffold/client";
 import { IconCopy, IconTool } from "@tabler/icons-vue";
 import { uiAlert, uiIconButton } from "@omnistudio-next/ui";
 import type { AgentToolCall } from "@omnistudio-next/server/agent/types";
-import messageMarkdown from "@/components/messageMarkdown.vue";
+
+const messageMarkdown = defineAsyncComponent(() => import("@/components/messageMarkdown.vue"));
 
 const { tool, directory } = defineProps<{ tool: AgentToolCall; directory?: string }>();
 const emit = defineEmits<{ copy: [content: string] }>();

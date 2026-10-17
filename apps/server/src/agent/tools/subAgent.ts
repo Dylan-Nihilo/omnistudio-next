@@ -6,6 +6,7 @@ import { addUsage, emptyUsage, type SubAgentModel, type SubAgentResult } from "@
 import { createTeamRunner } from "@/agent/teams";
 import { runRemoteTeam } from "@/agent/teams/remote";
 import { listTeams, getRemoteTeam } from "@/utils/teams";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 const parameters = z.strictObject({
   tasks: z.array(z.strictObject({
@@ -55,7 +56,7 @@ export async function createSubAgentTool({ cwd, tools, canvas, runTask, ...model
           results[index] = { ...output.result, name: task.name };
           addUsage(usage, output.usage);
         } catch (error) {
-          results[index] = { name: task.name, status: signal?.aborted ? "cancelled" : "error", result: error instanceof Error ? error.message : String(error) };
+          results[index] = { name: task.name, status: signal?.aborted ? "cancelled" : "error", result: formatAgentError(error instanceof Error ? error.message : String(error)) };
         }
         update();
       }));

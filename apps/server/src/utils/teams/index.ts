@@ -6,6 +6,7 @@ import conf, { getAccountDirectory } from "@/utils/conf";
 import { accountContext, requireAccount, requireRootAccount } from "@/utils/accountContext";
 import { decodeText, skillPath } from "@/utils/plugins/install";
 import { resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
+import { formatAgentError } from "@/agent/runtime/errors";
 import { agentsDirectory, checkName, editablePath, maxBytes, readFiles, validateFiles, withTeamFiles } from "./files";
 
 export { agentsDirectory, teamNamePattern } from "./files";
@@ -67,7 +68,7 @@ export async function listTeams() {
         local.push({ name, displayName, description, version, author, github, readme, enabled, loadError: "", kind: "local" as const });
       } catch (error) {
         local.push({ name: entry.name, displayName: entry.name, description: "", version: "", author: "", github: "", readme: "", enabled: false,
-          loadError: error instanceof Error ? error.message : String(error), kind: "local" as const });
+          loadError: formatAgentError(error instanceof Error ? error.message : String(error)), kind: "local" as const });
       }
     }
     const remote = Object.values(conf.get("remoteConnections", {})).map(({ name, cardUrl, card, enabled }) => ({

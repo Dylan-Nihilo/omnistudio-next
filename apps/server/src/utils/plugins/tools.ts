@@ -11,6 +11,7 @@ import { auditEvents, platformSecrets } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { encryptPlatformSecret, readPlatformSecret } from "@/utils/platformSecrets";
 import { requireRootAccount } from "@/utils/accountContext";
+import { formatAgentError } from "@/agent/runtime/errors";
 
 export { toolNameSchema } from "@omnistudio-next/tools-scaffold/runtime";
 
@@ -127,7 +128,7 @@ export async function listTools() {
         const { metadata, revision } = await readTool(name);
         return { ...metadata, enabled, config: await getToolConfig(metadata), revision, loadError: "" };
       } catch (err) {
-        const loadError = err instanceof Error ? err.message : "工具文件无法读取";
+        const loadError = formatAgentError(err instanceof Error ? err.message : "工具文件无法读取");
         return { name, version: "", displayName: name, description: loadError, author: "", github: "", components: [], configRules: [], enabled, config: {}, revision: "", loadError };
       }
     }));
