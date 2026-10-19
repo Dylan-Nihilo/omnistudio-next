@@ -1,18 +1,60 @@
 <template>
   <panel class="canvasMenuPanel" position="top-left">
     <div class="canvasMenu nodrag nopan nowheel">
-      <uiPopover v-model:visible="canvasListVisible" placement="bottom-start" :width="320" :disabled="!directory">
+      <uiPopover v-model:visible="canvasListVisible" placement="bottom-start" :width="340" :disabled="!directory">
         <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" class="canvasTrigger" variant="secondary" :icon="IconLayoutDashboard" :loading="busy" :disabled="busy || !directory" aria-label="切换画布"><span class="canvasName">{{ activeCanvasName }}</span><icon-chevron-down :size="16" /></uiButton></template>
         <div class="canvasPicker">
           <uiField label="项目名称"><uiInput v-model="projectNameDraft" size="small" :title="directory" :disabled="!workspaceStore.project" aria-label="项目名称" @keydown.stop @keydown.enter="saveProjectName" @keydown.esc.prevent="projectNameDraft = workspaceName" @blur="saveProjectName" /></uiField>
-          <div class="pickerHeader"><span>画布</span><uiIconButton size="small" :icon="IconPlus" label="新增画布" :disabled="busy || editingId !== null" @click="handleAddCanvas" /></div>
+          <div class="pickerHeader">
+            <div class="headerTitle">
+              <span>剧集 / 画布</span>
+              <span class="countBadge">({{ canvases.length }})</span>
+            </div>
+            <div class="headerActions">
+              <uiIconButton
+                size="small"
+                :icon="isSortDescending ? IconSortDescending : IconSortAscending"
+                :label="isSortDescending ? '当前倒序，点击切换为正序' : '当前正序，点击切换为倒序'"
+                :title="isSortDescending ? '倒序 (最新集在前)' : '正序 (第一集在前)'"
+                @click="isSortDescending = !isSortDescending"
+              />
+              <uiIconButton
+                size="small"
+                :icon="IconPlus"
+                label="新增下一集"
+                title="新增下一集"
+                :disabled="busy || editingId !== null"
+                @click="handleAddCanvas"
+              />
+            </div>
+          </div>
+          <div v-if="canvases.length > 4 || searchQuery" class="searchBar">
+            <uiInput
+              v-model="searchQuery"
+              size="small"
+              placeholder="搜索集数 / 画布..."
+              aria-label="搜索集数或画布"
+              clearable
+              @keydown.stop
+              @keydown.esc="searchQuery = ''"
+            >
+              <template #prefix><icon-search :size="14" class="searchIcon" /></template>
+            </uiInput>
+          </div>
           <div class="canvasList">
-            <div v-for="canvas in canvases" :key="canvas.id" class="canvasItem" :class="{ isSelected: activeCanvasId === canvas.id }">
+            <div v-for="canvas in displayedCanvases" :key="canvas.id" class="canvasItem" :class="{ isSelected: activeCanvasId === canvas.id }">
               <div v-if="editingId === canvas.id" class="nameEditor"><uiInput ref="nameInputs" v-model="canvasName" size="small" :disabled="busy" :maxlength="120" :aria-label="newCanvasId === canvas.id ? '新画布名称' : '画布名称'" @keydown.stop @keydown.enter="saveCanvas" @blur="saveCanvas" /></div>
               <template v-else>
                 <button class="canvasChoice" type="button" :disabled="busy || editingId !== null" :aria-pressed="activeCanvasId === canvas.id" :title="canvas.name" @click="handleSwitchCanvas(canvas.id)"><icon-check v-if="activeCanvasId === canvas.id" :size="16" aria-hidden="true" /><icon-layout-dashboard v-else :size="16" aria-hidden="true" /><span>{{ canvas.name }}</span></button>
-                <div class="itemActions"><uiIconButton size="small" :icon="IconEdit" :disabled="busy || editingId !== null" :label="`编辑 ${canvas.name}`" title="编辑" @click="editCanvas(canvas)" /><uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="busy || editingId !== null || canvases.length <= 1" :label="`删除 ${canvas.name}`" :title="canvases.length <= 1 ? '至少保留一个画布' : '删除画布'" @click="removeCanvas(canvas)" /></div>
+                <div class="itemActions">
+                  <uiIconButton size="small" :icon="IconCopy" :disabled="busy || editingId !== null" :label="`复制 ${canvas.name} 为新集`" title="复制为新集" @click="handleCloneCanvas(canvas)" />
+                  <uiIconButton size="small" :icon="IconEdit" :disabled="busy || editingId !== null" :label="`编辑 ${canvas.name}`" title="编辑" @click="editCanvas(canvas)" />
+                  <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="busy || editingId !== null || canvases.length <= 1" :label="`删除 ${canvas.name}`" :title="canvases.length <= 1 ? '至少保留一个画布' : '删除画布'" @click="removeCanvas(canvas)" />
+                </div>
               </template>
+            </div>
+            <div v-if="displayedCanvases.length === 0" class="emptyCanvases">
+              <span>未找到匹配的剧集或画布</span>
             </div>
           </div>
           <uiAlert v-if="renameError" :title="renameError" tone="error" />
@@ -28,10 +70,10 @@ import axios from "axios";
 import { computed, inject, nextTick, ref, shallowRef, watch, type ShallowRef } from "vue";
 import { Panel, useVueFlow, type FlowExportObject } from "@vue-flow/core";
 import { uiPopover, uiButton, uiIconButton, uiField, uiInput, uiAlert, useUiFeedback } from "@omnistudio-next/ui";
-import { IconEdit, IconCheck, IconChevronDown, IconPlus, IconTrash, IconLayoutDashboard } from "@tabler/icons-vue";
+import { IconEdit, IconCheck, IconChevronDown, IconPlus, IconTrash, IconLayoutDashboard, IconCopy, IconSearch, IconSortAscending, IconSortDescending } from "@tabler/icons-vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
-import { getCanvasAssetDirectories, isCanvasFile } from "@/pages/workspace/canvasFile";
+import { getCanvasAssetDirectories, isCanvasFile, suggestNextCanvasName } from "@/pages/workspace/canvasFile";
 
 const feedback = useUiFeedback();
 const props = defineProps<{
@@ -71,6 +113,17 @@ const newCanvasId = ref<string | null>(null);
 const nameInputs = ref<InstanceType<typeof uiInput>[]>([]);
 const canvasName = ref("");
 const renameError = ref("");
+const searchQuery = ref("");
+const isSortDescending = ref(false);
+const displayedCanvases = computed(() => {
+  const list = [...canvases.value].sort((left, right) => {
+    const comparison = left.name.localeCompare(right.name, "zh-CN", { numeric: true });
+    return isSortDescending.value ? -comparison : comparison;
+  });
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return list;
+  return list.filter(canvas => canvas.name.toLowerCase().includes(query));
+});
 const { toObject, setNodes, setEdges, setViewport } = useVueFlow();
 
 watch(() => props.directory, async (directory, _previous, onCleanup) => {
@@ -80,6 +133,7 @@ watch(() => props.directory, async (directory, _previous, onCleanup) => {
   loadError.value = "";
   boundCanvas.value = undefined;
   activeCanvasId.value = "";
+  searchQuery.value = "";
   try {
     if (!props.initialCanvasId) canvases.value = [];
     newCanvasId.value = null;
@@ -248,8 +302,8 @@ async function removeCanvas(canvas: Canvas) {
   }
 }
 
-async function createCanvasFile(directory: string, name?: string, signal?: AbortSignal) {
-  if (name !== undefined) name = normalizeCanvasName(name);
+async function createCanvasFile(directory: string, initialName?: string, signal?: AbortSignal) {
+  let name = initialName !== undefined ? normalizeCanvasName(initialName) : undefined;
   const files = useWorkspaceFiles(directory);
   const flow = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } };
   for (let number = 1; ; number++) {
@@ -260,7 +314,10 @@ async function createCanvasFile(directory: string, name?: string, signal?: Abort
       await files.writeJson(id, { toonflowCanvas: true, ...flow }, true);
       return { id, name: canvasName, flow };
     } catch (err) {
-      if (name !== undefined || !axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+      if (!axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+      if (name !== undefined) {
+        name = suggestNextCanvasName([canvasName], canvasName);
+      }
     }
   }
 }
@@ -279,7 +336,8 @@ async function addCanvas(name?: string, signal?: AbortSignal): Promise<string> {
   const directory = getCanvasDirectory(signal);
   busy.value = true;
   try {
-    const canvas = await createCanvasFile(directory, name, signal);
+    const nextName = name ?? suggestNextCanvasName(canvases.value.map(c => c.name), activeCanvasName.value);
+    const canvas = await createCanvasFile(directory, nextName, signal);
     checkCanvasDirectory(directory);
     canvases.value = [...canvases.value, canvas];
     signal?.throwIfAborted();
@@ -296,7 +354,8 @@ async function handleAddCanvas() {
   const directory = props.directory;
   busy.value = true;
   try {
-    const canvas = await createCanvasFile(directory);
+    const nextName = suggestNextCanvasName(canvases.value.map(c => c.name), activeCanvasName.value);
+    const canvas = await createCanvasFile(directory, nextName);
     checkCanvasDirectory(directory);
     canvases.value = [...canvases.value, canvas];
     newCanvasId.value = canvas.id;
@@ -304,6 +363,93 @@ async function handleAddCanvas() {
     await editCanvas(canvas);
   } catch (err) {
     if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "新增画布失败") });
+  } finally {
+    if (props.directory === directory) busy.value = false;
+  }
+}
+
+async function handleCloneCanvas(canvas: Canvas) {
+  if (busy.value || editingId.value !== null || !props.directory) return;
+  const directory = props.directory;
+  busy.value = true;
+  try {
+    let sourceFlow: Pick<FlowExportObject, "nodes" | "edges" | "viewport">;
+    if (activeCanvasId.value === canvas.id) {
+      await props.flushSave();
+      checkCanvasDirectory(directory);
+      sourceFlow = toObject();
+    } else if (canvas.flow) {
+      sourceFlow = canvas.flow;
+    } else {
+      const data = await useWorkspaceFiles(directory).readJson<Partial<NonNullable<Canvas["flow"]>> & { toonflowCanvas?: boolean } | null>(canvas.id);
+      checkCanvasDirectory(directory);
+      if (data?.toonflowCanvas !== true || !Array.isArray(data.nodes) || !Array.isArray(data.edges) || !data.viewport) {
+        throw new Error("源画布文件格式无效，无法克隆");
+      }
+      sourceFlow = { nodes: data.nodes, edges: data.edges, viewport: data.viewport };
+    }
+
+    const nodeMap = new Map<string, string>();
+    for (const node of sourceFlow.nodes) {
+      nodeMap.set(node.id, crypto.randomUUID());
+    }
+
+    const clonedNodes = sourceFlow.nodes.map(node => {
+      const copy = JSON.parse(JSON.stringify(node));
+      copy.id = nodeMap.get(node.id)!;
+      if (copy.parentNode && nodeMap.has(copy.parentNode)) {
+        copy.parentNode = nodeMap.get(copy.parentNode);
+      }
+      if (copy.data) {
+        delete copy.data.exportProgress;
+        delete copy.data.taskProgress;
+        delete copy.data.running;
+        delete copy.data.error;
+      }
+      return copy;
+    });
+
+    const clonedEdges = sourceFlow.edges.map(edge => {
+      const copy = JSON.parse(JSON.stringify(edge));
+      copy.id = crypto.randomUUID();
+      if (nodeMap.has(copy.source)) copy.source = nodeMap.get(copy.source)!;
+      if (nodeMap.has(copy.target)) copy.target = nodeMap.get(copy.target)!;
+      copy.selected = false;
+      return copy;
+    });
+
+    const clonedFlow = {
+      nodes: clonedNodes,
+      edges: clonedEdges,
+      viewport: { ...sourceFlow.viewport },
+    };
+
+    let nextName = suggestNextCanvasName(canvases.value.map(c => c.name), canvas.name);
+    const files = useWorkspaceFiles(directory);
+    let newId = `${nextName}.json`;
+
+    for (let attempts = 0; attempts < 100; attempts++) {
+      try {
+        await files.writeJson(newId, { toonflowCanvas: true, ...clonedFlow }, true);
+        break;
+      } catch (err) {
+        if (!axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+        nextName = suggestNextCanvasName([nextName], nextName);
+        newId = `${nextName}.json`;
+      }
+    }
+    checkCanvasDirectory(directory);
+
+    const newCanvasItem: Canvas = {
+      id: newId,
+      name: nextName,
+      flow: clonedFlow,
+    };
+    canvases.value = [...canvases.value, newCanvasItem];
+    await switchCanvas(newId);
+    feedback.message({ tone: "success", message: `已从“${canvas.name}”克隆生成“${nextName}”` });
+  } catch (err) {
+    if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "克隆画布失败") });
   } finally {
     if (props.directory === directory) busy.value = false;
   }
@@ -404,7 +550,7 @@ function syncDocumentNode(canvasId: string, nodeId: string, handleId: string, te
   else if (inline) (data.outputs ??= {})[handleId] = { dataType: "STRING", value: text };
 }
 
-defineExpose({ getCanvases, addCanvas, switchCanvas, renameCanvas, syncDocumentNode, loadError });
+defineExpose({ getCanvases, addCanvas, switchCanvas, renameCanvas, cloneCanvas: handleCloneCanvas, syncDocumentNode, loadError });
 </script>
 
 <style lang="scss" scoped>
@@ -412,8 +558,30 @@ defineExpose({ getCanvases, addCanvas, switchCanvas, renameCanvas, syncDocumentN
 .canvasMenu { .canvasTrigger { max-width: min(320px, calc(100vw - 48px)); box-shadow: var(--uiShadowPopover); :deep(.buttonLabel) { min-width: 0; } .canvasName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } } }
 .canvasPicker {
   display: flex; flex-direction: column; gap: 12px; min-width: 0;
-  .pickerHeader { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); }
-  .canvasList { max-height: min(320px, 45dvh); overflow-y: auto; .canvasItem { display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: var(--uiRadiusControl); &.isSelected { background: var(--uiActionSoft); .canvasChoice { color: var(--uiActionPrimary); } } &:hover { background: var(--uiSurfaceHover); } .nameEditor { width: 100%; padding-block: 4px; } .canvasChoice { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; padding: 8px; border: 0; border-radius: inherit; background: transparent; color: var(--uiTextPrimary); font: inherit; text-align: left; cursor: pointer; svg { flex-shrink: 0; } span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } &:disabled { cursor: not-allowed; color: var(--uiStateDisabledText); } &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: -2px; } } .itemActions { display: flex; flex-shrink: 0; gap: 2px; } } }
+  .pickerHeader {
+    display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl);
+    .headerTitle { display: flex; align-items: center; gap: 6px; font-weight: 500; .countBadge { color: var(--uiTextMuted); opacity: 0.8; font-size: var(--uiFontControl); } }
+    .headerActions { display: flex; align-items: center; gap: 4px; }
+  }
+  .searchBar { width: 100%; :deep(.uiInput) { width: 100%; } .searchIcon { color: var(--uiTextMuted); } }
+  .canvasList {
+    max-height: min(340px, 48dvh); overflow-y: auto;
+    .canvasItem {
+      display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: var(--uiRadiusControl);
+      &.isSelected { background: var(--uiActionSoft); .canvasChoice { color: var(--uiActionPrimary); } }
+      &:hover { background: var(--uiSurfaceHover); }
+      .nameEditor { width: 100%; padding-block: 4px; }
+      .canvasChoice {
+        display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; padding: 8px; border: 0; border-radius: inherit; background: transparent; color: var(--uiTextPrimary); font: inherit; text-align: left; cursor: pointer;
+        svg { flex-shrink: 0; }
+        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        &:disabled { cursor: not-allowed; color: var(--uiStateDisabledText); }
+        &:focus-visible { outline: 2px solid var(--uiBorderFocus); outline-offset: -2px; }
+      }
+      .itemActions { display: flex; flex-shrink: 0; gap: 2px; }
+    }
+    .emptyCanvases { display: flex; align-items: center; justify-content: center; padding: 24px 12px; color: var(--uiTextMuted); font-size: var(--uiFontControl); }
+  }
 }
 .menuExtension { position: absolute; top: calc(100% + 12px); left: 0; }
 </style>

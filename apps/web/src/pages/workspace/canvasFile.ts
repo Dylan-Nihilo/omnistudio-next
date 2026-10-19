@@ -34,3 +34,73 @@ export async function isCanvasFile(files: Pick<ReturnType<typeof useWorkspaceFil
     throw error;
   }
 }
+
+export function suggestNextCanvasName(existingNames: string[], baseName?: string): string {
+  const existingSet = new Set(existingNames.map(name => name.trim().toLowerCase()));
+
+  function parsePattern(name: string) {
+    const match = /(.*?)(\d+)([^\d]*)$/.exec(name);
+    if (!match) return null;
+    return {
+      prefix: match[1],
+      digits: match[2],
+      suffix: match[3],
+      value: parseInt(match[2], 10),
+      padLength: match[2].length,
+    };
+  }
+
+  function tryFormat(prefix: string, startValue: number, padLength: number, suffix: string): string {
+    let current = Math.max(1, startValue);
+    for (let attempts = 0; attempts < 10000; attempts++) {
+      const numStr = String(current).padStart(padLength, "0");
+      const candidate = `${prefix}${numStr}${suffix}`.trim();
+      if (!existingSet.has(candidate.toLowerCase())) {
+        return candidate;
+      }
+      current++;
+    }
+    return `${prefix}${current}${suffix}`.trim();
+  }
+
+  if (baseName) {
+    const parsed = parsePattern(baseName.trim());
+    if (parsed) {
+      return tryFormat(parsed.prefix, parsed.value + 1, parsed.padLength, parsed.suffix);
+    }
+  }
+
+  let bestPattern: { prefix: string; maxValue: number; padLength: number; suffix: string; count: number } | null = null;
+  const patternGroups = new Map<string, { prefix: string; maxValue: number; padLength: number; suffix: string; count: number }>();
+
+  for (const name of existingNames) {
+    const parsed = parsePattern(name.trim());
+    if (!parsed) continue;
+    const key = `${parsed.prefix}__$$__${parsed.suffix}`;
+    const group = patternGroups.get(key) ?? {
+      prefix: parsed.prefix,
+      suffix: parsed.suffix,
+      maxValue: 0,
+      padLength: parsed.padLength,
+      count: 0,
+    };
+    group.count++;
+    if (parsed.value > group.maxValue) {
+      group.maxValue = parsed.value;
+      group.padLength = Math.max(group.padLength, parsed.padLength);
+    }
+    patternGroups.set(key, group);
+  }
+
+  for (const group of patternGroups.values()) {
+    if (!bestPattern || group.count > bestPattern.count || (group.count === bestPattern.count && group.maxValue > bestPattern.maxValue)) {
+      bestPattern = group;
+    }
+  }
+
+  if (bestPattern) {
+    return tryFormat(bestPattern.prefix, bestPattern.maxValue + 1, bestPattern.padLength, bestPattern.suffix);
+  }
+
+  return tryFormat("画布", existingNames.length + 1, 1, "");
+}
