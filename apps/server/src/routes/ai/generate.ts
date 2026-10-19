@@ -75,7 +75,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
       ? await u.workspace.resolveWorkspace(req, input.directory ?? "") : undefined;
     let send: ((event: object) => void) | undefined;
     try {
-      const references = await u.ai.readAiReferences(directory, input.references ?? [], controller.signal);
+      const references = await u.ai.readAiReferences(directory, input.references ?? [], controller.signal, u.ai.getVideoInputCapability(input.providerId, input.modelId), configured.provider.apiKey);
       const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey);
       res.set({ "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
       res.flushHeaders();

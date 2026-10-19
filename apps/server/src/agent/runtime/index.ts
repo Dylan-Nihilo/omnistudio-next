@@ -26,6 +26,7 @@ import { isMemoryEnabled } from "@/utils/personalization";
 import { lockWorkspaceFiles, resolveWorkspacePath } from "@/utils/workspace/files";
 import type { GenerationBillingContext } from "@/utils/media/generation";
 import { requireAccount } from "@/utils/accountContext";
+import { getVideoInputCapability } from "@/utils/ai/platformCatalog";
 
 type AgentOptions = {
   prompt: string;
@@ -73,11 +74,21 @@ export async function run(
   mentions = agentMentionsSchema.parse(mentions);
   validateMentionTokens(prompt, mentions);
   if (!prompt.trim() && !attachments.length && !mentions.length) throw Object.assign(new Error("请输入消息、提及或添加图片、视频"), { status: 400 });
+  const videoInput = getVideoInputCapability(providerId, modelId);
   for (const attachment of attachments) {
     const { path } = await resolveWorkspacePath(cwd, attachment.path);
     const info = await stat(path);
-    if (!info.isFile() || !info.size || info.size > 100 * 1024 * 1024) {
-      throw Object.assign(new Error("附件必须是工作区内非空且不超过 100 MB 的文件"), { status: 400 });
+    if (!info.isFile() || !info.size) {
+      throw Object.assign(new Error("附件必须是工作区内非空文件"), { status: 400 });
+    }
+    if (attachment.mimeType.startsWith("video/")) {
+      if (!videoInput?.supported) throw Object.assign(new Error("当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus"), { status: 400 });
+      const maxBytes = videoInput.maxUrlBytes ?? videoInput.maxFileBytes ?? (1024 * 1024 * 1024);
+      if (info.size > maxBytes) {
+        throw Object.assign(new Error("视频文件超过当前模型的官方输入限制（1 GB）"), { status: 400 });
+      }
+    } else if (info.size > 100 * 1024 * 1024) {
+      throw Object.assign(new Error("图片附件不能超过 100 MB"), { status: 400 });
     }
   }
   if (resendFrom && !sessionFile) throw Object.assign(new Error("重发需要指定原对话"), { status: 400 });
@@ -233,7 +244,7 @@ export async function run(
           const content = await Promise.all(parts.map(async part => {
             const source = part.type === textType && part.text ? mediaMessages.get(part.text) : undefined;
             if (!source) return [part];
-            if (!mediaContents.has(source.id)) mediaContents.set(source.id, readAiReferences(cwd, source.references, signal));
+            if (!mediaContents.has(source.id)) mediaContents.set(source.id, readAiReferences(cwd, source.references, signal, videoInput, provider.apiKey));
             return referenceContent(provider.protocol, part.text!, await mediaContents.get(source.id)!);
           }));
           return { ...message, content: content.flat() };
@@ -266,6 +277,13 @@ export async function run(
       userMessageId = entry.id;
       const firstMessage = !messageAccepted;
       messageAccepted = true;
+      if (canvas?.version) {
+        history.appendCustomEntry("toonflowCanvasBinding", {
+          messageId: entry.id,
+          canvasId: canvas.id,
+          canvasVersion: canvas.version,
+        });
+      }
       if (firstMessage && (attachments.length || mentions.length || prompt.trimStart().startsWith("/skill:"))) {
         history.appendCustomEntry("toonflowUserMessage", { messageId: entry.id, content: prompt.trim(), attachments, mentions });
         if (!history.getSessionName() && history.getBranch().filter((item) => item.type === "message" && item.message.role === "user").length === 1) {

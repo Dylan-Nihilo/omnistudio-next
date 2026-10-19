@@ -1,6 +1,17 @@
 import axios from "axios";
 import { ref } from "vue";
 
+export type VideoInputCapability = {
+  supported: boolean;
+  maxBase64Bytes?: number;
+  maxFileBytes?: number;
+  maxEncodedBytes?: number;
+  maxUrlBytes?: number;
+  maxDurationSeconds?: number;
+  formats?: string[];
+  source?: "base64" | "public-url" | "both";
+};
+
 export type PlatformModel = {
   providerId: string;
   providerLabel: string;
@@ -10,6 +21,7 @@ export type PlatformModel = {
   type?: "text" | "image" | "video" | "audio";
   mediaType?: "text" | "image" | "video" | "audio";
   capabilities?: unknown;
+  videoInput?: VideoInputCapability;
 };
 
 export type PlatformDefaultModels = {

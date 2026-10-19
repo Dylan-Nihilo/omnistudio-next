@@ -70,6 +70,11 @@ const documentPanelRef = ref<InstanceType<typeof documentPanel>>();
 provide("canvas", () => canvasPanelRef.value?.getCanvasContext());
 provide("mentionCanvas", () => canvasPanelRef.value?.mentionSource);
 provide("activateCanvasPanel", () => switchPanel("canvas"));
+provide("activateCanvas", async (canvasId: string, signal?: AbortSignal, expectedVersion?: string) => {
+  const activationSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000);
+  const panel = await waitForControlValue(() => canvasPanelRef.value, activationSignal);
+  await panel.activateCanvas(canvasId, activationSignal, expectedVersion);
+});
 
 const controlLifetime = new AbortController();
 onScopeDispose(() => controlLifetime.abort(new Error("工作区已关闭")));

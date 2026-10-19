@@ -11,7 +11,7 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
   const errorMessage = ref("");
   const modelChoices = computed(() => [...textModels.value]
     .sort((left, right) => Number(!isDefaultTextModel(left)) - Number(!isDefaultTextModel(right)))
-    .map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined })));
+    .map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), providerId: model.providerId, modelId: model.modelId, label: model.label, contextWindow: undefined, videoInput: model.videoInput })));
 
   function isDefaultTextModel(model: PlatformModel) {
     if (defaultModels.value.text) {

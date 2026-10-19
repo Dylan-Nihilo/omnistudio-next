@@ -4,7 +4,7 @@
     <nav class="canvasControls nodrag nopan nowheel" aria-label="画布工具">
       <div class="toolGroup">
         <uiTooltip :content="assetsVisible ? '关闭素材库' : '打开素材库'"><uiIconButton :icon="IconFolders" label="素材库" :aria-pressed="assetsVisible" :class="{ isActive: assetsVisible }" @click="assetsVisible = !assetsVisible" /></uiTooltip>
-        <uiPopover v-model:visible="undoPopoverVisible" trigger="manual" placement="top-start" :width="180">
+        <uiPopover v-model:visible="undoPopoverVisible" class="undoArrangePopover" trigger="manual" placement="top-start" :width="136">
           <template #reference><uiTooltip content="整理画布" :disabled="undoPopoverVisible"><uiIconButton :icon="IconSitemap" label="整理画布" :disabled="!canArrange" :loading="arranging" @click="arrangeNodes" /></uiTooltip></template>
           <uiButton class="menuAction" variant="ghost" @click="undoArrange">撤销整理</uiButton>
         </uiPopover>
@@ -143,4 +143,5 @@ async function undoArrange() {
 }
 .zoomMenu, .helpMenu { display: flex; flex-direction: column; gap: 8px; .menuAction { width: 100%; justify-content: flex-start; } }
 .menuAction { width: 100%; justify-content: flex-start; }
+:deep(.undoArrangePopover) { padding: 6px; }
 </style>

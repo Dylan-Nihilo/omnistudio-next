@@ -59,9 +59,11 @@ function setInstance(key: string, value: Element | ComponentPublicInstance | nul
   else instances.delete(key);
 }
 
-async function activateCanvas(fileName: string, signal?: AbortSignal) {
+async function activateCanvas(fileName: string, signal?: AbortSignal, expectedVersion?: string) {
   const callSignal = AbortSignal.any([lifetime.signal, AbortSignal.timeout(120000), ...(signal ? [signal] : [])]);
   callSignal.throwIfAborted();
+  await waitForControlValue(() => canvases.value.length ? canvases.value : undefined, callSignal);
+  if (!canvases.value.some(canvas => canvas.id === fileName)) throw new Error("画布不存在，请重新获取画布列表");
   const previousKey = activeKey.value;
   let entry = entries.value.find(item => instances.get(item.key)?.canvasId === fileName || (!instances.get(item.key)?.canvasId && item.fileName === fileName));
   if (!entry) {
@@ -77,8 +79,12 @@ async function activateCanvas(fileName: string, signal?: AbortSignal) {
       return instance?.canvasReady || instance?.loadError ? instance : undefined;
     }, callSignal);
     if (panel.loadError) throw new Error(panel.loadError);
+    if (expectedVersion && panel.getCanvasVersion() !== expectedVersion) {
+      throw Object.assign(new Error("历史对话关联的画布已更新，旧节点可能无法定位"), { code: "CANVAS_VERSION_MISMATCH" });
+    }
   } catch (error) {
-    if (activeKey.value === key) activeKey.value = previousKey;
+    const versionMismatch = error && typeof error === "object" && "code" in error && error.code === "CANVAS_VERSION_MISMATCH";
+    if (!versionMismatch && activeKey.value === key) activeKey.value = previousKey;
     if (!instances.get(key)?.canvasId) entries.value = entries.value.filter(item => item.key !== key);
     throw error;
   }
@@ -157,7 +163,7 @@ const mentionSource: MentionCanvasSource = {
 };
 
 defineExpose({ canvasId, canvasReady, getCanvasContext, readDocumentNode, saveDocumentNode, flushSave, cancelSave,
-  mentionSource,
+  mentionSource, activateCanvas,
   get saveBusy() { return [...instances.values()].some(panel => panel.saveBusy); },
 });
 </script>

@@ -1,4 +1,4 @@
-import type { AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention } from "@omnistudio-next/server/agent/types";
+import type { AgentCanvasBinding, AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention } from "@omnistudio-next/server/agent/types";
 
 export type AgentAttachment = { name: string; path: string; mimeType: string; file?: File };
 
@@ -27,6 +27,7 @@ export type AgentConversation = {
   file: string;
   name: string;
   messages: AgentMessage[];
+  canvasBindings?: AgentCanvasBinding[];
   providerId?: string;
   modelId?: string;
   thinkingLevel?: string;

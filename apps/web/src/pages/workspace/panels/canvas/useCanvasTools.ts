@@ -14,7 +14,7 @@ export function useCanvasTools(options: {
     switchCanvas(canvasId: string, signal?: AbortSignal): Promise<void>;
     renameCanvas(canvasId: string, name: string, signal?: AbortSignal): Promise<void>;
   };
-  getCanvasBinding(): { id: string; signal: AbortSignal };
+  getCanvasBinding(): { id: string; signal: AbortSignal; version: string };
   resolveCanvasContext?(id: string): CanvasContext | undefined;
 }) {
   const flow = useVueFlow();
@@ -58,6 +58,7 @@ export function useCanvasTools(options: {
     let redirected: CanvasContext | undefined;
     return {
       get id() { return redirected?.id ?? options.getCanvasBinding().id; },
+      get version() { return redirected?.version ?? options.getCanvasBinding().version; },
       // 函数定义通过 getNodeTools 按需发现，初始化消息不携带节点清单。
       tools: [],
       getNodeLabel(nodeId) {

@@ -171,6 +171,7 @@ import { getShortcutBindings, shortcutLabel, shortcutMatches, shortcutPressed } 
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import anonymousData from "@/lib/anonymousData";
 import { dropCanvasFiles, importCanvasFiles, isCanvasFileDrag } from "./canvasDrop";
+import { getCanvasVersion } from "./canvasVersion";
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 import "@vue-flow/minimap/dist/style.css";
@@ -180,7 +181,7 @@ const props = withDefaults(defineProps<{
   settingsVisible?: boolean;
   runtimeKey?: string;
   initialCanvasId?: string;
-  activateCanvas?: (canvasId: string, signal?: AbortSignal) => Promise<void>;
+  activateCanvas?: (canvasId: string, signal?: AbortSignal, expectedVersion?: string) => Promise<void>;
   resolveCanvasContext?: (canvasId: string) => CanvasContext | undefined;
   flushCanvases?: (action?: () => Promise<void>) => Promise<void>;
 }>(), { active: true, settingsVisible: false });
@@ -260,15 +261,18 @@ const createCanvasContext = useCanvasTools({
     if (!canvasMenuRef.value) throw new Error("画布菜单尚未就绪");
     return canvasMenuRef.value;
   },
-  getCanvasBinding: () => ({ id: canvasId.value, signal: canvasController.signal }),
+  getCanvasBinding: () => ({ id: canvasId.value, signal: canvasController.signal, version: getCanvasVersion(toObject()) }),
   resolveCanvasContext: id => props.resolveCanvasContext?.(id),
 });
 function getCanvasContext() {
   return canvasId.value ? createCanvasContext(canvasId.value, canvasController.signal, workspaceController.signal) : undefined;
 }
+function getCanvasVersionValue() {
+  return canvasId.value ? getCanvasVersion(toObject()) : "";
+}
 const canvasReady = computed(() => !!canvasId.value && !nodeListLoading.value && nodeLoads.size === 0);
 provide("canvas", getCanvasContext);
-defineExpose({ canvasId, canvasReady, getCanvasContext, readDocumentNode, saveDocumentNode, flushSave: flushCanvasSave, cancelSave: cancelCanvasSave,
+defineExpose({ canvasId, canvasReady, getCanvasContext, getCanvasVersion: getCanvasVersionValue, readDocumentNode, saveDocumentNode, flushSave: flushCanvasSave, cancelSave: cancelCanvasSave,
   getMentionNodes: () => flow.nodes.value, findMentionNode: flow.findNode,
   getRetainedNodes: canvasHistory.getRetainedNodes,
   get saveBusy() { return savePaused; }, get loadError() { return canvasMenuRef.value?.loadError ?? ""; },

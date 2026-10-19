@@ -600,6 +600,16 @@ async function sendMessage(source?: AgentMessage) {
   const model = selectedModelChoice.value;
   if (!directory.value) return feedback.message({ tone: "warning", message: "请先打开项目" });
   if (!model) return feedback.message({ tone: "warning", message: "请先选择模型" });
+  const videoAttachments = attachments.filter(item => item.mimeType.startsWith("video/"));
+  if (videoAttachments.length) {
+    const videoInput = model.videoInput;
+    if (!videoInput?.supported) return feedback.message({ tone: "error", message: "当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus" });
+    const maxBytes = videoInput.maxUrlBytes ?? videoInput.maxFileBytes ?? (1024 * 1024 * 1024);
+    const oversizedVideo = videoAttachments.find(item => item.file && item.file.size > maxBytes);
+    if (oversizedVideo) {
+      return feedback.message({ tone: "error", message: "视频文件不能超过 1 GB" });
+    }
+  }
 
   const requestController = new AbortController();
   const canvasContext = createCanvasContext?.();
@@ -631,7 +641,7 @@ async function sendMessage(source?: AgentMessage) {
     const response = await fetch("/api/agent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
-      body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory: directory.value, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, tools: canvasContext.tools } : undefined }),
+      body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory: directory.value, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, version: canvasContext.version, tools: canvasContext.tools } : undefined }),
       signal: AbortSignal.any([requestController.signal, getSessionSnapshot().signal]),
     });
     for await (const event of readAgentEvents(response, requestController.signal)) {
@@ -734,8 +744,23 @@ function pasteAttachments(event: ClipboardEvent) {
       feedback.message({ tone: "warning", message: "只支持图片和视频文件" });
       continue;
     }
-    if (!file.size || file.size > 100 * 1024 * 1024) {
-      feedback.message({ tone: "warning", message: "附件不能为空且不能超过 100 MB" });
+    if (!file.size) {
+      feedback.message({ tone: "warning", message: "附件不能为空" });
+      continue;
+    }
+    if (file.type.startsWith("video/")) {
+      const videoInput = selectedModelChoice.value?.videoInput;
+      if (!videoInput?.supported) {
+        feedback.message({ tone: "warning", message: "当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus" });
+        continue;
+      }
+      const maxBytes = videoInput.maxUrlBytes ?? videoInput.maxFileBytes ?? (1024 * 1024 * 1024);
+      if (file.size > maxBytes) {
+        feedback.message({ tone: "warning", message: "视频文件不能超过 1 GB" });
+        continue;
+      }
+    } else if (file.size > 100 * 1024 * 1024) {
+      feedback.message({ tone: "warning", message: "图片附件不能超过 100 MB" });
       continue;
     }
     if (draftAttachments.value.length >= 20) {

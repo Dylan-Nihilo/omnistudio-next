@@ -12,6 +12,12 @@ export type AgentMention = {
   value: unknown;
 };
 
+export type AgentCanvasBinding = {
+  messageId: string;
+  canvasId: string;
+  canvasVersion: string;
+};
+
 export type AgentStats = {
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
   tokensPerSecond?: number;

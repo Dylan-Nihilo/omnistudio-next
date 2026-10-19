@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from "vue";
+import { computed, inject, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from "vue";
 import axios from "axios";
 import { useUiFeedback } from "@omnistudio-next/ui";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -56,6 +56,7 @@ const name = computed(() => selectedConversation.value?.name || "新对话");
 const sessionFile = computed(() => selectedConversation.value?.file);
 const workspaceStore = useWorkspaceStore();
 const auth = useAuthStore();
+const activateCanvas = inject<(canvasId: string, signal?: AbortSignal, expectedVersion?: string) => Promise<void>>("activateCanvas");
 const history = ref<AgentHistory[]>([]);
 const loading = ref(false);
 const historyLoading = ref(false);
@@ -64,17 +65,73 @@ let requestId = 0;
 let nextConversationKey = 0;
 const conversationRefs = new Map<number, InstanceType<typeof conversation>>();
 const pendingEvents = new Map<number, AgentEvent[]>();
+let canvasActivationController: AbortController | undefined;
+
+// ACT: 旧会话没有独立的画布元数据，兼容工具结果中的 canvasId；新会话仍沿用同一历史格式。
+function collectCanvasIds(value: unknown, ids: string[]) {
+  if (typeof value === "string") {
+    try {
+      collectCanvasIds(JSON.parse(value), ids);
+    } catch {
+      for (const match of value.matchAll(/(?:^|[,{\s])\\?"canvasId\\?"\s*:\s*\\?"([^"\\]+)\\?"/g)) ids.push(match[1]!);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectCanvasIds(item, ids);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  if (typeof record.canvasId === "string" && record.canvasId.trim()) ids.push(record.canvasId);
+  for (const item of Object.values(record)) collectCanvasIds(item, ids);
+}
+
+function getConversationCanvasId(session: AgentConversation) {
+  const ids: string[] = [];
+  for (const message of [...session.messages].reverse()) {
+    for (const part of [...(message.parts ?? [])].reverse()) {
+      if (part.type === "tool") collectCanvasIds(part.tool.result, ids);
+    }
+  }
+  return ids[0];
+}
+
+function getConversationCanvasBinding(session: AgentConversation) {
+  return session.canvasBindings?.findLast(binding => binding.canvasId && binding.canvasVersion);
+}
+
+function alignConversationCanvas(session: AgentConversation | null) {
+  canvasActivationController?.abort();
+  canvasActivationController = undefined;
+  const binding = session && getConversationCanvasBinding(session);
+  const canvasId = (session && getConversationCanvasId(session)) ?? binding?.canvasId;
+  const expectedVersion = binding && binding.canvasId === canvasId ? binding.canvasVersion : undefined;
+  const directory = workspaceStore.project?.directory;
+  if (!activateCanvas || !canvasId || !directory) return;
+  const controller = new AbortController();
+  canvasActivationController = controller;
+  void activateCanvas(canvasId, controller.signal, expectedVersion).catch(error => {
+    if (error && typeof error === "object" && "code" in error && error.code === "CANVAS_VERSION_MISMATCH") {
+      feedback.message({ tone: "warning", message: error instanceof Error ? error.message : "历史对话关联的画布已更新，旧节点可能无法定位" });
+    }
+  }).finally(() => {
+    if (canvasActivationController === controller) canvasActivationController = undefined;
+  });
+}
 
 function showConversation(session: AgentConversation | null, activate = true) {
   const existing = session && conversations.value.find(item => item.file === session.file);
   if (existing) {
     if (activate) conversationKey.value = existing.key;
+    alignConversationCanvas(existing.session);
     return existing;
   }
   const key = ++nextConversationKey;
   const item = { key, name: session?.name || "新对话", file: session?.file, parentFile: session?.parentFile, subAgents: session?.subAgents ?? [], session };
   conversations.value.push(item);
   if (activate) conversationKey.value = key;
+  alignConversationCanvas(session);
   return conversations.value[conversations.value.length - 1]!;
 }
 
@@ -282,6 +339,8 @@ async function removeConversation(file: string) {
 
 watch(() => workspaceStore.project?.directory, directory => {
   requestId++;
+  canvasActivationController?.abort();
+  canvasActivationController = undefined;
   history.value = [];
   conversations.value = [];
   conversationRefs.clear();
@@ -295,7 +354,10 @@ watch(() => workspaceStore.project?.directory, directory => {
 watch(visible, active => {
   if (active && !initialized.value) void loadHistory(true);
 });
-onBeforeUnmount(() => { requestId++; });
+onBeforeUnmount(() => {
+  requestId++;
+  canvasActivationController?.abort();
+});
 
 </script>
 

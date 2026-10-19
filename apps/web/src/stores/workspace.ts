@@ -13,7 +13,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const projectList = ref<Project[]>([]);
   const pendingAgentMessage = ref<{ directory: string; prompt: string; model: string; reasoningEffort: string } | null>(null);
 
-  async function openProject(path: string, previousDirectory = path, signal?: AbortSignal) {
+  async function openProject(path: string, previousDirectory = path, signal?: AbortSignal, options: { addToProjectList?: boolean } = {}) {
     const { data } = await axios.get<{ code: number; data?: { directory: string }; message?: string }>("/api/workspaces/check", {
       params: { directory: path }, headers: { "x-omnistudio-next-workspace": "1" }, signal,
     });
@@ -24,6 +24,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const existing = projectList.value.find(project => project.directory === previousDirectory)
       ?? projectList.value.find(project => project.directory === checkedDirectory);
     project.value = { directory: checkedDirectory, name: existing?.name || checkedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || checkedDirectory, lastOpenedAt: Date.now() };
+    if (options.addToProjectList === false) {
+      projectList.value = projectList.value.filter(item => item.directory !== checkedDirectory);
+      return;
+    }
     projectList.value = [
       project.value,
       ...projectList.value.filter(item => item.directory !== previousDirectory && item.directory !== checkedDirectory),
@@ -31,10 +35,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   }
 
   function renameProject(path: string, name: string) {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
     const target = projectList.value.find(item => item.directory === path);
-    if (!target || !name.trim()) return;
-    target.name = name.trim();
-    if (project.value?.directory === path) project.value = target;
+    if (target) target.name = trimmedName;
+    if (project.value?.directory === path) project.value = target ?? { ...project.value, name: trimmedName };
   }
 
   function removeProject(path: string) {

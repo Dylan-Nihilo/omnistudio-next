@@ -3,7 +3,7 @@ import { basename, dirname, resolve } from "node:path";
 import { readFile, readdir } from "node:fs/promises";
 import { calculateContextTokens, estimateTokens, getLastAssistantUsage, parseSessionEntries, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { AgentSession, FileEntry, SessionEntry } from "@earendil-works/pi-coding-agent";
-import type { AgentEvent, AgentMention, AgentSubAgent, AgentToolCall } from "@/agent/runtime/types";
+import type { AgentCanvasBinding, AgentEvent, AgentMention, AgentSubAgent, AgentToolCall } from "@/agent/runtime/types";
 import { agentMentionsSchema } from "@/agent/runtime/mentions";
 import { formatAgentError } from "@/agent/runtime/errors";
 import { getModelLimits } from "@/utils/ai";
@@ -18,6 +18,11 @@ export const agentAttachmentsSchema = z
     })
   )
   .max(20);
+const canvasBindingSchema = z.strictObject({
+  messageId: z.string().min(1).max(128),
+  canvasId: z.string().min(1).max(256),
+  canvasVersion: z.string().min(1).max(128),
+});
 
 export type ActiveAgentSession = {
   userId: string;
@@ -277,6 +282,11 @@ export async function getAgentSession(cwd: string, path: string) {
     .map((entry, index) => [(entry as SessionEntry).id, index + 1]) : []);
   const history = SessionManager.inMemory(cwd, undefined, entries);
   const branch = history.getBranch();
+  const canvasBindings = branch.flatMap<AgentCanvasBinding>((entry) => {
+    if (entry.type !== "custom" || entry.customType !== "toonflowCanvasBinding") return [];
+    const parsed = canvasBindingSchema.safeParse(entry.data);
+    return parsed.success ? [parsed.data] : [];
+  });
   const attachmentMessages = new Map(
     branch.flatMap((entry) => {
       if (entry.type !== "custom" || !["toonflowAttachments", "toonflowUserMessage"].includes(entry.customType)) return [];
@@ -394,6 +404,7 @@ export async function getAgentSession(cwd: string, path: string) {
     file: basename(path),
     name: history.getSessionName() || (firstUserMessage?.content.trim() || firstUserMessage?.attachments?.[0]?.name)?.slice(0, 60) || "新对话",
     messages,
+    canvasBindings,
     stats: getAgentStats(history),
     contextUsage: configuredModel && model ? getAgentContext(history, getModelLimits(model.provider, configuredModel).contextWindow) : undefined,
     providerId: model?.provider,

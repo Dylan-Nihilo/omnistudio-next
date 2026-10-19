@@ -21,6 +21,12 @@ function contains(root: string, directory: string) {
   return path === "" || (!path.startsWith(`..${sep}`) && path !== ".." && !isAbsolute(path));
 }
 
+function getPersonalWorkspaceOwner(directory: string) {
+  const usersRoot = resolve(getDataDirectory(), "users");
+  const [userId, workspaceSegment] = relative(usersRoot, directory).split(sep);
+  return workspaceSegment === "workspaces" && /^[a-f0-9-]{36}$/i.test(userId ?? "") ? userId : undefined;
+}
+
 export async function authorizeProjectDirectory(directory: string) {
   const account = requireActiveAccount();
   const actual = await realpath(directory);
@@ -44,6 +50,11 @@ export async function authorizeProjectDirectory(directory: string) {
 export async function registerPersonalProject(directory: string, name = basename(directory)) {
   const account = requireAccount();
   const actual = await authorizeProjectDirectory(directory);
+  const ownerUserId = account.isRoot ? getPersonalWorkspaceOwner(actual) : undefined;
+  if (ownerUserId && ownerUserId !== account.userId) {
+    await getDatabase().delete(personalProjects).where(and(eq(personalProjects.userId, account.userId), eq(personalProjects.directoryHash, hashSecret(actual))));
+    return actual;
+  }
   const now = new Date();
   await getDatabase().insert(personalProjects).values({
     id: randomUUID(), userId: account.userId, directory: actual, directoryHash: hashSecret(actual), name, createdAt: now, updatedAt: now,

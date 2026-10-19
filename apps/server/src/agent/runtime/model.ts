@@ -24,10 +24,19 @@ export async function createAgentModel(providerId: string, modelId: string, thin
   const account = requireAccount();
   const stream = runtime.stream.bind(runtime);
   const streamSimple = runtime.streamSimple.bind(runtime);
+  const wrapFetch = (fetchImpl?: typeof fetch): typeof fetch | undefined => {
+    if (!fetchImpl && providerId !== "dashscope") return undefined;
+    return ((...args: Parameters<typeof fetch>) => {
+      const [input, init] = args;
+      const headers = new Headers(init?.headers);
+      if (providerId === "dashscope") headers.set("X-DashScope-OssResourceResolve", "enable");
+      return (fetchImpl ?? globalThis.fetch)(input, { ...init, headers });
+    }) as typeof fetch;
+  };
   runtime.stream = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
     const requestOptions = { ...options, maxTokens: options?.maxTokens ?? selected.maxTokens };
-    return createChargedStream({ providerId, modelId, model: selected, context, fetch: options?.fetch, signal: options?.signal }, (signal, recordPayload, guardedFetch) => stream<Api>({ ...selected, id: model.id }, context, {
+    return createChargedStream({ providerId, modelId, model: selected, context, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => stream<Api>({ ...selected, id: model.id }, context, {
       ...requestOptions, signal, fetch: guardedFetch,
       onPayload: async (payload, requestModel) => {
         const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;
@@ -38,7 +47,7 @@ export async function createAgentModel(providerId: string, modelId: string, thin
   };
   runtime.streamSimple = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
-    return createChargedStream({ providerId, modelId, model: selected, context, fetch: options?.fetch, signal: options?.signal }, (signal, recordPayload, guardedFetch) => streamSimple({ ...selected, id: model.id }, context, {
+    return createChargedStream({ providerId, modelId, model: selected, context, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => streamSimple({ ...selected, id: model.id }, context, {
       ...options, signal, fetch: guardedFetch,
       onPayload: async (payload, requestModel) => {
         const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;

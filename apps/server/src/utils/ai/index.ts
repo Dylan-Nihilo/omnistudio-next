@@ -6,10 +6,12 @@ import type { Context, Model } from "@earendil-works/pi-ai";
 import { z } from "zod";
 import { readReference } from "@/utils/media/generation";
 import modelContextLimits from "@/utils/ai/modelContextLimits";
+import { getVideoInputCapability, type VideoInputCapability } from "@/utils/ai/platformCatalog";
 import { getPlatformModel, listPlatformModels } from "@/services/modelService";
 import { createChargedStream } from "@/services/generationService";
 
 export { fetchProviderModels } from "@/utils/ai/models";
+export { getVideoInputCapability };
 
 export const providerSchema = z.object({
   apiUrl: z.url({ protocol: /^https?$/ }),
@@ -55,6 +57,7 @@ export async function listAiModels() {
   return models.map(model => ({
     providerId: model.providerId, providerLabel: providerDisplayNames[model.providerId] ?? model.providerId, protocol: model.protocol, modelId: model.modelId, label: model.label,
     contextWindow: 262144, maxOutputTokens: 32768, capabilities: model.capabilities,
+    videoInput: getVideoInputCapability(model.providerId, model.modelId),
   }));
 }
 
@@ -70,12 +73,37 @@ export const aiReferenceSchema = z.discriminatedUnion("dataType", [
   z.object({ dataType: z.literal("VIDEO"), value: z.object({ url: z.string().min(1).max(4096), mimeType: z.string().startsWith("video/") }) }),
 ]);
 
-export async function readAiReferences(directory: string | undefined, references: z.infer<typeof aiReferenceSchema>[], signal?: AbortSignal) {
+export async function readAiReferences(directory: string | undefined, references: z.infer<typeof aiReferenceSchema>[], signal?: AbortSignal, videoInput?: VideoInputCapability, apiKey?: string) {
   return Promise.all(references.map(async (item) => {
-    if (item.dataType === "STRING") return { dataType: item.dataType, value: item.value };
+    if (item.dataType === "STRING") return { dataType: item.dataType, value: item.value, useOss: false };
+    if (item.dataType === "VIDEO" && !videoInput?.supported) throw Object.assign(new Error("当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus"), { status: 400 });
+    // ACT: 公网 HTTP/HTTPS 视频直传给模型 video_url，无需本地转换并享受官方 1 GB / 2 小时规格。
+    if (item.dataType === "VIDEO" && /^https?:\/\//i.test(item.value.url)) {
+      return { dataType: item.dataType, value: item.value.url, useOss: false };
+    }
     if (!directory) throw Object.assign(new Error("媒体参考需要工作目录"), { status: 400 });
+    if (item.dataType === "VIDEO") {
+      const { resolveWorkspacePath } = await import("@/utils/workspace/files");
+      const { stat: fsStat, readFile: fsReadFile } = await import("node:fs/promises");
+      const { path } = await resolveWorkspacePath(directory, item.value.url);
+      const info = await fsStat(path);
+      const maxBase64 = videoInput?.maxBase64Bytes ?? 7864320;
+      const maxUrl = videoInput?.maxUrlBytes ?? 1073741824;
+      if (info.size > maxUrl) throw Object.assign(new Error("视频文件超过当前模型上限（1 GB）"), { status: 400 });
+      if (info.size > maxBase64) {
+        if (!apiKey) throw Object.assign(new Error("本地视频超过 7.5 MB，需配置百炼 API Key 自动上传或使用公网视频链接（最大 1 GB）"), { status: 400 });
+        const { uploadDashscopeVideo } = await import("@/utils/ai/dashscopeUpload");
+        const bytes = await fsReadFile(path, { signal });
+        const ossUrl = await uploadDashscopeVideo(apiKey, bytes, item.value.mimeType, item.value.url, signal);
+        return { dataType: item.dataType, value: ossUrl, useOss: true };
+      }
+    }
     const media = await readReference(directory, { path: item.value.url, mimeType: item.value.mimeType }, item.dataType.toLowerCase(), signal);
-    return { dataType: item.dataType, value: `data:${media.mimeType};base64,${media.data}` };
+    const value = `data:${media.mimeType};base64,${media.data}`;
+    if (item.dataType === "VIDEO" && videoInput?.maxEncodedBytes && Buffer.byteLength(value) >= videoInput.maxEncodedBytes) {
+      throw Object.assign(new Error(`视频 Base64 编码后必须小于 ${Math.floor(videoInput.maxEncodedBytes / 1024 / 1024)} MB`), { status: 400 });
+    }
+    return { dataType: item.dataType, value, useOss: false };
   }));
 }
 
@@ -90,14 +118,16 @@ export function referenceContent(protocol: string, prompt: string, references: A
         ? { type: "image_url", image_url: { url: item.value } }
         : { type: "video_url", video_url: { url: item.value } });
     } else if (protocol === "openai-responses") {
+      if (item.dataType === "VIDEO") throw Object.assign(new Error("当前 OpenAI Responses 模型未声明原生视频输入能力"), { status: 400 });
       const extension = item.value.slice(11, item.value.indexOf(";")).replace("quicktime", "mov");
       content.push(item.dataType === "IMAGE"
         ? { type: "input_image", image_url: item.value, detail: "auto" }
         : { type: "input_file", filename: `reference${index + 1}.${extension}`, file_data: item.value });
     } else {
+      if (item.dataType === "VIDEO") throw Object.assign(new Error("Anthropic Claude 官方 API 不支持原生视频输入"), { status: 400 });
       const separator = item.value.indexOf(",");
       content.push({
-        type: item.dataType === "IMAGE" ? "image" : "document",
+        type: "image",
         source: { type: "base64", media_type: item.value.slice(5, item.value.indexOf(";")), data: item.value.slice(separator + 1) },
       });
     }
@@ -120,12 +150,20 @@ export function streamAi(
     contextWindow: configuredModel.contextWindow,
     maxTokens: configuredModel.maxOutputTokens,
   };
-  // ACT: 不按模型名预判附件能力；按供应商协议传递，是否支持由上游接口决定。
+  const videoInput = getVideoInputCapability(configured.catalog.providerId, configured.catalog.modelId);
+  if (references.some(item => item.dataType === "VIDEO") && !videoInput?.supported) {
+    throw Object.assign(new Error("当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus"), { status: 400 });
+  }
   const maxTokens = configuredModel.maxOutputTokens;
+  const useOss = references.some(item => (item as { useOss?: boolean }).useOss);
   return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
     apiKey: provider.apiKey,
     signal: streamSignal,
-    fetch: guardedFetch,
+    fetch: ((input, init) => {
+      const headers = new Headers(init?.headers);
+      if (useOss) headers.set("X-DashScope-OssResourceResolve", "enable");
+      return guardedFetch(input, { ...init, headers });
+    }) as typeof fetch,
     maxTokens,
     onPayload: async (payload) => {
       if (!references.length) { await recordPayload(payload); return payload; }

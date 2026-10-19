@@ -63,6 +63,7 @@ export interface CanvasToolCall {
 export interface CanvasInfo {
   id: string;
   tools: NodeToolInfo[];
+  version?: string;
 }
 
 export interface CanvasContext extends CanvasInfo {
