@@ -315,6 +315,25 @@
         "vue": "^3.5.42",
       },
     },
+    "packages/nodes/videoComposeNode": {
+      "name": "@omnistudio-next/node-video-compose",
+      "version": "2.0.0",
+      "dependencies": {
+        "@tabler/icons-vue": "^3.46.0",
+      },
+      "devDependencies": {
+        "@omnistudio-next/nodes-scaffold": "workspace:*",
+        "typescript": "~6.0.3",
+        "vite": "^8.2.2",
+        "vue-tsc": "^3.3.11",
+      },
+      "peerDependencies": {
+        "@omnistudio-next/ui": "workspace:*",
+        "@vue-flow/core": "^1.48.2",
+        "element-plus": "^2.14.5",
+        "vue": "^3.5.42",
+      },
+    },
     "packages/nodes/videoGenerationNode": {
       "name": "@omnistudio-next/node-video-generation",
       "version": "2.0.0",
@@ -892,6 +911,8 @@
     "@omnistudio-next/node-text": ["@omnistudio-next/node-text@workspace:packages/nodes/textNode"],
 
     "@omnistudio-next/node-video": ["@omnistudio-next/node-video@workspace:packages/nodes/videoNode"],
+
+    "@omnistudio-next/node-video-compose": ["@omnistudio-next/node-video-compose@workspace:packages/nodes/videoComposeNode"],
 
     "@omnistudio-next/node-video-generation": ["@omnistudio-next/node-video-generation@workspace:packages/nodes/videoGenerationNode"],
 
@@ -2438,6 +2459,8 @@
     "@omnistudio-next/node-text/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@omnistudio-next/node-video/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+
+    "@omnistudio-next/node-video-compose/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@omnistudio-next/node-video-generation/typescript": ["typescript@6.0.3", "https://registry.npmmirror.com/typescript/-/typescript-6.0.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 

@@ -126,7 +126,7 @@ export function useNodeToolsContext() {
     get version() { return index.version; },
     list,
     async call({ nodeId, name, args }, signal) {
-      const isLongRunning = name === "node:generateVideo" || name === "node:generateImage";
+      const isLongRunning = name === "node:generateVideo" || name === "node:generateImage" || name === "node:composeVideos";
       const timeoutMs = isLongRunning ? 900000 : 120000;
       const timeout = AbortSignal.timeout(timeoutMs);
       const callSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
