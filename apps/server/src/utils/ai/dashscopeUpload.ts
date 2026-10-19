@@ -22,7 +22,7 @@ export async function uploadDashscopeVideo(apiKey: string, bytes: Uint8Array, mi
   form.append("x-oss-object-acl", "private");
   form.append("x-oss-forbid-overwrite", "true");
   form.append("success_action_status", "200");
-  form.append("file", new Blob([bytes], { type: mimeType }), key.split("/").pop()!);
+  form.append("file", new Blob([Buffer.from(bytes)], { type: mimeType }), key.split("/").pop()!);
   const uploadResponse = await fetch(data.upload_host, { method: "POST", body: form, signal });
   if (!uploadResponse.ok) {
     const detail = (await uploadResponse.text().catch(() => "")).trim().slice(0, 300);
