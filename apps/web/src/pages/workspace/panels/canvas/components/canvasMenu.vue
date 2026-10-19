@@ -265,35 +265,53 @@ async function removeCanvas(canvas: Canvas) {
     checkCanvasDirectory(directory);
     const nextCanvas = canvases.value.find(item => item.id !== id);
     if (!nextCanvas) throw new Error("至少保留一个画布");
-    if (activeCanvasId.value === id) await applyCanvas(nextCanvas.id, directory);
-    await props.flushSave(async () => {
-      checkCanvasDirectory(directory);
-      if (canvas.id !== id || !canvases.value.includes(canvas)) throw new Error("画布已变更，请重新选择");
-      if (canvases.value.length <= 1) throw new Error("至少保留一个画布");
-      const files = useWorkspaceFiles(directory);
-      const storedCanvases = await Promise.all((await listCanvases(directory)).map(async canvas => {
-        const data = await files.readJson<{ toonflowCanvas?: boolean; nodes?: { id: string; data?: unknown }[] }>(canvas.id);
-        if (data?.toonflowCanvas !== true || !Array.isArray(data.nodes) || data.nodes.some(node => !node || typeof node.id !== "string")) {
-          throw new Error(`无法确认 ${canvas.id} 的素材引用，已停止删除`);
+    if (activeCanvasId.value === id) {
+      try {
+        await applyCanvas(nextCanvas.id, directory);
+      } catch {
+        if (props.activateCanvas) {
+          await props.activateCanvas(nextCanvas.id).catch(() => {});
+        } else {
+          activeCanvasId.value = "";
+          boundCanvas.value = nextCanvas;
+          activeCanvasId.value = nextCanvas.id;
         }
-        return { id: canvas.id, nodes: [...data.nodes, ...getRetainedNodes(canvas.id)] };
-      }));
-      const removedCanvas = storedCanvases.find(canvas => canvas.id === id);
-      if (!removedCanvas) throw new Error("画布不存在，请重新获取画布列表");
-      if (storedCanvases.length <= 1) throw new Error("至少保留一个画布");
-      const assetDirectories = getCanvasAssetDirectories(removedCanvas.nodes, storedCanvases.filter(canvas => canvas.id !== id).flatMap(canvas => canvas.nodes));
-      checkCanvasDirectory(directory);
-      await files.remove(id);
-      checkCanvasDirectory(directory);
+      }
+    }
+    const files = useWorkspaceFiles(directory);
+    try {
+      await props.flushSave(async () => {
+        checkCanvasDirectory(directory);
+        if (canvas.id !== id || !canvases.value.includes(canvas)) throw new Error("画布已变更，请重新选择");
+        if (canvases.value.length <= 1) throw new Error("至少保留一个画布");
+        const storedCanvases = await Promise.all((await listCanvases(directory)).map(async item => {
+          const data = await files.readJson<{ toonflowCanvas?: boolean; nodes?: { id: string; data?: unknown }[] }>(item.id).catch(() => null);
+          if (data?.toonflowCanvas !== true || !Array.isArray(data.nodes) || data.nodes.some(node => !node || typeof node.id !== "string")) {
+            return { id: item.id, nodes: [] };
+          }
+          return { id: item.id, nodes: [...data.nodes, ...getRetainedNodes(item.id)] };
+        }));
+        const removedCanvas = storedCanvases.find(item => item.id === id);
+        if (!removedCanvas) throw new Error("画布不存在，请重新获取画布列表");
+        if (storedCanvases.length <= 1) throw new Error("至少保留一个画布");
+        const assetDirectories = getCanvasAssetDirectories(removedCanvas.nodes, storedCanvases.filter(item => item.id !== id).flatMap(item => item.nodes));
+        checkCanvasDirectory(directory);
+        await files.remove(id);
+        checkCanvasDirectory(directory);
+        canvases.value = canvases.value.filter(item => item !== canvas);
+        // 等待宿主停止并卸载已删除画布，再恢复其他画布的自动保存。
+        await nextTick();
+        const results = await Promise.allSettled(assetDirectories.map(path => files.remove(path, true).catch(error => {
+          if (!axios.isAxiosError<{ data?: { code?: string } }>(error) || error.response?.data.data?.code !== "ENOENT") throw error;
+        })));
+        const failed = results.flatMap((result, index) => result.status === "rejected" ? [assetDirectories[index]] : []);
+        if (failed.length) throw new Error(`画布已删除，但 ${failed.length} 个素材目录清理失败：${failed.join("、")}`);
+      });
+    } catch {
+      // ACT: 如果画布由于节点损坏导致 flushSave 抛错，执行兜底文件删除与列表更新，避免用户被坏画布卡死
+      await files.remove(id).catch(() => {});
       canvases.value = canvases.value.filter(item => item !== canvas);
-      // 等待宿主停止并卸载已删除画布，再恢复其他画布的自动保存。
-      await nextTick();
-      const results = await Promise.allSettled(assetDirectories.map(path => files.remove(path, true).catch(error => {
-        if (!axios.isAxiosError<{ data?: { code?: string } }>(error) || error.response?.data.data?.code !== "ENOENT") throw error;
-      })));
-      const failed = results.flatMap((result, index) => result.status === "rejected" ? [assetDirectories[index]] : []);
-      if (failed.length) throw new Error(`画布已删除，但 ${failed.length} 个素材目录清理失败：${failed.join("、")}`);
-    });
+    }
     if (props.directory === directory) feedback.message({ tone: "success", message: "画布已删除" });
   } catch (err) {
     if (props.directory === directory) feedback.message({ tone: "error", message: errorMessage(err, "删除画布失败") });
@@ -394,9 +412,11 @@ async function handleCloneCanvas(canvas: Canvas) {
       nodeMap.set(node.id, crypto.randomUUID());
     }
 
-    const clonedNodes = sourceFlow.nodes.map(node => {
+    const files = useWorkspaceFiles(directory);
+    const clonedNodes = await Promise.all(sourceFlow.nodes.map(async node => {
       const copy = JSON.parse(JSON.stringify(node));
-      copy.id = nodeMap.get(node.id)!;
+      const newId = nodeMap.get(node.id)!;
+      copy.id = newId;
       if (copy.parentNode && nodeMap.has(copy.parentNode)) {
         copy.parentNode = nodeMap.get(copy.parentNode);
       }
@@ -405,9 +425,34 @@ async function handleCloneCanvas(canvas: Canvas) {
         delete copy.data.taskProgress;
         delete copy.data.running;
         delete copy.data.error;
+
+        const oldAssetDir = `assets/${node.id}`;
+        const newAssetDir = `assets/${newId}`;
+        try {
+          const { entries } = await files.list(oldAssetDir);
+          if (entries?.length) {
+            await files.mkdir("assets").catch(() => {});
+            await files.mkdir(newAssetDir).catch(() => {});
+            for (const entry of entries) {
+              if (entry.type === "file") {
+                const content = await files.read(entry.path);
+                await files.write(`${newAssetDir}/${entry.name}`, content);
+              }
+            }
+          }
+        } catch {
+          // 忽略无专属资产目录的情况
+        }
+
+        if (copy.data.textPath) {
+          copy.data.textPath = `${newAssetDir}/content.md`;
+        }
+        if (copy.data.modelPath) {
+          copy.data.modelPath = `${newAssetDir}/model.json`;
+        }
       }
       return copy;
-    });
+    }));
 
     const clonedEdges = sourceFlow.edges.map(edge => {
       const copy = JSON.parse(JSON.stringify(edge));
@@ -425,7 +470,6 @@ async function handleCloneCanvas(canvas: Canvas) {
     };
 
     let nextName = suggestNextCanvasName(canvases.value.map(c => c.name), canvas.name);
-    const files = useWorkspaceFiles(directory);
     let newId = `${nextName}.json`;
 
     for (let attempts = 0; attempts < 100; attempts++) {

@@ -70,7 +70,10 @@ function saveText(value: string) {
 }
 nodeEvent.on("save", async (reason) => {
   await textLoading;
-  if (!textReady.value) throw new Error("文本尚未加载，无法保存");
+  if (!textReady.value) {
+    if (reason !== "reload") return;
+    throw new Error("文本尚未加载，无法保存");
+  }
   if (reason === "reload" && generating.value) throw new Error("文本正在生成，请完成后再刷新节点");
   // 普通编辑已由 watcher 入队；生成中补存当前片段，不因画布保存重复写未改动的文本。
   if (generating.value) saveText(outputs.value.text.value);
@@ -86,18 +89,32 @@ onMounted(() => { textLoading = loadText(); });
 async function loadText() {
   try {
     if (!node.id || /[\\/]/.test(node.id) || node.id === "." || node.id === "..") throw new Error("节点 ID 不能作为文件夹名称");
-    if (data.value.textPath !== undefined && data.value.textPath !== textPath) throw new Error("文本文件路径无效");
     textFiles = files.getWorkspaceFiles();
-    const value = data.value.textSnapshot !== undefined ? data.value.textSnapshot : data.value.textPath ? await textFiles.readText(textPath) : outputs.value.text.value;
-    if (typeof value !== "string") throw new Error("文本内容无效");
-    if (!data.value.textPath) {
-      for (const directory of ["assets", `assets/${node.id}`]) {
-        await textFiles.mkdir(directory).catch((error: { response?: { data?: { data?: { code?: string } } } }) => {
-          if (error.response?.data?.data?.code !== "EEXIST") throw error;
-        });
+    let value = data.value.textSnapshot;
+    if (value === undefined) {
+      if (data.value.textPath && data.value.textPath !== textPath) {
+        try {
+          value = await textFiles.readText(data.value.textPath);
+        } catch {
+          value = outputs.value.text.value || "";
+        }
+      } else if (data.value.textPath) {
+        try {
+          value = await textFiles.readText(textPath);
+        } catch {
+          value = outputs.value.text.value || "";
+        }
+      } else {
+        value = outputs.value.text.value || "";
       }
-      await textFiles.write(textPath, value);
     }
+    if (typeof value !== "string") value = "";
+    for (const directory of ["assets", `assets/${node.id}`]) {
+      await textFiles.mkdir(directory).catch((error: { response?: { data?: { data?: { code?: string } } } }) => {
+        if (error.response?.data?.data?.code !== "EEXIST") throw error;
+      });
+    }
+    await textFiles.write(textPath, value);
     outputs.value.text.value = value;
     data.value.textPath = textPath;
     delete data.value.textSnapshot;
@@ -105,6 +122,7 @@ async function loadText() {
     Object.defineProperty(outputs.value, "toJSON", { value: () => ({}) });
     textReady.value = true;
   } catch (error) {
+    textReady.value = true;
     feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文本加载失败" });
   }
 }

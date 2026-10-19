@@ -118,11 +118,18 @@ async function loadModel() {
     const { modelPath, modelSnapshot } = data.value;
     if (!modelPath && !modelSnapshot) return;
     const workspaceFiles = files.getWorkspaceFiles();
-    if (modelPath && modelPath !== getModelPath()) throw new Error("导演台模型文件路径无效");
-    const value = modelDocumentSchema.parse(modelSnapshot ?? await workspaceFiles.readJson(modelPath!));
+    let snapshot = modelSnapshot;
+    if (!snapshot && modelPath && modelPath !== getModelPath()) {
+      try {
+        snapshot = await workspaceFiles.readJson(modelPath);
+      } catch {
+        // ignore
+      }
+    }
+    const value = modelDocumentSchema.parse(snapshot ?? await workspaceFiles.readJson(modelPath!));
     if (disposed) return;
-    // 复制、跨画布粘贴时只传递一次快照，写入新节点目录成功后才移除快照。
-    if (modelSnapshot) {
+    // 复制、跨画布粘贴或路径不一致时，写入新节点目录成功后才移除快照。
+    if (snapshot || (modelPath && modelPath !== getModelPath())) {
       const path = await writeModel(workspaceFiles, value);
       if (disposed) return;
       data.value.modelPath = path;
