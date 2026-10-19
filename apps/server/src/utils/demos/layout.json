@@ -1,0 +1,779 @@
+{
+  "groups": [
+    {
+      "id": "c0c464c1-1660-4157-8361-70655bca70c1",
+      "type": "canvasGroup",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "width": "1542px",
+        "height": "546px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "00 · 项目总览｜当前剧本与完整成片"
+      }
+    },
+    {
+      "id": "d85728cf-a0c7-481a-b013-64709abee574",
+      "type": "canvasGroup",
+      "position": {
+        "x": 1622,
+        "y": 0
+      },
+      "style": {
+        "width": "1542px",
+        "height": "860px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "01 · 角色定妆｜五位主要角色"
+      }
+    },
+    {
+      "id": "b0013efc-b61c-407a-9f64-b8c84d0f828d",
+      "type": "canvasGroup",
+      "position": {
+        "x": 0,
+        "y": 594
+      },
+      "style": {
+        "width": "1542px",
+        "height": "446px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "02 · 场景参考｜升学宴与后门楼梯"
+      }
+    },
+    {
+      "id": "7ddd6f75-1813-443d-9616-e2db5ccdacd4",
+      "type": "canvasGroup",
+      "position": {
+        "x": 3244,
+        "y": 0
+      },
+      "style": {
+        "width": "2056px",
+        "height": "860px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "03 · 道具参考｜通知书、文件袋与随身物"
+      }
+    },
+    {
+      "id": "a36eea1d-971a-48c6-89e3-d07cc806ead0",
+      "type": "canvasGroup",
+      "position": {
+        "x": 5380,
+        "y": 0
+      },
+      "style": {
+        "width": "1028px",
+        "height": "1060px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "04 · 第一场｜升学宴撕纸与补拍"
+      }
+    },
+    {
+      "id": "5810c61c-5dbb-402a-b6cc-dcf872a208d2",
+      "type": "canvasGroup",
+      "position": {
+        "x": 0,
+        "y": 1140
+      },
+      "style": {
+        "width": "2056px",
+        "height": "1060px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "05 · 第二场｜三小时前：收件与撕纸"
+      }
+    },
+    {
+      "id": "e072ed3d-ca89-405e-af25-a9265fbc36f1",
+      "type": "canvasGroup",
+      "position": {
+        "x": 2136,
+        "y": 1140
+      },
+      "style": {
+        "width": "2570px",
+        "height": "1060px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "06 · 第三场｜父亲偏袒与辞退威胁"
+      }
+    },
+    {
+      "id": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d",
+      "type": "canvasGroup",
+      "position": {
+        "x": 4786,
+        "y": 1140
+      },
+      "style": {
+        "width": "2056px",
+        "height": "1060px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "07 · 第四场｜周曼入场、认人与追问"
+      }
+    },
+    {
+      "id": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6",
+      "type": "canvasGroup",
+      "position": {
+        "x": 0,
+        "y": 2280
+      },
+      "style": {
+        "width": "2056px",
+        "height": "890px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "08 · 历史归档｜剧本旧稿与停用道具"
+      }
+    },
+    {
+      "id": "41ad9b14-1aad-4781-92df-fcd99a884f91",
+      "type": "canvasGroup",
+      "position": {
+        "x": 2136,
+        "y": 2280
+      },
+      "style": {
+        "width": "2570px",
+        "height": "890px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "09 · 前期预演｜开场构图与 3D 镜位"
+      }
+    },
+    {
+      "id": "d5693752-1609-4842-9546-b9ad99020b51",
+      "type": "canvasGroup",
+      "position": {
+        "x": 4786,
+        "y": 2280
+      },
+      "style": {
+        "width": "2056px",
+        "height": "960px"
+      },
+      "connectable": false,
+      "expandParent": false,
+      "data": {
+        "label": "10 · 历史归档｜开场关键帧与试片"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "fb185d7e-1c73-4d12-ae1e-07eec958631c",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "c0c464c1-1660-4157-8361-70655bca70c1",
+      "label": "当前剧本 v11 · 末幕面向秦家"
+    },
+    {
+      "id": "ef865999-738a-4301-91aa-1b6765389e50",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "c0c464c1-1660-4157-8361-70655bca70c1",
+      "label": "《拼回去》· 横版封面"
+    },
+    {
+      "id": "d37fdb2d-4b99-461b-ae29-cf6775945f85",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "c0c464c1-1660-4157-8361-70655bca70c1"
+    },
+    {
+      "id": "bb01432b-aa7c-4d28-8c95-3f7bc60f1932",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574"
+    },
+    {
+      "id": "ff0bf280-f08d-43b4-b2c0-42106585722e",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574"
+    },
+    {
+      "id": "1a83200f-04f3-4ec9-a118-48e54d94488e",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574"
+    },
+    {
+      "id": "d49243c4-bacb-40e4-905a-79daff8f1fc5",
+      "position": {
+        "x": 32,
+        "y": 478
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574",
+      "label": "沈禾定妆 v1 · 原始提示词"
+    },
+    {
+      "id": "a687a2c6-7ce7-4dcd-9b31-26fdb15d9c85",
+      "position": {
+        "x": 546,
+        "y": 478
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574"
+    },
+    {
+      "id": "33592533-45a4-4109-b542-6d96112ab9d7",
+      "position": {
+        "x": 1060,
+        "y": 478
+      },
+      "parentNode": "d85728cf-a0c7-481a-b013-64709abee574"
+    },
+    {
+      "id": "a29dfe02-719a-4f72-860a-28e81901cda8",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "b0013efc-b61c-407a-9f64-b8c84d0f828d"
+    },
+    {
+      "id": "c71190d9-4e09-4f2c-bdc3-fadca9b116a5",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "b0013efc-b61c-407a-9f64-b8c84d0f828d"
+    },
+    {
+      "id": "43d20a7f-e79c-4dca-bdbe-6030577e1c05",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "b0013efc-b61c-407a-9f64-b8c84d0f828d"
+    },
+    {
+      "id": "1fb8d191-2e37-41bb-b6f6-c4711e891132",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "467be1f8-3aad-4c26-9f1a-20a8d2b02376",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "d1152fcc-a40e-49d9-9a4c-a144fe4eb740",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "401a1d7d-2e2b-4a5f-8c3f-77a91dde82f9",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "9f2553a8-15ce-4298-a168-42214ea7bd06",
+      "position": {
+        "x": 32,
+        "y": 478
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "6d0a2c64-bf0d-4cd0-a892-11c2e280072b",
+      "position": {
+        "x": 546,
+        "y": 478
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "4779b8f7-fc31-45c3-8465-e44cb9a5aefe",
+      "position": {
+        "x": 1060,
+        "y": 478
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "4cdab8a5-32b0-47fc-9e86-5330c9203883",
+      "position": {
+        "x": 1574,
+        "y": 478
+      },
+      "parentNode": "7ddd6f75-1813-443d-9616-e2db5ccdacd4"
+    },
+    {
+      "id": "7b03f5b2-7c0a-4a2e-b033-07608ed82933",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "a36eea1d-971a-48c6-89e3-d07cc806ead0"
+    },
+    {
+      "id": "52065fe2-c7a0-4e13-b7da-ea5c189bce4c",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "a36eea1d-971a-48c6-89e3-d07cc806ead0"
+    },
+    {
+      "id": "816157d3-5756-4717-94bd-be6fd1d83927",
+      "position": {
+        "x": 32,
+        "y": 578
+      },
+      "parentNode": "a36eea1d-971a-48c6-89e3-d07cc806ead0"
+    },
+    {
+      "id": "3e9e1eb3-9f2f-4dc3-953c-c82837f7a09a",
+      "position": {
+        "x": 546,
+        "y": 578
+      },
+      "parentNode": "a36eea1d-971a-48c6-89e3-d07cc806ead0"
+    },
+    {
+      "id": "07f260e5-f7fc-4a50-ae2d-32181e915778",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "a399b487-3614-4506-89b1-1baa617ed0eb",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "94bcca6f-d772-4703-a00c-898f7b0b0f79",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "72e8cd9c-b41d-4295-bdb9-b6a494680011",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "68b20361-1078-449d-a0e7-7baf4f62cb6d",
+      "position": {
+        "x": 32,
+        "y": 578
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "05c41fa4-5b5c-4da3-8621-6412006eecde",
+      "position": {
+        "x": 546,
+        "y": 578
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "8a484ae5-d9fe-4aae-9cf2-07f59b4fd6a6",
+      "position": {
+        "x": 1060,
+        "y": 578
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "987a3b6d-fb07-44f1-a786-9c4d3dd964dc",
+      "position": {
+        "x": 1574,
+        "y": 578
+      },
+      "parentNode": "5810c61c-5dbb-402a-b6cc-dcf872a208d2"
+    },
+    {
+      "id": "1fdacea2-ea2d-49dc-a25b-1156e8cc6e77",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "7acabfb8-3089-42a7-b9b4-b2d64d934df8",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "8cc5c837-94c6-49e9-85f5-b1d608d5c67d",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "31102882-3935-4e63-b05a-a13acd625d3c",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "79bcf4a9-8074-4c03-aa8c-a3980050dda9",
+      "position": {
+        "x": 2088,
+        "y": 64
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "d5750193-d95d-43eb-9198-823184f81693",
+      "position": {
+        "x": 32,
+        "y": 578
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "23fabb68-3140-4c75-96a7-b5f31f5c0b33",
+      "position": {
+        "x": 546,
+        "y": 578
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "5974d398-a6be-4606-91c9-c749b0ec7123",
+      "position": {
+        "x": 1060,
+        "y": 578
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "f716d196-4bf9-4d79-ab6e-c55f61b6b67c",
+      "position": {
+        "x": 1574,
+        "y": 578
+      },
+      "parentNode": "e072ed3d-ca89-405e-af25-a9265fbc36f1"
+    },
+    {
+      "id": "43f515f5-7d37-4a28-ba36-2b49900b95c0",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "86f5c542-57dd-40f5-b89a-e98c3810992c",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "469ebd6e-13be-434c-aec4-c57a57cf1b31",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "d9a5b2e7-cd8f-43e0-98f0-c27f2b875328",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "2237ac0b-27e8-44d2-a0e0-0cf0132037f9",
+      "position": {
+        "x": 32,
+        "y": 578
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "753769ae-6895-4fa6-823f-22a2cd791d9f",
+      "position": {
+        "x": 546,
+        "y": 578
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "15b042a3-27fa-4a21-8b64-c4bf9e1991b3",
+      "position": {
+        "x": 1060,
+        "y": 578
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "48d6507c-acb6-4d72-b813-61fd78c964b4",
+      "position": {
+        "x": 1574,
+        "y": 578
+      },
+      "parentNode": "ec84e93d-a79e-4f27-8bde-cd28dc3a6e4d"
+    },
+    {
+      "id": "62d0c190-d417-4b44-ad5e-7892708808ba",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "72167c96-aad9-4c87-a210-85eace17eb76",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "e69f6b01-6868-4d64-9fb0-2d9b5d438138",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "c55d22e5-32e9-457b-99c1-fb30e2c76ca6",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6",
+      "label": "第一集剧本 v4 · 历史已通过稿"
+    },
+    {
+      "id": "0d8fa8d5-269d-450a-a78c-6db9de54586c",
+      "position": {
+        "x": 32,
+        "y": 508
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "ff8cdebb-2927-4551-9b12-4a606ab07799",
+      "position": {
+        "x": 546,
+        "y": 508
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "832c632f-c0a6-4907-bc64-fd5a4bfa24c4",
+      "position": {
+        "x": 1060,
+        "y": 508
+      },
+      "parentNode": "eaaca068-d0e2-4e50-9c4a-edf7d01f7ca6"
+    },
+    {
+      "id": "164e1cb8-e091-43ee-a9e3-e73eeed0c97e",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "073507d9-577f-4225-a829-05889a6e4571",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "8b6cca24-6025-4745-b154-e40b9d10911e",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "0cd1c2a4-de5c-4d53-856f-631f0d14cc3e",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "554f3e42-83b8-4c1c-800a-8728c50c7b93",
+      "position": {
+        "x": 2088,
+        "y": 64
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "2cfab073-4d35-4a7f-b14d-9801ef061a09",
+      "position": {
+        "x": 32,
+        "y": 508
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "1c72d2be-047a-465b-94df-7e173c6727d2",
+      "position": {
+        "x": 546,
+        "y": 508
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "74a3d651-2d11-4fbb-83fe-5b623d66aa79",
+      "position": {
+        "x": 1060,
+        "y": 508
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "fd7c5982-2992-43ab-8ba7-a6278c8cb22b",
+      "position": {
+        "x": 1574,
+        "y": 508
+      },
+      "parentNode": "41ad9b14-1aad-4781-92df-fcd99a884f91"
+    },
+    {
+      "id": "eac20fa4-d5b5-41ef-8980-c0fbf1b44af8",
+      "position": {
+        "x": 32,
+        "y": 64
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "8d0181e7-d013-4fd5-aa06-b9d22d0c5dda",
+      "position": {
+        "x": 546,
+        "y": 64
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "4fdf15a4-1b6f-4dbb-bfa2-a512cc8f0b97",
+      "position": {
+        "x": 1060,
+        "y": 64
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "ba142b92-64c0-4c56-867b-be53812cad57",
+      "position": {
+        "x": 1574,
+        "y": 64
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "be87d4e8-a36c-46a0-be19-f9ffcba8f363",
+      "position": {
+        "x": 32,
+        "y": 478
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "cb0548d8-ee06-4599-8a6a-3c50639c2215",
+      "position": {
+        "x": 546,
+        "y": 478
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51"
+    },
+    {
+      "id": "94d43b52-c379-497a-acf2-64146c13cb47",
+      "position": {
+        "x": 1060,
+        "y": 478
+      },
+      "parentNode": "d5693752-1609-4842-9546-b9ad99020b51",
+      "label": "开场 v3 · 历史暂采用版本"
+    }
+  ],
+  "viewport": {
+    "x": 40,
+    "y": 72,
+    "zoom": 0.9
+  }
+}
