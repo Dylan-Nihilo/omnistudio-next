@@ -1,15 +1,15 @@
 <template>
   <div class="home">
-    <aside class="homeSidebar" aria-label="主导航">
+    <header class="homeNavigation" aria-label="主导航">
       <a class="homeBrand" href="#/home" aria-label="万象点点首页"><img :src="logoUrl" alt="万象点点" /></a>
       <nav class="mainNavigation">
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'create' }" :icon="IconFolderPlus" @click="focusCreation">开始创作</uiButton>
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconFolder" title="跳转到最近项目" @click="focusProjects">最近项目</uiButton>
       </nav>
       <nav class="secondaryNavigation">
-        <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" @click="router.push('/account')">账户与积分</uiButton>
-        <uiButton class="navigationItem" variant="ghost" :icon="IconUsersGroup" @click="router.push('/teams')">团队空间</uiButton>
-        <uiButton v-if="auth.isRoot" class="navigationItem" variant="ghost" :icon="IconShieldLock" @click="router.push('/admin')">平台管理</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" aria-label="账户与积分" title="账户与积分" @click="router.push('/account')">账户与积分</uiButton>
+        <uiButton class="navigationItem" variant="ghost" :icon="IconUsersGroup" aria-label="团队空间" title="团队空间" @click="router.push('/teams')">团队空间</uiButton>
+        <uiButton v-if="auth.isRoot" class="navigationItem" variant="ghost" :icon="IconShieldLock" aria-label="平台管理" title="平台管理" @click="router.push('/admin')">平台管理</uiButton>
         <uiBadge dot :hidden="!hasDesktopUpdate" label="有新版本可用"><uiButton class="navigationItem" variant="ghost" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</uiButton></uiBadge>
       </nav>
       <div class="accountIdentity">
@@ -22,29 +22,46 @@
         </div>
         <span class="identityEmail" :title="auth.user?.email">{{ auth.user?.email }}</span>
       </div>
-    </aside>
+    </header>
     <main class="homeContent">
-      <header class="homeHeader"><span>创作工作台</span></header>
-      <section class="creationPanel" aria-labelledby="creationTitle">
-        <img class="heroArtwork" :src="heroInk" alt="" aria-hidden="true" />
-        <div class="creationContent">
-          <span class="creationMode">漫剧创作</span>
-          <h1 id="creationTitle">下一部漫剧，<br />由你开场。</h1>
-          <img class="titleUnderline" :src="inkUnderline" alt="" aria-hidden="true" />
-          <div class="composer">
-            <uiTextarea ref="promptInput" v-model="prompt" class="promptInput" :rows="4" resize="none" :disabled="creating || opening" :placeholder="promptPlaceholder" aria-label="创作描述" />
-            <div class="composerFooter">
-              <workspacePicker ref="promptWorkspacePicker" v-model="workspaceDirectory" :disabled="creating || opening" />
-              <div class="sendActions">
-                <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" class="modelSelect" :disabled="creating || opening" />
-                <uiButton v-if="!workspaceDirectory" :icon="IconFolder" :loading="creating" :disabled="creating || opening" @click="promptWorkspacePicker?.chooseDirectory()">选择工作目录</uiButton>
-                <uiIconButton v-else :icon="IconArrowUp" label="发送" variant="primary" :loading="creating" :disabled="creating || opening" @click="createProject()" />
+      <header class="homeIntro"><h1>下一部漫剧，<br /><span>由你开场。</span></h1></header>
+      <div class="homeOverview" :class="{ hasDemos: demos.length }">
+        <section v-if="demos.length" class="demoCollection" aria-labelledby="demoCollectionTitle">
+          <header class="demoHeader"><h2 id="demoCollectionTitle">Demo 合集</h2></header>
+          <div class="demoItems">
+            <article v-for="demo in demos" :key="demo.id" class="demoCard">
+              <uiButton class="demoPreview" variant="ghost" :disabled="creating || opening" :aria-label="`观看成片：${demo.title}`" @click="previewDemo(demo)">
+                <img class="demoCover" :src="demo.coverUrl" :alt="`${demo.title}：${demo.description}`" />
+                <span class="demoPlay"><icon-player-play :size="14" aria-hidden="true" />观看成片</span>
+              </uiButton>
+              <div class="demoContent">
+                <div class="demoCaption">
+                  <h3 :title="demo.title">{{ demo.title }}</h3>
+                  <uiButton class="demoOpen" variant="ghost" size="small" :icon="IconArrowUpRight" :loading="opening" :disabled="creating || opening" @click="openDemo(demo)">打开画布</uiButton>
+                </div>
+                <span class="demoMeta">{{ demo.meta }}</span>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section class="creationPanel" aria-labelledby="creationTitle">
+          <header class="creationHeading"><h2 id="creationTitle" class="creationMode">漫剧创作</h2></header>
+          <div class="creationContent">
+            <div class="composer">
+              <uiTextarea ref="promptInput" v-model="prompt" class="promptInput" :rows="2" resize="none" :disabled="creating || opening" :placeholder="promptPlaceholder" aria-label="创作描述" />
+              <div class="composerFooter">
+                <workspacePicker ref="promptWorkspacePicker" v-model="workspaceDirectory" :disabled="creating || opening" />
+                <div class="sendActions">
+                  <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" class="modelSelect" :disabled="creating || opening" />
+                  <uiButton v-if="!workspaceDirectory" :icon="IconFolder" :loading="creating" :disabled="creating || opening" @click="promptWorkspacePicker?.chooseDirectory()">选择工作目录</uiButton>
+                  <uiIconButton v-else :icon="IconArrowUp" label="发送" variant="primary" :loading="creating" :disabled="creating || opening" @click="createProject()" />
+                </div>
               </div>
             </div>
+            <p class="workspaceHint" role="status">{{ workspaceDirectory ? '画布与素材会保存在你选择的文件夹里。' : '请先选择一个空文件夹作为工作目录，画布和素材会保存在这里。' }}</p>
           </div>
-          <p class="workspaceHint" role="status">{{ workspaceDirectory ? '画布与素材会保存在你选择的文件夹里。' : '请先选择一个空文件夹作为工作目录，画布和素材会保存在这里。' }}</p>
-        </div>
-      </section>
+        </section>
+      </div>
       <section ref="projectSection" class="projectList" aria-labelledby="projectListTitle">
         <header class="projectHeader">
           <h2 id="projectListTitle">最近项目</h2>
@@ -56,36 +73,19 @@
           </div>
         </header>
         <div class="projectItems" :class="{ listView: viewMode === 'list' }">
-          <article v-for="project in sortedProjects" :key="project.directory" class="projectCard">
-            <div class="projectCardHeader">
-              <img class="projectIcon" :src="markUrl" alt="" aria-hidden="true" />
-              <div class="projectActions">
-                <uiIconButton size="small" :icon="IconEdit" :disabled="creating || opening" :label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
-                <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="removeProject(project)" />
-              </div>
+          <article v-for="(project, index) in sortedProjects" :key="project.directory" class="projectCard">
+            <span class="projectNumber" aria-hidden="true">{{ String(index + 1).padStart(2, "0") }}</span>
+            <div class="projectActions">
+              <uiIconButton size="small" :icon="IconEdit" :disabled="creating || opening" :label="`重命名项目 ${project.name}`" title="重命名" @click="renameProject(project)" />
+              <uiIconButton size="small" variant="danger" :icon="IconTrash" :disabled="creating || opening" :label="`移除项目 ${project.name}`" title="从列表移除，不删除文件" @click="removeProject(project)" />
             </div>
-            <button class="projectEntry" type="button" :disabled="creating || opening" :aria-label="`打开项目 ${project.name}`" @click="openProject(project)">
+            <uiButton class="projectEntry" variant="ghost" :disabled="creating || opening" :aria-label="`打开项目 ${project.name}`" @click="openProject(project)">
               <span class="projectName" :title="project.name">{{ project.name }}</span>
               <span class="projectPath" :title="project.directory">{{ project.directory }}</span>
-            </button>
+            </uiButton>
             <div class="projectTime"><span>最近打开</span><time>{{ new Date(project.lastOpenedAt).toLocaleString('zh-CN', { hour12: false }) }}</time></div>
           </article>
         </div>
-      </section>
-      <section v-if="demos.length" class="demoCollection" aria-labelledby="demoCollectionTitle">
-        <header class="demoHeader"><h2 id="demoCollectionTitle">Demo 合集</h2></header>
-        <article v-for="demo in demos" :key="demo.id" class="demoCard">
-          <img class="demoCover" :src="demo.coverUrl" :alt="`${demo.title}：${demo.description}`" loading="lazy" />
-          <div class="demoContent">
-            <span class="demoMeta">{{ demo.meta }}</span>
-            <h3>{{ demo.title }}</h3>
-            <p>{{ demo.description }}</p>
-            <div class="demoActions">
-              <uiButton variant="primary" :icon="IconPlayerPlay" :disabled="creating || opening" @click="previewDemo(demo)">观看成片</uiButton>
-              <uiButton variant="secondary" :icon="IconFolderOpen" :loading="opening" :disabled="creating || opening" @click="openDemo(demo)">打开画布</uiButton>
-            </div>
-          </div>
-        </article>
       </section>
     </main>
     <uiDialog v-model="demoPreviewVisible" :title="`${selectedDemo?.title ?? ''} · 第一集`" width="min(1080px, 94vw)" showFullscreen destroyOnClose>
@@ -106,7 +106,7 @@ import { useRouter } from "vue-router";
 import { uiButton, uiIconButton, uiBadge, uiTextarea, uiRadioGroup, uiDialog, uiMediaPlayer, useUiFeedback, isUiCancelledError } from "@omnistudio-next/ui";
 import {
   IconSettings, IconUserCircle, IconUsersGroup, IconShieldLock,
-  IconArrowUp, IconLayoutGrid,
+  IconArrowUp, IconArrowUpRight, IconLayoutGrid,
   IconList, IconSortDescending,
   IconSortAscending, IconFolder, IconEdit,
   IconTrash, IconFolderPlus, IconFolderOpen, IconPlayerPlay,
@@ -114,14 +114,11 @@ import {
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
-import markUrl from "@omnistudio-next/assets/omniStudioNextMark.svg";
 import { useWorkspaceStore, type Project } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import settings from "@/components/settings/index.vue";
-import heroInk from "@omnistudio-next/assets/illustrations/heroInk.png";
-import inkUnderline from "@omnistudio-next/assets/illustrations/inkUnderline.svg";
 import workspacePicker from "./workspacePicker.vue";
 import homeTour from "@/components/onboarding/homeTour.vue";
 import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
@@ -349,15 +346,18 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
 
 <style lang="scss" scoped>
 .home {
-  display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
-  .homeSidebar {
-    position: sticky; top: 0; display: flex; flex-direction: column; gap: 36px; height: 100dvh; min-width: 0; padding: 20px 16px 28px; border-right: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle);
-    .homeBrand { display: block; margin: 0 4px; img { display: block; width: 100%; height: auto; border-radius: 8px; } }
-    .mainNavigation, .secondaryNavigation { display: flex; flex-direction: column; gap: 10px; }
-    .secondaryNavigation { margin-top: auto; :deep(.uiBadge) { width: 100%; } }
-    .navigationItem { width: 100%; justify-content: flex-start; min-height: 40px; padding-inline: 12px; &.isSelected { color: var(--uiActionPrimary); background: var(--uiActionSoft); } }
+  min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
+  .homeNavigation {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; min-height: 88px;
+    max-width: 1536px; margin-inline: auto; padding: 12px 64px;
+    .homeBrand { display: block; flex-shrink: 0; width: 164px; img { display: block; width: 100%; height: auto; } }
+    .mainNavigation, .secondaryNavigation { display: flex; align-items: center; gap: 8px; }
+    .mainNavigation {
+      .navigationItem { min-height: 40px; padding-inline: 10px; border-radius: 0; background: transparent; color: var(--uiTextMuted); &.isSelected { color: var(--uiTextPrimary); box-shadow: inset 0 -2px var(--uiActionPrimary); } }
+    }
+    .secondaryNavigation { margin-left: auto; gap: 4px; .navigationItem { padding-inline: 10px; color: var(--uiTextMuted); } }
     .accountIdentity {
-      display: flex; flex-direction: column; gap: 4px; padding-top: 16px; border-top: 1px solid var(--uiBorderDefault); min-width: 0;
+      display: flex; flex-direction: column; gap: 4px; width: 180px; min-width: 0;
       .identityHeader {
         display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0;
         .identityUser {
@@ -374,52 +374,130 @@ function focusProjects() { activeSection.value = "projects"; projectSection.valu
     }
   }
   .homeContent {
-    display: flex; flex-direction: column; gap: clamp(32px, 4dvh, 56px); min-width: 0; min-height: 100dvh;
-    padding: clamp(28px, 4dvh, 48px) clamp(32px, 4vw, 64px) clamp(40px, 5dvh, 64px);
-    .homeHeader { flex-shrink: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); }
-    .creationPanel {
-      position: relative; isolation: isolate; display: flex; align-items: center; flex: 1; min-height: 480px;
-      .heroArtwork { position: absolute; z-index: -1; top: 50%; transform: translateY(-50%); right: -32px; width: min(56%, 682px); height: auto; aspect-ratio: 3 / 2; object-fit: contain; pointer-events: none; }
-      .creationContent { width: min(100%, 708px); padding-top: 10px; }
-      .creationMode { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 16px; border-radius: 2px; transform: rotate(-2deg); color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font-size: var(--uiFontLabel); font-weight: 600; }
-      h1 { position: relative; width: fit-content; margin: 28px 0 4px; font-size: clamp(38px, 4vw, 60px); line-height: 1.27; font-weight: 900; letter-spacing: -1.5px; }
-      .titleUnderline { display: block; width: min(340px, 64%); height: auto; margin-bottom: 34px; }
-      .composer { padding: 22px 20px 12px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); &:focus-within { border-color: var(--uiBorderFocus); } .promptInput { min-height: 112px; padding: 0; border: 0; background: transparent; font-size: var(--uiFontBody); outline: none; } }
-      .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; .sendActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; min-width: 0; .modelSelect { max-width: min(240px, 100%); } } }
-      .workspaceHint { margin: 12px 4px 0; max-width: 65ch; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.6; }
-    }
-    .projectList {
-      flex-shrink: 0; min-width: 0; scroll-margin-top: 24px;
-      .projectHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } .projectToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } }
-      .projectItems {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 24px;
-        .projectCard { min-width: 0; padding: 20px 24px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:hover, &:focus-within { border-color: var(--uiBorderControl); } .projectCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; .projectIcon { display: block; width: 20px; height: 20px; object-fit: contain; } .projectActions { display: flex; gap: 4px; } } .projectEntry { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; margin: 0; padding: 0 0 20px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; &:disabled { cursor: wait; opacity: 0.6; } .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectName { font-size: var(--uiFontTitle); font-weight: 700; } .projectPath { color: var(--uiTextMuted); font-size: var(--uiFontControl); } } .projectTime { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: var(--uiFontControl); time { min-width: 0; overflow-wrap: anywhere; } } }
-        &.listView { grid-template-columns: 1fr; .projectCard { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 24px; .projectCardHeader { margin: 0; } .projectEntry { padding: 0; } .projectTime { max-width: 260px; padding: 0; border: 0; } } }
+    display: flex; flex-direction: column; gap: 32px; max-width: 1536px; min-width: 0; margin-inline: auto; padding: 32px 64px 56px;
+    .homeIntro h1 { margin: 0; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "SimSun", serif; font-size: clamp(42px, 3.8vw, 56px); line-height: 1.25; font-weight: 500; letter-spacing: -2px; br { display: none; } span { color: var(--uiActionPrimary); } }
+    .homeOverview {
+      display: grid; grid-template-columns: minmax(0, 560px); gap: 48px; align-items: start;
+      &.hasDemos { grid-template-columns: minmax(0, 1fr) 360px; }
+      .creationPanel {
+        min-width: 0;
+        .creationHeading {
+          margin-bottom: 20px;
+          .creationMode { display: flex; align-items: center; gap: 10px; min-height: 30px; margin: 0; color: var(--uiTextMuted); font-size: 12px; font-weight: 400; letter-spacing: 2px; &::before { content: ""; width: 16px; height: 1px; background: var(--uiActionPrimary); } }
+        }
+        .creationContent {
+          min-width: 0;
+          .composer {
+            padding: 16px 16px 12px; border: 1px solid var(--uiBorderDefault); border-radius: 10px;
+            background: color-mix(in srgb, var(--uiSurfaceRaised) 65%, var(--uiBackgroundBase));
+            transition: border-color var(--uiMotionDuration) var(--uiMotionEase);
+            &:focus-within { border-color: var(--uiBorderFocus); }
+            .promptInput { min-height: 54px; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 14px; outline: none; }
+            .composerFooter {
+              display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault);
+              :deep(.workspaceButton) { max-width: min(280px, 100%); padding-inline: 0; color: var(--uiTextMuted); }
+              .sendActions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-left: auto; min-width: 0; max-width: 100%; .modelSelect { max-width: 170px; } :deep(.uiIconButton) { width: 36px; height: 36px; border-radius: 50%; } }
+            }
+          }
+          .workspaceHint { margin: 10px 0 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.6; }
+        }
+      }
+      .demoCollection {
+        display: flex; flex-direction: column; gap: 20px; min-width: 0;
+        .demoHeader { min-height: 30px; h2 { display: flex; align-items: center; gap: 16px; margin: 0; font-size: 20px; font-weight: 500; letter-spacing: 0.5px; &::after { content: ""; width: 80px; height: 1px; background: var(--uiBorderDefault); } } }
+        .demoItems {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 32px 24px;
+          .demoCard {
+            min-width: 0; max-width: 300px;
+            .demoPreview {
+              position: relative; display: block; width: 100%; min-height: 0; padding: 0; border: 1px solid var(--uiBorderDefault); border-radius: 3px; background: var(--uiBackgroundSubtle); overflow: hidden;
+              :deep(.buttonLabel) { display: block; width: 100%; }
+              .demoCover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; transition: transform 300ms ease; }
+              .demoPlay { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid rgb(255 255 255 / 24%); border-radius: 3px; color: #f3f0e8; background: rgb(20 19 17 / 85%); font-size: 11px; svg { flex-shrink: 0; } }
+              &:hover, &:focus-visible { .demoCover { transform: scale(1.025); } .demoPlay { background: var(--uiActionPrimary); color: var(--uiTextOnAccent); border-color: transparent; } }
+            }
+            .demoContent {
+              margin-top: 16px;
+              .demoCaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; h3 { min-width: 0; max-width: 100%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "SimSun", serif; font-size: 26px; font-weight: 600; letter-spacing: 1px; } .demoOpen { flex-shrink: 0; padding-inline: 0; color: var(--uiTextMuted); font-size: 12px; :deep(.buttonIcon) { order: 1; } } }
+              .demoMeta { display: block; margin-top: 6px; color: var(--uiTextMuted); font-size: 11px; line-height: 1.5; letter-spacing: 0.2px; }
+            }
+          }
+        }
       }
     }
-    .demoCollection {
-      .demoHeader { margin-bottom: 24px; h2 { margin: 0; font-size: var(--uiFontHeading); font-weight: 700; } }
-      .demoCard {
-        display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); max-width: 1000px; overflow: hidden;
-        border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusCard); background: var(--uiBackgroundSubtle);
-        .demoCover { display: block; width: 100%; height: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-        .demoContent {
-          display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 32px 40px; min-width: 0;
-          .demoMeta { color: var(--uiTextMuted); font-size: var(--uiFontControl); }
-          h3 { margin: 18px 0 12px; font-size: 36px; line-height: 1.2; }
-          p { margin: 0; color: var(--uiTextSecondary); font-size: var(--uiFontBody); }
-          .demoActions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .projectList {
+      min-width: 0; padding-top: 28px; border-top: 1px solid var(--uiBorderDefault); scroll-margin-top: 24px;
+      .projectHeader {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px;
+        h2 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: 0.5px; }
+        .projectToolbar {
+          display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+          :deep(.uiButton) { font-size: 12px; }
+          :deep(.uiRadioGroup) { border: 0; background: transparent; .uiRadio { font-size: 12px; &:has(input:checked) { color: var(--uiActionPrimary); background: var(--uiActionSoft); } } }
         }
-        @media (max-width: 1000px) {
-          grid-template-columns: minmax(0, 1fr);
-          max-width: 640px;
-          .demoCover { height: auto; }
-          .demoContent { padding: 26px; h3 { font-size: 30px; } }
+      }
+      .projectItems {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px;
+        .projectCard {
+          display: grid; grid-template-columns: 24px minmax(0, 1fr) 60px; grid-template-rows: auto auto; gap: 8px 16px; align-items: start;
+          min-width: 0; padding: 20px 0; border-bottom: 1px solid var(--uiBorderDefault);
+          transition: border-color var(--uiMotionDuration) var(--uiMotionEase);
+          &:hover, &:focus-within { border-bottom-color: var(--uiBorderControl); .projectNumber { color: var(--uiActionPrimary); } .projectActions { opacity: 1; } }
+          .projectNumber { grid-column: 1; grid-row: 1 / 3; padding-top: 5px; color: var(--uiTextMuted); font-size: 11px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+          .projectActions { grid-column: 3; grid-row: 1 / 3; display: flex; gap: 0; opacity: 0.55; transition: opacity var(--uiMotionDuration) var(--uiMotionEase); :deep(.uiIconButton) { width: 30px; height: 30px; } :deep(.variantDanger) { background: transparent; } }
+          .projectEntry {
+            grid-column: 2; grid-row: 1; display: block; width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; text-align: left;
+            :deep(.buttonLabel) { display: flex; flex-direction: column; align-items: stretch; gap: 5px; width: 100%; }
+            .projectName, .projectPath { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .projectName { color: var(--uiTextPrimary); font-size: 16px; font-weight: 500; }
+            .projectPath { color: var(--uiTextMuted); font-size: 11px; font-weight: 400; }
+          }
+          .projectTime { grid-column: 2; grid-row: 2; display: flex; flex-wrap: wrap; gap: 8px; color: var(--uiTextMuted); font-size: 10px; time { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; } }
         }
+        &.listView { grid-template-columns: minmax(0, 1fr); .projectCard { grid-template-columns: 32px minmax(0, 1fr) 220px 60px; align-items: center; padding-block: 16px; .projectNumber { grid-row: 1; } .projectActions { grid-column: 4; grid-row: 1; } .projectTime { grid-column: 3; grid-row: 1; justify-content: flex-end; } } }
       }
     }
   }
-  @media (max-width: 1200px) { grid-template-columns: 176px minmax(0, 1fr); .homeSidebar { padding-inline: 12px; } .homeContent { padding-inline: 32px; .creationPanel { min-height: 480px; .heroArtwork { width: 62%; right: -20px; opacity: 0.65; } .creationContent { width: min(100%, 640px); } } } }
-  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); .homeSidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--uiBorderDefault); .homeBrand { width: 140px; margin: 0; } .mainNavigation, .secondaryNavigation { flex-direction: row; gap: 4px; margin: 0; .navigationItem { width: auto; padding-inline: 8px; } } .accountIdentity { width: 100%; padding-top: 10px; margin-top: 4px; } } .homeContent { padding: 24px 20px 40px; .creationPanel { min-height: 460px; .heroArtwork { width: 78%; opacity: 0.35; } } .projectList .projectItems.listView .projectCard { grid-template-columns: 1fr; gap: 14px; .projectTime { max-width: none; } } } }
+  @media (max-width: 1200px) {
+    .homeNavigation { padding-inline: 40px; gap: 24px; .secondaryNavigation .navigationItem { padding-inline: 8px; } }
+    .homeContent { padding-inline: 40px; .homeIntro h1 { font-size: 48px; } .homeOverview { gap: 32px; &.hasDemos { grid-template-columns: minmax(0, 1fr) 320px; } } }
+  }
+  @media (max-width: 1000px) {
+    .homeNavigation { .secondaryNavigation { .navigationItem { width: 36px; padding-inline: 0; :deep(.buttonLabel) { display: none; } } } }
+  }
+  @media (max-width: 900px) {
+    .homeContent {
+      .homeOverview {
+        &.hasDemos { grid-template-columns: minmax(0, 1fr); }
+        .creationPanel { width: 100%; max-width: 560px; }
+      }
+      .projectList .projectItems { column-gap: 28px; .projectCard { grid-template-columns: 20px minmax(0, 1fr) 30px; gap: 8px 12px; .projectActions { flex-direction: column; } } &.listView .projectCard { grid-template-columns: 24px minmax(0, 1fr) 170px 30px; } }
+    }
+  }
+  @media (max-width: 600px) {
+    .homeNavigation {
+      flex-wrap: wrap; gap: 8px 16px; min-height: 0; padding: 12px 20px;
+      .homeBrand { width: 132px; }
+      .mainNavigation { order: 3; width: 100%; .navigationItem { min-height: 36px; font-size: 12px; } }
+      .secondaryNavigation { gap: 2px; .navigationItem { width: 30px; min-height: 32px; } }
+    }
+    .homeContent {
+      gap: 28px; padding: 24px 20px 40px;
+      .homeIntro h1 { font-size: 42px; line-height: 1.2; letter-spacing: -1px; br { display: block; } span { display: inline-block; margin-left: 40px; } }
+      .homeOverview {
+        gap: 28px;
+        .creationPanel {
+          .creationHeading { margin-bottom: 12px; .creationMode { font-size: 11px; min-height: 20px; } }
+          .creationContent { .composer { padding: 16px 16px 12px; .promptInput { min-height: 54px; font-size: 14px; } .composerFooter { margin-top: 8px; .sendActions { gap: 8px; .modelSelect { max-width: 150px; } } } } .workspaceHint { font-size: 10px; } }
+        }
+        .demoCollection { gap: 16px; .demoHeader { min-height: 0; h2 { font-size: 18px; } } .demoItems { grid-template-columns: minmax(0, 1fr); gap: 24px; .demoCard { display: grid; grid-template-columns: 154px minmax(0, 1fr); align-items: center; gap: 16px; max-width: none; .demoPreview { .demoPlay { left: 6px; bottom: 6px; gap: 4px; padding: 4px 6px; font-size: 10px; } } .demoContent { margin: 0; .demoCaption { align-items: flex-start; flex-direction: column; gap: 4px; h3 { font-size: 23px; } .demoOpen { min-height: 28px; font-size: 11px; } } .demoMeta { margin-top: 4px; font-size: 10px; } } } } }
+      }
+      .projectList {
+        padding-top: 24px;
+        .projectHeader { margin-bottom: 8px; gap: 12px; h2 { font-size: 18px; } .projectToolbar { gap: 4px; :deep(.uiButton) { padding-inline: 8px; } } }
+        .projectItems { grid-template-columns: minmax(0, 1fr); .projectCard { grid-template-columns: 20px minmax(0, 1fr) 60px; gap: 8px 12px; padding-block: 18px; .projectActions { flex-direction: row; opacity: 1; } .projectEntry .projectName { font-size: 15px; } } &.listView .projectCard { grid-template-columns: 20px minmax(0, 1fr) 60px; .projectNumber { grid-row: 1 / 3; } .projectActions { grid-column: 3; grid-row: 1 / 3; } .projectTime { grid-column: 2; grid-row: 2; justify-content: flex-start; } } }
+      }
+    }
+  }
 }
 </style>
