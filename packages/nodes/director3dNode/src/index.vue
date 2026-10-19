@@ -103,8 +103,8 @@ function getModelPath() {
 async function writeModel(workspaceFiles: ReturnType<typeof files.getWorkspaceFiles>, value: ModelDocument) {
   const path = getModelPath();
   for (const directory of ["assets", `assets/${node.id}`]) {
-    await workspaceFiles.mkdir(directory).catch((error: { response?: { data?: { data?: { code?: string } } } }) => {
-      if (error.response?.data?.data?.code !== "EEXIST") throw error;
+    await workspaceFiles.mkdir(directory).catch((error: { response?: { status?: number; data?: { data?: { code?: string } } } }) => {
+      if (error.response?.status !== 409 && error.response?.data?.data?.code !== "EEXIST") throw error;
     });
   }
   await workspaceFiles.writeJson(path, value);

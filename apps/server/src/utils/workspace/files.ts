@@ -38,9 +38,9 @@ export function isWithin(root: string, path: string) {
   return offset !== ".." && !offset.startsWith(`..${sep}`) && !isAbsolute(offset);
 }
 
-export async function resolveWorkspaceFile(req: Request, directory: string, path: string) {
+export async function resolveWorkspaceFile(req: Request, directory: string, path: string, allowMissingParents = false) {
   const root = await resolveWorkspace(req, directory);
-  return resolveWorkspacePath(root, path);
+  return resolveWorkspacePath(root, path, allowMissingParents);
 }
 
 export async function resolveWorkspacePath(root: string, path: string, allowMissingParents = false) {

@@ -150,7 +150,7 @@ watch(() => props.directory, async (directory, _previous, onCleanup) => {
       try {
         loaded = [await createCanvasFile(directory, "画布1")];
       } catch (err) {
-        if (!axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+        if (!axios.isAxiosError(err) || err.response?.status !== 409) throw err;
         // 同时打开工作区时，读取另一请求刚创建的默认画布，不覆盖同名文件。
         const refreshed = await listCanvases(directory);
         // 画布1.json 若被其他 JSON 占用，则使用下一个空闲名称，保留原文件。
@@ -332,7 +332,7 @@ async function createCanvasFile(directory: string, initialName?: string, signal?
       await files.writeJson(id, { toonflowCanvas: true, ...flow }, true);
       return { id, name: canvasName, flow };
     } catch (err) {
-      if (!axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+      if (!axios.isAxiosError(err) || err.response?.status !== 409) throw err;
       if (name !== undefined) {
         name = suggestNextCanvasName([canvasName], canvasName);
       }
@@ -413,7 +413,9 @@ async function handleCloneCanvas(canvas: Canvas) {
     }
 
     const files = useWorkspaceFiles(directory);
-    const clonedNodes = await Promise.all(sourceFlow.nodes.map(async node => {
+    await files.mkdir("assets").catch(() => {});
+    const clonedNodes: typeof sourceFlow.nodes = [];
+    for (const node of sourceFlow.nodes) {
       const copy = JSON.parse(JSON.stringify(node));
       const newId = nodeMap.get(node.id)!;
       copy.id = newId;
@@ -431,17 +433,16 @@ async function handleCloneCanvas(canvas: Canvas) {
         try {
           const { entries } = await files.list(oldAssetDir);
           if (entries?.length) {
-            await files.mkdir("assets").catch(() => {});
             await files.mkdir(newAssetDir).catch(() => {});
             for (const entry of entries) {
               if (entry.type === "file") {
                 const content = await files.read(entry.path);
-                await files.write(`${newAssetDir}/${entry.name}`, content);
+                await files.write(`${newAssetDir}/${entry.name}`, content).catch(() => {});
               }
             }
           }
         } catch {
-          // 忽略无专属资产目录的情况
+          // 忽略无专属资产目录或读取失败的情况
         }
 
         if (copy.data.textPath) {
@@ -451,8 +452,8 @@ async function handleCloneCanvas(canvas: Canvas) {
           copy.data.modelPath = `${newAssetDir}/model.json`;
         }
       }
-      return copy;
-    }));
+      clonedNodes.push(copy);
+    }
 
     const clonedEdges = sourceFlow.edges.map(edge => {
       const copy = JSON.parse(JSON.stringify(edge));
@@ -477,7 +478,7 @@ async function handleCloneCanvas(canvas: Canvas) {
         await files.writeJson(newId, { toonflowCanvas: true, ...clonedFlow }, true);
         break;
       } catch (err) {
-        if (!axios.isAxiosError<{ data?: { code?: string } }>(err) || err.response?.status !== 409 || err.response.data.data?.code !== "EEXIST") throw err;
+        if (!axios.isAxiosError(err) || err.response?.status !== 409) throw err;
         nextName = suggestNextCanvasName([nextName], nextName);
         newId = `${nextName}.json`;
       }

@@ -23,8 +23,8 @@ function getNodeDirectory(nodeId: string) {
 export async function uploadNodeFile(files: WorkspaceFiles, nodeId: string, file: File) {
   const directory = getNodeDirectory(nodeId);
   for (const path of ["assets", directory]) {
-    await files.mkdir(path).catch((error: { response?: { data?: { data?: { code?: string } } } }) => {
-      if (error.response?.data?.data?.code !== "EEXIST") throw error;
+    await files.mkdir(path).catch((error: { response?: { status?: number; data?: { data?: { code?: string } } } }) => {
+      if (error.response?.status !== 409 && error.response?.data?.data?.code !== "EEXIST") throw error;
     });
   }
   const extension = file.name.match(/\.[a-zA-Z0-9]{1,10}$/)?.[0].toLowerCase() ?? "";

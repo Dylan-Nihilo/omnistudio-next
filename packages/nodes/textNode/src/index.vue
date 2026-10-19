@@ -110,8 +110,8 @@ async function loadText() {
     }
     if (typeof value !== "string") value = "";
     for (const directory of ["assets", `assets/${node.id}`]) {
-      await textFiles.mkdir(directory).catch((error: { response?: { data?: { data?: { code?: string } } } }) => {
-        if (error.response?.data?.data?.code !== "EEXIST") throw error;
+      await textFiles.mkdir(directory).catch((error: { response?: { status?: number; data?: { data?: { code?: string } } } }) => {
+        if (error.response?.status !== 409 && error.response?.data?.data?.code !== "EEXIST") throw error;
       });
     }
     await textFiles.write(textPath, value);
