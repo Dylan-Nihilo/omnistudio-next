@@ -10,7 +10,7 @@ const selection = {
   objectId: z.string().min(1).max(100).optional(),
   joint: directorPlanSchema.shape.tracks.element.shape.joint,
 };
-const readSchema = z.strictObject({
+export const readSchema = z.strictObject({
   section: z.enum(["scene", "plan", "history", "schema"]),
   ...selection,
   planId: z.string().min(1).max(100).optional(),
@@ -23,7 +23,7 @@ const operationSchema = z.strictObject({
   op: z.enum(["add", "replace", "remove"]),
   value: z.json().optional(),
 });
-const editSchema = z.strictObject({ operations: z.array(operationSchema).min(1).max(100) });
+export const editSchema = z.strictObject({ operations: z.array(operationSchema).min(1).max(100) });
 type Draft = { scene: SceneDocument; plan: Partial<DirectorPlan> };
 type Path = z.infer<typeof pathSchema>;
 

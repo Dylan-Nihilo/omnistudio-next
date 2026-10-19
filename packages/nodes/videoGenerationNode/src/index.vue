@@ -66,7 +66,7 @@
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
 import { uiIconButton, uiSelect, uiLoading } from "@omnistudio-next/ui";
 import { IconCameraAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import { groupNodeModels, invalidateNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
 import videoPlayer from "@omnistudio-next/nodes-scaffold/videoPlayer";
 import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
@@ -337,10 +337,16 @@ function getConfig() {
 
 nodeTools.register({
   name: "getConfig",
-  description: "读取此视频生成节点的当前配置、预估算力消耗（estimatedCredits，格式如'150 积分'，未配置价格时为 null）、可选视频模型能力、通用比例及适合当前引用的模式，不含密钥；时长与分辨率须符合 durationResolutionMap",
+  description: "读取此视频生成节点的当前配置、预估算力消耗（estimatedCredits，格式如'150 积分'，未配置价格时为 null）、可选视频模型能力、通用比例及适合当前引用的模式；空闲时刷新平台模型能力，不含密钥；时长与分辨率须符合 durationResolutionMap",
   parameters: z.strictObject({}),
   async execute(_args, { signal }) {
     signal?.throwIfAborted();
+    if (generating.value || deleting.value) return getConfig();
+    await modelsRequest;
+    signal?.throwIfAborted();
+    if (generating.value || deleting.value) return getConfig();
+    invalidateNodeModels("media");
+    modelsRequest = undefined;
     await loadModels();
     signal?.throwIfAborted();
     return getConfig();
