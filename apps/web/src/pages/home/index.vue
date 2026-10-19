@@ -114,7 +114,7 @@ import {
 } from "@tabler/icons-vue";
 import modelPopover from "@/components/modelPopover.vue";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
-import { useWorkspaceStore, type Project } from "@/stores/workspace";
+import { useWorkspaceStore, getProjectOwnerUserId, type Project } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
@@ -237,9 +237,21 @@ const selectedModel = ref("");
 const reasoningEffort = ref("");
 const sortDescending = ref(true);
 const viewMode = ref("grid");
-const sortedProjects = computed(() => [...projectList.value].sort((left, right) =>
-  sortDescending.value ? right.lastOpenedAt - left.lastOpenedAt : left.lastOpenedAt - right.lastOpenedAt
-));
+const sortedProjects = computed(() => {
+  const currentUserId = auth.user?.id?.toLowerCase();
+  return projectList.value
+    .filter(item => {
+      const owner = getProjectOwnerUserId(item.directory);
+      return !owner || !currentUserId || owner === currentUserId;
+    })
+    .sort((left, right) =>
+      sortDescending.value ? right.lastOpenedAt - left.lastOpenedAt : left.lastOpenedAt - right.lastOpenedAt
+    );
+});
+
+watch(() => auth.user?.id, userId => {
+  if (userId) workspaceStore.sanitizeProjectList(userId);
+}, { immediate: true });
 
 async function openProject(project?: Project) {
   if (creating.value || opening.value) return;
@@ -247,7 +259,9 @@ async function openProject(project?: Project) {
   try {
     const directory = project?.directory ?? await relocationPicker.value?.chooseDirectory();
     if (!directory) return;
-    try { await workspaceStore.openProject(directory); }
+    const ownerUserId = getProjectOwnerUserId(directory);
+    const isOtherUser = Boolean(ownerUserId && auth.user?.id && ownerUserId !== auth.user.id.toLowerCase());
+    try { await workspaceStore.openProject(directory, undefined, undefined, { addToProjectList: !isOtherUser }); }
     catch (err) {
       if (!project || !axios.isAxiosError(err) || err.response?.status !== 404) throw err;
       const reselect = await feedback.confirm(`项目“${project.name}”的文件夹不存在，是否重新选择文件夹？`, "工作目录不存在", {
@@ -256,7 +270,7 @@ async function openProject(project?: Project) {
       if (!reselect) return;
       const directory = await relocationPicker.value?.chooseDirectory();
       if (!directory) return;
-      await workspaceStore.openProject(directory, project.directory);
+      await workspaceStore.openProject(directory, project.directory, undefined, { addToProjectList: !isOtherUser });
     }
     await router.push("/workspace");
   } catch (err) {

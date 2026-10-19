@@ -35,6 +35,7 @@ export const useAuthStore = defineStore("auth", () => {
     user.value = account;
     csrfToken.value = token;
     setBrowserSession(account.id, token);
+    useWorkspaceStore().sanitizeProjectList(account.id);
   }
 
   async function loadSetupStatus() {
