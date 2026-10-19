@@ -73,15 +73,16 @@ export function applySceneSettings(runtime: SceneRuntime, settings: SceneSetting
   runtime.invalidate();
 }
 
-export interface LightingSettings {
-  globalEnabled: boolean;
-  globalIntensity: number;
-  sunEnabled: boolean;
-  azimuth: number;
-  elevation: number;
-  color: string;
-  intensity: number;
-}
+export const lightingSchema = z.strictObject({
+  globalEnabled: z.boolean(),
+  globalIntensity: z.number().min(0).max(100),
+  sunEnabled: z.boolean(),
+  azimuth: z.number().min(0).max(360),
+  elevation: z.number().min(0).max(90),
+  color,
+  intensity: z.number().min(0).max(100),
+});
+export type LightingSettings = z.infer<typeof lightingSchema>;
 
 export function getSceneLighting(document: SceneDocument): LightingSettings {
   const lights = document.sceneConfig.lights;
