@@ -7,7 +7,7 @@
     :downloadUrl="composing ? '' : previewUrl"
     :downloadName="outputFile?.url.split(/[\\/]/).at(-1)"
     :bottomWidth="600"
-    :style="{ width: previewUrl && videoWidth ? `${Math.max(280, videoWidth + 18)}px` : undefined }"
+    :style="{ width: previewUrl && videoWidth ? `${Math.max(260, videoWidth + 18)}px` : undefined }"
     @fullscreen="player?.enterFullscreen()">
     <template #topActions>
       <mediaHistory mediaType="video" :current="outputFile" :disabled="composing" @select="outputs.video = { dataType: 'VIDEO', value: $event }" />
@@ -90,7 +90,7 @@ defineOptions({
   ] satisfies NodeHandle[],
 });
 
-const { id, node, nodeProps, nodeEvent, outputs, files, ffmpeg } = useNode({
+const { id, node, nodeProps, nodeEvent, outputs, files, ffmpeg, updateNodeInternals } = useNode({
   label: "视频拼接",
 });
 
@@ -113,11 +113,12 @@ nodeEvent.on("canConnect", (connection) => {
 const outputFile = computed(() => (outputs.value.video?.dataType === "VIDEO" ? outputs.value.video.value : undefined));
 const previewUrl = files.useFileUrl(outputFile, (err) => showError(err, "合成视频读取失败"));
 
-function resizeVideo(event: Event) {
-  const target = event.target as HTMLVideoElement;
-  if (target?.videoWidth) {
-    videoWidth.value = target.videoWidth;
-  }
+async function resizeVideo(event: Event) {
+  const video = (event.target || event.currentTarget) as HTMLVideoElement;
+  if (!video?.videoWidth || !video?.videoHeight) return;
+  videoWidth.value = Math.max(242, (240 * video.videoWidth) / video.videoHeight);
+  await nextTick();
+  updateNodeInternals();
 }
 
 function showError(err: unknown, fallback = "拼接视频失败") {
