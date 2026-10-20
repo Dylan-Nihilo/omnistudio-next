@@ -29,9 +29,26 @@ function remoteError(value: unknown) {
   return Object.assign(new Error(details.message || "FFmpeg 执行失败"), details);
 }
 
+function platformHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1" };
+  const host = globalThis as {
+    document?: { cookie?: string };
+    sessionStorage?: { getItem(key: string): string | null };
+  };
+  if (typeof host.document?.cookie === "string") {
+    const csrfToken = host.document.cookie.split(";").map(item => item.trim()).find(item => item.startsWith("omnistudio_csrf="))?.slice("omnistudio_csrf=".length);
+    if (csrfToken) headers["x-csrf-token"] = decodeURIComponent(csrfToken);
+  }
+  if (typeof host.sessionStorage?.getItem === "function") {
+    const userId = host.sessionStorage.getItem("omnistudio_account_id");
+    if (userId) headers["x-account-id"] = userId;
+  }
+  return headers;
+}
+
 async function request(input: BrowserFfmpegRequest, signal?: AbortSignal) {
   const response = await fetch("/api/ffmpeg/execute", {
-    method: "POST", headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1" },
+    method: "POST", headers: platformHeaders(),
     body: JSON.stringify(input), signal,
   });
   if (!response.ok) throw remoteError(await response.json());

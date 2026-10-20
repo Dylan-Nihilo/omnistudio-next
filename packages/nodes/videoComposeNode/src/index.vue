@@ -59,7 +59,7 @@
               v-else
               variant="primary"
               :disabled="refList.length < 2"
-              @click="startComposition().catch(showError)">
+              @click="startComposition().catch(() => {})">
               开始拼接视频
             </uiButton>
           </div>
