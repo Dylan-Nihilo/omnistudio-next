@@ -1,7 +1,10 @@
 import { ref } from "vue";
 
 declare global {
-  interface Window { omniStudioNextSessionSignal?: AbortSignal; }
+  interface Window {
+    omniStudioNextSessionSignal?: AbortSignal;
+    omniStudioNextSessionSnapshot?: () => { userId: string; csrfToken: string };
+  }
 }
 
 let userId = "";
@@ -11,6 +14,7 @@ let controller = new AbortController();
 export const sessionInvalidated = ref<"changed" | "expired" | null>(null);
 const channel = typeof BroadcastChannel === "undefined" ? undefined : new BroadcastChannel("omnistudioNextSession");
 window.omniStudioNextSessionSignal = controller.signal;
+window.omniStudioNextSessionSnapshot = () => ({ userId, csrfToken });
 
 export function getSessionSnapshot() {
   return { userId, csrfToken, revision, signal: controller.signal };

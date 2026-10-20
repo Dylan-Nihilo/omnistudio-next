@@ -34,14 +34,18 @@ function platformHeaders(): Record<string, string> {
   const host = globalThis as {
     document?: { cookie?: string };
     sessionStorage?: { getItem(key: string): string | null };
+    omniStudioNextSessionSnapshot?: () => { userId?: string; csrfToken?: string };
   };
+  const session = typeof host.omniStudioNextSessionSnapshot === "function" ? host.omniStudioNextSessionSnapshot() : undefined;
+  if (session?.csrfToken) headers["x-csrf-token"] = session.csrfToken;
+  if (session?.userId) headers["x-account-id"] = session.userId;
   if (typeof host.document?.cookie === "string") {
     const csrfToken = host.document.cookie.split(";").map(item => item.trim()).find(item => item.startsWith("omnistudio_csrf="))?.slice("omnistudio_csrf=".length);
-    if (csrfToken) headers["x-csrf-token"] = decodeURIComponent(csrfToken);
+    if (!headers["x-csrf-token"] && csrfToken) headers["x-csrf-token"] = decodeURIComponent(csrfToken);
   }
   if (typeof host.sessionStorage?.getItem === "function") {
     const userId = host.sessionStorage.getItem("omnistudio_account_id");
-    if (userId) headers["x-account-id"] = userId;
+    if (!headers["x-account-id"] && userId) headers["x-account-id"] = userId;
   }
   return headers;
 }
