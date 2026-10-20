@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
-import { getSetupStatus, login, logout, me, register, setup, type AccountInput, type AuthTeam, type AuthUser } from "@/lib/authApi";
+import { getSetupStatus, login, logout, me, register, setup, sendHeartbeat, type AccountInput, type AuthTeam, type AuthUser } from "@/lib/authApi";
 import { invalidateBrowserSession, sessionInvalidated, setBrowserSession } from "@/lib/sessionState";
 import { resetSettings, settings } from "@/stores/settings";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -21,6 +21,47 @@ export const useAuthStore = defineStore("auth", () => {
   const currentTeam = computed(() => teams.value.find(item => item.id === currentTeamId.value) ?? null);
   let restoration: Promise<boolean> | undefined;
   let initialization: Promise<void> | undefined;
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  let lastHeartbeatMs = 0;
+
+  async function triggerHeartbeat() {
+    if (!user.value || sessionInvalidated.value) {
+      stopHeartbeat();
+      return;
+    }
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    try {
+      lastHeartbeatMs = Date.now();
+      await sendHeartbeat(location.hash || "/");
+    } catch {
+      // 心跳静默处理，网络或会话异常由拦截器统一处理
+    }
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    void triggerHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      void triggerHeartbeat();
+    }, 30_000);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = undefined;
+    }
+  }
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && user.value && !sessionInvalidated.value) {
+        if (Date.now() - lastHeartbeatMs > 15_000) {
+          void triggerHeartbeat();
+        }
+      }
+    });
+  }
 
   function resetAccountData() {
     resetSettings();
@@ -36,6 +77,7 @@ export const useAuthStore = defineStore("auth", () => {
     csrfToken.value = token;
     setBrowserSession(account.id, token);
     useWorkspaceStore().sanitizeProjectList(account.id);
+    startHeartbeat();
   }
 
   async function loadSetupStatus() {
@@ -97,6 +139,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   function clear() {
+    stopHeartbeat();
     user.value = null;
     teams.value = [];
     csrfToken.value = "";

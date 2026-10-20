@@ -5,8 +5,11 @@ export type Wallet = { id: string; userId: string; balance: string; frozen: stri
 export type LedgerEntry = { id: string; jobId?: string | null; kind: string; amount: string; balanceAfter: string; frozenAfter: string; reason?: string | null; metadata?: unknown; createdAt: string };
 export type TeamMember = { id: string; email: string; displayName: string; status: "active" | "disabled"; role: "owner" | "member"; available: string };
 export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: string; mimeType: string; bytes: number; createdAt: string };
+export type UserPresence = { status: "online" | "away" | "offline"; currentPath?: string; lastSeenMs: number };
+export type OnlineUserData = { userId: string; email: string; displayName: string; status: "online" | "away"; currentPath?: string; lastSeenMs: number; clientIp?: string };
+export type OnlineUsersData = { totalOnline: number; totalAway: number; users: OnlineUserData[] };
 export type AdminWorkspace = { id: string; name: string; status: "active" | "archived" };
-export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string; workspaces: AdminWorkspace[] };
+export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string; workspaces: AdminWorkspace[]; presence?: UserPresence };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean; maskedApiKey?: string | null };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
 export type TokenRates = { input: string; cacheRead: string | null; cacheWrite: string | null; output: string };
@@ -48,6 +51,7 @@ export function transferCredits(teamId: string, recipientUserId: string, amount:
 export function saveProfile(displayName: string) { return accountRequest("PUT", "/api/auth/profile", { displayName }); }
 export function changePassword(currentPassword: string, password: string) { return accountRequest("PUT", "/api/auth/password", { currentPassword, password }); }
 export function getAdminUsers() { return accountRequest<AdminUser[]>("GET", "/api/admin/users/list"); }
+export function getAdminOnlineUsers() { return accountRequest<OnlineUsersData>("GET", "/api/admin/users/online"); }
 export function saveAdminUser(userId: string, input: { displayName?: string; status?: "active" | "disabled" }) { return accountRequest("PUT", "/api/admin/users/save", { userId, ...input }); }
 export function resetAdminPassword(userId: string, password: string) { return accountRequest("PUT", "/api/admin/users/password", { userId, password }); }
 export function adjustUserCredits(userId: string, amount: number, reason: string, key: string) { return accountRequest("POST", "/api/admin/adjustCredits", { userId, amount, reason }, undefined, key); }

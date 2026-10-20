@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDatabase, hashSecret, serverInstanceId } from "@/db/database";
 import { auditEvents, creditLedger, creditTransfers, generationJobs, platformRoles, pricingItems, pricingSettings, priceBookVersions, teamMembers, teams, users, wallets } from "@/db/schema";
 import { accountContext, requireAccount, requireActiveAccount, requireRootAccount } from "@/utils/accountContext";
+import { getUserPresence } from "@/services/presenceService";
 import u from "@/utils";
 
 export type GenerationMediaType = "text" | "image" | "video" | "audio";
@@ -86,6 +87,7 @@ export async function listAdminUsers(workspaceId?: string) {
       isRoot: role === "root",
       available: u.billingCredits.formatCredits(u.billingCredits.parseCredits(user.balance) - u.billingCredits.parseCredits(user.frozen)),
       workspaces,
+      presence: getUserPresence(user.id),
     };
   });
 }

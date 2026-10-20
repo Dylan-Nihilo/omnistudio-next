@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { error } from "@/lib/responseFormat";
 import { csrfMatches, getServiceSession, getSession, type AuthSession } from "@/services/authService";
+import { recordPassiveUserPresence } from "@/services/presenceService";
 import { accountContext, getAccountSignal } from "@/utils/accountContext";
 import { hashSecret, serverSignal } from "@/db/database";
 
@@ -16,7 +17,12 @@ export async function attachAuthContext(request: Request, _response: Response, n
   request.authContext = /^\/(mcp|a2a)(\/|$)/.test(request.path)
     ? await getServiceSession(request, request.path.startsWith("/mcp") ? "mcp" : "a2a") : await getSession(request);
   const account = request.authContext?.user;
-  if (account) accountContext.run({ userId: account.id, isRoot: account.isRoot, signal: AbortSignal.any([getAccountSignal(account.id, request.authContext!.id), serverSignal]), generationKey: request.get("idempotency-key") ? hashSecret(request.get("idempotency-key")!) : undefined }, next);
+  if (account) {
+    if (!request.authContext?.serviceKind) {
+      recordPassiveUserPresence(account.id, request.ip || request.socket.remoteAddress);
+    }
+    accountContext.run({ userId: account.id, isRoot: account.isRoot, signal: AbortSignal.any([getAccountSignal(account.id, request.authContext!.id), serverSignal]), generationKey: request.get("idempotency-key") ? hashSecret(request.get("idempotency-key")!) : undefined }, next);
+  }
   else next();
 }
 

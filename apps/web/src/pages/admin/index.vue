@@ -3,7 +3,44 @@
     <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAll">刷新平台数据</uiButton><uiButton tag="a" href="#/teams" variant="ghost">查看团队空间</uiButton></template>
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <uiTabs :modelValue="activeTab" :options="tabs" label="平台管理" @update:modelValue="value => typeof value === 'string' && (activeTab = value)">
-      <section v-if="activeTab === 'users'" class="adminSection"><header class="sectionHeader"><div><h2>用户与个人积分</h2><p>只有 root 拥有平台管理权限，团队 owner 不具备平台管理权限。</p></div><div class="sectionActions"><uiSelect :modelValue="workspaceFilter" :options="workspaceOptions" aria-label="按工作区筛选" @update:modelValue="updateWorkspaceFilter" /></div></header><uiTable :rows="filteredUsers" :columns="userColumns" :loading="loading" emptyText="还没有用户" label="平台用户"><template #cell="{ row, column }"><span v-if="column.key === 'role'" class="roleLabel">{{ row.isRoot ? 'root' : '用户' }}</span><span v-else-if="column.key === 'workspace'" class="workspaceNames">{{ userWorkspaceLabel(row as AdminUser) }}</span><uiTag v-else-if="column.key === 'status'" :tone="row.status === 'active' ? 'success' : 'error'">{{ row.status === 'active' ? '正常' : '已停用' }}</uiTag><span v-else-if="column.key === 'available' || column.key === 'frozen'">{{ formatCredits(String(row[column.key])) }}</span><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton size="small" variant="ghost" :disabled="busy" @click="openCredits(row as AdminUser)">调整积分</uiButton><uiButton size="small" variant="ghost" :disabled="busy" @click="showProjects(row as AdminUser)">查看项目</uiButton><uiButton size="small" variant="ghost" :disabled="busy" @click="openPassword(row as AdminUser)">重置密码</uiButton><uiButton v-if="!row.isRoot" size="small" :variant="row.status === 'active' ? 'danger' : 'secondary'" :disabled="busy" @click="toggleUser(row as AdminUser)">{{ row.status === 'active' ? '停用' : '恢复' }}</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable></section>
+      <section v-if="activeTab === 'users'" class="adminSection">
+        <header class="sectionHeader">
+          <div>
+            <h2>用户与个人积分</h2>
+            <p>只有 root 拥有平台管理权限，团队 owner 不具备平台管理权限。</p>
+            <div class="presenceSummary">
+              <span>总用户 {{ users.length }}</span>
+              <span class="presenceDot online">在线 {{ totalOnlineCount }}</span>
+              <span class="presenceDot away">离开 {{ totalAwayCount }}</span>
+              <span class="presenceDot offline">离线 {{ totalOfflineCount }}</span>
+            </div>
+          </div>
+          <div class="sectionActions">
+            <uiSelect :modelValue="onlineFilter" :options="onlineOptions" aria-label="按在线状态筛选" @update:modelValue="updateOnlineFilter" />
+            <uiSelect :modelValue="workspaceFilter" :options="workspaceOptions" aria-label="按工作区筛选" @update:modelValue="updateWorkspaceFilter" />
+          </div>
+        </header>
+        <uiTable :rows="filteredUsers" :columns="userColumns" :loading="loading" emptyText="还没有用户" label="平台用户">
+          <template #cell="{ row, column }">
+            <span v-if="column.key === 'role'" class="roleLabel">{{ row.isRoot ? 'root' : '用户' }}</span>
+            <span v-else-if="column.key === 'presence'">
+              <uiTag v-if="userPresence(row)?.status === 'online'" tone="success">{{ '在线' + formatPresenceLocation(userPresence(row)) }}</uiTag>
+              <uiTag v-else-if="userPresence(row)?.status === 'away'" tone="neutral">{{ '离开 · ' + formatPresenceTime(userPresence(row)?.lastSeenMs) }}</uiTag>
+              <uiTag v-else tone="error">离线</uiTag>
+            </span>
+            <span v-else-if="column.key === 'workspace'" class="workspaceNames">{{ userWorkspaceLabel(row as AdminUser) }}</span>
+            <uiTag v-else-if="column.key === 'status'" :tone="row.status === 'active' ? 'success' : 'error'">{{ row.status === 'active' ? '正常' : '已停用' }}</uiTag>
+            <span v-else-if="column.key === 'available' || column.key === 'frozen'">{{ formatCredits(String(row[column.key])) }}</span>
+            <div v-else-if="column.key === 'actions'" class="rowActions">
+              <uiButton size="small" variant="ghost" :disabled="busy" @click="openCredits(row as AdminUser)">调整积分</uiButton>
+              <uiButton size="small" variant="ghost" :disabled="busy" @click="showProjects(row as AdminUser)">查看项目</uiButton>
+              <uiButton size="small" variant="ghost" :disabled="busy" @click="openPassword(row as AdminUser)">重置密码</uiButton>
+              <uiButton v-if="!row.isRoot" size="small" :variant="row.status === 'active' ? 'danger' : 'secondary'" :disabled="busy" @click="toggleUser(row as AdminUser)">{{ row.status === 'active' ? '停用' : '恢复' }}</uiButton>
+            </div>
+            <span v-else>{{ row[column.key] }}</span>
+          </template>
+        </uiTable>
+      </section>
       <section v-else-if="activeTab === 'api'" class="adminSection">
         <header class="sectionHeader"><div><h2>API 提供方</h2><p>凭据仅显示配置状态，留空不会覆盖已保存的凭据。</p></div><div class="sectionActions"><uiButton variant="secondary" :disabled="busy" @click="initializeCatalog">添加内置模型目录</uiButton><uiButton :disabled="busy" @click="editProvider()">添加 API</uiButton></div></header>
         <uiTable :rows="configuration?.providers ?? []" :columns="providerColumns" :loading="loading" emptyText="还没有配置 API" label="平台 API"><template #cell="{ row, column }"><span v-if="column.key === 'apiUrl'">{{ (row.config as PlatformProvider['config']).apiUrl }}</span><span v-else-if="column.key === 'credential'" class="credentialBadge" :title="providerCredential(row)">{{ providerCredential(row) }}</span><uiTag v-else-if="column.key === 'enabled'" :tone="row.enabled ? 'success' : 'error'">{{ row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="actionGroup"><uiButton size="small" variant="secondary" :disabled="busy" @click="editProvider(row as PlatformProvider)">配置 API</uiButton><uiButton size="small" variant="danger" :disabled="busy" @click="deleteProvider(row as PlatformProvider)">删除</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable>
@@ -72,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import { uiTag, uiButton, uiTabs, uiTable, uiDialog, uiField, uiInput, uiNumberInput, uiSelect, uiRadioGroup, uiCheckbox, useUiFeedback, isUiCancelledError, type UiColumn } from "@omnistudio-next/ui";
@@ -80,7 +117,7 @@ import accountShell from "@/components/account/accountShell.vue";
 import extensionPanel from "./extensionPanel.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { getAdminUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, savePlatformDefaultModels, type AdminUser, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints, type PlatformDefaultModels } from "@/lib/accountApi";
+import { getAdminUsers, getAdminOnlineUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, savePlatformDefaultModels, type AdminUser, type UserPresence, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints, type PlatformDefaultModels } from "@/lib/accountApi";
 import { creditMicros, formatCredits } from "@/lib/creditFormat";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
@@ -172,17 +209,67 @@ const filteredModels = computed(() => { const models = configuration.value?.mode
 const missingPrices = computed(() => priceRows.value.some(model => model.enabled && (model.mediaType === "text" ? !textPricingInput(model.priceKey) : priceDraft.value[model.priceKey] == null)));
 type WorkspaceFilter = "all" | "none" | string;
 const workspaceFilter = ref<WorkspaceFilter>("all");
+const onlineFilter = ref<"all" | "online" | "away" | "offline">("all");
+function updateOnlineFilter(value: unknown) { if (typeof value === "string") onlineFilter.value = value as "all" | "online" | "away" | "offline"; }
+const totalOnlineCount = computed(() => users.value.filter(u => u.presence?.status === "online").length);
+const totalAwayCount = computed(() => users.value.filter(u => u.presence?.status === "away").length);
+const totalOfflineCount = computed(() => users.value.filter(u => !u.presence || u.presence.status === "offline").length);
+const onlineOptions = computed(() => [
+  { value: "all", label: `全部状态 (${users.value.length})` },
+  { value: "online", label: `仅在线 (${totalOnlineCount.value})` },
+  { value: "away", label: `仅离开 (${totalAwayCount.value})` },
+  { value: "offline", label: `仅离线 (${totalOfflineCount.value})` },
+]);
+function formatPresenceLocation(presence?: UserPresence): string {
+  if (!presence?.currentPath) return "";
+  const path = presence.currentPath;
+  if (path.includes("/workspace")) return " · 画布";
+  if (path.includes("/teams")) return " · 团队";
+  if (path.includes("/account")) return " · 账户";
+  if (path.includes("/admin")) return " · 管理";
+  if (path.includes("/home") || path === "#/" || path === "/") return " · 首页";
+  return "";
+}
+function formatPresenceTime(lastSeenMs?: number): string {
+  if (!lastSeenMs) return "未知";
+  const diffSec = Math.max(0, Math.floor((Date.now() - lastSeenMs) / 1000));
+  if (diffSec < 60) return "刚刚";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}分钟前`;
+  const diffHour = Math.floor(diffMin / 60);
+  return `${diffHour}小时前`;
+}
 function userWorkspaces(user: AdminUser) { return user.workspaces ?? []; }
+function userPresence(row: unknown): UserPresence | undefined { return (row as AdminUser).presence; }
 function userWorkspaceLabel(user: AdminUser) { return userWorkspaces(user).map(workspace => `${workspace.name}${workspace.status === "archived" ? "（已解散）" : ""}`).join("、") || "未加入工作区"; }
 const workspaceOptions = computed(() => {
   const workspaces = new Map<string, string>();
   for (const user of users.value) for (const workspace of userWorkspaces(user)) workspaces.set(workspace.id, `${workspace.name}${workspace.status === "archived" ? "（已解散）" : ""}`);
   return [{ value: "all", label: "全部工作区" }, ...[...workspaces.entries()].sort(([, left], [, right]) => left.localeCompare(right, "zh-CN")).map(([value, label]) => ({ value, label })), ...(users.value.some(user => !userWorkspaces(user).length) ? [{ value: "none", label: "未加入工作区" }] : [])];
 });
-const filteredUsers = computed(() => workspaceFilter.value === "all" ? users.value : users.value.filter(user => workspaceFilter.value === "none" ? !userWorkspaces(user).length : userWorkspaces(user).some(workspace => workspace.id === workspaceFilter.value)));
+const filteredUsers = computed(() => {
+  let list = users.value;
+  if (workspaceFilter.value !== "all") {
+    list = list.filter(user => workspaceFilter.value === "none" ? !userWorkspaces(user).length : userWorkspaces(user).some(workspace => workspace.id === workspaceFilter.value));
+  }
+  if (onlineFilter.value !== "all") {
+    list = list.filter(user => (user.presence?.status ?? "offline") === onlineFilter.value);
+  }
+  return list;
+});
 function updateWorkspaceFilter(value: unknown) { if (typeof value === "string") workspaceFilter.value = value; }
 watch(workspaceOptions, options => { if (!options.some(option => option.value === workspaceFilter.value)) workspaceFilter.value = "all"; });
-const userColumns: UiColumn[] = [{ key: "displayName", label: "用户", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "workspace", label: "工作区", width: 180, align: "center" }, { key: "role", label: "身份", width: 80, align: "center" }, { key: "available", label: "可用积分", width: 115, align: "center" }, { key: "frozen", label: "冻结", width: 90, align: "center" }, { key: "status", label: "状态", width: 85, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
+const userColumns: UiColumn[] = [
+  { key: "displayName", label: "用户", align: "center" },
+  { key: "email", label: "邮箱", align: "center" },
+  { key: "presence", label: "实时状态", width: 120, align: "center" },
+  { key: "workspace", label: "工作区", width: 160, align: "center" },
+  { key: "role", label: "身份", width: 75, align: "center" },
+  { key: "available", label: "可用积分", width: 105, align: "center" },
+  { key: "frozen", label: "冻结", width: 85, align: "center" },
+  { key: "status", label: "状态", width: 80, align: "center" },
+  { key: "actions", label: "操作", width: 340, align: "center" },
+];
 const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", width: 150, align: "center" }, { key: "apiUrl", label: "API 地址", width: 300, align: "left" }, { key: "credential", label: "访问凭据", width: 200, align: "center" }, { key: "enabled", label: "状态", width: 95, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 160, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "configDetails", label: "配置详情", width: 320 }, { key: "creditsPerUnit", label: "价格配置", width: 150, align: "center" }];
@@ -359,7 +446,55 @@ async function publishPrices() {
   catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); }
   finally { busy.value = false; }
 }
-onMounted(loadAll);
+
+async function refreshOnlinePresences() {
+  if (activeTab.value !== "users") return;
+  try {
+    const data = await getAdminOnlineUsers();
+    const onlineMap = new Map(data.users.map(u => [u.userId, u]));
+    for (const user of users.value) {
+      const active = onlineMap.get(user.id);
+      if (active) {
+        user.presence = { status: active.status, currentPath: active.currentPath, lastSeenMs: active.lastSeenMs };
+      } else if (user.presence && user.presence.status !== "offline") {
+        user.presence = { status: "offline", lastSeenMs: user.presence.lastSeenMs };
+      }
+    }
+  } catch {
+    // 轮询静默失败
+  }
+}
+
+let presencePollTimer: ReturnType<typeof setInterval> | undefined;
+function startPresencePolling() {
+  stopPresencePolling();
+  presencePollTimer = setInterval(() => {
+    void refreshOnlinePresences();
+  }, 12_000);
+}
+function stopPresencePolling() {
+  if (presencePollTimer) {
+    clearInterval(presencePollTimer);
+    presencePollTimer = undefined;
+  }
+}
+
+watch(activeTab, tab => {
+  if (tab === "users") {
+    startPresencePolling();
+  } else {
+    stopPresencePolling();
+  }
+});
+
+onMounted(() => {
+  void loadAll();
+  startPresencePolling();
+});
+
+onUnmounted(() => {
+  stopPresencePolling();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -369,7 +504,41 @@ onMounted(loadAll);
 .pageError { color: var(--uiStatusError); margin: 0 0 20px; font-size: var(--uiFontControl); line-height: 1.6; overflow-wrap: anywhere; }
 .adminSection {
   min-width: 0;
-  .sectionHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px; h2 { margin: 0 0 8px; font-size: 18px; } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .sectionActions { display: flex; gap: 8px; flex-wrap: wrap; } }
+  .sectionHeader {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px;
+    h2 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
+    .sectionActions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .presenceSummary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--uiTextMuted);
+      .presenceDot {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        &::before {
+          content: "";
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+        }
+        &.online::before {
+          background: var(--uiStatusSuccess, #22c55e);
+          box-shadow: 0 0 6px var(--uiStatusSuccess, #22c55e);
+        }
+        &.away::before {
+          background: var(--uiStatusWarning, #eab308);
+        }
+        &.offline::before {
+          background: var(--uiTextMuted, #71717a);
+        }
+      }
+    }
+  }
   .defaultModelsCard {
     margin-top: 36px;
     padding: 20px;

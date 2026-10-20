@@ -65,3 +65,7 @@ export async function getInvitation(token: string) {
   const { data } = await authClient.get<ApiResponse<{ teamId: string; teamName: string; email: string; expiresAt: string }>>("/api/auth/invitation", { params: { token } });
   return data.data;
 }
+
+export async function sendHeartbeat(currentPath?: string) {
+  await authClient.post("/api/auth/heartbeat", { currentPath });
+}
