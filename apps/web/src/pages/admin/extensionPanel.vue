@@ -35,7 +35,7 @@ import type { Plugin, PluginType } from "@/components/settings/panels/pluginMark
 import { installPluginFile } from "@/components/settings/installPluginFile";
 const feedback = useUiFeedback(); const plugins = ref<Plugin[]>([]); const loading = ref(false); const busy = ref(false); const errorMessage = ref("");
 const category = ref("tool"); const categories = [{ value: "tool", label: "工具" }, { value: "node", label: "节点" }, { value: "skill", label: "技能" }, { value: "agent", label: "Agent 插件" }, { value: "ffmpeg", label: "FFmpeg" }];
-const columns: UiColumn[] = [{ key: "displayName", label: "扩展" }, { key: "version", label: "版本", width: 120 }, { key: "enabled", label: "状态", width: 110 }, { key: "actions", label: "操作", width: 250, align: "right" }];
+const columns: UiColumn[] = [{ key: "displayName", label: "扩展" }, { key: "version", label: "版本", width: 120, align: "center" }, { key: "enabled", label: "状态", width: 110, align: "center" }, { key: "actions", label: "操作", width: 250, align: "center" }];
 const visiblePlugins = computed(() => plugins.value.filter(plugin => plugin.type === category.value).map(plugin => ({ ...plugin })));
 const configPlugin = ref<Plugin>(); const configVisible = ref(false); const installVisible = ref(false); const installUrl = ref(""); const installType = ref<PluginType>("tool"); const force = ref(false); const installError = ref("");
 const skillFile = ref<File>(); const skillFileInput = ref<HTMLInputElement>(); const skillDiagnostics = ref<{ path: string; message: string }[]>([]);
@@ -116,7 +116,8 @@ onMounted(load);
   .rowActions {
     display: flex;
     gap: 4px;
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
   }
 

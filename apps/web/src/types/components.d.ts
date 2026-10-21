@@ -29,6 +29,7 @@ declare module 'vue' {
     HomeTour: typeof import('./../components/onboarding/homeTour.vue')['default']
     IconArrowUpRight: typeof import('@tabler/icons-vue')['IconArrowUpRight']
     IconBorderRadius: typeof import('@tabler/icons-vue')['IconBorderRadius']
+    IconChevronDown: typeof import('@tabler/icons-vue')['IconChevronDown']
     IconExternalLink: typeof import('@tabler/icons-vue')['IconExternalLink']
     IconFile: typeof import('@tabler/icons-vue')['IconFile']
     IconFolders: typeof import('@tabler/icons-vue')['IconFolders']

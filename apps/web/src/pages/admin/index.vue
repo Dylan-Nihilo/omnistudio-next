@@ -273,7 +273,7 @@ const userColumns: UiColumn[] = [
 const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", width: 150, align: "center" }, { key: "apiUrl", label: "API 地址", width: 300, align: "left" }, { key: "credential", label: "访问凭据", width: 200, align: "center" }, { key: "enabled", label: "状态", width: 95, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 160, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "configDetails", label: "配置详情", width: 320 }, { key: "creditsPerUnit", label: "价格配置", width: 150, align: "center" }];
-const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180 }, { key: "actorUserId", label: "操作者", width: 150 }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180 }];
+const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180, align: "center" }, { key: "actorUserId", label: "操作者", width: 150, align: "center" }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180, align: "center" }];
 const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录", "platform.defaultModels.save": "配置默认模型" };
 function errorText(error: unknown) { return axios.isAxiosError(error) ? error.response?.data?.message || "连接中断，请刷新后确认结果" : error instanceof Error ? error.message : "操作失败，请重试"; }
 function userName(id: string) { return users.value.find(user => user.id === id)?.displayName ?? id; }
@@ -515,8 +515,20 @@ onUnmounted(() => {
         align-items: center;
         gap: 8px;
         flex-wrap: nowrap;
-        .onlineFilterSelect { width: 140px; flex-shrink: 0; }
-        .workspaceFilterSelect { width: 180px; flex-shrink: 0; }
+        .onlineFilterSelect {
+          width: 175px;
+          flex-shrink: 0;
+          :deep(.optionLabel) {
+            white-space: nowrap;
+          }
+        }
+        .workspaceFilterSelect {
+          width: 185px;
+          flex-shrink: 0;
+          :deep(.optionLabel) {
+            white-space: nowrap;
+          }
+        }
       }
     }
     .presenceSummary {

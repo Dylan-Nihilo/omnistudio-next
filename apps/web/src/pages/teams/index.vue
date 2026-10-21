@@ -8,7 +8,7 @@
         <section v-if="activeTab === 'assets'" class="teamAssets">
           <header class="sectionHeader"><div><h2>团队共享资产</h2><p>上传生成独立副本，个人原件不会移动或删除。</p></div><uiButton :disabled="busy || currentTeam?.status === 'archived'" :loading="busy" @click="fileInput?.click()">上传资产</uiButton><input ref="fileInput" class="fileInput" type="file" multiple @change="uploadFiles" /></header>
           <p v-if="currentTeam?.status === 'archived'" class="sectionHint">团队已解散，系统保留归档资产和成员记录以便审计与恢复；恢复团队后成员可重新使用。</p>
-          <uiTable :rows="assets" :columns="assetColumns" :loading="detailLoading" emptyText="团队还没有共享资产" label="团队资产"><template #cell="{ row, column }"><button v-if="column.key === 'name'" type="button" class="assetName" @click="previewAsset = row as TeamAsset"><icon-file :size="18" aria-hidden="true" /><span>{{ row.name }}</span></button><span v-else-if="column.key === 'bytes'">{{ formatBytes(Number(row.bytes)) }}</span><span v-else-if="column.key === 'uploadedBy'">{{ memberName(String(row.uploadedBy)) }}</span><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton variant="ghost" size="small" :disabled="busy" @click="downloadAsset(row as TeamAsset)">下载</uiButton><uiButton variant="ghost" size="small" :disabled="busy" @click="copyToLibrary(row as TeamAsset)">复制到我的素材库</uiButton><uiButton variant="ghost" size="small" :disabled="busy || !workspace.project" @click="copyToProject(row as TeamAsset)">复制到当前项目</uiButton><uiButton v-if="canManage" variant="ghost" size="small" :disabled="busy" @click="renameAsset(row as TeamAsset)">重命名</uiButton><uiButton v-if="canManage" variant="danger" size="small" :disabled="busy" @click="deleteAsset(row as TeamAsset)">删除</uiButton></div><span v-else>{{ row[column.key] }}</span></template></uiTable>
+          <uiTable :rows="assets" :columns="assetColumns" :loading="detailLoading" emptyText="团队还没有共享资产" label="团队资产"><template #cell="{ row, column }"><button v-if="column.key === 'name'" type="button" class="assetName" @click="previewAsset = row as TeamAsset"><icon-file :size="18" aria-hidden="true" /><span>{{ row.name }}</span></button><span v-else-if="column.key === 'bytes'">{{ formatBytes(Number(row.bytes)) }}</span><span v-else-if="column.key === 'uploadedBy'">{{ memberName(String(row.uploadedBy)) }}</span><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton variant="secondary" size="small" :disabled="busy || !workspace.project" @click="copyToProject(row as TeamAsset)">复制到当前项目</uiButton><uiButton variant="ghost" size="small" :disabled="busy" @click="downloadAsset(row as TeamAsset)">下载</uiButton><uiDropdown :items="assetMoreActions(row as TeamAsset)" @command="value => handleAssetCommand(String(value), row as TeamAsset)"><template #reference="{ triggerAttrs }"><uiButton variant="ghost" size="small" :disabled="busy" v-bind="triggerAttrs">更多<icon-chevron-down :size="14" aria-hidden="true" /></uiButton></template></uiDropdown></div><span v-else>{{ row[column.key] }}</span></template></uiTable>
         </section>
         <section v-else class="teamMembers"><header class="sectionHeader"><div><h2>团队成员</h2><p>成员积分独立，可在同团队成员之间自由划转。</p></div><uiButton v-if="canManage && currentTeam?.status !== 'archived'" variant="secondary" :disabled="busy" @click="inviteVisible = true">邀请成员</uiButton></header><uiTable :rows="members" :columns="memberColumns" :loading="detailLoading" emptyText="暂时没有成员" label="团队成员"><template #cell="{ row, column }"><span v-if="column.key === 'role'">{{ row.role === 'owner' ? 'owner' : '成员' }}</span><uiTag v-else-if="column.key === 'status'" :tone="row.status === 'active' ? 'success' : 'error'">{{ row.status === 'active' ? '正常' : '已停用' }}</uiTag><uiButton v-else-if="column.key === 'available'" class="creditButton" variant="ghost" size="small" :disabled="detailLoading" @click="showMemberLedger(row as TeamMember)">{{ formatCredits(String(row.available)) }}</uiButton><uiButton v-else-if="column.key === 'actions' && canManage && row.id !== currentTeam?.ownerUserId" variant="danger" size="small" :disabled="busy" @click="removeTeamUser(row as TeamMember)">移除成员</uiButton><span v-else>{{ row[column.key] ?? '' }}</span></template></uiTable><router-link class="transferLink" to="/account">前往个人账户划转积分 →</router-link></section>
       </uiTabs>
@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import axios from "axios";
-import { uiTag, uiButton, uiDialog, uiForm, uiFormField, uiInput, uiSelect, uiTabs, uiTable, uiImage, uiMediaPlayer, useUiFeedback, isUiCancelledError, type UiColumn, type UiFormRules } from "@omnistudio-next/ui";
+import { uiTag, uiButton, uiDialog, uiDropdown, uiForm, uiFormField, uiInput, uiSelect, uiTabs, uiTable, uiImage, uiMediaPlayer, useUiFeedback, isUiCancelledError, type UiColumn, type UiFormRules, type UiMenuItem } from "@omnistudio-next/ui";
 import accountShell from "@/components/account/accountShell.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -42,7 +42,7 @@ const createRules: UiFormRules = { name: { required: true, whitespace: true, mes
 const inviteRules: UiFormRules = { email: [{ required: true, message: "请输入成员邮箱" }, { type: "email", message: "请输入有效的邮箱地址" }] };
 const currentTeam = computed(() => auth.currentTeam); const canManage = computed(() => auth.isRoot || currentTeam.value?.ownerUserId === auth.user?.id);
 const teamOptions = computed(() => auth.teams.map(team => ({ value: team.id, label: team.name + (team.status === "archived" ? " · 已解散（归档保留）" : "") })));
-const assetColumns: UiColumn[] = [{ key: "name", label: "名称", align: "center" }, { key: "bytes", label: "大小", width: 100, align: "center" }, { key: "uploadedBy", label: "上传成员", width: 140, align: "center" }, { key: "actions", label: "操作", width: 360, align: "center" }];
+const assetColumns: UiColumn[] = [{ key: "name", label: "名称", align: "left" }, { key: "bytes", label: "大小", width: 100, align: "center" }, { key: "uploadedBy", label: "上传成员", width: 140, align: "center" }, { key: "actions", label: "操作", width: 260, align: "center" }];
 const memberColumns: UiColumn[] = [{ key: "displayName", label: "成员", align: "center" }, { key: "email", label: "邮箱", align: "center" }, { key: "available", label: "可用积分", width: 120, align: "center" }, { key: "role", label: "角色", width: 100, align: "center" }, { key: "status", label: "状态", width: 100, align: "center" }, { key: "actions", label: "操作", width: 120, align: "center" }];
 const memberLedgerColumns: UiColumn[] = [{ key: "kind", label: "变动类型", width: 130, align: "center" }, { key: "reason", label: "用途", align: "center" }, { key: "amount", label: "积分变动", width: 130, align: "center" }, { key: "balanceAfter", label: "变动后余额", width: 130, align: "center" }, { key: "createdAt", label: "时间", width: 180, align: "center" }];
 const ledgerLabels: Record<string, string> = { grant: "管理员发放", adjustment: "管理员调整", reserve: "生成预留", capture: "生成扣除", release: "预留释放", transferIn: "成员划入", transferOut: "成员划出" };
@@ -81,6 +81,16 @@ async function copyToProject(asset: TeamAsset) { const project = workspace.proje
 async function copyToLibrary(asset: TeamAsset) { busy.value = true; try { await importTeamAsset(asset.id); feedback.message({ tone: "success", message: "已提交字节素材入库，审核完成后可使用" }); } catch (error) { errorMessage.value = errorText(error); } finally { busy.value = false; } }
 async function renameAsset(asset: TeamAsset) { try { const result = await feedback.prompt("资产名称", "重命名团队资产", { inputValue: asset.name, inputValidator: value => !!value?.trim() || "请输入名称", confirmButtonText: "保存名称", cancelButtonText: "取消" }); busy.value = true; await renameTeamAsset(asset.id, result.value.trim()); await loadDetail(); } catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); } finally { busy.value = false; } }
 async function deleteAsset(asset: TeamAsset) { try { await feedback.confirm(`删除团队共享副本「${asset.name}」？所有成员将无法再访问这个副本，个人原件不受影响。`, "删除团队资产", { danger: true, confirmButtonText: "删除共享副本", cancelButtonText: "保留资产" }); busy.value = true; await removeTeamAsset(asset.id); await loadDetail(); } catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); } finally { busy.value = false; } }
+function assetMoreActions(asset: TeamAsset): UiMenuItem[] {
+  const items: UiMenuItem[] = [{ value: "library", label: "复制到我的素材库" }];
+  if (canManage.value) items.push({ value: "rename", label: "重命名" }, { value: "delete", label: "删除" });
+  return items;
+}
+function handleAssetCommand(command: string, asset: TeamAsset) {
+  if (command === "library") void copyToLibrary(asset);
+  else if (command === "rename") void renameAsset(asset);
+  else if (command === "delete") void deleteAsset(asset);
+}
 async function removeTeamUser(member: TeamMember) { const id = auth.currentTeamId; try { await feedback.confirm(`移除 ${member.displayName}（${member.email}）？对方将失去团队共享资产访问权，已上传的团队副本会保留。`, "移除团队成员", { danger: true, confirmButtonText: "移除成员", cancelButtonText: "保留成员" }); busy.value = true; await removeMember(id, member.id); await loadDetail(); } catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); } finally { busy.value = false; } }
 async function renameTeam() { const team = currentTeam.value; if (!team) return; try { const result = await feedback.prompt("团队名称", "重命名团队", { inputValue: team.name, inputValidator: value => !!value?.trim() || "请输入名称", confirmButtonText: "保存名称", cancelButtonText: "取消" }); busy.value = true; await saveTeam(team.id, { name: result.value.trim() }); await loadTeams(); } catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); } finally { busy.value = false; } }
 async function archiveTeam() { const team = currentTeam.value; if (!team) return; try { await feedback.confirm(`解散「${team.name}」？成员将失去共享资产访问权，团队资产会保留归档，个人资产和积分不受影响。`, "解散团队", { danger: true, confirmButtonText: "解散团队", cancelButtonText: "保留团队" }); busy.value = true; await saveTeam(team.id, { archive: true }); await loadTeams(); } catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); } finally { busy.value = false; } }
@@ -91,7 +101,33 @@ onMounted(loadTeams);
 
 <style lang="scss" scoped>
 .pageError { color: var(--uiStatusError); margin: 0 0 20px; font-size: var(--uiFontControl); line-height: 1.6; overflow-wrap: anywhere; }
-.teamWorkspace { :deep(.uiTable th), :deep(.uiTable td) { text-align: center !important; } .teamHeader { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; .teamSelect { width: min(360px, 100%); } .teamRole { color: var(--uiTextMuted); font-size: 12px; } .teamActions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; } } .teamAssets, .teamMembers { min-width: 0; .sectionHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 8px 0 24px; h2 { font-size: 18px; margin: 0 0 8px; } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .fileInput { display: none; } } .assetName { display: inline-flex; gap: 10px; align-items: center; justify-content: center; padding: 0; border: 0; color: var(--uiTextPrimary); background: transparent; font: inherit; cursor: pointer; text-align: center; span { overflow-wrap: anywhere; } svg { flex-shrink: 0; color: var(--uiTextMuted); } } .creditButton { color: var(--uiActionPrimary); text-decoration: underline; text-underline-offset: 3px; } .rowActions { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; } .transferLink { display: inline-block; margin-top: 20px; color: var(--uiActionPrimary); font-size: var(--uiFontControl); text-decoration: none; } } }
+.teamWorkspace {
+  :deep(.uiTable th) { text-align: center !important; }
+  .teamHeader {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+    .teamSelect { width: min(360px, 100%); }
+    .teamRole { color: var(--uiTextMuted); font-size: 12px; }
+    .teamActions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  }
+  .teamAssets, .teamMembers {
+    min-width: 0;
+    .sectionHeader {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 8px 0 24px;
+      h2 { font-size: 18px; margin: 0 0 8px; }
+      p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
+      .fileInput { display: none; }
+    }
+    .assetName {
+      display: inline-flex; gap: 10px; align-items: center; justify-content: flex-start; width: 100%;
+      padding: 0; border: 0; color: var(--uiTextPrimary); background: transparent; font: inherit; cursor: pointer; text-align: left;
+      span { overflow-wrap: anywhere; text-align: left; }
+      svg { flex-shrink: 0; color: var(--uiTextMuted); }
+    }
+    .creditButton { color: var(--uiActionPrimary); text-decoration: underline; text-underline-offset: 3px; }
+    .rowActions { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: nowrap; white-space: nowrap; }
+    .transferLink { display: inline-block; margin-top: 20px; color: var(--uiActionPrimary); font-size: var(--uiFontControl); text-decoration: none; }
+  }
+}
 .sectionHint { color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
 .emptyTeam { display: grid; justify-items: start; gap: 16px; padding: 36px 0; color: var(--uiTextMuted); h2 { margin: 0; color: var(--uiTextPrimary); font-size: 20px; } p { margin: 0; line-height: 1.7; } }
 .dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } }
