@@ -75,8 +75,109 @@ onMounted(load);
 </script>
 
 <style lang="scss" scoped>
-.extensionsPanel { .extensionHeader { display: flex; justify-content: space-between; gap: 20px; margin: 8px 0 24px; h2 { margin: 0 0 8px; font-size: 18px; } p { margin: 0; color: var(--uiTextMuted); line-height: 1.7; font-size: var(--uiFontControl); } .extensionActions { display: flex; gap: 8px; flex-wrap: wrap; } } .extensionName { display: grid; gap: 6px; span { font-size: 12px; color: var(--uiTextMuted); } } .rowActions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; } .extensionError { color: var(--uiStatusError); font-size: var(--uiFontControl); line-height: 1.7; } }
-.installForm { display: grid; gap: 20px; .skillFileControls { display: flex; align-items: center; gap: 8px; input { flex: 1; min-width: 0; } } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; } .extensionError { color: var(--uiStatusError); } }
-.extensionsPanel { .extensionTable { :deep(table) { min-width: 760px; } } .skillDiagnostics { margin-bottom: 16px; color: var(--uiTextMuted); overflow-wrap: anywhere; summary { cursor: pointer; } ul { padding-left: 20px; line-height: 1.7; } } }
-@media (max-width: 700px) { .extensionsPanel .extensionHeader { flex-direction: column; } }
+.extensionsPanel {
+  .extensionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin: 8px 0 24px;
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--uiTextMuted);
+      line-height: 1.7;
+      font-size: var(--uiFontControl);
+    }
+
+    .extensionActions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  }
+
+  .extensionName {
+    display: grid;
+    gap: 6px;
+
+    span {
+      font-size: 12px;
+      color: var(--uiTextMuted);
+    }
+  }
+
+  .rowActions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .extensionError {
+    color: var(--uiStatusError);
+    font-size: var(--uiFontControl);
+    line-height: 1.7;
+  }
+
+  .extensionTable {
+    :deep(table) {
+      min-width: 760px;
+    }
+  }
+
+  .skillDiagnostics {
+    margin-bottom: 16px;
+    color: var(--uiTextMuted);
+    overflow-wrap: anywhere;
+
+    summary {
+      cursor: pointer;
+    }
+
+    ul {
+      padding-left: 20px;
+      line-height: 1.7;
+    }
+  }
+}
+
+.installForm {
+  display: grid;
+  gap: 20px;
+
+  .skillFileControls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: var(--uiTextMuted);
+    font-size: var(--uiFontControl);
+    line-height: 1.7;
+  }
+
+  .extensionError {
+    color: var(--uiStatusError);
+  }
+}
+
+@media (max-width: 700px) {
+  .extensionsPanel .extensionHeader {
+    flex-direction: column;
+  }
+}
 </style>

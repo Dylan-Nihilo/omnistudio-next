@@ -15,9 +15,9 @@
               <span class="presenceDot offline">离线 {{ totalOfflineCount }}</span>
             </div>
           </div>
-          <div class="sectionActions">
-            <uiSelect :modelValue="onlineFilter" :options="onlineOptions" aria-label="按在线状态筛选" @update:modelValue="updateOnlineFilter" />
-            <uiSelect :modelValue="workspaceFilter" :options="workspaceOptions" aria-label="按工作区筛选" @update:modelValue="updateWorkspaceFilter" />
+          <div class="sectionActions filterActions">
+            <uiSelect class="onlineFilterSelect" :modelValue="onlineFilter" :options="onlineOptions" aria-label="按在线状态筛选" @update:modelValue="updateOnlineFilter" />
+            <uiSelect class="workspaceFilterSelect" :modelValue="workspaceFilter" :options="workspaceOptions" aria-label="按工作区筛选" @update:modelValue="updateWorkspaceFilter" />
           </div>
         </header>
         <uiTable :rows="filteredUsers" :columns="userColumns" :loading="loading" emptyText="还没有用户" label="平台用户">
@@ -260,10 +260,10 @@ const filteredUsers = computed(() => {
 function updateWorkspaceFilter(value: unknown) { if (typeof value === "string") workspaceFilter.value = value; }
 watch(workspaceOptions, options => { if (!options.some(option => option.value === workspaceFilter.value)) workspaceFilter.value = "all"; });
 const userColumns: UiColumn[] = [
-  { key: "displayName", label: "用户", align: "center" },
-  { key: "email", label: "邮箱", align: "center" },
+  { key: "displayName", label: "用户", width: 120, align: "center" },
+  { key: "email", label: "邮箱", width: 190, align: "center" },
   { key: "presence", label: "实时状态", width: 120, align: "center" },
-  { key: "workspace", label: "工作区", width: 160, align: "center" },
+  { key: "workspace", label: "工作区", width: 260, align: "center" },
   { key: "role", label: "身份", width: 75, align: "center" },
   { key: "available", label: "可用积分", width: 105, align: "center" },
   { key: "frozen", label: "冻结", width: 85, align: "center" },
@@ -508,7 +508,17 @@ onUnmounted(() => {
     display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px;
     h2 { margin: 0 0 8px; font-size: 18px; }
     p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; }
-    .sectionActions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sectionActions {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      &.filterActions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        .onlineFilterSelect { width: 140px; flex-shrink: 0; }
+        .workspaceFilterSelect { width: 180px; flex-shrink: 0; }
+      }
+    }
     .presenceSummary {
       display: flex;
       align-items: center;
