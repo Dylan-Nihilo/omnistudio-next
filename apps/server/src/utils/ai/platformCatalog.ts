@@ -1,5 +1,6 @@
 export const platformProviders = [
   { providerId: "utoooSeedance", apiUrl: "https://ai-gateway.utooo.com", protocol: "openai-completions" as const, secretRef: "UTOOO_SEEDANCE_API_KEY", config: { baseUrl: "https://ai-gateway.utooo.com" } },
+  { providerId: "baiduVideoFire", apiUrl: "https://qianfan.baidubce.com", protocol: "openai-completions" as const, secretRef: "BAIDU_QIANFAN_API_KEY", config: { baseUrl: "https://qianfan.baidubce.com" } },
   { providerId: "kaizoText", apiUrl: "https://kaizo.top/v1", protocol: "openai-completions" as const, secretRef: "OPENAI_API_KEY", config: { baseUrl: "https://kaizo.top/v1" } },
   { providerId: "kaizoClaude", apiUrl: "https://kaizo.top", protocol: "anthropic-messages" as const, secretRef: "KAIZO_CLAUDE_API_KEY", config: { baseUrl: "https://kaizo.top" } },
   { providerId: "openheapImage", apiUrl: "https://openheapstack.com/v1", protocol: "openai-completions" as const, secretRef: "OPENHEAP_IMAGE_API_KEY", config: { baseUrl: "https://openheapstack.com/v1" } },
@@ -33,6 +34,10 @@ const qwenVisionVideoInput: VideoInputCapability = {
 export const platformModelCatalog: Array<{ providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video"; apiModelId?: string; capabilities?: Record<string, unknown>; sortOrder: number }> = [
   { providerId: "utoooSeedance", modelId: "doubao-seedance-2-5-260628", label: "Seedance 2.5", mediaType: "video", sortOrder: 180 },
   { providerId: "utoooSeedance", modelId: "doubao-seedance-2-0-260128", label: "Seedance 2.0", mediaType: "video", sortOrder: 190 },
+  { providerId: "baiduVideoFire", modelId: "S2.0", label: "百度 S2.0", mediaType: "video", sortOrder: 200 },
+  { providerId: "baiduVideoFire", modelId: "S2.0-Fast", label: "百度 S2.0 Fast", mediaType: "video", sortOrder: 210 },
+  { providerId: "baiduVideoFire", modelId: "S2.0-Mini", label: "百度 S2.0 Mini", mediaType: "video", sortOrder: 220 },
+  { providerId: "baiduVideoFire", modelId: "S2.5", label: "百度 S2.5", mediaType: "video", sortOrder: 230 },
   { providerId: "dashscope", modelId: "text/deepseek-v4.1-flash", apiModelId: "deepseek-v4.1-flash", label: "标准模型", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 30 },
   { providerId: "dashscope", modelId: "text/qwen3.7-plus", apiModelId: "qwen3.7-plus", label: "通用模型", mediaType: "text", capabilities: { vision: true, tools: true, videoInput: qwenVisionVideoInput }, sortOrder: 40 },
   { providerId: "dashscope", modelId: "text/glm-5", apiModelId: "glm-5", label: "推理模型", mediaType: "text", capabilities: { vision: true, tools: true }, sortOrder: 50 },

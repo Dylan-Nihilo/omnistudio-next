@@ -76,6 +76,10 @@ for (const model of platformModelCatalog) {
   const videoPricing: Record<string, Record<string, number>> = {
     "utoooSeedance:doubao-seedance-2-5-260628": { "480p": 32, "720p": 68, "1080p": 153 },
     "utoooSeedance:doubao-seedance-2-0-260128": { "480p": 18, "720p": 38, "1080p": 86 },
+    "baiduVideoFire:S2.0": { "480p": 5, "720p": 5, "1080p": 7, "4k": 10 },
+    "baiduVideoFire:S2.0-Fast": { "480p": 4, "720p": 4 },
+    "baiduVideoFire:S2.0-Mini": { "480p": 3, "720p": 3 },
+    "baiduVideoFire:S2.5": { "480p": 5, "720p": 7, "1080p": 8 },
     "dashscopeVideo:minimax-h3": { "768P": 9, "2K": 18 },
   };
   const textCredits: Record<string, number> = {
