@@ -34,7 +34,12 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields({
   req.once("aborted", close);
   req.socket.once("close", close);
   try {
-    const files = await u.mediaGeneration.generateMedia(cwd, mediaType, parsed.data, controller.signal, { userId: req.authContext!.user.id, idempotencyKey, concurrencyRelease: releaseConcurrency });
+    const files = await u.mediaGeneration.generateMedia(cwd, mediaType, parsed.data, controller.signal, {
+      userId: req.authContext!.user.id,
+      idempotencyKey,
+      concurrencyRelease: releaseConcurrency,
+      publicOrigin: `${req.protocol}://${req.get("host")}`,
+    });
     if (!res.destroyed) res.end(`200,"data":${JSON.stringify(files)},"message":"成功"}`);
   } catch (caught) {
     if (!res.destroyed) {

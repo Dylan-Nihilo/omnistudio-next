@@ -88,7 +88,7 @@ export async function createApp({
     if (writing && origin && origin !== `${request.protocol}://${request.get("host")}`) return response.status(403).json(error("不允许跨来源操作", null, 403));
     const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready"
       || (["GET", "HEAD"].includes(request.method) && request.path.toLowerCase().replace(/\/+$/, "") === "/deployment/status")
-      || (["GET", "HEAD"].includes(request.method) && request.path === "/assets/source");
+      || (["GET", "HEAD"].includes(request.method) && ["/assets/source", "/assets/workspaceSource"].includes(request.path));
     if (publicPath) return next();
     if (!request.authContext || request.authContext.serviceKind) return response.status(401).json(error("请先登录", null, 401));
     const expectedAccount = request.get("x-account-id") ?? request.query.accountId;

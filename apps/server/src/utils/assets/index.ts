@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { lstat, mkdir, readdir, realpath, rmdir, unlink } from "node:fs/promises";
 import { basename, extname, join, relative, sep } from "node:path";
@@ -131,6 +131,65 @@ export async function createDirectory(path: string) {
 
 function sourceSignature(userId: string, path: string, hash: string, expires: string, secret: string) {
   return createHmac("sha256", secret).update(JSON.stringify([userId, path, hash, expires])).digest("hex");
+}
+
+function workspaceSourceSignature(userId: string, directory: string, path: string, hash: string, mimeType: string, expires: string, secret: string) {
+  return createHmac("sha256", secret).update(JSON.stringify([userId, directory, path, hash, mimeType, expires])).digest("hex");
+}
+
+function workspaceSourceSecret(userId: string, create = true) {
+  const config = getAccountConfig(userId);
+  const existing = config.get("workspaceSourceSecret");
+  if (typeof existing === "string" && existing.length >= 32) return existing;
+  if (!create) return;
+  const secret = `${randomUUID()}${randomUUID()}`;
+  config.set("workspaceSourceSecret", secret);
+  return secret;
+}
+
+function publicOrigin(origin?: string) {
+  let base: URL;
+  try { base = new URL(process.env.OMNISTUDIO_NEXT_PUBLIC_URL || origin || ""); }
+  catch { return; }
+  if (!/^https?:$/.test(base.protocol) || base.username || base.password || /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i.test(base.hostname)) return;
+  return base;
+}
+
+export async function workspaceSourceUrl(directory: string, path: string, bytes: Uint8Array, mimeType: string, origin?: string) {
+  const base = publicOrigin(origin);
+  if (!base) return;
+  const account = requireAccount();
+  const expires = String(Date.now() + 24 * 60 * 60 * 1000);
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  const secret = workspaceSourceSecret(account.userId);
+  if (!secret) throw new Error("素材源签名密钥不可用");
+  const url = new URL("/api/assets/workspaceSource", base);
+  url.search = new URLSearchParams({
+    userId: account.userId,
+    directory,
+    path,
+    hash,
+    mimeType,
+    expires,
+    signature: workspaceSourceSignature(account.userId, directory, path, hash, mimeType, expires, secret),
+  }).toString();
+  return url.href;
+}
+
+export async function readWorkspaceSource(userId: string, directory: string, path: string, hash: string, mimeType: string, expires: string, signature: string) {
+  const deadline = Number(expires);
+  if (!Number.isSafeInteger(deadline) || deadline <= Date.now() || deadline > Date.now() + 24 * 60 * 60 * 1000) invalid("素材源地址已失效", 403);
+  const secret = workspaceSourceSecret(userId, false);
+  if (!secret) invalid("素材源地址已失效", 403);
+  const expected = workspaceSourceSignature(userId, directory, path, hash, mimeType, expires, secret);
+  if (!/^[a-f0-9]{64}$/.test(signature) || !timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) invalid("素材源地址签名无效", 403);
+  const root = await realpath(directory);
+  const result = await resolveWorkspacePath(root, path);
+  if (!(await lstat(result.path)).isFile()) invalid("只能读取文件");
+  const digest = createHash("sha256");
+  for await (const chunk of createReadStream(result.path)) digest.update(chunk);
+  if (digest.digest("hex") !== hash) invalid("素材源文件已变化，原签名地址已失效", 403);
+  return { path: result.path, mimeType };
 }
 
 async function sourceUrl(path: string, hash: string, origin?: string) {

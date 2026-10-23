@@ -7,7 +7,7 @@ import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformMo
 import { getActivePricingItems, estimateMediaCredits, reserveGeneration, settleGeneration } from "@/services/billingService";
 import { authorizeProjectDirectory } from "@/services/accountService";
 import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
-import { referenceForBytes } from "@/utils/assets";
+import { referenceForBytes, workspaceSourceUrl } from "@/utils/assets";
 import { acquireConcurrency } from "@/lib/concurrency";
 import { formatAgentError } from "@/agent/runtime/errors";
 
@@ -22,7 +22,7 @@ const mediaExtensions: Record<string, string> = {
   "audio/flac": "flac", "audio/aac": "aac", "audio/mp4": "m4a", "audio/opus": "opus", "audio/pcm": "pcm",
 };
 
-export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void };
+export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void; publicOrigin?: string };
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -85,8 +85,8 @@ function detectMimeType(bytes: Uint8Array, fallback: string) {
 }
 
 export function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal): Promise<Extract<MediaInput, { type: "base64" }>>;
-export function readReference(cwd: string, reference: MediaReference, mediaType: string, signal: AbortSignal | undefined, providerId: string): Promise<MediaInput>;
-export async function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal, providerId?: string): Promise<MediaInput> {
+export function readReference(cwd: string, reference: MediaReference, mediaType: string, signal: AbortSignal | undefined, providerId: string, publicOrigin?: string): Promise<MediaInput>;
+export async function readReference(cwd: string, reference: MediaReference, mediaType: string, signal?: AbortSignal, providerId?: string, publicOrigin?: string): Promise<MediaInput> {
   signal?.throwIfAborted();
   const { path } = await resolveWorkspacePath(cwd, reference.path);
   const info = await stat(path);
@@ -98,6 +98,10 @@ export async function readReference(cwd: string, reference: MediaReference, medi
   if (providerId === "utoooSeedance") {
     const asset = await referenceForBytes(bytes, mimeType);
     if (asset) return asset;
+  }
+  if (providerId === "baiduVideoFire") {
+    const url = await workspaceSourceUrl(cwd, reference.path, bytes, mimeType, publicOrigin);
+    if (url) return { type: "url", url, mimeType };
   }
   return { type: "base64", data: bytes.toString("base64"), mimeType };
 }
@@ -188,7 +192,7 @@ export async function generateMedia(
   let outputCompleted = false;
   const result: GeneratedMedia[] = [];
   try {
-    const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal, request.providerId))) : undefined;
+    const references = async (items: MediaReference[] | undefined, type: string) => items ? Promise.all(items.map(item => readReference(directory, item, type, signal, request.providerId, billing?.publicOrigin))) : undefined;
     const images = await references(request.images, "image");
     signal?.throwIfAborted();
     const assets = mediaType === "audio"
@@ -201,8 +205,8 @@ export async function generateMedia(
       : await provider.generateVideo!({
         model: request.modelId, prompt: request.prompt, images,
         videos: await references(request.videos, "video"), audios: await references(request.audios, "audio"),
-        firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal, request.providerId) : undefined,
-        lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal, request.providerId) : undefined,
+        firstFrame: request.firstFrame ? await readReference(directory, request.firstFrame, "image", signal, request.providerId, billing?.publicOrigin) : undefined,
+        lastFrame: request.lastFrame ? await readReference(directory, request.lastFrame, "image", signal, request.providerId, billing?.publicOrigin) : undefined,
         ratio: request.ratio, resolution: request.resolution, duration: request.duration,
         generateAudio: request.generateAudio, mode: request.mode,
       });
