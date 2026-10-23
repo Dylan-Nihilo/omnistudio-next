@@ -9,7 +9,7 @@ import conf from "@/utils/conf";
 import { convertAudio } from "@/utils/media/audioProcessor";
 import { createWorkspaceFfmpeg } from "@/utils/ffmpeg";
 import { lockWorkspaceFiles, writeWorkspaceFile } from "@/utils/workspace/files";
-import { formatAgentError } from "@/agent/runtime/errors";
+import { formatAgentError, sanitizeErrorMessage } from "@/agent/runtime/errors";
 
 type Expression = Extract<ReturnType<typeof parseExpression>, { type: "ParenthesizedExpression" }>["expression"];
 type ObjectExpression = Extract<Expression, { type: "ObjectExpression" }>;
@@ -57,9 +57,9 @@ function mediaErrorMessage(value: unknown, config: Record<string, unknown>, dept
     const token = secret.trim().replace(/^Bearer\s*/i, "");
     if (token) message = message.replaceAll(token, "••••••");
   }
-  return message.replace(/(Bearer\s+)[^\s"'<>]+/gi, "$1••••••")
+  return sanitizeErrorMessage(message.replace(/(Bearer\s+)[^\s"'<>]+/gi, "$1••••••")
     .replace(/([?&][^=&#\s]+)=[^&#\s"'<>]*/g, "$1=••••••")
-    .replace(/((?:api[_-]?key|secret|token|password|authorization|cookie)["']?\s*[:=]\s*["']?)[^\s"',;}&<>]+/gi, "$1••••••")
+    .replace(/((?:api[_-]?key|secret|token|password|authorization|cookie)["']?\s*[:=]\s*["']?)[^\s"',;}&<>]+/gi, "$1••••••"))
     .slice(0, 4000);
 }
 
