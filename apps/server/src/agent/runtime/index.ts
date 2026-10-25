@@ -111,7 +111,7 @@ export async function run(
     await active.abort();
     signal?.throwIfAborted();
   }
-  const { provider, runtime } = await createAgentModel(providerId, modelId, thinkingLevel);
+  const { provider, runtime } = await createAgentModel(providerId, modelId, thinkingLevel, cwd);
   if (sessionPath) {
     const file = await stat(sessionPath).catch((error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") throw Object.assign(new Error("会话不存在，请重新打开对话"), { status: 404 });

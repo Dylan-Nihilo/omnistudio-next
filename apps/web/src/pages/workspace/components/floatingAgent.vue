@@ -45,7 +45,7 @@ import { uiSettings } from "@/stores/settings";
 const { topOffset = 0 } = defineProps<{ topOffset?: number }>();
 const visible = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ resize: [width: number] }>();
-const docked = ref(false);
+const docked = ref(true);
 const viewport = reactive({ width: window.innerWidth, height: window.innerHeight });
 const availableHeight = computed(() => Math.max(0, viewport.height - topOffset));
 const gap = computed(() => Math.min(15, viewport.width / 2, availableHeight.value / 2));

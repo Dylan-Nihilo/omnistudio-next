@@ -48,7 +48,7 @@ export function getTextOutputBudget(model: Model<Api>, payload: unknown) {
   return Math.max(...limits as number[]);
 }
 
-export function createChargedStream(input: { providerId: string; modelId: string; model: Model<Api>; context: Context; budgetContext?: { context: Context; references: unknown }; fetch?: SimpleStreamOptions["fetch"]; signal?: AbortSignal; idempotencyKey?: string }, start: (signal: AbortSignal | undefined, recordPayload: (payload: unknown) => Promise<void>, guardedFetch: typeof fetch) => AssistantMessageEventStream) {
+export function createChargedStream(input: { providerId: string; modelId: string; model: Model<Api>; context: Context; budgetContext?: { context: Context; references: unknown }; directory?: string; fetch?: SimpleStreamOptions["fetch"]; signal?: AbortSignal; idempotencyKey?: string }, start: (signal: AbortSignal | undefined, recordPayload: (payload: unknown) => Promise<void>, guardedFetch: typeof fetch) => AssistantMessageEventStream) {
   const account = requireAccount();
   const signal = account.signal ? AbortSignal.any([account.signal, ...(input.signal ? [input.signal] : [])]) : input.signal;
   const key = nextGenerationKey(input.idempotencyKey);
@@ -89,7 +89,7 @@ export function createChargedStream(input: { providerId: string; modelId: string
         };
         finalPayloadSerialized = finalRequest.serialized;
         payloadReservation = (async () => {
-          const reservation = await reserveGeneration({ userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: "text", units: estimateLegacyTextUnits(input.context.messages), textBudget, idempotencyKey: key, requestSnapshot: { providerId: input.providerId, modelId: input.modelId, ...request.value, textBudget } });
+          const reservation = await reserveGeneration({ userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: "text", units: estimateLegacyTextUnits(input.context.messages), textBudget, idempotencyKey: key, requestSnapshot: { providerId: input.providerId, modelId: input.modelId, ...request.value, ...(input.directory ? { directory: input.directory } : {}), textBudget } });
           jobId = reservation.job.id;
           signal?.throwIfAborted();
           await markGenerationStarted(jobId, finalRequest.value);

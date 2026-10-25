@@ -22,6 +22,7 @@ declare module 'vue' {
     Conversation: typeof import('./../components/agent/conversation.vue')['default']
     Developer: typeof import('./../components/settings/panels/developer/index.vue')['default']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
+    ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
     ElDialog: typeof import('element-plus/es')['ElDialog']
     Ffmpeg: typeof import('./../components/settings/panels/pluginMarket/ffmpeg.vue')['default']
     FfmpegRequired: typeof import('./../components/settings/ffmpegRequired.vue')['default']

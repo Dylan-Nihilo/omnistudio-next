@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>远端生产成本核查</title>
+<style>
+:root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#1f2937;background:#f4f6f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}.page{max-width:1500px;margin:0 auto;padding:32px}.header{background:#172033;color:#fff;padding:28px 32px;border-radius:14px;margin-bottom:20px}.header h1{margin:0 0 8px;font-size:30px}.header p{margin:0;color:#cbd5e1}.notice{background:#fff7ed;border-left:5px solid #ea580c;padding:16px 18px;border-radius:8px;margin:20px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}.stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px}.stat b{display:block;font-size:24px;color:#111827;margin-top:5px}.section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:18px 0;overflow:auto}.section h2{margin:0 0 14px;font-size:20px;color:#111827}table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}th,td{padding:9px 10px;border-bottom:1px solid #edf0f2;text-align:left;vertical-align:top}th{background:#f8fafc;color:#475569;font-weight:600;white-space:nowrap}td.num,th.num{text-align:right;white-space:nowrap}.muted{color:#64748b;font-size:13px}.tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:12px}.warning{color:#9a3412}.footer{color:#64748b;font-size:12px;margin-top:22px}@media(max-width:900px){.page{padding:16px}.stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.stats{grid-template-columns:1fr}.header h1{font-size:24px}}
+</style>
+</head>
+<body>
+<main class="page">
+<header class="header"><h1>远端生产成本核查</h1><p>生产 MySQL 只读核查 · 截至 2026-10-22 · 积分为数据库实际扣费单位</p></header>
+<div class="notice"><strong>结论：</strong>曾庆凯账户累计实扣 6009.579832 分，较方案1申报 4500 分高 1509.579832 分（33.55%）；胡思琪账户累计实扣 2025.495214 分，较方案2申报 1600 分高 425.495214 分（26.59%）。人民币金额仅能按甲方提供的元/分钟反推，数据库没有人民币成本字段。</div>
+<section class="stats">
+<div class="stat">曾庆凯累计实扣<b>6009.579832 分</b></div>
+<div class="stat">胡思琪累计实扣<b>2025.495214 分</b></div>
+<div class="stat">宣传片3归因合计<b>4078.051529 分</b></div>
+<div class="stat">宣传片3媒体任务<b>35 图 + 35 视频</b></div>
+</section>
+<section class="section"><h2>账户累计实扣</h2><table><thead><tr><th>成员</th><th class="num">文本成功/失败</th><th class="num">文本实扣</th><th class="num">图片成功/失败</th><th class="num">图片实扣</th><th class="num">视频成功/失败</th><th class="num">视频实扣</th><th class="num">合计</th></tr></thead><tbody>
+<tr><td>曾庆凯</td><td class="num">563 / 1</td><td class="num">2463.579832</td><td class="num">59 / 5</td><td class="num">315</td><td class="num">41 / 7</td><td class="num">3231</td><td class="num"><strong>6009.579832</strong></td></tr>
+<tr><td>胡思琪</td><td class="num">34 / 1</td><td class="num">28.495214</td><td class="num">25 / 1</td><td class="num">80</td><td class="num">31 / 3</td><td class="num">1917</td><td class="num"><strong>2025.495214</strong></td></tr>
+</tbody></table><p class="muted">曾庆凯有 1 条文本失败任务产生 0.858115 分实际用量，因此文本实扣包含该笔。</p></section>
+<section class="section"><h2>方案申报对比</h2><table><thead><tr><th>方案</th><th class="num">甲方申报</th><th class="num">生产库实扣</th><th class="num">差额</th><th class="num">差异率</th><th>判断</th></tr></thead><tbody>
+<tr><td>方案1 · 曾庆凯</td><td class="num">4500</td><td class="num">6009.579832</td><td class="num">+1509.579832</td><td class="num">+33.55%</td><td class="warning">实际高于申报</td></tr>
+<tr><td>方案2 · 胡思琪</td><td class="num">1600</td><td class="num">2025.495214</td><td class="num">+425.495214</td><td class="num">+26.59%</td><td class="warning">实际高于申报</td></tr>
+</tbody></table></section>
+<section class="section"><h2>按甲方单价反推视频金额</h2><table><thead><tr><th>方案</th><th class="num">视频实扣</th><th class="num">反推时长</th><th class="num">甲方单价</th><th class="num">参考金额</th></tr></thead><tbody>
+<tr><td>方案1 · 曾庆凯</td><td class="num">3231 分</td><td class="num">359 秒 / 5.9833 分钟</td><td class="num">150 元/分钟</td><td class="num">约 897.50 元</td></tr>
+<tr><td>方案2 · 胡思琪</td><td class="num">1917 分</td><td class="num">213 秒 / 3.55 分钟</td><td class="num">53 元/分钟</td><td class="num">约 188.15 元</td></tr>
+</tbody></table><p class="muted">按 9 积分/秒换算；参考金额不是数据库实际人民币支出。</p></section>
+<section class="section"><h2>曾庆凯「宣传片3」数据库归因</h2><table><thead><tr><th>媒体</th><th class="num">任务数</th><th class="num">实扣积分</th><th>归因依据</th></tr></thead><tbody>
+<tr><td><span class="tag">图片</span></td><td class="num">35</td><td class="num">175</td><td>result_snapshot.directory 精确匹配</td></tr>
+<tr><td><span class="tag">视频</span></td><td class="num">35</td><td class="num">2448</td><td>result_snapshot.directory 精确匹配</td></tr>
+<tr><td><span class="tag">文本</span></td><td class="num">322 成功 / 1 失败</td><td class="num">1455.051529</td><td>request_snapshot 会话上下文匹配；文本任务没有 directory/canvas_id</td></tr>
+<tr><td><strong>合计</strong></td><td class="num">393 成功 / 1 失败</td><td class="num"><strong>4078.051529</strong></td><td>文本为高可信会话归因，非字段级 canvas_id</td></tr>
+</tbody></table></section>
+<section class="section"><h2>宣传片3采用视频逐段明细</h2><table><thead><tr><th>段落</th><th>画布节点</th><th class="num">时长（秒）</th><th class="num">积分</th><th>采用输出后缀</th></tr></thead><tbody>
+<tr><td>A01</td><td>22830b3a</td><td class="num">7</td><td class="num">63</td><td>66f5ae03</td></tr><tr><td>A02</td><td>f3768a90</td><td class="num">7</td><td class="num">63</td><td>8fe47927</td></tr><tr><td>A03</td><td>71a5f2b8</td><td class="num">8</td><td class="num">72</td><td>5e280029</td></tr><tr><td>A04</td><td>9e24774b</td><td class="num">10</td><td class="num">90</td><td>ecb667d2</td></tr><tr><td>A05</td><td>3d3a7ba4</td><td class="num">9</td><td class="num">81</td><td>aea450be</td></tr><tr><td>A06</td><td>19eafa42</td><td class="num">5</td><td class="num">45</td><td>6febdedf</td></tr><tr><td>A07</td><td>31ba3ca6</td><td class="num">5</td><td class="num">45</td><td>3dadef63</td></tr><tr><td>A08</td><td>d67d4afe</td><td class="num">5</td><td class="num">45</td><td>8c30a615</td></tr><tr><td>A09</td><td>8b011583</td><td class="num">5</td><td class="num">45</td><td>d56420ad</td></tr><tr><td>A10</td><td>814209ac</td><td class="num">6</td><td class="num">54</td><td>3dc26607</td></tr><tr><td>A11</td><td>c2cba9cf</td><td class="num">4</td><td class="num">36</td><td>e9217eaf</td></tr><tr><td>A12</td><td>c32293ad</td><td class="num">6</td><td class="num">54</td><td>3ee1ae39</td></tr><tr><td>A13</td><td>e28b32ba</td><td class="num">7</td><td class="num">63</td><td>9336a16d</td></tr><tr><td>A14</td><td>23c7653b</td><td class="num">10</td><td class="num">90</td><td>2ede2838</td></tr><tr><td>A15</td><td>a7e4246b</td><td class="num">10</td><td class="num">90</td><td>dd9893f9</td></tr><tr><td>A16</td><td>c3feb437</td><td class="num">6</td><td class="num">54</td><td>b4b0d689</td></tr><tr><td>A17</td><td>f948e631</td><td class="num">8</td><td class="num">72</td><td>3c92492b</td></tr><tr><td>A18</td><td>f057680f</td><td class="num">8</td><td class="num">72</td><td>2daba336</td></tr><tr><td>A19</td><td>70f3c5c5</td><td class="num">9</td><td class="num">81</td><td>28267dc3</td></tr><tr><td>A20</td><td>cb32d0f1</td><td class="num">8</td><td class="num">72</td><td>cb06ecae</td></tr><tr><td>A21</td><td>fcceccfc</td><td class="num">10</td><td class="num">90</td><td>9c23224b</td></tr><tr><td>M1</td><td>a1fd0c90</td><td class="num">12</td><td class="num">108</td><td>b7c31b4b</td></tr><tr><td>M2</td><td>ece7a1c8</td><td class="num">11</td><td class="num">99</td><td>c3172788</td></tr><tr><td>END</td><td>13f5184f</td><td class="num">4</td><td class="num">36</td><td>be302f88</td></tr>
+</tbody></table><p class="muted">采用视频合计 24 段、180 秒、1620 分。A01–A21 为 153 秒；M1、M2、END 另计 27 秒。</p></section>
+<section class="section"><h2>重复 / 废片明细</h2><table><thead><tr><th>分组</th><th>非最终输出后缀</th><th class="num">数量</th><th class="num">废片积分</th><th>说明</th></tr></thead><tbody>
+<tr><td>A01</td><td>c51047f9 / ea6c7256</td><td class="num">2</td><td class="num">126</td><td>早期版本</td></tr><tr><td>A04</td><td>4306adda</td><td class="num">1</td><td class="num">90</td><td>取消后仍产出</td></tr><tr><td>A12</td><td>ec6f137b</td><td class="num">1</td><td class="num">54</td><td>旧节点版本</td></tr><tr><td>A17</td><td>8a5ab09f / 980b7748</td><td class="num">2</td><td class="num">144</td><td>非最终输出</td></tr><tr><td>A21</td><td>3be12979</td><td class="num">1</td><td class="num">90</td><td>首版</td></tr><tr><td>M2</td><td>7fc6a5a5 / 714d1856</td><td class="num">2</td><td class="num">198</td><td>试片 / 错误旁白版</td></tr><tr><td><strong>合计</strong></td><td>6 组</td><td class="num">9</td><td class="num"><strong>702</strong></td><td>识别下限，已包含在视频总扣费内</td></tr>
+</tbody></table><p class="muted">数据库目录共 35 条成功视频任务，当前节点/会话清单已匹配 33 个输出；702 分作为已识别下限，不再重复加到 2448 分。</p></section>
+<section class="section"><h2>宣传片3：每分钟成本三种口径</h2>
+<table><thead><tr><th>口径</th><th class="num">文本</th><th class="num">图片</th><th class="num">视频</th><th class="num">合计积分</th><th class="num">成片时长</th><th class="num">每分钟</th></tr></thead><tbody>
+<tr><td><strong>去除废视频、废图片、失败对话</strong><br><span class="muted">当前采用素材</span></td><td class="num">1454.193414</td><td class="num">165</td><td class="num">1620</td><td class="num"><strong>3239.193414</strong></td><td class="num">3 分钟</td><td class="num"><strong>1079.731138</strong></td></tr>
+<tr><td><strong>包含已识别废片和失败对话</strong><br><span class="muted">净成本 + 视频废片702 + 图片差额10 + 失败对话0.858115</span></td><td class="num">1455.051529</td><td class="num">175</td><td class="num">2322</td><td class="num"><strong>3952.051529</strong></td><td class="num">3 分钟</td><td class="num"><strong>1317.350510</strong></td></tr>
+<tr><td><strong>数据库全量归因</strong><br><span class="muted">35条图片成功 + 35条视频成功 + 文本会话归因</span></td><td class="num">1455.051529</td><td class="num">175</td><td class="num">2448</td><td class="num"><strong>4078.051529</strong></td><td class="num">3 分钟</td><td class="num"><strong>1359.350510</strong></td></tr>
+</tbody></table>
+<p class="muted">第二行只计入已识别的废片；数据库全量归因比它多 126 分视频输出，原因是当前画布/会话清单尚未匹配到 2 条视频任务。</p></section>
+<section class="section"><h2>如果文本模型全部换成 DeepSeek V4.1 Flash</h2>
+<table><thead><tr><th>口径</th><th class="num">替换后文本</th><th class="num">图片</th><th class="num">视频</th><th class="num">合计积分</th><th class="num">每分钟</th><th class="num">相对当前</th></tr></thead><tbody>
+<tr><td><strong>去除废片、失败对话</strong></td><td class="num">753.679415</td><td class="num">165</td><td class="num">1620</td><td class="num"><strong>2538.679415</strong></td><td class="num"><strong>846.226472</strong></td><td class="num">节省 233.504666/分钟</td></tr>
+<tr><td><strong>包含已识别废片和失败对话</strong></td><td class="num">753.965453</td><td class="num">175</td><td class="num">2322</td><td class="num"><strong>3250.965453</strong></td><td class="num"><strong>1083.655151</strong></td><td class="num">节省 233.695359/分钟</td></tr>
+<tr><td><strong>数据库全量归因</strong></td><td class="num">753.965453</td><td class="num">175</td><td class="num">2448</td><td class="num"><strong>3376.965453</strong></td><td class="num"><strong>1125.655151</strong></td><td class="num">节省 233.695359/分钟</td></tr>
+</tbody></table>
+<p class="muted">DeepSeek 替换估算基于宣传片3实际 token 用量和数据库费率：Claude 成功文本 1050.771001 分按 DeepSeek 费率折算为约 350.257002 分；失败对话按同费率估算为约 0.286038 分。图片和视频价格保持不变。</p></section>
+<section class="section"><h2>假设全部视频改用百度 S2.0 480p</h2>
+<p class="muted">按生产库当前发布价 <strong>14 积分/秒</strong>（provider：baiduVideoFire，model：S2.0，resolution：480p）重算；文本和图片沿用宣传片3当前实际扣费。成片时长按 3 分钟（180 秒）。</p>
+<table><thead><tr><th>口径</th><th class="num">视频计费时长</th><th class="num">视频积分</th><th class="num">文本+图片</th><th class="num">合计积分</th><th class="num">每分钟</th></tr></thead><tbody>
+<tr><td><strong>去除废视频、废图片、失败对话</strong><br><span class="muted">只计算最终成片</span></td><td class="num">180 秒</td><td class="num">2520</td><td class="num">1619.193414</td><td class="num"><strong>4139.193414</strong></td><td class="num"><strong>1379.731138</strong></td></tr>
+<tr><td><strong>包含已识别废片和失败对话</strong><br><span class="muted">废视频 702 分按 9 分/秒折算为 78 秒</span></td><td class="num">258 秒</td><td class="num">3612</td><td class="num">1630.051529</td><td class="num"><strong>5242.051529</strong></td><td class="num"><strong>1747.350510</strong></td></tr>
+<tr><td><strong>数据库全量归因</strong><br><span class="muted">当前数据库视频成功任务折算 272 秒</span></td><td class="num">272 秒</td><td class="num">3808</td><td class="num">1630.051529</td><td class="num"><strong>5438.051529</strong></td><td class="num"><strong>1812.683843</strong></td></tr>
+</tbody></table>
+<p class="muted">说明：78 秒和 272 秒是按当前宣传片3视频账本的 9 积分/秒反推的等效计费时长。若你说的“SD2.0”实际指 jojokey 的 seedance-2.0，则生产库 480p 价为 18 积分/秒，结果会不同。</p></section>
+<section class="section"><h2>PDF成本加40%利润与当前系统定价对比</h2>
+<p class="muted">按“成本 × 1.4”计算报价。PDF中的供应商积分按 1 积分 = 1 元处理，再按 1 元 = 10 个系统积分换算。PDF按每百万 Token 计费，当前系统按视频秒数计费，两者单位不同，不能直接用表中的数值相减。</p>
+<table><thead><tr><th>模型</th><th>规格顺序</th><th class="num">PDF不含视频成本<br>供应商积分/百万Token</th><th class="num">加40%后<br>系统积分/百万Token</th><th class="num">PDF含视频成本<br>供应商积分/百万Token</th><th class="num">加40%后<br>系统积分/百万Token</th><th class="num">当前系统价<br>积分/秒</th></tr></thead><tbody>
+<tr><td>S2.0</td><td>480P / 720P / 1080P / 4K</td><td class="num">46 / 46 / 51 / 26</td><td class="num">644 / 644 / 714 / 364</td><td class="num">28 / 28 / 31 / 16</td><td class="num">392 / 392 / 434 / 224</td><td class="num">14 / 28 / 64 / —</td></tr>
+<tr><td>S2.0-Fast</td><td>480P / 720P</td><td class="num">37 / 37</td><td class="num">518 / 518</td><td class="num">22 / 22</td><td class="num">308 / 308</td><td class="num">14 / 28</td></tr>
+<tr><td>S2.0-Mini</td><td>480P / 720P</td><td class="num">23 / 23</td><td class="num">322 / 322</td><td class="num">14 / 14</td><td class="num">196 / 196</td><td class="num">14 / 28</td></tr>
+<tr><td>S2.5</td><td>480P / 720P / 1080P</td><td class="num">70 / 70 / 77</td><td class="num">980 / 980 / 1078</td><td class="num">42 / 42 / 46</td><td class="num">588 / 588 / 644</td><td class="num">24 / 51 / 113</td></tr>
+</tbody></table>
+<p class="muted">“不含视频”适用于图生视频等不带输入视频的任务；“含视频”适用于视频生视频，输入视频时长也会进入 Token 用量。当前系统价格未区分这两类任务。</p>
+<table><thead><tr><th>PDF明确示例</th><th class="num">PDF成本</th><th class="num">加40%后的建议价</th><th class="num">折算建议价</th><th class="num">当前系统价</th><th class="num">当前高/低</th></tr></thead><tbody>
+<tr><td>S2.0 720P，输出5秒，图生视频口径</td><td class="num">5元 = 50系统分</td><td class="num">70系统分</td><td class="num">14系统分/秒</td><td class="num">28系统分/秒</td><td class="num">高100%</td></tr>
+<tr><td>S2.0-Fast 480P，输出5秒，图生视频口径</td><td class="num">2元 = 20系统分</td><td class="num">28系统分</td><td class="num">5.6系统分/秒</td><td class="num">14系统分/秒</td><td class="num">高150%</td></tr>
+<tr><td>S2.0-Mini 480P，输出5秒，图生视频口径</td><td class="num">2元 = 20系统分</td><td class="num">28系统分</td><td class="num">5.6系统分/秒</td><td class="num">14系统分/秒</td><td class="num">高150%</td></tr>
+</tbody></table>
+<p class="muted">可直接比较的“积分/秒”仅使用 PDF 明确给出的 5 秒示例折算；其他规格必须拿到实际 Token 用量后再换算。若把40%理解为毛利率而不是成本加价，报价系数应改为 1 ÷ 0.6 = 1.667。</p></section>
+<footer class="footer">数据源：生产 MySQL user_generation_jobs、user_credit_ledger、personal_projects，以及宣传片3/画布1.json。查询为只读。</footer>
+</main>
+</body></html>

@@ -83,9 +83,14 @@ export interface MediaModel {
   durationResolutionMap?: { duration: number[]; resolution: string[] }[];
   audio?: boolean | "optional";
   voices?: { title: string; voice: string }[];
-  creditsPerUnit?: number;
-  sizeTiers?: Record<string, number>;
-  resolutionTiers?: Record<string, number>;
+  creditsPerUnit?: string;
+  sizeTiers?: Record<string, string>;
+  resolutionTiers?: Record<string, string>;
+  videoPricingMode?: "unified" | "separate";
+  videoPricingTiers?: {
+    textImageToVideo: Record<string, string>;
+    videoToVideo: Record<string, string>;
+  };
 }
 
 export interface MediaReference {
@@ -128,7 +133,7 @@ export interface MediaContext {
   generateImage(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
   generateVideo(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
   generateAudio(request: MediaGenerationRequest, signal?: AbortSignal): Promise<GeneratedMedia[]>;
-  estimateCredits?(input: { providerId: string; modelId: string; mediaType: "image" | "video" | "audio"; size?: string; duration?: number; units?: number }): Promise<{ credits: number; formatted: string } | null>;
+  estimateCredits?(input: { providerId: string; modelId: string; mediaType: "image" | "video" | "audio"; size?: string; duration?: number; units?: number; videoBillingKind?: "textImageToVideo" | "videoToVideo" }): Promise<{ credits: number; formatted: string } | null>;
 }
 
 export interface QuestionField {

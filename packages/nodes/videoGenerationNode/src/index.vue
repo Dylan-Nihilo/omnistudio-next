@@ -125,6 +125,7 @@ const mediaCounts = computed(() => ({
   audio: refList.value.filter((item) => item.dataType === "AUDIO").length,
 }));
 const matchingModes = computed(() => getMatchingModes(selectedModel.value));
+const videoBillingKind = computed(() => mediaCounts.value.video > 0 ? "videoToVideo" : "textImageToVideo");
 
 function getMatchingModes(choice?: NodeMediaModel) {
   return (choice?.mode ?? []).filter((mode) => {
@@ -239,6 +240,7 @@ async function startGeneration() {
   if (!choice) throw new Error("请先选择视频模型");
   if (!generationPrompt.value) throw new Error("请输入生成提示词");
   if (refList.value.some(item => item.value === undefined)) throw new Error("引用节点暂无内容，请先补充引用内容");
+  if (calculateEstimatedCredits() === "配置错误") throw new Error("当前视频模型未配置所选生成方式和分辨率的价格");
   const images = refList.value.flatMap((item) => item.dataType === "IMAGE" && item.value ? [{ path: item.value.url, mimeType: item.value.mimeType }] : []);
   if (choice.mode?.length && !matchingModes.value.length) throw new Error("当前模型没有适合这些参考素材的生成模式，请更换模型或调整引用");
   const workspace = files.getWorkspaceFiles();
@@ -307,14 +309,13 @@ function calculateEstimatedCredits() {
   if (!choice) return null;
   const resolution = (data.value.resolution || "768P").trim();
   const duration = data.value.duration ?? 5;
-  const tier = choice.resolutionTiers?.[resolution];
-  if (tier !== undefined && tier !== null) {
-    return `${duration * tier} 积分`;
-  }
-  if (choice.creditsPerUnit !== undefined && choice.creditsPerUnit !== null) {
-    return `${duration * choice.creditsPerUnit} 积分`;
-  }
-  return null;
+  const tier = choice.videoPricingMode === "separate"
+    ? choice.videoPricingTiers?.[videoBillingKind.value]?.[resolution]
+    : choice.resolutionTiers?.[resolution];
+  const unit = tier ?? (choice.videoPricingMode === "separate" ? undefined : choice.creditsPerUnit);
+  if (unit === undefined || unit === null || !Number.isFinite(Number(unit))) return "配置错误";
+  const amount = duration * Number(unit);
+  return `${amount.toFixed(4).replace(/\.?(0+)$/, "")} 积分`;
 }
 
 function getConfig() {

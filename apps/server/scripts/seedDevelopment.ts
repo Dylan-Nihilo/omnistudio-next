@@ -72,31 +72,32 @@ await database.insert(pricingSettings).values({ id: "platform", activePriceBookV
 await database.delete(pricingItems).where(eq(pricingItems.priceBookVersionId, priceBookId));
 for (const model of platformModelCatalog) {
   // 旧 OmniStudio GPT Image 2：进货价 0.06/0.10/0.12 元 × 44，向上取整为 3/5/6 积分。
-  const imageSizeCredits = { "1K": 3, "2K": 5, "4K": 6 };
-  const videoPricing: Record<string, Record<string, number>> = {
-    "utoooSeedance:doubao-seedance-2-5-260628": { "480p": 32, "720p": 68, "1080p": 153 },
-    "utoooSeedance:doubao-seedance-2-0-260128": { "480p": 18, "720p": 38, "1080p": 86 },
-    "baiduVideoFire:S2.0": { "480p": 5, "720p": 5, "1080p": 7, "4k": 10 },
-    "baiduVideoFire:S2.0-Fast": { "480p": 4, "720p": 4 },
-    "baiduVideoFire:S2.0-Mini": { "480p": 3, "720p": 3 },
-    "baiduVideoFire:S2.5": { "480p": 5, "720p": 7, "1080p": 8 },
-    "dashscopeVideo:minimax-h3": { "768P": 9, "2K": 18 },
+  const imageSizeCredits = { "1K": "3.0000", "2K": "5.0000", "4K": "6.0000" };
+  const videoPricing: Record<string, Record<string, string>> = {
+    "utoooSeedance:doubao-seedance-2-5-260628": { "480p": "32.0000", "720p": "68.0000", "1080p": "153.0000" },
+    "utoooSeedance:doubao-seedance-2-0-260128": { "480p": "18.0000", "720p": "38.0000", "1080p": "86.0000" },
+    "baiduVideoFire:S2.0": { "480p": "5.0000", "720p": "5.0000", "1080p": "7.0000", "4k": "10.0000" },
+    "baiduVideoFire:S2.0-Fast": { "480p": "4.0000", "720p": "4.0000" },
+    "baiduVideoFire:S2.0-Mini": { "480p": "3.0000", "720p": "3.0000" },
+    "baiduVideoFire:S2.5": { "480p": "5.0000", "720p": "7.0000", "1080p": "8.0000" },
+    "dashscopeVideo:minimax-h3": { "768P": "9.0000", "2K": "18.0000" },
   };
-  const textCredits: Record<string, number> = {
-    "text/gpt-5.6-sol": 1,
-    "text/deepseek-v4.1-flash": 0.5,
-    "text/qwen3.7-plus": 0.5,
-    "text/glm-5": 1,
-    "text/claude-opus-5": 1.5,
+  const textRates: Record<string, { input: string; output: string }> = {
+    "text/gpt-5.6-sol": { input: "1.0000", output: "1.5000" },
+    "text/deepseek-v4.1-flash": { input: "0.5000", output: "1.0000" },
+    "text/qwen3.7-plus": { input: "0.5000", output: "1.0000" },
+    "text/glm-5": { input: "1.0000", output: "1.5000" },
+    "text/claude-opus-5": { input: "1.5000", output: "2.0000" },
   };
   const imagePricing = model.mediaType === "image" && model.modelId === "gpt-image-2";
   const imagePremiumPricing = model.mediaType === "image" && model.modelId === "gpt-image-2.5-sunburst";
   const resolutionTiers = model.mediaType === "video" ? videoPricing[`${model.providerId}:${model.modelId}`] : undefined;
+  const textPricing = model.mediaType === "text" ? textRates[model.modelId] ?? { input: "1.0000", output: "1.0000" } : undefined;
   const constraints = imagePricing || imagePremiumPricing
-    ? { sizeTiers: imagePremiumPricing ? { "1K": 4, "2K": 6, "4K": 7 } : imageSizeCredits }
-    : resolutionTiers ? { resolutionTiers } : {};
-  const creditsPerUnit = imagePricing ? 6 : imagePremiumPricing ? 7 : resolutionTiers ? Math.max(...Object.values(resolutionTiers)) : model.mediaType === "image" ? 4 : model.mediaType === "text" ? (textCredits[model.modelId] ?? 10) : 1;
-  const unit = model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "10k_chars";
+    ? { sizeTiers: imagePremiumPricing ? { "1K": "4.0000", "2K": "6.0000", "4K": "7.0000" } : imageSizeCredits }
+    : resolutionTiers ? { videoPricingMode: "unified" as const, resolutionTiers } : textPricing ? { textPricing: { billingRule: "textTokenV4" as const, ratesPerMillion: textPricing } } : {};
+  const creditsPerUnit = imagePricing ? "6.0000" : imagePremiumPricing ? "7.0000" : resolutionTiers ? Object.values(resolutionTiers).sort((left, right) => Number(right) - Number(left))[0]! : textPricing ? "0.0000" : "1.0000";
+  const unit = textPricing ? "millionTokens" : model.mediaType === "video" ? "second" : model.mediaType === "image" ? "image" : "unit";
   await database.insert(pricingItems).values({ id: randomUUID(), priceBookVersionId: priceBookId, providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, unit, creditsPerUnit, constraints, createdAt: now, updatedAt: now });
 }
 

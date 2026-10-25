@@ -89,13 +89,105 @@
                 <span v-else class="priceSummary">{{ priceSummary(row as PriceRow) }}</span>
               </div>
               <div v-else-if="column.key === 'creditsPerUnit'" class="priceEditor">
-                <uiButton v-if="row.mediaType === 'text' || row.mediaType === 'image' || row.mediaType === 'video'" size="small" variant="secondary" :disabled="busy" @click="openPriceConfig(row as PriceRow)">修改配置</uiButton>
+                <uiButton v-if="row.mediaType === 'text' || row.mediaType === 'image' || row.mediaType === 'video' || row.mediaType === 'audio'" size="small" variant="secondary" :disabled="busy" @click="openPriceConfig(row as PriceRow)">修改配置</uiButton>
               </div>
               <span v-else>{{ row[column.key] }}</span>
             </template>
           </uiTable>
         </component>
         <p v-if="missingPrices" class="sectionHint">请为所有已启用模型填写完整有效的价格。</p>
+      </section>
+      <section v-else-if="activeTab === 'usage'" class="adminSection">
+        <header class="sectionHeader">
+          <div><h2>开发消耗图表与汇总</h2><p>按筛选条件查看消耗趋势和废片占比，数据在任务结算时增量累计。</p></div>
+          <div class="sectionActions"><uiButton variant="secondary" :disabled="usageLoading" @click="loadUsage">刷新汇总</uiButton><uiButton tag="a" :href="usageExportUrl" download>导出 CSV</uiButton></div>
+        </header>
+        <div class="usageFilterBar">
+          <div class="usagePrimaryFilter">
+            <uiField label="日期范围"><template #default="{ id }"><el-date-picker :id="id" v-model="usageDateRange" class="usageDateRange" type="daterange" valueFormat="YYYY-MM-DD" rangeSeparator="至" startPlaceholder="开始日期" endPlaceholder="结束日期" clearable /></template></uiField>
+          </div>
+          <div class="usageFilterActions">
+            <uiButton variant="secondary" @click="usageFiltersMoreVisible = true">更多筛选<span v-if="usageExtraFilterCount" class="usageFilterCount">{{ usageExtraFilterCount }}</span></uiButton>
+            <uiButton :disabled="usageLoading" @click="loadUsage">查询</uiButton>
+          </div>
+        </div>
+        <uiDialog v-model="usageFiltersMoreVisible" title="更多筛选条件" :width="720">
+          <div class="usageFiltersDialog">
+            <uiField label="人员"><template #default="{ id }"><uiSelect :id="id" v-model="usageUserId" :options="usageUserOptions" /></template></uiField>
+            <uiField label="工作区"><template #default="{ id }"><uiSelect :id="id" v-model="usageWorkspace" :options="usageWorkspaceOptions" /></template></uiField>
+            <uiField label="模型"><template #default="{ id }"><uiSelect :id="id" v-model="usageModelId" :options="usageModelOptions" /></template></uiField>
+            <uiField label="媒体类型"><template #default="{ id }"><uiSelect :id="id" v-model="usageMediaType" :options="usageMediaTypeOptions" /></template></uiField>
+          </div>
+          <template #footer><uiButton variant="secondary" @click="usageFiltersMoreVisible = false">完成</uiButton></template>
+        </uiDialog>
+        <div class="usageDashboard" aria-label="开发消耗图表">
+          <div class="usageMetricGrid">
+            <div class="usageMetric"><span>筛选后消耗积分</span><strong>{{ usageChartSummary.credits }}</strong></div>
+            <div class="usageMetric"><span>请求数</span><strong>{{ usageChartSummary.requests.toLocaleString() }}</strong></div>
+            <div class="usageMetric"><span>输出数</span><strong>{{ usageChartSummary.outputs.toLocaleString() }}</strong></div>
+            <div class="usageMetric"><span>废片占比</span><strong>{{ usageChartSummary.wasteRate }}</strong></div>
+          </div>
+          <section class="usageChartCard" aria-labelledby="usageTrendTitle">
+            <header class="usageChartHeader">
+              <div><h3 id="usageTrendTitle">每日消耗趋势</h3><p>按当前筛选条件汇总，最多展示最近 14 天。</p></div>
+              <div class="usageChartActions"><span class="usageLegend"><i aria-hidden="true"></i>消耗积分</span><uiButton size="small" variant="secondary" :disabled="!usageChartPoints.length" @click="exportUsageChart">导出图表</uiButton></div>
+            </header>
+            <div v-if="usageChartPoints.length" class="usageChartViewport">
+              <svg ref="usageChartSvg" class="usageChart" viewBox="0 0 760 260" role="img" aria-label="每日消耗积分柱状图">
+                <line x1="44" y1="206" x2="744" y2="206" class="usageChartAxis" />
+                <line x1="44" y1="20" x2="44" y2="206" class="usageChartAxis" />
+                <g v-for="point in usageChartPoints" :key="point.day" class="usageChartPoint">
+                  <rect :x="point.x" :y="point.y" :width="point.width" :height="point.height" rx="4" class="usageChartBar" />
+                  <text :x="point.center" y="224" text-anchor="middle">{{ point.label }}</text>
+                  <text :x="point.center" :y="Math.max(14, point.y - 6)" text-anchor="middle" class="usageChartValue">{{ point.creditsLabel }}</text>
+                </g>
+              </svg>
+            </div>
+            <p v-else class="sectionHint usageChartEmpty">暂无可绘制的消耗数据，查询后将在这里显示趋势。</p>
+          </section>
+          <div class="usageBreakdownGrid">
+            <section class="usageBreakdownCard" aria-labelledby="usageMediaTitle">
+              <h3 id="usageMediaTitle">媒体类型分布</h3>
+              <div v-if="usageMediaBreakdown.length" class="usageBreakdownList">
+                <div v-for="item in usageMediaBreakdown" :key="item.key" class="usageBreakdownRow">
+                  <span class="usageBreakdownLabel">{{ item.label }}</span>
+                  <span class="usageBreakdownTrack"><i :style="{ width: `${item.percent}%` }"></i></span>
+                  <strong>{{ item.creditsLabel }}</strong>
+                </div>
+              </div>
+              <p v-else class="sectionHint usageChartEmpty">暂无媒体类型消耗数据。</p>
+            </section>
+            <section class="usageBreakdownCard" aria-labelledby="usageModelTitle">
+              <h3 id="usageModelTitle">模型消耗排行</h3>
+              <div v-if="usageModelBreakdown.length" class="usageBreakdownList">
+                <div v-for="item in usageModelBreakdown" :key="item.key" class="usageBreakdownRow">
+                  <span class="usageBreakdownLabel" :title="item.label">{{ item.label }}</span>
+                  <span class="usageBreakdownTrack"><i :style="{ width: `${item.percent}%` }"></i></span>
+                  <strong>{{ item.creditsLabel }}</strong>
+                </div>
+              </div>
+              <p v-else class="sectionHint usageChartEmpty">暂无模型消耗数据。</p>
+            </section>
+          </div>
+        </div>
+        <uiTable class="usageSummaryTable" :rows="usageRows" :columns="usageColumns" :loading="usageLoading" emptyText="暂无消耗汇总" label="开发消耗汇总">
+          <template #cell="{ row, column }">
+            <span v-if="column.key === 'userId'">{{ userName(String(row.userId)) }}</span>
+            <span v-else-if="column.key === 'wasteRate'">{{ usageWasteRate(row as UsageSummary) }}</span>
+            <span v-else-if="column.key === 'mediaType'">{{ mediaLabels[String(row.mediaType)] }}</span>
+            <span v-else>{{ row[column.key] ?? '—' }}</span>
+          </template>
+        </uiTable>
+        <div class="usageReview">
+          <h3>待审核输出</h3>
+          <div v-if="!usageOutputs.length && !usageLoading" class="sectionHint">暂无待审核图片或视频。</div>
+          <div v-for="output in usageOutputs" :key="output.id" class="usageOutputRow">
+            <span>{{ output.mediaType === 'video' ? '视频' : '图片' }} · {{ output.outputIndex + 1 }}</span>
+            <span class="usageOutputPath">{{ outputPath(output) }}</span>
+            <uiButton size="small" variant="secondary" :disabled="busy" @click="markOutput(output.id, 'usable')">采用</uiButton>
+            <uiButton size="small" variant="danger" :disabled="busy" @click="markOutput(output.id, 'waste')">废片</uiButton>
+          </div>
+        </div>
       </section>
       <extensionPanel v-else-if="activeTab === 'extensions'" /><section v-else class="adminSection"><header class="sectionHeader"><h2>管理审计</h2><p>最近 200 条平台操作记录。</p></header><uiTable :rows="audit" :columns="auditColumns" emptyText="还没有操作记录" label="平台审计"><template #cell="{ row, column }"><span v-if="column.key === 'actorUserId'">{{ userName(String(row.actorUserId)) }}</span><span v-else-if="column.key === 'createdAt'">{{ new Date(String(row.createdAt)).toLocaleString('zh-CN', { hour12: false }) }}</span><span v-else-if="column.key === 'metadata'" class="auditDetails">{{ auditText(row.metadata) }}</span><span v-else>{{ auditLabels[String(row.action)] ?? row.action }}</span></template></uiTable></section>
     </uiTabs>
@@ -104,7 +196,7 @@
     <uiDialog v-model="projectsVisible" :title="`${selectedUser?.displayName ?? ''} 的个人项目`" :width="680"><p v-if="projectsLoading" class="sectionHint">正在读取项目…</p><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><div class="projectList"><uiButton v-for="project in projects" :key="project.directory" variant="secondary" :disabled="busy" @click="openProject(project)"><span>{{ project.name }}</span><icon-arrow-up-right :size="16" aria-hidden="true" /></uiButton><p v-if="!projects.length && !projectsLoading" class="sectionHint">这个账户还没有项目。</p></div></uiDialog>
     <uiDialog v-model="providerVisible" title="配置平台 API" :width="600" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitProvider"><uiField label="提供方标识" required><template #default="{ id }"><uiInput :id="id" v-model.trim="providerId" required :readonly="providerEditing" :disabled="busy" placeholder="如 myProvider" /></template></uiField><uiField label="API 地址" required><template #default="{ id }"><uiInput :id="id" v-model.trim="apiUrl" type="url" required :disabled="busy" /></template></uiField><uiField label="文本接口协议"><uiRadioGroup v-model="protocol" :options="protocolOptions" variant="segmented" /></uiField><uiField label="API 凭据" :help="currentMaskedApiKey ? `已保存凭据：${currentMaskedApiKey}（留空保留原凭据）` : undefined"><template #default="{ id }"><uiInput :id="id" v-model="apiKey" type="password" autocomplete="off" showPassword :disabled="busy || removeApiKey" :placeholder="currentMaskedApiKey ? `已配置：${currentMaskedApiKey}，留空保留原凭据` : (credentialConfigured ? '已配置，留空保留原凭据' : '填写此 API 的访问凭据')" /></template></uiField><uiCheckbox v-if="credentialConfigured" v-model="removeApiKey" :disabled="busy">移除已保存的凭据</uiCheckbox><uiCheckbox v-model="providerEnabled" :disabled="busy">启用此 API</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :loading="busy" :disabled="busy || !providerId || !apiUrl">保存 API 配置</uiButton></form></uiDialog>
     <uiDialog v-model="modelVisible" title="配置平台模型" :width="640" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="submitModel"><uiField label="API 提供方" required><template #default="{ id }"><uiSelect :id="id" :modelValue="modelProviderId" :options="providerOptions" :disabled="busy || !!editingModelId" @update:modelValue="value => typeof value === 'string' && (modelProviderId = value)" /></template></uiField><uiField label="类型"><uiRadioGroup v-model="mediaType" :options="mediaOptions" variant="segmented" :disabled="!!editingModelId" /></uiField><uiField label="平台模型标识" required><template #default="{ id }"><uiInput v-if="mediaType === 'text'" :id="id" v-model.trim="modelId" required :readonly="!!editingModelId" :disabled="busy" /><uiSelect v-else :id="id" :modelValue="modelId" :options="mediaModelOptions" :disabled="busy || !!editingModelId" placeholder="选择适配器支持的模型" @update:modelValue="value => typeof value === 'string' && (modelId = value)" /></template></uiField><uiField label="显示名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="modelLabel" required :disabled="busy" /></template></uiField><uiField v-if="mediaType === 'text'" label="上游模型标识"><template #default="{ id }"><uiInput :id="id" v-model.trim="apiModelId" :disabled="busy" placeholder="留空使用平台模型标识" /></template></uiField><uiField label="排序"><uiNumberInput v-model="sortOrder" :min="-100000" :max="100000" :step="1" :precision="0" :disabled="busy" /></uiField><uiCheckbox v-model="modelEnabled" :disabled="busy">启用此模型</uiCheckbox><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton htmlType="submit" :disabled="busy || !modelProviderId || !modelId || !modelLabel" :loading="busy">保存模型配置</uiButton></form></uiDialog>
-    <uiDialog v-model="priceConfigVisible" :title="`${priceConfigModel?.label ?? ''} 的价格配置`" :width="620" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="savePriceConfig"><template v-if="priceConfigType === 'text'"><p class="sectionHint">费率单位：积分／百万 token，支持最多 6 位小数。缓存项留空表示不适用，0 表示免费。</p><div class="rateFields"><uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" :required="!priceConfigReadOnly && (field.key === 'input' || field.key === 'output')"><template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[priceConfigKey]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy || priceConfigReadOnly" @update:modelValue="value => setTextPriceField(priceConfigKey, field.key, value)" /></template></uiField></div><p class="sectionHint" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10,000,000 token。<br />实际消耗积分：<strong>{{ textExampleCredits(priceConfigKey) }}</strong>。</p><p v-if="!priceConfigReadOnly && !textPricingInput(priceConfigKey)" class="sectionHint">请输入有效积分费率（0～10 亿，最多 6 位小数）。</p></template><template v-else><p class="sectionHint">{{ priceConfigType === 'image' ? '可按图片尺寸设置每张积分；保存后最高档会同步为基础价格。' : '可按视频分辨率设置每秒积分；保存后最高档会同步为未知分辨率的兜底价格。' }}</p><div class="tierList"><div class="tierHeader"><span>{{ priceConfigType === 'image' ? '尺寸' : '分辨率' }}</span><span>价格</span><span aria-hidden="true"></span></div><div v-for="(tier, index) in tierDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" :placeholder="priceConfigType === 'image' ? '如 1K、2K、4K' : '如 768P、1080P'" :disabled="busy" :aria-label="`第 ${index + 1} 个${priceConfigType === 'image' ? '尺寸' : '分辨率'}`" /><uiNumberInput v-model="tier.credits" :min="1" :max="1000000000" :step="1" :precision="0" :disabled="busy" :aria-label="`${tier.resolution || (priceConfigType === 'image' ? '尺寸' : '分辨率')} ${priceConfigType === 'image' ? '每张' : '每秒'}积分`" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy" @click="removeTier(index)">删除</uiButton></div><div class="tierActions"><uiButton htmlType="button" variant="secondary" :disabled="busy" @click="addTier">新增{{ priceConfigType === 'image' ? '尺寸' : '分辨率' }}</uiButton><uiButton htmlType="submit" :disabled="busy" :loading="busy">保存价格配置</uiButton></div></div></template><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton v-if="priceConfigType === 'text' && !priceConfigReadOnly" htmlType="submit" :disabled="busy" :loading="busy">保存价格配置</uiButton></form></uiDialog>
+    <uiDialog v-model="priceConfigVisible" :title="`${priceConfigModel?.label ?? ''} 的价格配置`" :width="700" :closeOnClickModal="!busy"><form class="dialogForm" @submit.prevent="savePriceConfig"><template v-if="priceConfigType === 'text'"><p class="sectionHint">费率单位：积分／百万 token，按输入和输出分别计费，支持最多 4 位小数。</p><div class="rateFields"><uiField v-for="field in tokenRateFields" :key="field.key" class="rateField" :label="field.label" required><template #default="{ id }"><uiInput :id="id" :modelValue="textPriceDraft[priceConfigKey]?.[field.key] ?? ''" inputmode="decimal" maxlength="32" :disabled="busy || priceConfigReadOnly" @update:modelValue="value => setTextPriceField(priceConfigKey, field.key, value)" /></template></uiField></div><p class="sectionHint" aria-live="polite">例（按历史用量比例）：{{ textExampleUsageLabel }}，总计：10,000,000 token。<br />实际消耗积分：<strong>{{ textExampleCredits(priceConfigKey) }}</strong>。</p><p v-if="!priceConfigReadOnly && !textPricingInput(priceConfigKey)" class="sectionHint">请输入有效积分费率（0～10 亿，最多 4 位小数）。</p></template><template v-else-if="priceConfigType === 'video'"><p class="sectionHint">所有价格支持最多 4 位小数，视频生视频能力由模型能力决定。</p><uiField label="视频价格模式"><uiRadioGroup v-model="videoPricingModeDraft" :options="videoPricingModeOptions" variant="segmented" :disabled="busy || priceConfigReadOnly || !videoReferenceSupported" /></uiField><p v-if="!videoReferenceSupported" class="sectionHint">该模型未声明视频参考能力，只能使用统一计价。</p><template v-if="videoPricingModeDraft === 'separate'"><div v-for="kind in videoBillingKinds" :key="kind" class="videoPricingGroup"><h3>{{ videoBillingKindLabels[kind] }}</h3><div class="tierList"><div class="tierHeader"><span>分辨率</span><span>每秒积分</span><span aria-hidden="true"></span></div><div v-for="(tier, index) in videoTierDrafts[kind]" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" placeholder="如 768P、1080P" :disabled="busy || priceConfigReadOnly" :aria-label="`${videoBillingKindLabels[kind]}第 ${index + 1} 个分辨率`" /><uiInput v-model.trim="tier.credits" inputmode="decimal" placeholder="0.0000" :disabled="busy || priceConfigReadOnly" :aria-label="`${tier.resolution || '分辨率'}每秒积分`" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy || priceConfigReadOnly" @click="removeVideoTier(kind, index)">删除</uiButton></div><uiButton htmlType="button" variant="secondary" :disabled="busy || priceConfigReadOnly" @click="addVideoTier(kind)">新增分辨率</uiButton></div></div></template><template v-else><div class="tierList"><div class="tierHeader"><span>分辨率</span><span>每秒积分</span><span aria-hidden="true"></span></div><div v-for="(tier, index) in tierDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" placeholder="如 768P、1080P" :disabled="busy || priceConfigReadOnly" :aria-label="`第 ${index + 1} 个分辨率`" /><uiInput v-model.trim="tier.credits" inputmode="decimal" placeholder="0.0000" :disabled="busy || priceConfigReadOnly" aria-label="每秒积分" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy || priceConfigReadOnly" @click="removeTier(index)">删除</uiButton></div><uiButton htmlType="button" variant="secondary" :disabled="busy || priceConfigReadOnly" @click="addTier">新增分辨率</uiButton></div></template></template><template v-else-if="priceConfigType === 'image'"><p class="sectionHint">可按模型支持的图片尺寸设置每张积分（1K、2K、4K 可按需配置，不支持的尺寸无法报价）；支持最多 4 位小数。</p><div class="tierList"><div class="tierHeader"><span>尺寸</span><span>每张积分</span><span aria-hidden="true"></span></div><div v-for="(tier, index) in tierDraft" :key="index" class="tierRow"><uiInput v-model.trim="tier.resolution" placeholder="如 1K、2K、4K" :disabled="busy || priceConfigReadOnly" :aria-label="`第 ${index + 1} 个尺寸`" /><uiInput v-model.trim="tier.credits" inputmode="decimal" placeholder="0.0000" :disabled="busy || priceConfigReadOnly" aria-label="每张积分" /><uiButton htmlType="button" size="small" variant="danger" :disabled="busy || priceConfigReadOnly" @click="removeTier(index)">删除</uiButton></div><div class="tierActions"><uiButton htmlType="button" variant="secondary" :disabled="busy || priceConfigReadOnly" @click="addTier">新增尺寸</uiButton><uiButton htmlType="submit" :disabled="busy || priceConfigReadOnly" :loading="busy">保存价格配置</uiButton></div></div></template><template v-else><uiField label="音频基础价格" required><template #default="{ id }"><uiInput :id="id" v-model="audioPriceDraft" inputmode="decimal" placeholder="0.0000" :disabled="busy || priceConfigReadOnly" /></template></uiField><p class="sectionHint">单位：每 10k 字符，允许 0 表示免费，最多 4 位小数。</p></template><p v-if="dialogError" class="pageError" role="alert">{{ dialogError }}</p><uiButton v-if="priceConfigType !== undefined && !priceConfigReadOnly" htmlType="submit" :disabled="busy" :loading="busy">保存价格配置</uiButton></form></uiDialog>
   </accountShell>
 </template>
 
@@ -117,15 +209,17 @@ import accountShell from "@/components/account/accountShell.vue";
 import extensionPanel from "./extensionPanel.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { getAdminUsers, getAdminOnlineUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, savePlatformDefaultModels, type AdminUser, type UserPresence, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints, type PlatformDefaultModels } from "@/lib/accountApi";
+import { getAdminUsers, getAdminOnlineUsers, saveAdminUser, resetAdminPassword, adjustUserCredits, getAdminProjects, getPlatformConfiguration, initializePlatformCatalog, savePlatformProvider, deletePlatformProvider, savePlatformModel, deletePlatformModel, publishPlatformPrices, getPlatformAudit, savePlatformDefaultModels, getAdminUsageSummary, getAdminGenerationOutputs, updateGenerationOutputStatus, getAdminUsageExportUrl, type AdminUser, type UserPresence, type PlatformConfiguration, type PlatformProvider, type PlatformModel, type AuditEntry, type TextPricingInput, type TokenRates, type PlatformPriceInput, type PriceConstraints, type PlatformDefaultModels, type UsageSummary, type GenerationOutput } from "@/lib/accountApi";
 import { creditMicros, formatCredits } from "@/lib/creditFormat";
+import saveFile from "@/lib/saveFile";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { invalidateNodeModels } from "@omnistudio-next/nodes-scaffold/nodeAi";
 const auth = useAuthStore(); const workspace = useWorkspaceStore(); const router = useRouter(); const feedback = useUiFeedback();
 const users = ref<AdminUser[]>([]); const configuration = ref<PlatformConfiguration>(); const audit = ref<AuditEntry[]>([]); const loading = ref(false); const busy = ref(false); const errorMessage = ref(""); const dialogError = ref("");
-const activeTab = ref("users"); const tabs = [{ value: "users", label: "用户与积分" }, { value: "api", label: "API 与模型" }, { value: "prices", label: "积分价格" }, { value: "extensions", label: "平台扩展" }, { value: "audit", label: "管理审计" }];
+const activeTab = ref("users"); const tabs = [{ value: "users", label: "用户与积分" }, { value: "api", label: "API 与模型" }, { value: "prices", label: "积分价格" }, { value: "usage", label: "消耗图表" }, { value: "extensions", label: "平台扩展" }, { value: "audit", label: "管理审计" }];
 const selectedUser = ref<AdminUser>(); const creditsVisible = ref(false); const passwordVisible = ref(false); const projectsVisible = ref(false); const projectsLoading = ref(false); const projects = ref<{ name: string; directory: string }[]>([]); const creditAmount = ref<number | null>(null); const creditReason = ref(""); let creditKey = crypto.randomUUID(); const newPassword = ref(""); const passwordConfirmation = ref("");
 const providerVisible = ref(false); const providerId = ref(""); const providerEditing = ref(false); const apiUrl = ref(""); const apiKey = ref(""); const currentMaskedApiKey = ref(""); const credentialConfigured = ref(false); const removeApiKey = ref(false); const providerEnabled = ref(true); const protocol = ref<PlatformProvider["config"]["protocol"]>("openai-completions");
+const usageRows = ref<UsageSummary[]>([]); const usageOutputs = ref<GenerationOutput[]>([]); const usageLoading = ref(false); const usageFrom = ref(""); const usageTo = ref(""); const usageUserId = ref("all"); const usageWorkspace = ref("all"); const usageModelId = ref("all"); const usageMediaType = ref("all"); const usageFiltersMoreVisible = ref(false); const usageChartSvg = ref<SVGSVGElement | null>(null);
 const protocolOptions = [{ value: "openai-completions", label: "OpenAI Chat" }, { value: "openai-responses", label: "OpenAI Responses" }, { value: "anthropic-messages", label: "Anthropic" }];
 const modelVisible = ref(false); const editingModelId = ref(""); const modelProviderId = ref(""); const modelId = ref(""); const modelLabel = ref(""); const apiModelId = ref(""); const modelEnabled = ref(true); const mediaType = ref<PlatformModel["mediaType"]>("text"); const sortOrder = ref<number | null>(0); const modelCapabilities = ref<Record<string, unknown> | undefined>();
 const mediaOptions = [{ value: "text", label: "文本" }, { value: "image", label: "图片" }, { value: "video", label: "视频" }]; const mediaLabels: Record<string, string> = { text: "文本", image: "图片", video: "视频", audio: "音频" };
@@ -183,21 +277,31 @@ async function submitDefaultModels() {
     busy.value = false;
   }
 }
-const priceDraft = ref<Record<string, number | null>>({});
-type TextPriceDraft = { input: string; cacheRead: string; cacheWrite: string; output: string };
+const priceDraft = ref<Record<string, string | null>>({});
+type TextPriceDraft = { input: string; output: string };
 const textPriceDraft = ref<Record<string, TextPriceDraft>>({});
 type PriceRow = PlatformModel & { priceKey: string };
-type ResolutionTierDraft = { resolution: string; credits: number | null };
+type ResolutionTierDraft = { resolution: string; credits: string | null };
 const tierDrafts = ref<Record<string, ResolutionTierDraft[]>>({});
+type VideoBillingKind = "textImageToVideo" | "videoToVideo";
+const videoBillingKinds: VideoBillingKind[] = ["textImageToVideo", "videoToVideo"];
+const videoBillingKindLabels: Record<VideoBillingKind, string> = { textImageToVideo: "文生/图生视频", videoToVideo: "视频生视频" };
+const videoPricingModeOptions = [{ value: "unified", label: "统一计价" }, { value: "separate", label: "区分计价" }];
+const videoPricingModeDraft = ref<"unified" | "separate">("unified");
+const videoTierDrafts = ref<Record<VideoBillingKind, ResolutionTierDraft[]>>({ textImageToVideo: [], videoToVideo: [] });
+const videoReferenceSupported = ref(false);
+const videoPricingModes = ref<Record<string, "unified" | "separate">>({});
+const videoPricingTiers = ref<Record<string, Record<VideoBillingKind, ResolutionTierDraft[]>>>({});
+const audioPriceDraft = ref("");
 const priceConfigVisible = ref(false);
 const priceConfigModel = ref<PriceRow>();
 const priceConfigReadOnly = ref(false);
 const priceConfigKey = computed(() => priceConfigModel.value?.priceKey ?? "");
 const priceConfigType = computed(() => priceConfigModel.value?.mediaType);
 const tierDraft = ref<ResolutionTierDraft[]>([]);
-const tokenRateFields: { key: keyof TokenRates; label: string }[] = [{ key: "input", label: "非缓存输入" }, { key: "cacheRead", label: "缓存读取" }, { key: "cacheWrite", label: "缓存写入" }, { key: "output", label: "输出" }];
+const tokenRateFields: { key: keyof TokenRates; label: string }[] = [{ key: "input", label: "输入" }, { key: "output", label: "输出" }];
 // 136笔历史usage按占比缩放，并按最大余数分配为整数，总计1000万token。
-const textExampleUsage = { input: 1_606_244, cacheRead: 8_350_337, cacheWrite: 0, output: 43_419 };
+const textExampleUsage = { input: 9_956_581, output: 43_419 };
 const textExampleUsageLabel = tokenRateFields.map(({ key, label }) => `${label}：${textExampleUsage[key].toLocaleString("en-US")}`).join("，");
 function priceKey(model: { providerId: string; mediaType: string; modelId: string }) { return JSON.stringify([model.providerId, model.mediaType, model.modelId]); }
 const priceRows = computed<PriceRow[]>(() => configuration.value?.models.map(model => ({ ...model, priceKey: priceKey(model) })) ?? []);
@@ -206,7 +310,13 @@ const priceGroups = computed(() => {
   return [{ key: "enabled", rows: rows.filter(model => model.enabled) }, { key: "disabled", rows: rows.filter(model => !model.enabled) }].filter(group => group.key === "enabled" || group.rows.length);
 });
 const filteredModels = computed(() => { const models = configuration.value?.models ?? []; return modelFilter.value === "all" ? models : models.filter(model => model.mediaType === modelFilter.value); });
-const missingPrices = computed(() => priceRows.value.some(model => model.enabled && (model.mediaType === "text" ? !textPricingInput(model.priceKey) : priceDraft.value[model.priceKey] == null)));
+const missingPrices = computed(() => priceRows.value.some(model => {
+  if (!model.enabled) return false;
+  if (model.mediaType === "text") return !textPricingInput(model.priceKey);
+  if (model.mediaType === "image") return !validImageTiers(tierDrafts.value[model.priceKey] ?? []);
+  if (model.mediaType === "video") return !validVideoPricing(model);
+  return !isPriceValue(priceDraft.value[model.priceKey]);
+}));
 type WorkspaceFilter = "all" | "none" | string;
 const workspaceFilter = ref<WorkspaceFilter>("all");
 const onlineFilter = ref<"all" | "online" | "away" | "offline">("all");
@@ -274,7 +384,105 @@ const providerColumns: UiColumn[] = [{ key: "providerId", label: "提供方", wi
 const modelColumns: UiColumn[] = [{ key: "label", label: "模型名称", width: 160, align: "center" }, { key: "providerId", label: "提供方", width: 140, align: "center" }, { key: "modelId", label: "模型标识", width: 240, align: "center" }, { key: "mediaType", label: "类型", width: 80, align: "center" }, { key: "enabled", label: "状态", width: 90, align: "center" }, { key: "actions", label: "操作", width: 180, align: "center" }];
 const priceColumns: UiColumn[] = [{ key: "label", label: "模型", width: 170, align: "center" }, { key: "providerId", label: "提供方", width: 160, align: "center" }, { key: "mediaType", label: "类型", width: 70, align: "center" }, { key: "unit", label: "计费单位", width: 150, align: "center" }, { key: "configDetails", label: "配置详情", width: 320 }, { key: "creditsPerUnit", label: "价格配置", width: 150, align: "center" }];
 const auditColumns: UiColumn[] = [{ key: "action", label: "操作", width: 180, align: "center" }, { key: "actorUserId", label: "操作者", width: 150, align: "center" }, { key: "metadata", label: "详情" }, { key: "createdAt", label: "时间", width: 180, align: "center" }];
+const usageColumns: UiColumn[] = [{ key: "day", label: "日期", width: 110 }, { key: "userId", label: "人员", width: 120 }, { key: "workspaceName", label: "工作区", width: 150 }, { key: "modelId", label: "模型", width: 180 }, { key: "mediaType", label: "类型", width: 70 }, { key: "requestCount", label: "请求数", width: 80 }, { key: "capturedCredits", label: "消耗积分", width: 100 }, { key: "outputCount", label: "输出数", width: 80 }, { key: "pendingCount", label: "待审核", width: 80 }, { key: "usableCount", label: "可用", width: 70 }, { key: "wasteCount", label: "废片", width: 70 }, { key: "wasteRate", label: "废片占比", width: 90 }];
 const auditLabels: Record<string, string> = { "account.initializeRoot": "初始化 root", "account.register": "用户注册", "account.admin.update": "更新账户", "account.password.change": "修改密码", "account.password.reset": "重置密码", "billing.credits.grant": "发放积分", "billing.credits.adjustment": "调整积分", "billing.transfer": "成员积分划转", "team.create": "创建团队", "team.invite": "邀请成员", "team.acceptInvitation": "加入团队", "team.leave": "退出团队", "team.removeMember": "移除成员", "team.asset.upload": "上传团队资产", "team.asset.remove": "删除共享副本", "team.asset.rename": "重命名资产", "team.archive": "解散团队", "team.restore": "恢复团队", "team.rename": "重命名团队", "platform.provider.save": "配置 API", "platform.provider.delete": "删除 API", "platform.model.save": "配置模型", "platform.model.delete": "删除模型", "platform.prices.publish": "发布价格", "platform.catalog.initialize": "添加内置目录", "platform.defaultModels.save": "配置默认模型" };
+const usageUserOptions = computed(() => [{ value: "all", label: "全部人员" }, ...users.value.map(user => ({ value: user.id, label: user.displayName }))]);
+const usageWorkspaceOptions = computed(() => {
+  const names = new Set<string>();
+  for (const row of usageRows.value) if (row.workspaceName) names.add(row.workspaceName);
+  for (const user of users.value) for (const workspace of user.workspaces ?? []) names.add(workspace.name);
+  return [{ value: "all", label: "全部工作区" }, ...[...names].sort((left, right) => left.localeCompare(right, "zh-CN")).map(name => ({ value: name, label: name }))];
+});
+const usageModelOptions = computed(() => {
+  const models = new Map<string, string>();
+  for (const model of configuration.value?.models ?? []) models.set(model.modelId, model.label || model.modelId);
+  for (const row of usageRows.value) models.set(row.modelId, row.modelId);
+  return [{ value: "all", label: "全部模型" }, ...[...models.entries()].sort(([, left], [, right]) => left.localeCompare(right)).map(([value, label]) => ({ value, label }))];
+});
+const usageMediaTypeOptions = [{ value: "all", label: "全部类型" }, ...Object.entries(mediaLabels).filter(([value]) => value !== "audio").map(([value, label]) => ({ value, label }))];
+const usageDateRange = computed<string[]>({ get: () => usageFrom.value && usageTo.value ? [usageFrom.value, usageTo.value] : [], set: value => { usageFrom.value = value?.[0] ?? ""; usageTo.value = value?.[1] ?? ""; } });
+const usageExtraFilterCount = computed(() => [usageUserId.value !== "all", usageWorkspace.value !== "all", usageModelId.value !== "all", usageMediaType.value !== "all"].filter(Boolean).length);
+const usageExportUrl = computed(() => getAdminUsageExportUrl({ from: usageFrom.value || undefined, to: usageTo.value || undefined, userId: usageUserId.value === "all" ? undefined : usageUserId.value, workspace: usageWorkspace.value === "all" ? undefined : usageWorkspace.value, modelId: usageModelId.value === "all" ? undefined : usageModelId.value, mediaType: usageMediaType.value === "all" ? undefined : usageMediaType.value as UsageSummary["mediaType"] }));
+type UsageChartPoint = { day: string; label: string; credits: number; creditsLabel: string; x: number; center: number; y: number; width: number; height: number };
+type UsageBreakdownPoint = { key: string; label: string; creditsLabel: string; percent: number };
+function formatMicros(value: bigint): string {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const whole = absolute / 1_000_000n;
+  const fraction = (absolute % 1_000_000n).toString().padStart(6, "0");
+  return formatCredits(`${negative ? "-" : ""}${whole}.${fraction}`);
+}
+const usageChartSummary = computed(() => {
+  let credits = 0n;
+  let requests = 0;
+  let outputs = 0;
+  let usable = 0;
+  let waste = 0;
+  for (const row of usageRows.value) {
+    try { credits += creditMicros(row.capturedCredits); } catch {}
+    requests += Number(row.requestCount) || 0;
+    outputs += Number(row.outputCount) || 0;
+    usable += Number(row.usableCount) || 0;
+    waste += Number(row.wasteCount) || 0;
+  }
+  const reviewed = usable + waste;
+  return { credits: formatMicros(credits), requests, outputs, wasteRate: reviewed ? `${(waste / reviewed * 100).toFixed(2)}%` : "—" };
+});
+const usageChartPoints = computed<UsageChartPoint[]>(() => {
+  const byDay = new Map<string, number>();
+  for (const row of usageRows.value) {
+    const amount = Number(row.capturedCredits);
+    if (!Number.isFinite(amount)) continue;
+    byDay.set(row.day, (byDay.get(row.day) ?? 0) + amount);
+  }
+  const entries = [...byDay.entries()].sort(([left], [right]) => left.localeCompare(right)).slice(-14);
+  if (!entries.length) return [];
+  const maxCredits = Math.max(...entries.map(([, credits]) => credits), 1);
+  const chartLeft = 44;
+  const chartBottom = 206;
+  const chartTop = 20;
+  const chartWidth = 700;
+  const chartHeight = chartBottom - chartTop;
+  const step = chartWidth / Math.max(entries.length, 1);
+  const width = Math.min(42, Math.max(12, step * 0.56));
+  return entries.map(([day, credits], index) => {
+    const center = chartLeft + step * (index + 0.5);
+    const height = Math.max(credits > 0 ? 3 : 0, credits / maxCredits * chartHeight);
+    return { day, label: day.slice(5).replace("-", "/"), credits, creditsLabel: credits.toLocaleString("zh-CN", { maximumFractionDigits: 2 }), x: center - width / 2, center, y: chartBottom - height, width, height };
+  });
+});
+function usageBreakdown(keyOf: (row: UsageSummary) => string, labelOf: (key: string) => string, limit?: number): UsageBreakdownPoint[] {
+  const amounts = new Map<string, number>();
+  for (const row of usageRows.value) {
+    const amount = Number(row.capturedCredits);
+    if (!Number.isFinite(amount)) continue;
+    const key = keyOf(row);
+    amounts.set(key, (amounts.get(key) ?? 0) + amount);
+  }
+  const entries = [...amounts.entries()].sort(([, left], [, right]) => right - left);
+  const visible = limit ? entries.slice(0, limit) : entries;
+  const maxCredits = Math.max(...visible.map(([, credits]) => credits), 1);
+  return visible.map(([key, credits]) => ({ key, label: labelOf(key), creditsLabel: credits.toLocaleString("zh-CN", { maximumFractionDigits: 2 }), percent: Math.max(credits > 0 ? 6 : 0, credits / maxCredits * 100) }));
+}
+const usageMediaBreakdown = computed(() => usageBreakdown(row => row.mediaType, key => mediaLabels[key] ?? key));
+const usageModelBreakdown = computed(() => usageBreakdown(row => row.modelId, key => key, 8));
+async function exportUsageChart() {
+  const source = usageChartSvg.value;
+  if (!source) return;
+  const chart = source.cloneNode(true) as SVGSVGElement;
+  chart.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  chart.setAttribute("width", "760");
+  chart.setAttribute("height", "260");
+  chart.querySelectorAll(".usageChartAxis").forEach(element => element.setAttribute("stroke", "#d9d4cb"));
+  chart.querySelectorAll(".usageChartBar").forEach(element => element.setAttribute("fill", "#b95d33"));
+  chart.querySelectorAll("text").forEach(element => { element.setAttribute("fill", "#605d57"); element.setAttribute("font-family", "sans-serif"); element.setAttribute("font-size", "11"); });
+  const blob = new Blob([`<?xml version="1.0" encoding="UTF-8"?>${new XMLSerializer().serializeToString(chart)}`], { type: "image/svg+xml;charset=utf-8" });
+  try {
+    await saveFile(blob, `usage-trend-${new Date().toISOString().slice(0, 10)}.svg`);
+  } catch (error) {
+    errorMessage.value = errorText(error);
+  }
+}
 function errorText(error: unknown) { return axios.isAxiosError(error) ? error.response?.data?.message || "连接中断，请刷新后确认结果" : error instanceof Error ? error.message : "操作失败，请重试"; }
 function userName(id: string) { return users.value.find(user => user.id === id)?.displayName ?? id; }
 function providerCredential(row: unknown): string { const provider = row as PlatformProvider; return provider.maskedApiKey || (provider.apiKeyConfigured ? "已配置" : "未配置"); }
@@ -288,8 +496,7 @@ function textPricingInput(key: string): TextPricingInput | undefined {
   const ratesPerMillion = {} as TokenRates;
   for (const { key: field } of tokenRateFields) {
     const value = draft[field];
-    if (!value && (field === "cacheRead" || field === "cacheWrite")) { ratesPerMillion[field] = null; continue; }
-    if (value.length > 32 || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(value) || creditMicros(value) > 1_000_000_000_000_000n) return;
+    if (!isPriceValue(value)) return;
     ratesPerMillion[field] = value;
   }
   return { ratesPerMillion };
@@ -300,8 +507,7 @@ function textExampleCredits(key: string): string {
   let numerator = 0n;
   for (const { key: field } of tokenRateFields) {
     const rate = pricing.ratesPerMillion[field];
-    if (rate === null && textExampleUsage[field] > 0) return "—";
-    if (rate !== null) numerator += BigInt(textExampleUsage[field]) * creditMicros(rate);
+    numerator += BigInt(textExampleUsage[field]) * creditMicros(rate);
   }
   const amount = (numerator + 500_000n) / 1_000_000n;
   return formatCredits(`${amount / 1_000_000n}.${String(amount % 1_000_000n).padStart(6, "0")}`);
@@ -317,14 +523,61 @@ function priceTiers(price: { constraints?: PriceConstraints }, mediaType: "image
   const source = mediaType === "image" ? price.constraints?.sizeTiers : price.constraints?.resolutionTiers;
   return source && typeof source === "object" ? source : {};
 }
-function defaultImageTiers(price: { constraints?: PriceConstraints }, basePrice: number | null | undefined) {
+function isPriceValue(value: unknown): value is string { return typeof value === "string" && value.length <= 32 && /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(value) && creditMicros(value) <= 1_000_000_000_000_000n; }
+function validTierValues(tiers: ResolutionTierDraft[]) { return tiers.length > 0 && tiers.every(tier => tier.resolution.trim().length > 0 && isPriceValue(tier.credits)); }
+function validImageTiers(tiers: ResolutionTierDraft[]) {
+  const names = new Set<string>();
+  return validTierValues(tiers) && tiers.every(tier => {
+    const name = tier.resolution.trim().toUpperCase();
+    if (!["1K", "2K", "4K"].includes(name) || names.has(name)) return false;
+    names.add(name);
+    return true;
+  });
+}
+function supportsVideoReference(value: unknown): boolean {
+  if (typeof value === "string") return value === "videoReference" || value.startsWith("videoReference:");
+  if (Array.isArray(value)) return value.some(supportsVideoReference);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (record.videoReference === true || record.supportsVideoReference === true) return true;
+    return supportsVideoReference(record.mode);
+  }
+  return false;
+}
+function modelSupportsVideoReference(model: PlatformModel) {
+  if (supportsVideoReference(model.capabilities)) return true;
+  const provider = configuration.value?.mediaProviders.find(item => item.id === model.providerId);
+  const source = provider?.models.find(item => item.id === model.modelId && item.type === "video");
+  return supportsVideoReference(source?.mode);
+}
+function validVideoTiers(tiers: ResolutionTierDraft[]) { return validTierValues(tiers); }
+function validVideoPricing(model: PlatformModel) {
+  const key = priceKey(model);
+  const mode = videoPricingModes.value[key] ?? "unified";
+  if (mode === "separate" && modelSupportsVideoReference(model)) {
+    const tiers = videoPricingTiers.value[key];
+    const supported = new Set((model.capabilities?.durationResolutionMap as { resolution?: string[] }[] | undefined)?.flatMap(item => item.resolution ?? []));
+    return !!tiers && validVideoTiers(tiers.textImageToVideo) && validVideoTiers(tiers.videoToVideo)
+      && [...supported].every(resolution => tiers.textImageToVideo.some(tier => tier.resolution.trim() === resolution) && tiers.videoToVideo.some(tier => tier.resolution.trim() === resolution));
+  }
+  return validVideoTiers(tierDrafts.value[key] ?? []);
+}
+function defaultImageTiers(price: { constraints?: PriceConstraints }, basePrice: string | null | undefined) {
   const tiers = priceTiers(price, "image");
+  if (Object.keys(tiers).length) return Object.entries(tiers).map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
   const fallback = basePrice ?? null;
-  return ["1K", "2K", "4K"].map(resolution => ({ resolution, credits: typeof tiers[resolution] === "number" ? tiers[resolution] : fallback }));
+  return ["1K", "2K", "4K"].map(resolution => ({ resolution, credits: tiers[resolution] === undefined ? fallback : String(tiers[resolution]) }));
 }
 function priceTierSummary(row: PriceRow) {
   if (row.mediaType !== "image" && row.mediaType !== "video") return "";
   const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
+  if (row.mediaType === "video" && (videoPricingModes.value[row.priceKey] ?? price?.constraints?.videoPricingMode) === "separate") {
+    const groups = videoPricingTiers.value[row.priceKey] ?? {
+      textImageToVideo: Object.entries(price?.constraints?.videoPricingTiers?.textImageToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) })),
+      videoToVideo: Object.entries(price?.constraints?.videoPricingTiers?.videoToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) })),
+    };
+    return videoBillingKinds.map(kind => `${videoBillingKindLabels[kind]}：${groups[kind].map(tier => `${tier.resolution} ${tier.credits ?? "—"}`).join(" · ") || "未配置"}`).join("；");
+  }
   const tiers = tierDrafts.value[row.priceKey] ?? Object.entries(priceTiers(price ?? {}, row.mediaType)).map(([resolution, credits]) => ({ resolution, credits }));
   return tiers.length ? tiers.map(tier => `${tier.resolution}：${tier.credits == null ? "—" : `${tier.credits}积分`}`).join(" · ") : "未配置档位";
 }
@@ -338,7 +591,23 @@ function openPriceConfig(row: PriceRow, readOnly = false) {
   priceConfigModel.value = row;
   priceConfigReadOnly.value = readOnly;
   dialogError.value = "";
-  if (row.mediaType !== "text") {
+  audioPriceDraft.value = priceDraft.value[row.priceKey] ?? "";
+  if (row.mediaType === "video") {
+    const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
+    const mode = price?.constraints?.videoPricingMode;
+    videoPricingModeDraft.value = videoPricingModes.value[row.priceKey] ?? (mode === "separate" && modelSupportsVideoReference(row) ? "separate" : "unified");
+    videoReferenceSupported.value = modelSupportsVideoReference(row);
+    const unified = price?.constraints?.resolutionTiers ?? {};
+    const separate = price?.constraints?.videoPricingTiers;
+    tierDraft.value = Object.entries(unified).map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
+    const unifiedTiers = Object.entries(unified).map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
+    const separateTextTiers = Object.entries(separate?.textImageToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
+    const separateVideoTiers = Object.entries(separate?.videoToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
+    videoTierDrafts.value = videoPricingTiers.value[row.priceKey] ?? {
+      textImageToVideo: separateTextTiers.length ? separateTextTiers : unifiedTiers.map(tier => ({ ...tier })),
+      videoToVideo: separateVideoTiers.length ? separateVideoTiers : unifiedTiers.map(tier => ({ ...tier })),
+    };
+  } else if (row.mediaType === "image") {
     const price = configuration.value?.prices.find(item => priceKey(item) === row.priceKey);
     const tiers = tierDrafts.value[row.priceKey] ?? (row.mediaType === "image" ? defaultImageTiers(price ?? {}, priceDraft.value[row.priceKey]) : Object.entries(priceTiers(price ?? {}, "video")).map(([resolution, credits]) => ({ resolution, credits })));
     tierDraft.value = tiers.map(tier => ({ ...tier }));
@@ -347,54 +616,128 @@ function openPriceConfig(row: PriceRow, readOnly = false) {
 }
 function addTier() { tierDraft.value.push({ resolution: "", credits: null }); }
 function removeTier(index: number) { tierDraft.value.splice(index, 1); }
+function addVideoTier(kind: VideoBillingKind) { videoTierDrafts.value[kind].push({ resolution: "", credits: null }); }
+function removeVideoTier(kind: VideoBillingKind, index: number) { videoTierDrafts.value[kind].splice(index, 1); }
 function savePriceConfig() {
   const model = priceConfigModel.value;
   if (!model) return;
   if (priceConfigReadOnly.value) { priceConfigVisible.value = false; return; }
   if (model.mediaType === "text") {
-    if (!textPricingInput(model.priceKey)) { dialogError.value = "请输入有效积分费率（0～10 亿，最多 6 位小数）"; return; }
+    if (!textPricingInput(model.priceKey)) { dialogError.value = "请输入有效积分费率（0～10 亿，最多 4 位小数）"; return; }
+    priceConfigVisible.value = false;
+    return;
+  }
+  if (model.mediaType === "audio") {
+    if (!isPriceValue(audioPriceDraft.value)) { dialogError.value = "请输入有效音频价格（最多 4 位小数）"; return; }
+    priceDraft.value[model.priceKey] = audioPriceDraft.value;
+    priceConfigVisible.value = false;
+    return;
+  }
+  if (model.mediaType === "video") {
+    if (videoPricingModeDraft.value === "separate" && !videoReferenceSupported.value) { dialogError.value = "当前模型不支持视频生视频，只能统一计价"; videoPricingModeDraft.value = "unified"; return; }
+    const groups = videoPricingModeDraft.value === "separate" ? videoBillingKinds.map(kind => videoTierDrafts.value[kind]) : [tierDraft.value];
+    if (groups.some(group => !validVideoTiers(group))) { dialogError.value = "请为视频填写至少一个有效分辨率和价格（最多 4 位小数）"; return; }
+    const normalized = (group: ResolutionTierDraft[]) => group.map(tier => ({ resolution: tier.resolution.trim(), credits: tier.credits! }));
+    if (videoPricingModeDraft.value === "separate") {
+      videoTierDrafts.value = { textImageToVideo: normalized(videoTierDrafts.value.textImageToVideo), videoToVideo: normalized(videoTierDrafts.value.videoToVideo) };
+      videoPricingTiers.value[model.priceKey] = videoTierDrafts.value;
+    } else {
+      tierDraft.value = normalized(tierDraft.value);
+      tierDrafts.value[model.priceKey] = tierDraft.value;
+    }
+    videoPricingModes.value[model.priceKey] = videoPricingModeDraft.value;
     priceConfigVisible.value = false;
     return;
   }
   const tiers = tierDraft.value.map(tier => ({ resolution: tier.resolution.trim(), credits: tier.credits }));
   const names = new Set<string>();
-  if (model.mediaType === "image" && tiers.length !== 3) { dialogError.value = "图片必须配置 1K、2K、4K 三档积分"; return; }
+  if (model.mediaType === "image" && tiers.length === 0) { dialogError.value = "图片至少配置一个尺寸价格"; return; }
   for (const tier of tiers) {
     const name = tier.resolution.toUpperCase();
     if (!name || name.length > 32) { dialogError.value = `${model.mediaType === "image" ? "尺寸" : "分辨率"}名称不能为空且不能超过 32 个字符`; return; }
+    if (model.mediaType === "image" && !["1K", "2K", "4K"].includes(name)) { dialogError.value = "图片尺寸仅支持 1K、2K、4K"; return; }
     if (names.has(name)) { dialogError.value = `${model.mediaType === "image" ? "尺寸" : "分辨率"}名称不能重复`; return; }
-    if (!Number.isSafeInteger(tier.credits) || tier.credits! <= 0) { dialogError.value = "档位积分必须是正整数"; return; }
+    if (!isPriceValue(tier.credits)) { dialogError.value = "档位积分必须是非负数且最多 4 位小数"; return; }
     names.add(name);
   }
-  if (model.mediaType === "image" && ["1K", "2K", "4K"].some(name => !names.has(name))) { dialogError.value = "图片必须配置 1K、2K、4K 三档积分"; return; }
   const normalizedTiers = tiers.map(tier => ({ ...tier, resolution: model.mediaType === "image" ? tier.resolution.toUpperCase() : tier.resolution }));
   tierDrafts.value[model.priceKey] = normalizedTiers;
-  if (tiers.length) priceDraft.value[model.priceKey] = Math.max(...tiers.map(tier => tier.credits!));
+  if (tiers.length) priceDraft.value[model.priceKey] = tiers.reduce((max, tier) => creditMicros(tier.credits!) > creditMicros(max) ? tier.credits! : max, "0");
   priceConfigVisible.value = false;
+}
+function usageWasteRate(row: UsageSummary) {
+  const denominator = row.usableCount + row.wasteCount;
+  return denominator ? `${(row.wasteCount / denominator * 100).toFixed(2)}%` : "—";
+}
+function outputPath(output: GenerationOutput) {
+  const snapshot = output.outputSnapshot && typeof output.outputSnapshot === "object" ? output.outputSnapshot as { path?: unknown } : {};
+  return typeof snapshot.path === "string" ? snapshot.path : `输出 ${output.outputIndex + 1}`;
+}
+async function loadUsage() {
+  usageLoading.value = true;
+  try {
+    const filters = { from: usageFrom.value || undefined, to: usageTo.value || undefined, userId: usageUserId.value === "all" ? undefined : usageUserId.value, workspace: usageWorkspace.value === "all" ? undefined : usageWorkspace.value, modelId: usageModelId.value === "all" ? undefined : usageModelId.value, mediaType: usageMediaType.value === "all" ? undefined : usageMediaType.value as UsageSummary["mediaType"] };
+    const [summary, outputs] = await Promise.all([getAdminUsageSummary({ ...filters, limit: 5000 }), getAdminGenerationOutputs({ status: "pending", userId: filters.userId, limit: 500 } )]);
+    usageRows.value = summary;
+    usageOutputs.value = outputs;
+  } catch (error) {
+    errorMessage.value = errorText(error);
+  } finally {
+    usageLoading.value = false;
+  }
+}
+async function markOutput(id: string, status: "usable" | "waste") {
+  let wasteReason: string | undefined;
+  if (status === "waste") {
+    const reason = window.prompt("请输入废片原因");
+    if (!reason?.trim()) return;
+    wasteReason = reason.trim();
+  }
+  busy.value = true;
+  try {
+    await updateGenerationOutputStatus(id, status, wasteReason);
+    await loadUsage();
+  } catch (error) {
+    errorMessage.value = errorText(error);
+  } finally {
+    busy.value = false;
+  }
 }
 async function loadAll() {
   loading.value = true; errorMessage.value = "";
   try {
     const [people, platform, events] = await Promise.all([getAdminUsers(), getPlatformConfiguration(), getPlatformAudit()]);
-    const prices: Record<string, number | null> = {};
+    configuration.value = platform;
+    const prices: Record<string, string | null> = {};
     const textPrices: Record<string, TextPriceDraft> = {};
     const tiers: Record<string, ResolutionTierDraft[]> = {};
+    const videoModes: Record<string, "unified" | "separate"> = {};
+    const videoTiers: Record<string, Record<VideoBillingKind, ResolutionTierDraft[]>> = {};
     for (const model of platform.models) {
       const key = priceKey(model);
       const price = platform.prices.find(item => priceKey(item) === key);
       prices[key] = price?.creditsPerUnit ?? null;
       if (model.mediaType !== "text") continue;
       const pricing = price?.constraints?.textPricing;
-      textPrices[key] = { input: pricing?.ratesPerMillion.input ?? "", cacheRead: pricing?.ratesPerMillion.cacheRead ?? "", cacheWrite: pricing?.ratesPerMillion.cacheWrite ?? "", output: pricing?.ratesPerMillion.output ?? "" };
+      textPrices[key] = { input: pricing?.ratesPerMillion.input ?? "", output: pricing?.ratesPerMillion.output ?? "" };
     }
     for (const model of platform.models) {
       if (model.mediaType !== "video" && model.mediaType !== "image") continue;
       const key = priceKey(model);
       const price = platform.prices.find(item => priceKey(item) === key);
       const entries = model.mediaType === "image" ? Object.entries(priceTiers(price ?? {}, "image")) : Object.entries(priceTiers(price ?? {}, "video"));
-      if (entries.length) tiers[key] = entries.map(([resolution, credits]) => ({ resolution, credits }));
+      if (entries.length) tiers[key] = entries.map(([resolution, credits]) => ({ resolution, credits: String(credits) }));
+      if (model.mediaType === "video") {
+        const mode = price?.constraints?.videoPricingMode;
+        videoModes[key] = mode === "separate" && modelSupportsVideoReference(model) ? "separate" : "unified";
+        const separate = price?.constraints?.videoPricingTiers;
+        videoTiers[key] = {
+          textImageToVideo: Object.entries(separate?.textImageToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) })),
+          videoToVideo: Object.entries(separate?.videoToVideo ?? {}).map(([resolution, credits]) => ({ resolution, credits: String(credits) })),
+        };
+      }
     }
-    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; tierDrafts.value = tiers; configuration.value = platform;
+    users.value = people; audit.value = events; priceDraft.value = prices; textPriceDraft.value = textPrices; tierDrafts.value = tiers; videoPricingModes.value = videoModes; videoPricingTiers.value = videoTiers; configuration.value = platform;
     const defaults = platform.defaultModels;
     defaultTextModel.value = defaults?.text ? JSON.stringify([defaults.text.providerId, defaults.text.modelId]) : "";
     defaultImageModel.value = defaults?.image ? JSON.stringify([defaults.image.providerId, defaults.image.modelId]) : "";
@@ -423,10 +766,10 @@ async function publishPrices() {
   for (const model of priceRows.value) {
     const textPricing = model.mediaType === "text" ? textPricingInput(model.priceKey) : undefined;
     if (model.mediaType === "text" && !textPricing) continue;
-    const creditsPerUnit = textPricing ? 0 : priceDraft.value[model.priceKey];
+    const creditsPerUnit = textPricing ? "0.0000" : priceDraft.value[model.priceKey];
     if (creditsPerUnit == null) continue;
     const previous = configuration.value?.prices.find(item => priceKey(item) === model.priceKey);
-    const { resolutionTiers: previousResolutionTiers, sizeTiers: previousSizeTiers, ...constraints } = previous?.constraints ?? {};
+    const { resolutionTiers: previousResolutionTiers, sizeTiers: previousSizeTiers, videoPricingMode: previousVideoPricingMode, videoPricingTiers: previousVideoPricingTiers, ...constraints } = previous?.constraints ?? {};
     delete constraints.textPricing;
     let finalCreditsPerUnit = creditsPerUnit;
     if (model.mediaType === "image" || model.mediaType === "video") {
@@ -436,12 +779,24 @@ async function publishPrices() {
       if (tierValues.length) {
         if (model.mediaType === "image") constraints.sizeTiers = Object.fromEntries(tierValues.map(tier => [tier.resolution.trim().toUpperCase(), tier.credits!]));
         else constraints.resolutionTiers = Object.fromEntries(tierValues.map(tier => [tier.resolution.trim(), tier.credits!]));
-        finalCreditsPerUnit = Math.max(...tierValues.map(tier => tier.credits!));
+        finalCreditsPerUnit = tierValues.reduce((max, tier) => creditMicros(tier.credits!) > creditMicros(max) ? tier.credits! : max, "0");
       }
+    }
+    if (model.mediaType === "video") {
+      delete constraints.resolutionTiers;
+      const mode = videoPricingModes.value[model.priceKey] ?? "unified";
+      if (mode === "separate") constraints.videoPricingTiers = {
+        textImageToVideo: Object.fromEntries((videoPricingTiers.value[model.priceKey]?.textImageToVideo ?? []).map(tier => [tier.resolution.trim(), tier.credits!])),
+        videoToVideo: Object.fromEntries((videoPricingTiers.value[model.priceKey]?.videoToVideo ?? []).map(tier => [tier.resolution.trim(), tier.credits!])),
+      };
+      constraints.videoPricingMode = mode;
+      if (mode === "unified") constraints.resolutionTiers = Object.fromEntries((tierDrafts.value[model.priceKey] ?? []).map(tier => [tier.resolution.trim(), tier.credits!]));
+      const allTiers = mode === "separate" ? [...(videoPricingTiers.value[model.priceKey]?.textImageToVideo ?? []), ...(videoPricingTiers.value[model.priceKey]?.videoToVideo ?? [])] : (tierDrafts.value[model.priceKey] ?? []);
+      finalCreditsPerUnit = allTiers.reduce((max, tier) => creditMicros(tier.credits!) > creditMicros(max) ? tier.credits! : max, "0");
     }
     items.push({ providerId: model.providerId, modelId: model.modelId, mediaType: model.mediaType, creditsPerUnit: finalCreditsPerUnit, ...(Object.keys(constraints).length ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) });
   }
-  const free = items.filter(item => item.textPricing ? (Object.values(item.textPricing.ratesPerMillion) as (string | null)[]).every(rate => rate == null || creditMicros(rate) === 0n) : item.creditsPerUnit === 0).length;
+  const free = items.filter(item => item.textPricing ? Object.values(item.textPricing.ratesPerMillion).every(rate => creditMicros(rate) === 0n) : creditMicros(item.creditsPerUnit) === 0n).length;
   try { await feedback.confirm(`发布 ${items.length} 个模型的新价格？${free ? `其中 ${free} 个模型不扣积分。` : ''}已开始的任务按原价格结算。`, "发布模型积分价格", { confirmButtonText: "发布新价格", cancelButtonText: "继续编辑" }); busy.value = true; await publishPlatformPrices(items); await loadAll(); }
   catch (error) { if (!isUiCancelledError(error)) errorMessage.value = errorText(error); }
   finally { busy.value = false; }
@@ -480,11 +835,13 @@ function stopPresencePolling() {
 }
 
 watch(activeTab, tab => {
+  if (tab !== "usage") usageFiltersMoreVisible.value = false;
   if (tab === "users") {
     startPresencePolling();
   } else {
     stopPresencePolling();
   }
+  if (tab === "usage") void loadUsage();
 });
 
 onMounted(() => {
@@ -500,10 +857,43 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .adminPage {
   :deep(.uiTable th) { text-align: center !important; }
+  .usageSummaryTable :deep(td) { text-align: center !important; }
 }
 .pageError { color: var(--uiStatusError); margin: 0 0 20px; font-size: var(--uiFontControl); line-height: 1.6; overflow-wrap: anywhere; }
 .adminSection {
   min-width: 0;
+  .usageFilterBar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 24px; padding: 16px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); }
+  .usagePrimaryFilter { flex: 1 1 340px; min-width: 260px; max-width: 440px; }
+  .usagePrimaryFilter .uiField { width: 100%; }
+  :deep(.usageDateRange) { width: 100%; }
+  .usageFilterActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .usageFilterCount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; color: var(--uiTextOnAccent); background: var(--uiActionPrimary); font-size: 11px; line-height: 1; }
+  .usageFiltersDialog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .usageDashboard { display: grid; gap: 16px; margin-bottom: 28px; }
+  .usageMetricGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .usageMetric { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); span { color: var(--uiTextMuted); font-size: 12px; } strong { color: var(--uiTextBody); font-size: 22px; font-weight: 600; } }
+  .usageChartCard { padding: 20px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); }
+  .usageChartHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; h3 { margin: 0 0 6px; font-size: 16px; } p { margin: 0; color: var(--uiTextMuted); font-size: 12px; } }
+  .usageChartActions { display: flex; align-items: center; gap: 14px; }
+  .usageLegend { display: inline-flex; align-items: center; gap: 6px; color: var(--uiTextMuted); font-size: 12px; white-space: nowrap; i { width: 9px; height: 9px; border-radius: 2px; background: var(--uiActionPrimary, #b95d33); } }
+  .usageChartViewport { width: 100%; overflow-x: auto; }
+  .usageChart { display: block; width: 100%; min-width: 520px; height: 260px; overflow: visible; }
+  .usageChartAxis { stroke: var(--uiBorderControl); stroke-width: 1; }
+  .usageChartBar { fill: var(--uiActionPrimary, #b95d33); opacity: 0.88; }
+  .usageChartPoint text { fill: var(--uiTextMuted); font-size: 11px; }
+  .usageChartPoint .usageChartValue { fill: var(--uiTextSecondary); font-size: 10px; }
+  .usageChartEmpty { margin: 40px 0; text-align: center; }
+  .usageBreakdownGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .usageBreakdownCard { min-width: 0; padding: 20px; border: 1px solid var(--uiBorderControl); border-radius: var(--uiRadiusCard); background: var(--uiSurfaceRaised); h3 { margin: 0 0 16px; font-size: 16px; } }
+  .usageBreakdownList { display: grid; gap: 13px; }
+  .usageBreakdownRow { display: grid; grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 0; }
+  .usageBreakdownLabel { overflow: hidden; color: var(--uiTextSecondary); text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .usageBreakdownTrack { height: 8px; overflow: hidden; border-radius: 999px; background: var(--uiBorderControl); }
+  .usageBreakdownTrack i { display: block; height: 100%; border-radius: inherit; background: var(--uiActionPrimary, #b95d33); }
+  .usageBreakdownRow strong { min-width: 64px; color: var(--uiTextBody); font-size: 12px; font-weight: 600; text-align: right; }
+  .usageReview { margin-top: 28px; h3 { margin: 0 0 12px; font-size: 16px; } }
+  .usageOutputRow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--uiBorder); }
+  .usageOutputPath { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextMuted); }
   .sectionHeader {
     display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin: 8px 0 24px;
     h2 { margin: 0 0 8px; font-size: 18px; }
@@ -598,7 +988,8 @@ onUnmounted(() => {
 .dialogForm { display: grid; gap: 20px; .sectionHint { margin: 0; } .rateFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; } }
 .projectList { display: grid; gap: 12px; }
 .tierList { display: grid; gap: 12px; .tierHeader, .tierRow { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; align-items: center; gap: 8px; } .tierHeader { color: var(--uiTextMuted); font-size: 12px; padding: 0 8px; } .tierActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; :deep(button) { width: 100%; } } }
-@media (max-width: 900px) { .adminSection .defaultModelsCard .defaultModelsGrid { grid-template-columns: 1fr; } }
-@media (max-width: 700px) { .adminSection .sectionHeader { flex-direction: column; } }
-@media (max-width: 520px) { .dialogForm .rateFields { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .adminSection .defaultModelsCard .defaultModelsGrid, .adminSection .usageMetricGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .adminSection .sectionHeader { flex-direction: column; } .adminSection .usageBreakdownGrid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .adminSection .usageFilterBar { align-items: stretch; flex-direction: column; } .adminSection .usagePrimaryFilter { max-width: none; } .adminSection .usageFilterActions { justify-content: flex-end; } }
+@media (max-width: 520px) { .dialogForm .rateFields { grid-template-columns: 1fr; } .adminSection .usageMetricGrid { grid-template-columns: 1fr; } .adminSection .usageChartHeader { flex-direction: column; } .adminSection .usageFilterActions { justify-content: stretch; } .adminSection .usageFilterActions :deep(button) { flex: 1; } .adminSection .usageFiltersDialog { grid-template-columns: 1fr; } }
 </style>

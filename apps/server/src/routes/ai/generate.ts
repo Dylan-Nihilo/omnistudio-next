@@ -71,12 +71,11 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   // ACT: 兼容不同运行时的关闭事件；Bun 1.3.14 的静默 SSE 仍可能不通知，不能保证立即停止上游。
   req.socket.once("close", close);
   try {
-    const directory = input.references?.some(item => item.dataType !== "STRING")
-      ? await u.workspace.resolveWorkspace(req, input.directory ?? "") : undefined;
+    const directory = input.directory ? await u.workspace.resolveWorkspace(req, input.directory) : undefined;
     let send: ((event: object) => void) | undefined;
     try {
       const references = await u.ai.readAiReferences(directory, input.references ?? [], controller.signal, u.ai.getVideoInputCapability(input.providerId, input.modelId), configured.provider.apiKey);
-      const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey);
+      const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey, directory);
       res.set({ "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
       res.flushHeaders();
       send = (event: object) => { if (!res.destroyed) res.write(`data: ${JSON.stringify(event)}\n\n`); };

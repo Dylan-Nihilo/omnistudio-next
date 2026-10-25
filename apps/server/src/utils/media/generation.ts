@@ -10,6 +10,8 @@ import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
 import { referenceForBytes, workspaceSourceUrl } from "@/utils/assets";
 import { acquireConcurrency } from "@/lib/concurrency";
 import { formatAgentError } from "@/agent/runtime/errors";
+import type { VideoBillingKind } from "@/utils/billing/credits";
+import u from "@/utils";
 
 export { estimateMediaCredits };
 
@@ -23,6 +25,10 @@ const mediaExtensions: Record<string, string> = {
 };
 
 export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void; publicOrigin?: string };
+
+export function getVideoBillingKind(request: Pick<MediaGenerationRequest, "images" | "videos" | "firstFrame" | "lastFrame">): VideoBillingKind {
+  return request.videos && request.videos.length > 0 ? "videoToVideo" : "textImageToVideo";
+}
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -55,8 +61,17 @@ export async function listMediaModels(): Promise<MediaModel[]> {
       } : {}),
       ...(priceItem ? {
         creditsPerUnit: priceItem.creditsPerUnit,
-        sizeTiers: (constraints?.sizeTiers as Record<string, number> | undefined) ?? undefined,
-        resolutionTiers: (constraints?.resolutionTiers as Record<string, number> | undefined) ?? undefined,
+        sizeTiers: (constraints?.sizeTiers as Record<string, string> | undefined) ?? undefined,
+        ...(model.mediaType === "video" ? (() => {
+          const pricing = u.billingCredits.readVideoPricing(constraints);
+          return pricing?.videoPricingMode === "separate"
+            ? { videoPricingMode: pricing.videoPricingMode, videoPricingTiers: pricing.videoPricingTiers }
+            : pricing?.videoPricingMode === "unified"
+            ? { videoPricingMode: pricing.videoPricingMode, resolutionTiers: pricing.resolutionTiers }
+            : {};
+        })() : {
+          resolutionTiers: (constraints?.resolutionTiers as Record<string, string> | undefined) ?? undefined,
+        }),
       } : {}),
     } as MediaModel];
   });
@@ -185,8 +200,9 @@ export async function generateMedia(
     userId: account.userId, providerId: request.providerId, modelId: request.modelId, mediaType,
     units: mediaType === "video" ? Math.max(1, request.duration ?? 1) : mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1,
     size: mediaType === "image" ? request.size : mediaType === "video" ? request.resolution : undefined,
+    ...(mediaType === "video" ? { videoBillingKind: getVideoBillingKind(request) } : {}),
     idempotencyKey: nextGenerationKey(billing?.idempotencyKey),
-    requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, request },
+    requestSnapshot: { providerId: request.providerId, modelId: request.modelId, mediaType, directory, request },
   });
   const written: string[] = [];
   let outputCompleted = false;

@@ -58,5 +58,6 @@ export const estimateCreditsSchema = z.strictObject({
   size: z.string().trim().min(1).max(64).optional(),
   duration: z.number().finite().positive().max(3600).optional(),
   units: z.number().finite().positive().optional(),
+  videoBillingKind: z.enum(["textImageToVideo", "videoToVideo"]).optional(),
 });
 

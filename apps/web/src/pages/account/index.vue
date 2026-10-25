@@ -50,19 +50,36 @@ const ledgerLabels: Record<string, string> = { grant: "管理员发放", adjustm
 function ledgerBillingText(row: Record<string, unknown>): string {
   const metadata = row.metadata as { billing?: Record<string, unknown> } | null;
   const billing = metadata?.billing;
-  if (!billing || (billing.billingRule !== "textTokenV2" && billing.billingRule !== "textTokenV3")) return "";
+  if (!billing || (billing.billingRule !== "textTokenV4" && billing.billingRule !== "videoUnit")) return "";
   const parts = row.jobId ? [`任务 ${row.jobId}`] : [];
   if (typeof billing.priceBookVersionId === "string") parts.push(`价格版本 ${billing.priceBookVersionId}`);
   if (billing.rounding === "halfUp6") parts.push("任务总额四舍五入至六位小数");
   const statusLabels: Record<string, string> = { settled: "按实际用量结算", released: "预留已释放", usageMissing: "用量缺失，预留已释放", usageInvalid: "用量异常，预留已释放" };
   if (typeof billing.status === "string") parts.push(statusLabels[billing.status] ?? billing.status);
-  const usage = billing.usage as Record<string, unknown> | null;
-  const rates = billing.ratesPerMillion as Record<string, unknown> | null;
-  const tokenLabels: Record<string, string> = { input: "非缓存输入", cacheRead: "缓存读取", cacheWrite: "缓存写入", output: "输出" };
-  for (const [key, label] of Object.entries(tokenLabels)) {
-    if (typeof usage?.[key] !== "number") continue;
-    const rate = rates?.[key];
-    parts.push(`${label} ${usage[key].toLocaleString()} token${typeof rate === "string" ? `，${formatCredits(rate)}积分/百万token` : ""}`);
+  if (billing.billingRule === "textTokenV4") {
+    const usage = billing.usage as Record<string, unknown> | null;
+    const rates = billing.ratesPerMillion as Record<string, unknown> | null;
+    const billableInput = typeof billing.billableInput === "number"
+      ? billing.billableInput
+      : typeof usage?.input === "number" && typeof usage?.cacheRead === "number" && typeof usage?.cacheWrite === "number"
+        ? usage.input + usage.cacheRead + usage.cacheWrite
+        : undefined;
+    const billableOutput = typeof billing.billableOutput === "number" ? billing.billableOutput : usage?.output;
+    if (typeof billableInput === "number") {
+      const rate = rates?.input;
+      parts.push(`可计费输入 ${billableInput.toLocaleString()} token${typeof rate === "string" ? `，${formatCredits(rate)}积分/百万token` : ""}`);
+    }
+    if (typeof billableOutput === "number") {
+      const rate = rates?.output;
+      parts.push(`输出 ${billableOutput.toLocaleString()} token${typeof rate === "string" ? `，${formatCredits(rate)}积分/百万token` : ""}`);
+    }
+    if (typeof usage?.cacheRead === "number" && usage.cacheRead > 0) parts.push(`其中缓存读取 ${usage.cacheRead.toLocaleString()} token`);
+    if (typeof usage?.cacheWrite === "number" && usage.cacheWrite > 0) parts.push(`其中缓存写入 ${usage.cacheWrite.toLocaleString()} token`);
+  } else {
+    const kindLabels: Record<string, string> = { textImageToVideo: "文生/图生视频", videoToVideo: "视频生视频" };
+    if (typeof billing.videoBillingKind === "string") parts.push(kindLabels[billing.videoBillingKind] ?? billing.videoBillingKind);
+    if (typeof billing.resolution === "string" && billing.resolution) parts.push(`分辨率 ${billing.resolution}`);
+    if (typeof billing.creditsPerUnit === "string") parts.push(`每秒 ${formatCredits(billing.creditsPerUnit)}积分`);
   }
   const creditLabels: Record<string, string> = { quotedCredits: "报价", computedCredits: "应计", capturedCredits: "实扣", releasedCredits: "释放", platformAbsorbedCredits: "平台承担" };
   for (const [key, label] of Object.entries(creditLabels)) {

@@ -5,7 +5,7 @@ import { getConfiguredModel } from "@/utils/ai";
 import { createChargedStream } from "@/services/generationService";
 import { requireAccount } from "@/utils/accountContext";
 
-export async function createAgentModel(providerId: string, modelId: string, thinkingLevel = "off") {
+export async function createAgentModel(providerId: string, modelId: string, thinkingLevel = "off", directory?: string) {
   const configured = await getConfiguredModel(providerId, modelId);
   const { provider, model, baseUrl } = configured;
   const runtime = await ModelRuntime.create({ credentials: new InMemoryCredentialStore(), modelsPath: null, refreshOnCreate: false });
@@ -36,7 +36,7 @@ export async function createAgentModel(providerId: string, modelId: string, thin
   runtime.stream = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
     const requestOptions = { ...options, maxTokens: options?.maxTokens ?? selected.maxTokens };
-    return createChargedStream({ providerId, modelId, model: selected, context, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => stream<Api>({ ...selected, id: model.id }, context, {
+    return createChargedStream({ providerId, modelId, model: selected, context, directory, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => stream<Api>({ ...selected, id: model.id }, context, {
       ...requestOptions, signal, fetch: guardedFetch,
       onPayload: async (payload, requestModel) => {
         const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;
@@ -47,7 +47,7 @@ export async function createAgentModel(providerId: string, modelId: string, thin
   };
   runtime.streamSimple = (selected, context, options) => {
     if (requireAccount().userId !== account.userId || selected.provider !== providerId || selected.id !== modelId) throw Object.assign(new Error("模型运行时不属于当前账户或平台模型"), { status: 403 });
-    return createChargedStream({ providerId, modelId, model: selected, context, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => streamSimple({ ...selected, id: model.id }, context, {
+    return createChargedStream({ providerId, modelId, model: selected, context, directory, fetch: wrapFetch(options?.fetch), signal: options?.signal }, (signal, recordPayload, guardedFetch) => streamSimple({ ...selected, id: model.id }, context, {
       ...options, signal, fetch: guardedFetch,
       onPayload: async (payload, requestModel) => {
         const finalPayload = await options?.onPayload?.(payload, requestModel) ?? payload;

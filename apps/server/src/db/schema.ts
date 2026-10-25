@@ -94,7 +94,7 @@ export const pricingItems = mysqlTable("platform_pricing_items", {
   modelId: varchar("model_id", { length: 200 }).notNull(),
   mediaType: mysqlEnum("media_type", ["text", "image", "video", "audio"]).notNull(),
   unit: varchar("unit", { length: 32 }).notNull(),
-  creditsPerUnit: decimal("credits_per_unit", { precision: 20, scale: 1, mode: "number", unsigned: true }).notNull(),
+  creditsPerUnit: decimal("credits_per_unit", { precision: 20, scale: 4, mode: "string", unsigned: true }).notNull(),
   constraints: json("constraints").notNull(),
   ...timestamps,
 }, table => ({ itemIndex: uniqueIndex("platform_pricing_item_unique").on(table.priceBookVersionId, table.providerId, table.modelId, table.mediaType) }));
@@ -136,6 +136,45 @@ export const generationJobs = mysqlTable("user_generation_jobs", {
   resultSnapshot: json("result_snapshot"),
   ...timestamps,
 }, table => ({ idempotencyIndex: uniqueIndex("user_generation_job_idempotency_unique").on(table.idempotencyKey), userIndex: index("user_generation_job_user_index").on(table.userId, table.createdAt) }));
+
+export const generationUsageDaily = mysqlTable("generation_usage_daily", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  day: varchar("day", { length: 10 }).notNull(),
+  userId: varchar("user_id", { length: 36 }).notNull(),
+  directoryHash: varchar("directory_hash", { length: 64 }).notNull(),
+  workspaceName: varchar("workspace_name", { length: 255 }).notNull(),
+  providerId: varchar("provider_id", { length: 100 }).notNull(),
+  modelId: varchar("model_id", { length: 200 }).notNull(),
+  mediaType: mysqlEnum("media_type", ["text", "image", "video", "audio"]).notNull(),
+  videoBillingKind: varchar("video_billing_kind", { length: 32 }).notNull().default("none"),
+  requestCount: int("request_count", { unsigned: true }).notNull().default(0),
+  successCount: int("success_count", { unsigned: true }).notNull().default(0),
+  failedCount: int("failed_count", { unsigned: true }).notNull().default(0),
+  outputCount: int("output_count", { unsigned: true }).notNull().default(0),
+  units: decimal("units", { precision: 26, scale: 6, mode: "string", unsigned: true }).notNull().default("0"),
+  capturedCredits: decimal("captured_credits", { precision: 26, scale: 6, mode: "string", unsigned: true }).notNull().default("0"),
+  billableInputTokens: decimal("billable_input_tokens", { precision: 26, scale: 0, mode: "string", unsigned: true }).notNull().default("0"),
+  outputTokens: decimal("output_tokens", { precision: 26, scale: 0, mode: "string", unsigned: true }).notNull().default("0"),
+  videoSeconds: decimal("video_seconds", { precision: 26, scale: 6, mode: "string", unsigned: true }).notNull().default("0"),
+  pendingCount: int("pending_count", { unsigned: true }).notNull().default(0),
+  usableCount: int("usable_count", { unsigned: true }).notNull().default(0),
+  wasteCount: int("waste_count", { unsigned: true }).notNull().default(0),
+  ...timestamps,
+}, table => ({ summaryIndex: uniqueIndex("generation_usage_daily_unique").on(table.day, table.userId, table.directoryHash, table.providerId, table.modelId, table.mediaType, table.videoBillingKind), userIndex: index("generation_usage_daily_user_index").on(table.userId, table.day) }));
+
+export const generationOutputs = mysqlTable("generation_outputs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  jobId: varchar("job_id", { length: 36 }).notNull(),
+  userId: varchar("user_id", { length: 36 }).notNull(),
+  outputIndex: int("output_index", { unsigned: true }).notNull(),
+  mediaType: mysqlEnum("media_type", ["text", "image", "video", "audio"]).notNull(),
+  status: mysqlEnum("status", ["pending", "usable", "waste"]).notNull().default("pending"),
+  wasteReason: varchar("waste_reason", { length: 500 }),
+  outputSnapshot: json("output_snapshot").notNull(),
+  reviewedBy: varchar("reviewed_by", { length: 36 }),
+  reviewedAt: datetime("reviewed_at", { mode: "date" }),
+  ...timestamps,
+}, table => ({ jobOutputIndex: uniqueIndex("generation_output_job_index_unique").on(table.jobId, table.outputIndex), userStatusIndex: index("generation_output_user_status_index").on(table.userId, table.status, table.createdAt) }));
 
 export const teams = mysqlTable("user_teams", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -265,6 +304,8 @@ export const schema = {
   pricingSettings,
   creditLedger,
   generationJobs,
+  generationUsageDaily,
+  generationOutputs,
   auditEvents,
   platformProviderConfigs,
   providerHealth,

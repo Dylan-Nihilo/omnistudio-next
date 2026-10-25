@@ -9,6 +9,7 @@ import { platformModelCatalog, platformProviders } from "@/utils/ai/platformCata
 import { getMediaProvider, listMediaProviders } from "@/utils/media/provider";
 import { platformConfig } from "@/utils/conf";
 import u from "@/utils";
+import type { VideoPricing } from "@/utils/billing/credits";
 
 const apiUrl = z.url({ protocol: /^https?$/ }).max(2048).refine(value => {
   const url = new URL(value);
@@ -28,27 +29,54 @@ export const modelInputSchema = z.strictObject({
   capabilities: z.record(z.string(), z.json()).refine(value => JSON.stringify(value).length <= 100000, "模型能力配置不能超过 100 KB").optional(),
 });
 
-const tokenRateSchema = z.string().max(32).regex(/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/, "单价须为最多六位小数的非负十进制金额")
+const tokenRateSchema = z.string().max(32).regex(/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/, "单价须为最多四位小数的非负十进制金额")
   .refine(value => Number(value) <= 1_000_000_000, "单价不能超过十亿积分/百万 token");
 
 const textPricingInputSchema = z.strictObject({
   ratesPerMillion: z.strictObject({
     input: tokenRateSchema,
-    cacheRead: tokenRateSchema.nullable(),
-    cacheWrite: tokenRateSchema.nullable(),
     output: tokenRateSchema,
   }),
 });
 
+const tierPricingSchema = z.record(z.string().trim().min(1).max(32), tokenRateSchema).refine(value => Object.keys(value).length > 0, "至少配置一个价格档位");
+const imagePricingSchema = z.object({ sizeTiers: z.partialRecord(z.enum(["1K", "2K", "4K"]), tokenRateSchema).refine(value => Object.keys(value).length > 0, "至少配置一个图片尺寸价格") });
+const videoPricingSchema = z.discriminatedUnion("videoPricingMode", [
+  z.strictObject({ videoPricingMode: z.literal("unified"), resolutionTiers: tierPricingSchema }),
+  z.strictObject({
+    videoPricingMode: z.literal("separate"),
+    videoPricingTiers: z.strictObject({ textImageToVideo: tierPricingSchema, videoToVideo: tierPricingSchema }),
+  }),
+]);
+
+function supportsVideoReference(value: unknown): boolean {
+  if (typeof value === "string") return value === "videoReference" || value.startsWith("videoReference:");
+  if (Array.isArray(value)) return value.some(supportsVideoReference);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (record.videoReference === true || record.supportsVideoReference === true) return true;
+    return supportsVideoReference(record.mode);
+  }
+  return false;
+}
+
 export const pricesInputSchema = z.strictObject({ items: z.array(z.strictObject({
   providerId: z.string().min(1).max(100), modelId: z.string().min(1).max(200), mediaType: z.enum(["text", "image", "video", "audio"]),
-  creditsPerUnit: z.number().finite().min(0).max(1_000_000_000).multipleOf(0.5).optional(),
+  creditsPerUnit: tokenRateSchema.optional(),
   textPricing: textPricingInputSchema.optional(),
   constraints: z.record(z.string(), z.json()).optional(),
 }).superRefine((item, context) => {
-  if (item.constraints && "textPricing" in item.constraints) context.addIssue({ code: "custom", path: ["constraints", "textPricing"], message: "请通过 textPricing 填写每百万 token 的四项积分费率" });
+  if (item.constraints && "textPricing" in item.constraints) context.addIssue({ code: "custom", path: ["constraints", "textPricing"], message: "请通过 textPricing 填写每百万 token 的两项积分费率" });
   if (item.textPricing && item.mediaType !== "text") context.addIssue({ code: "custom", path: ["textPricing"], message: "只有文本模型可以配置 token 价格" });
-  if (item.mediaType === "text" && !item.textPricing) context.addIssue({ code: "custom", path: ["textPricing"], message: "请填写文本模型每百万 token 的四项积分费率" });
+  if (item.mediaType === "text" && !item.textPricing) context.addIssue({ code: "custom", path: ["textPricing"], message: "请填写文本模型每百万 token 的输入和输出费率" });
+  if (item.mediaType === "video") {
+    const pricing = videoPricingSchema.safeParse(item.constraints ?? {});
+    if (!pricing.success) context.addIssue({ code: "custom", path: ["constraints"], message: "请填写完整的视频统一或区分计价档位" });
+  }
+  if (item.mediaType === "image" && item.constraints && "sizeTiers" in item.constraints) {
+    const pricing = imagePricingSchema.safeParse(item.constraints);
+    if (!pricing.success) context.addIssue({ code: "custom", path: ["constraints"], message: "图片尺寸价格至少配置 1K、2K、4K 中的一档，且单价最多四位小数" });
+  }
   if (item.mediaType !== "text" && item.creditsPerUnit === undefined) context.addIssue({ code: "custom", path: ["creditsPerUnit"], message: "请填写模型价格" });
 })).min(1).max(1000) });
 
@@ -236,11 +264,41 @@ export async function publishPlatformPrices(input: z.infer<typeof pricesInputSch
     await tx.insert(priceBookVersions).values({ id, version, status: "published", publishedAt: now, createdAt: now, updatedAt: now });
     for (const item of input.items) {
       const textPricing = item.textPricing ? u.billingCredits.buildTextPricing(item.textPricing) : undefined;
-      const constraints = textPricing ? { ...item.constraints, textPricing } : item.constraints ?? {};
+      const model = catalog.find(value => value.providerId === item.providerId && value.modelId === item.modelId && value.mediaType === item.mediaType);
+      let videoPricing: VideoPricing | undefined;
+      if (item.mediaType === "video") {
+        videoPricing = u.billingCredits.readVideoPricing(item.constraints);
+        if (!videoPricing) throw Object.assign(new Error("视频模型价格配置缺失"), { status: 422 });
+        if (videoPricing.videoPricingMode === "separate") {
+          const capabilities = model?.capabilities;
+          let supported = supportsVideoReference(capabilities);
+          if (!supported) {
+            const provider = await getMediaProvider(item.providerId).catch(() => undefined);
+            const providerModel = provider?.models.find(value => value.id === item.modelId && value.type === "video");
+            supported = supportsVideoReference(providerModel?.mode);
+          }
+          if (!supported) {
+            throw Object.assign(new Error("当前视频模型未声明支持视频生视频，不能启用区分计价"), { status: 422 });
+          }
+        }
+      }
+      const constraints = { ...(item.constraints ?? {}) };
+      if (textPricing) constraints.textPricing = textPricing;
+      if (videoPricing) {
+        if (videoPricing.videoPricingMode === "unified") {
+          constraints.videoPricingMode = "unified";
+          constraints.resolutionTiers = videoPricing.resolutionTiers;
+          delete constraints.videoPricingTiers;
+        } else {
+          constraints.videoPricingMode = "separate";
+          constraints.videoPricingTiers = videoPricing.videoPricingTiers;
+          delete constraints.resolutionTiers;
+        }
+      }
       await tx.insert(pricingItems).values({
         id: randomUUID(), priceBookVersionId: id, providerId: item.providerId, modelId: item.modelId, mediaType: item.mediaType,
         unit: textPricing ? "millionTokens" : item.mediaType === "video" ? "second" : item.mediaType === "image" ? "image" : "10k_chars",
-        creditsPerUnit: textPricing ? 0 : item.creditsPerUnit ?? 0, constraints, createdAt: now, updatedAt: now,
+        creditsPerUnit: textPricing ? "0.0000" : item.creditsPerUnit ?? "0.0000", constraints, createdAt: now, updatedAt: now,
       });
     }
     await tx.update(pricingSettings).set({ activePriceBookVersionId: id, updatedAt: now }).where(eq(pricingSettings.id, "platform"));

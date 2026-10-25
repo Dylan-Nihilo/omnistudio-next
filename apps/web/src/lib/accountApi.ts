@@ -12,19 +12,25 @@ export type AdminWorkspace = { id: string; name: string; status: "active" | "arc
 export type AdminUser = { id: string; email: string; displayName: string; status: "active" | "disabled"; isRoot: boolean; balance: string; frozen: string; available: string; workspaces: AdminWorkspace[]; presence?: UserPresence };
 export type PlatformProvider = { id: string; providerId: string; enabled: boolean; config: { apiUrl: string; baseUrl?: string; protocol: "openai-completions" | "openai-responses" | "anthropic-messages" }; apiKeyConfigured: boolean; maskedApiKey?: string | null };
 export type PlatformModel = { id: string; providerId: string; modelId: string; label: string; mediaType: "text" | "image" | "video" | "audio"; apiModelId: string | null; enabled: number; sortOrder: number; capabilities: Record<string, unknown> | null };
-export type TokenRates = { input: string; cacheRead: string | null; cacheWrite: string | null; output: string };
+export type TokenRates = { input: string; output: string };
 export type TextPricingInput = { ratesPerMillion: TokenRates };
-export type TextPricing = TextPricingInput & { billingRule: "textTokenV2" | "textTokenV3" };
-export type PriceConstraints = Record<string, unknown> & { textPricing?: TextPricing; resolutionTiers?: Record<string, number>; sizeTiers?: Record<string, number> };
-export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: number; unit?: string; constraints?: PriceConstraints };
+export type TextPricing = TextPricingInput;
+export type VideoBillingKind = "textImageToVideo" | "videoToVideo";
+export type VideoPricing =
+  | { videoPricingMode: "unified"; resolutionTiers: Record<string, string> }
+  | { videoPricingMode: "separate"; videoPricingTiers: Record<VideoBillingKind, Record<string, string>> };
+export type PriceConstraints = Record<string, unknown> & { textPricing?: TextPricing; videoPricingMode?: VideoPricing["videoPricingMode"]; videoPricingTiers?: Record<VideoBillingKind, Record<string, string>>; resolutionTiers?: Record<string, string>; sizeTiers?: Record<string, string> };
+export type ModelPrice = { providerId: string; modelId: string; mediaType: PlatformModel["mediaType"]; creditsPerUnit: string; unit?: string; constraints?: PriceConstraints };
 export type PlatformPriceInput = Omit<ModelPrice, "unit"> & { textPricing?: TextPricingInput };
 export type PlatformDefaultModels = {
   text?: { providerId: string; modelId: string } | null;
   image?: { providerId: string; modelId: string } | null;
   video?: { providerId: string; modelId: string } | null;
 };
-export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio" }[] }[]; defaultModels?: PlatformDefaultModels };
+export type PlatformConfiguration = { providers: PlatformProvider[]; models: PlatformModel[]; prices: ModelPrice[]; priceVersion: number | null; mediaProviders: { id: string; label: string; models: { id: string; label?: string; type: "image" | "video" | "audio"; mode?: unknown }[] }[]; defaultModels?: PlatformDefaultModels };
 export type AuditEntry = { id: string; actorUserId: string | null; action: string; metadata: unknown; createdAt: string };
+export type UsageSummary = { id: string; day: string; userId: string; directoryHash: string; workspaceName: string; providerId: string; modelId: string; mediaType: "text" | "image" | "video" | "audio"; videoBillingKind: string; requestCount: number; successCount: number; failedCount: number; outputCount: number; units: string; capturedCredits: string; billableInputTokens: string; outputTokens: string; videoSeconds: string; pendingCount: number; usableCount: number; wasteCount: number; createdAt: string; updatedAt: string };
+export type GenerationOutput = { id: string; jobId: string; userId: string; outputIndex: number; mediaType: "image" | "video"; status: "pending" | "usable" | "waste"; wasteReason?: string | null; outputSnapshot: unknown; reviewedBy?: string | null; reviewedAt?: string | null; createdAt: string; updatedAt: string };
 
 async function accountRequest<T>(method: "GET" | "POST" | "PUT" | "DELETE", url: string, data?: unknown, params?: Record<string, unknown>, idempotencyKey?: string) {
   const result = await authClient.request<ApiResponse<T>>({ method, url, data, params, headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined });
@@ -65,6 +71,10 @@ export function deletePlatformModel(id: string) { return accountRequest("DELETE"
 export function publishPlatformPrices(items: PlatformPriceInput[]) { return accountRequest<{ version: number }>("POST", "/api/admin/platform/publishPrices", { items: items.map(({ providerId, modelId, mediaType, creditsPerUnit, constraints, textPricing }) => ({ providerId, modelId, mediaType, creditsPerUnit, ...(constraints ? { constraints } : {}), ...(textPricing ? { textPricing } : {}) })) }); }
 export function getPlatformAudit() { return accountRequest<AuditEntry[]>("GET", "/api/admin/audit"); }
 export function savePlatformDefaultModels(defaultModels: PlatformDefaultModels) { return accountRequest("PUT", "/api/admin/platform/saveDefaultModels", { defaultModels }); }
+export function getAdminUsageSummary(params?: { from?: string; to?: string; userId?: string; workspace?: string; modelId?: string; mediaType?: UsageSummary["mediaType"]; limit?: number }) { return accountRequest<UsageSummary[]>("GET", "/api/admin/usage/summary", undefined, params); }
+export function getAdminGenerationOutputs(params?: { status?: GenerationOutput["status"]; userId?: string; limit?: number }) { return accountRequest<GenerationOutput[]>("GET", "/api/admin/usage/outputs", undefined, params); }
+export function updateGenerationOutputStatus(id: string, status: "usable" | "waste", wasteReason?: string) { return accountRequest<GenerationOutput>("PUT", "/api/admin/usage/outputStatus", { id, status, ...(wasteReason ? { wasteReason } : {}) }); }
+export function getAdminUsageExportUrl(params?: { from?: string; to?: string; userId?: string; workspace?: string; modelId?: string; mediaType?: UsageSummary["mediaType"] }) { const query = new URLSearchParams(Object.entries(params ?? {}).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return `/api/admin/usage/export${query ? `?${query}` : ""}`; }
 
 export async function uploadTeamFile(teamId: string, file: File) {
   if (file.size > 100 * 1024 * 1024) throw new Error("单个文件不能超过 100 MB");

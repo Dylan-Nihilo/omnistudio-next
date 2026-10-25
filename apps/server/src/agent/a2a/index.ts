@@ -46,7 +46,7 @@ export function createA2aRouter() {
               const cwd = await resolveA2aWorkspace();
               // 保存时已规范化目录；不允许运行前把该目录替换成指向其他位置的链接。
               if (cwd !== settings.directory) throw new Error("A2A 工作目录已变化，请在设置中重新授权");
-              const { runtime } = await createAgentModel(settings.providerId, settings.modelId, settings.thinkingLevel);
+              const { runtime } = await createAgentModel(settings.providerId, settings.modelId, settings.thinkingLevel, cwd);
               const connection = getConnection(undefined, cwd);
               const canvas: CanvasContext | undefined = connection ? {
                 id: connection.state.canvasId ?? "a2a", tools: connection.state.tools,

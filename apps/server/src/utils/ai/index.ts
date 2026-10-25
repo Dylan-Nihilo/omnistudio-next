@@ -141,6 +141,7 @@ export function streamAi(
   signal: AbortSignal,
   references: Awaited<ReturnType<typeof readAiReferences>> = [],
   idempotencyKey?: string,
+  directory?: string,
 ) {
   const { provider, model: configuredModel, baseUrl } = configured;
   const model: Model<typeof provider.protocol> = {
@@ -156,7 +157,7 @@ export function streamAi(
   }
   const maxTokens = configuredModel.maxOutputTokens;
   const useOss = references.some(item => (item as { useOss?: boolean }).useOss);
-  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
+  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, directory, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
     apiKey: provider.apiKey,
     signal: streamSignal,
     fetch: ((input, init) => {

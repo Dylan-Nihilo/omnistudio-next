@@ -6,12 +6,13 @@ import { auditEvents, creditLedger, creditTransfers, generationJobs, platformRol
 import { accountContext, requireAccount, requireActiveAccount, requireRootAccount } from "@/utils/accountContext";
 import { getUserPresence } from "@/services/presenceService";
 import u from "@/utils";
+import type { VideoBillingKind } from "@/utils/billing/credits";
+import { recordGenerationUsage } from "@/services/usageService";
 
 export type GenerationMediaType = "text" | "image" | "video" | "audio";
 export type TextBudget = { input: number; output: number; estimation: string };
 
-const imageSizePricingSchema = z.object({ sizeTiers: z.record(z.enum(["1K", "2K", "4K"]), z.number().int().positive().safe()) });
-const resolutionPricingSchema = z.object({ resolutionTiers: z.record(z.string().min(1).max(32), z.number().int().positive().safe()) });
+const imageSizePricingSchema = z.object({ sizeTiers: z.partialRecord(z.enum(["1K", "2K", "4K"]), z.string()).refine(value => Object.keys(value).length > 0, "至少配置一个图片尺寸价格") });
 
 function invalid(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
@@ -26,15 +27,15 @@ function imageSizeTier(size?: string): "1K" | "2K" | "4K" | undefined {
   return longest <= 1024 ? "1K" : longest <= 2048 ? "2K" : "4K";
 }
 
-function resolutionTier(resolution: string | undefined, tiers: Record<string, number>) {
-  const value = resolution?.trim().toUpperCase();
-  if (!value) return undefined;
-  const key = Object.keys(tiers).find(item => item.toUpperCase() === value);
-  return key ? tiers[key] : undefined;
-}
-
 function positiveCredits(value: number) {
   if (!Number.isSafeInteger(value) || value <= 0) invalid("积分数量必须是正的安全整数", 422);
+}
+
+function calculateUnitCredits(rate: string, units: number) {
+  if (!Number.isFinite(units) || units <= 0) invalid("计费单位必须是正数", 422);
+  const unitMicros = u.billingCredits.parseCredits(units.toFixed(6));
+  const numerator = u.billingCredits.parseCredits(rate) * unitMicros;
+  return (numerator + 999_999n) / 1_000_000n;
 }
 
 function requestKey(value: string, prefix: string) {
@@ -100,7 +101,7 @@ async function activePriceBook() {
   return published?.id ?? null;
 }
 
-export async function quoteCredits(providerId: string, modelId: string, mediaType: GenerationMediaType, units: number, versionId?: string, size?: string, textBudget?: TextBudget) {
+export async function quoteCredits(providerId: string, modelId: string, mediaType: GenerationMediaType, units: number, versionId?: string, size?: string, textBudget?: TextBudget, videoBillingKind: VideoBillingKind = "textImageToVideo") {
   if (!Number.isFinite(units) || units <= 0) invalid("计费单位必须是正数", 422);
   const id = versionId ?? await activePriceBook();
   if (!id) invalid("平台尚未发布积分价格", 503);
@@ -113,25 +114,23 @@ export async function quoteCredits(providerId: string, modelId: string, mediaTyp
   if (textPricing) {
     if (!textBudget || !Number.isSafeInteger(textBudget.input) || textBudget.input < 0 || !Number.isSafeInteger(textBudget.output) || textBudget.output < 0) invalid("文本报价需要有效的输入和输出 token 预算", 422);
     const rates = textPricing.ratesPerMillion;
-    const highestInputRate = [rates.input, rates.cacheRead, rates.cacheWrite].filter((rate): rate is string => rate !== null).reduce((highest, rate) => u.billingCredits.parseCredits(rate) > u.billingCredits.parseCredits(highest) ? rate : highest);
-    const estimate = u.billingCredits.calculateTextCredits({ input: textBudget.input, output: textBudget.output, cacheRead: 0, cacheWrite: 0 }, { ...rates, input: highestInputRate }, "up6");
-    return { credits: estimate.credits, priceBookVersionId: id, unit: item.unit, creditsPerUnit: 0, billingRule: textPricing.billingRule, ratesPerMillion: rates, textBudget };
+    const estimate = u.billingCredits.calculateTextCredits({ input: textBudget.input, output: textBudget.output, cacheRead: 0, cacheWrite: 0 }, rates, "up6");
+    return { credits: estimate.credits, priceBookVersionId: id, unit: item.unit, creditsPerUnit: "0.0000", billingRule: textPricing.billingRule, ratesPerMillion: rates, textBudget };
   }
   if (mediaType === "image" && constraints && typeof constraints === "object" && "sizeTiers" in constraints) {
     const pricing = imageSizePricingSchema.safeParse(constraints);
     if (!pricing.success) invalid("图片分辨率积分价格配置无效", 503);
     const tier = imageSizeTier(size);
-    // ACT: 沿用旧项目规则，尺寸未知时按最高档报价。
-    creditsPerUnit = tier ? pricing.data.sizeTiers[tier] : Math.max(...Object.values(pricing.data.sizeTiers));
+    if (!tier || pricing.data.sizeTiers[tier] === undefined) invalid(`当前图片模型不支持尺寸${size ? ` ${size}` : ""}`, 422);
+    creditsPerUnit = pricing.data.sizeTiers[tier];
   }
-  if (mediaType === "video" && constraints && typeof constraints === "object" && "resolutionTiers" in constraints) {
-    const pricing = resolutionPricingSchema.safeParse(constraints);
-    if (!pricing.success) invalid("视频分辨率积分价格配置无效", 503);
-    creditsPerUnit = resolutionTier(size, pricing.data.resolutionTiers) ?? Math.max(...Object.values(pricing.data.resolutionTiers));
+  if (mediaType === "video") {
+    const pricing = u.billingCredits.readVideoPricing(constraints);
+    if (!pricing) invalid("视频分辨率积分价格配置无效", 503);
+    creditsPerUnit = u.billingCredits.videoTierPrice(pricing, videoBillingKind, size);
   }
-  const credits = Math.ceil(units * creditsPerUnit);
-  if (!Number.isSafeInteger(credits) || credits < 0) invalid("价格计算超出安全范围", 422);
-  return { credits: u.billingCredits.formatCredits(u.billingCredits.parseCredits(credits)), priceBookVersionId: id, unit: item.unit, creditsPerUnit, billingRule: "legacy" };
+  const credits = calculateUnitCredits(creditsPerUnit, units);
+  return { credits: u.billingCredits.formatCredits(credits), priceBookVersionId: id, unit: item.unit, creditsPerUnit, billingRule: "unitPrice", ...(mediaType === "video" ? { videoBillingKind, size: size ?? null } : {}) };
 }
 
 export async function getActivePricingItems() {
@@ -145,10 +144,10 @@ export async function getActivePricingItems() {
   }
 }
 
-export async function estimateMediaCredits(providerId: string, modelId: string, mediaType: GenerationMediaType, options: { size?: string; duration?: number; units?: number } = {}) {
+export async function estimateMediaCredits(providerId: string, modelId: string, mediaType: GenerationMediaType, options: { size?: string; duration?: number; units?: number; videoBillingKind?: VideoBillingKind } = {}) {
   try {
     const units = mediaType === "video" ? Math.max(1, options.duration ?? 5) : (options.units ?? 1);
-    const quote = await quoteCredits(providerId, modelId, mediaType, units, undefined, options.size);
+    const quote = await quoteCredits(providerId, modelId, mediaType, units, undefined, options.size, undefined, options.videoBillingKind);
     return {
       credits: Number(quote.credits),
       formatted: `${Number(quote.credits)} 积分`,
@@ -158,11 +157,11 @@ export async function estimateMediaCredits(providerId: string, modelId: string, 
   }
 }
 
-export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; idempotencyKey: string; requestSnapshot: unknown }) {
+export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown }) {
   const account = requireAccount();
   if (input.userId !== account.userId) invalid("生成任务只能使用调用者自己的积分", 403);
   const key = requestKey(input.idempotencyKey, "generation");
-  const quote = await quoteCredits(input.providerId, input.modelId, input.mediaType, input.units, undefined, input.size, input.textBudget);
+  const quote = await quoteCredits(input.providerId, input.modelId, input.mediaType, input.units, undefined, input.size, input.textBudget, input.videoBillingKind);
   const database = getDatabase();
   try {
     return await database.transaction(async tx => {
@@ -246,7 +245,8 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
       captured = computed === null ? 0n : computed > quoted ? quoted : computed;
       billing = {
         billingRule: textPricing.billingRule, priceBookVersionId: job.priceBookVersionId, status,
-        usage, ratesPerMillion: textPricing.ratesPerMillion, numerator, usageError,
+        usage, billableInput: usage ? usage.input + usage.cacheRead + usage.cacheWrite : null, billableOutput: usage?.output ?? null,
+        ratesPerMillion: textPricing.ratesPerMillion, numerator, usageError,
         quotedCredits: job.quotedCredits,
         computedCredits: computed === null ? null : u.billingCredits.formatCredits(computed),
         capturedCredits: u.billingCredits.formatCredits(captured),
@@ -254,6 +254,17 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
         platformAbsorbedCredits: computed === null ? null : u.billingCredits.formatCredits(computed - captured),
         rounding: "halfUp6",
       };
+    } else if (job.mediaType === "video") {
+      const lockedQuote = (job.requestSnapshot as { quote?: { videoBillingKind?: VideoBillingKind; creditsPerUnit?: string; size?: string } } | null)?.quote;
+      billing = {
+        billingRule: "videoUnit",
+        priceBookVersionId: job.priceBookVersionId,
+        videoBillingKind: lockedQuote?.videoBillingKind ?? "textImageToVideo",
+        resolution: lockedQuote?.size ?? null,
+        creditsPerUnit: lockedQuote?.creditsPerUnit ?? null,
+        quotedCredits: job.quotedCredits,
+      };
+      captured = success ? quoted : 0n;
     } else if (success) {
       const legacySnapshot = snapshot as { usage?: { totalTokens?: number; input?: number; output?: number } };
       const usage = legacySnapshot.usage;
@@ -262,7 +273,7 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
         if (tokens > 0 && item) {
           const divisor = item.unit === "10k_chars" ? 10000 : 1000;
           const actualUnits = Math.max(1, Math.ceil(tokens / divisor));
-          const actual = u.billingCredits.parseCredits(Math.ceil(actualUnits * item.creditsPerUnit));
+          const actual = u.billingCredits.parseCredits(item.creditsPerUnit) * BigInt(actualUnits);
           captured = actual < quoted ? actual : quoted;
         }
       }
@@ -277,6 +288,9 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
     await tx.update(wallets).set({ balance, frozen, updatedAt: now }).where(eq(wallets.id, wallet.id));
     await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: job.userId, actorUserId: account.userId, jobId: job.id, kind: operation, amount: u.billingCredits.formatCredits(-captured), balanceAfter: balance, frozenAfter: frozen, idempotencyKey: `${job.id}:${operation}`, reason, metadata: { modelId: job.modelId, mediaType: job.mediaType, billing }, createdAt: now, updatedAt: now });
     await tx.update(generationJobs).set({ status, capturedCredits, resultSnapshot: settledSnapshot, updatedAt: now }).where(eq(generationJobs.id, job.id));
+    // 成功请求即使最终价格为 0 或供应商没有返回 usage，也要计入请求/输出汇总。
+    // 失败请求只在确实产生可计费用量时记录，避免把释放预留误当成消耗。
+    if (success || captured > 0n || billing.status === "settled") await recordGenerationUsage(tx, job, success, settledSnapshot, captured, true);
     return { ...job, status, capturedCredits, resultSnapshot: settledSnapshot };
   });
 }
