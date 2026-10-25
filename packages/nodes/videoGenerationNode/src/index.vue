@@ -309,9 +309,13 @@ function calculateEstimatedCredits() {
   if (!choice) return null;
   const resolution = (data.value.resolution || "768P").trim();
   const duration = data.value.duration ?? 5;
+  const findTier = (tiers?: Record<string, string>) => {
+    const key = Object.keys(tiers ?? {}).find(item => item.toUpperCase() === resolution.toUpperCase());
+    return key ? tiers?.[key] : undefined;
+  };
   const tier = choice.videoPricingMode === "separate"
-    ? choice.videoPricingTiers?.[videoBillingKind.value]?.[resolution]
-    : choice.resolutionTiers?.[resolution];
+    ? findTier(choice.videoPricingTiers?.[videoBillingKind.value])
+    : findTier(choice.resolutionTiers);
   const unit = tier ?? (choice.videoPricingMode === "separate" ? undefined : choice.creditsPerUnit);
   if (unit === undefined || unit === null || !Number.isFinite(Number(unit))) return "配置错误";
   const amount = duration * Number(unit);
