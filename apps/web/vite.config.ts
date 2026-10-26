@@ -7,6 +7,7 @@ import desktopConfig from "../../electrobun.config.ts";
 import postcssConfig from "../../postcss.config.ts";
 
 const serverOrigin = process.env.OMNISTUDIO_NEXT_UI_SERVER_ORIGIN ?? process.env.TOONFLOW_UI_SERVER_ORIGIN ?? "http://127.0.0.1:3000";
+const workspaceRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 const vendorChunkGroups: Record<string, string[]> = {
   vendorVue: ["vue", "vue-router", "pinia"],
@@ -41,7 +42,7 @@ export default defineConfig({
         fileURLToPath(new URL("../../packages", import.meta.url)),
         fileURLToPath(new URL("../../node_modules", import.meta.url)),
       ],
-      deny: [".env", ".env.*", "**/.git/**", "**/*.key", "**/data/**", "**/backup/**", "**/work/**"],
+      deny: [".env", ".env.*", "**/.git/**", "**/*.key", "**/data/**", "**/backup/**", `${workspaceRoot}/**/work/**`],
     },
     proxy: {
       "/mcp": { target: serverOrigin, changeOrigin: false },

@@ -719,7 +719,7 @@ async function loadAll() {
       prices[key] = price?.creditsPerUnit ?? null;
       if (model.mediaType !== "text") continue;
       const pricing = price?.constraints?.textPricing;
-      textPrices[key] = { input: pricing?.ratesPerMillion.input ?? "", output: pricing?.ratesPerMillion.output ?? "" };
+      textPrices[key] = { input: pricing?.ratesPerMillion?.input ?? "", output: pricing?.ratesPerMillion?.output ?? "" };
     }
     for (const model of platform.models) {
       if (model.mediaType !== "video" && model.mediaType !== "image") continue;
