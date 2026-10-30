@@ -157,7 +157,7 @@ export async function estimateMediaCredits(providerId: string, modelId: string, 
   }
 }
 
-export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown }) {
+export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown; projectId?: string; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string }) {
   const account = requireAccount();
   if (input.userId !== account.userId) invalid("生成任务只能使用调用者自己的积分", 403);
   const key = requestKey(input.idempotencyKey, "generation");
@@ -182,7 +182,8 @@ export async function reserveGeneration(input: { userId: string; providerId: str
       wallet.balance = u.billingCredits.formatCredits(balance);
       const now = new Date();
       const frozenAfter = u.billingCredits.formatCredits(frozen + quoted);
-      const job = { id: randomUUID(), userId: account.userId, providerId: input.providerId, modelId: input.modelId, mediaType: input.mediaType, status: "reserved" as const, quotedCredits: quote.credits, capturedCredits: "0.000000", priceBookVersionId: quote.priceBookVersionId, idempotencyKey: key, requestSnapshot: { runtimeId: serverInstanceId, request: input.requestSnapshot, quote }, createdAt: now, updatedAt: now };
+      const estimatedCostCents = input.estimatedCostCents ?? quote.credits;
+      const job = { id: randomUUID(), userId: account.userId, projectId: input.projectId ?? null, seasonId: input.seasonId ?? null, episodeId: input.episodeId ?? null, sceneId: input.sceneId ?? null, shotId: input.shotId ?? null, attemptNumber: input.attemptNumber ?? null, providerId: input.providerId, modelId: input.modelId, mediaType: input.mediaType, status: "reserved" as const, quotedCredits: quote.credits, capturedCredits: "0.000000", estimatedCostCents, reservedCostCents: estimatedCostCents, actualCostCents: "0.000000", priceBookVersionId: quote.priceBookVersionId, idempotencyKey: key, requestSnapshot: { runtimeId: serverInstanceId, request: input.requestSnapshot, quote }, createdAt: now, updatedAt: now };
       await tx.update(wallets).set({ balance: wallet.balance, frozen: frozenAfter, updatedAt: now }).where(eq(wallets.id, wallet.id));
       await tx.insert(generationJobs).values(job);
       await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: account.userId, actorUserId: account.userId, jobId: job.id, kind: "reserve", amount: "0.000000", balanceAfter: wallet.balance, frozenAfter, idempotencyKey: `${job.id}:reserve`, reason: `生成预留：${input.modelId}`, metadata: { modelId: input.modelId, mediaType: input.mediaType, quote }, createdAt: now, updatedAt: now });
@@ -287,7 +288,7 @@ export async function settleGeneration(jobId: string, success: boolean, resultSn
     const reason = billing.status === "usageMissing" ? "供应商计量缺失，释放预留" : billing.status === "usageInvalid" ? "供应商计量异常，释放预留" : success ? "生成完成，按锁定价格结算" : captured > 0n ? "生成停止，按已发生用量结算" : "生成失败或取消，释放预留";
     await tx.update(wallets).set({ balance, frozen, updatedAt: now }).where(eq(wallets.id, wallet.id));
     await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: job.userId, actorUserId: account.userId, jobId: job.id, kind: operation, amount: u.billingCredits.formatCredits(-captured), balanceAfter: balance, frozenAfter: frozen, idempotencyKey: `${job.id}:${operation}`, reason, metadata: { modelId: job.modelId, mediaType: job.mediaType, billing }, createdAt: now, updatedAt: now });
-    await tx.update(generationJobs).set({ status, capturedCredits, resultSnapshot: settledSnapshot, updatedAt: now }).where(eq(generationJobs.id, job.id));
+    await tx.update(generationJobs).set({ status, capturedCredits, reservedCostCents: "0.000000", actualCostCents: capturedCredits, resultSnapshot: settledSnapshot, updatedAt: now }).where(eq(generationJobs.id, job.id));
     // 成功请求即使最终价格为 0 或供应商没有返回 usage，也要计入请求/输出汇总。
     // 失败请求只在确实产生可计费用量时记录，避免把释放预留误当成消耗。
     if (success || captured > 0n || billing.status === "settled") await recordGenerationUsage(tx, job, success, settledSnapshot, captured, true);

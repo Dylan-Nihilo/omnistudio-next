@@ -124,18 +124,27 @@ export const creditLedger = mysqlTable("user_credit_ledger", {
 export const generationJobs = mysqlTable("user_generation_jobs", {
   id: varchar("id", { length: 36 }).primaryKey(),
   userId: varchar("user_id", { length: 36 }).notNull(),
+  projectId: varchar("project_id", { length: 36 }),
+  seasonId: varchar("season_id", { length: 36 }),
+  episodeId: varchar("episode_id", { length: 36 }),
+  sceneId: varchar("scene_id", { length: 36 }),
+  shotId: varchar("shot_id", { length: 36 }),
+  attemptNumber: int("attempt_number", { unsigned: true }),
   providerId: varchar("provider_id", { length: 100 }).notNull(),
   modelId: varchar("model_id", { length: 200 }).notNull(),
   mediaType: mysqlEnum("media_type", ["text", "image", "video", "audio"]).notNull(),
   status: mysqlEnum("status", ["quoted", "reserved", "running", "succeeded", "failed", "cancelled"]).notNull().default("quoted"),
   quotedCredits: decimal("quoted_credits", { precision: 26, scale: 6, unsigned: true }).notNull(),
   capturedCredits: decimal("captured_credits", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
+  estimatedCostCents: decimal("estimated_cost_cents", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
+  reservedCostCents: decimal("reserved_cost_cents", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
+  actualCostCents: decimal("actual_cost_cents", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
   priceBookVersionId: varchar("price_book_version_id", { length: 36 }),
   idempotencyKey: varchar("idempotency_key", { length: 180 }).notNull(),
   requestSnapshot: json("request_snapshot").notNull(),
   resultSnapshot: json("result_snapshot"),
   ...timestamps,
-}, table => ({ idempotencyIndex: uniqueIndex("user_generation_job_idempotency_unique").on(table.idempotencyKey), userIndex: index("user_generation_job_user_index").on(table.userId, table.createdAt) }));
+}, table => ({ idempotencyIndex: uniqueIndex("user_generation_job_idempotency_unique").on(table.idempotencyKey), userIndex: index("user_generation_job_user_index").on(table.userId, table.createdAt), projectIndex: index("user_generation_job_project_index").on(table.projectId, table.createdAt), shotIndex: index("user_generation_job_shot_index").on(table.shotId, table.attemptNumber) }));
 
 export const generationUsageDaily = mysqlTable("generation_usage_daily", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -291,6 +300,123 @@ export const platformModels = mysqlTable("platform_models", {
   ...timestamps,
 }, table => ({ modelIndex: uniqueIndex("platform_model_unique").on(table.providerId, table.modelId, table.mediaType), enabledIndex: index("platform_model_enabled_index").on(table.mediaType, table.enabled, table.sortOrder) }));
 
+export const productionProjects = mysqlTable("production_projects", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  workspaceId: varchar("workspace_id", { length: 36 }).notNull(),
+  customerId: varchar("customer_id", { length: 36 }),
+  title: varchar("title", { length: 200 }).notNull(),
+  status: mysqlEnum("status", ["draft", "scripted", "storyboarded", "generating", "editing", "review", "approved", "delivered"]).notNull().default("draft"),
+  budgetCents: decimal("budget_cents", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ workspaceIndex: index("production_project_workspace_index").on(table.workspaceId, table.createdAt), creatorIndex: index("production_project_creator_index").on(table.createdBy) }));
+
+export const productionSeasons = mysqlTable("production_seasons", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  seasonNumber: int("season_number", { unsigned: true }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  status: mysqlEnum("status", ["draft", "active", "archived"]).notNull().default("draft"),
+  ...timestamps,
+}, table => ({ projectIndex: index("production_season_project_index").on(table.projectId, table.seasonNumber), uniqueIndex: uniqueIndex("production_season_unique").on(table.projectId, table.seasonNumber) }));
+
+export const productionEpisodes = mysqlTable("production_episodes", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  seasonId: varchar("season_id", { length: 36 }).notNull(),
+  episodeNumber: int("episode_number", { unsigned: true }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  status: mysqlEnum("status", ["draft", "scripted", "storyboarded", "generating", "editing", "review", "approved", "delivered"]).notNull().default("draft"),
+  targetDurationMs: int("target_duration_ms", { unsigned: true }).notNull().default(0),
+  ...timestamps,
+}, table => ({ seasonIndex: index("production_episode_season_index").on(table.seasonId, table.episodeNumber), uniqueIndex: uniqueIndex("production_episode_unique").on(table.seasonId, table.episodeNumber) }));
+
+export const productionScenes = mysqlTable("production_scenes", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  episodeId: varchar("episode_id", { length: 36 }).notNull(),
+  sceneNumber: int("scene_number", { unsigned: true }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  continuityNotes: text("continuity_notes"),
+  ...timestamps,
+}, table => ({ episodeIndex: index("production_scene_episode_index").on(table.episodeId, table.sceneNumber), uniqueIndex: uniqueIndex("production_scene_unique").on(table.episodeId, table.sceneNumber) }));
+
+export const productionShots = mysqlTable("production_shots", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  sceneId: varchar("scene_id", { length: 36 }).notNull(),
+  shotNumber: int("shot_number", { unsigned: true }).notNull(),
+  durationMs: int("duration_ms", { unsigned: true }).notNull().default(0),
+  shotType: varchar("shot_type", { length: 80 }),
+  camera: varchar("camera", { length: 500 }),
+  lighting: varchar("lighting", { length: 500 }),
+  dialogue: text("dialogue"),
+  narration: text("narration"),
+  prompt: text("prompt"),
+  status: mysqlEnum("status", ["draft", "ready", "generating", "review", "changesRequested", "approved"]).notNull().default("draft"),
+  revision: int("revision", { unsigned: true }).notNull().default(1),
+  ...timestamps,
+}, table => ({ sceneIndex: index("production_shot_scene_index").on(table.sceneId, table.shotNumber), uniqueIndex: uniqueIndex("production_shot_unique").on(table.sceneId, table.shotNumber) }));
+
+export const productionProjectMembers = mysqlTable("production_project_members", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  userId: varchar("user_id", { length: 36 }).notNull(),
+  role: mysqlEnum("role", ["owner", "producer", "writer", "director", "artist", "editor", "reviewer", "viewer"]).notNull().default("viewer"),
+  status: mysqlEnum("status", ["active", "removed"]).notNull().default("active"),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ projectUserIndex: uniqueIndex("production_project_member_unique").on(table.projectId, table.userId), userIndex: index("production_project_member_user_index").on(table.userId, table.status) }));
+
+export const productionClipVariants = mysqlTable("production_clip_variants", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  shotId: varchar("shot_id", { length: 36 }).notNull(),
+  generationJobId: varchar("generation_job_id", { length: 36 }).notNull(),
+  attemptNumber: int("attempt_number", { unsigned: true }).notNull(),
+  mediaType: mysqlEnum("media_type", ["image", "video", "audio"]).notNull(),
+  filePath: varchar("file_path", { length: 2048 }).notNull(),
+  mimeType: varchar("mime_type", { length: 150 }).notNull(),
+  status: mysqlEnum("status", ["candidate", "changesRequested", "approved", "rejected"]).notNull().default("candidate"),
+  promptSnapshot: json("prompt_snapshot"),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ shotAttemptIndex: uniqueIndex("production_clip_variant_shot_attempt_unique").on(table.shotId, table.attemptNumber), projectIndex: index("production_clip_variant_project_index").on(table.projectId, table.createdAt), jobIndex: index("production_clip_variant_job_index").on(table.generationJobId) }));
+
+export const productionReviews = mysqlTable("production_reviews", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  shotId: varchar("shot_id", { length: 36 }).notNull(),
+  variantId: varchar("variant_id", { length: 36 }).notNull(),
+  authorUserId: varchar("author_user_id", { length: 36 }).notNull(),
+  body: text("body").notNull(),
+  timecodeMs: int("timecode_ms", { unsigned: true }),
+  mentions: json("mentions"),
+  status: mysqlEnum("status", ["open", "resolved"]).notNull().default("open"),
+  ...timestamps,
+}, table => ({ variantIndex: index("production_review_variant_index").on(table.variantId, table.createdAt), projectIndex: index("production_review_project_index").on(table.projectId, table.createdAt) }));
+
+export const productionApprovals = mysqlTable("production_approvals", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  shotId: varchar("shot_id", { length: 36 }).notNull(),
+  variantId: varchar("variant_id", { length: 36 }).notNull(),
+  actorUserId: varchar("actor_user_id", { length: 36 }).notNull(),
+  decision: mysqlEnum("decision", ["approved", "changesRequested"]).notNull(),
+  comment: text("comment"),
+  ...timestamps,
+}, table => ({ variantIndex: index("production_approval_variant_index").on(table.variantId, table.createdAt), projectIndex: index("production_approval_project_index").on(table.projectId, table.createdAt) }));
+
+export const productionDeliveries = mysqlTable("production_deliveries", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  status: mysqlEnum("status", ["completed", "failed"]).notNull(),
+  mp4Path: varchar("mp4_path", { length: 2048 }).notNull(),
+  srtPath: varchar("srt_path", { length: 2048 }).notNull(),
+  manifestPath: varchar("manifest_path", { length: 2048 }).notNull(),
+  auditPackagePath: varchar("audit_package_path", { length: 2048 }).notNull(),
+  manifestHash: varchar("manifest_hash", { length: 64 }).notNull(),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ projectIndex: index("production_delivery_project_index").on(table.projectId, table.createdAt) }));
+
 export const schema = {
   users,
   workspaces,
@@ -310,6 +436,16 @@ export const schema = {
   platformProviderConfigs,
   providerHealth,
   platformModels,
+  productionProjects,
+  productionSeasons,
+  productionEpisodes,
+  productionScenes,
+  productionShots,
+  productionProjectMembers,
+  productionClipVariants,
+  productionReviews,
+  productionApprovals,
+  productionDeliveries,
   teams,
   teamMembers,
   teamInvitations,
