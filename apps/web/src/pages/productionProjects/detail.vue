@@ -46,19 +46,20 @@
     <uiDialog v-model="generateVisible" title="提交镜头生成" :width="560">
       <form class="dialogForm" @submit.prevent="submitGeneration"><uiField label="供应商 ID" required><template #default="{ id }"><uiInput :id="id" v-model.trim="generationForm.providerId" placeholder="例如 baiduVideoFire" /></template></uiField><uiField label="模型 ID" required><template #default="{ id }"><uiInput :id="id" v-model.trim="generationForm.modelId" placeholder="例如 S2.0-Mini" /></template></uiField><uiField label="工作目录" required><template #default="{ id }"><uiInput :id="id" v-model.trim="generationForm.directory" :placeholder="auth.personalDirectory" /></template></uiField><uiField label="媒体类型"><template #default="{ id }"><uiSelect :id="id" :modelValue="generationForm.mediaType" :options="mediaOptions" @update:modelValue="value => typeof value === 'string' && (generationForm.mediaType = value as 'image' | 'video' | 'audio')" /></template></uiField><uiField v-if="generationForm.mediaType === 'video'" label="视频分辨率" required><template #default="{ id }"><uiSelect :id="id" v-model="generationForm.resolution" :options="resolutionOptions" /></template></uiField><uiField label="生成提示词" required><template #default="{ id }"><uiTextarea :id="id" v-model.trim="generationForm.prompt" :rows="4" resize="vertical" /></template></uiField><p class="sectionHint">提交前会再次校验项目权限、预算和幂等键；真实供应商生成会消耗积分。</p><p v-if="dialogError" class="pageError">{{ dialogError }}</p><div class="dialogActions"><uiButton variant="secondary" type="button" @click="generateVisible = false">取消</uiButton><uiButton htmlType="submit" :loading="busy" :disabled="busy || !generationForm.providerId || !generationForm.modelId || !generationForm.prompt || (generationForm.mediaType === 'video' && !generationForm.resolution)">提交生成</uiButton></div></form>
     </uiDialog>
-    <uiDialog v-model="reviewVisible" title="候选片段审片" :width="620">
-      <div v-if="selectedShot" class="reviewPanel"><div class="reviewMeta"><span>镜头 {{ selectedShot.shotNumber }}</span><uiTag tone="warning">待审片</uiTag></div><p class="reviewPrompt">{{ selectedShot.prompt }}</p><div v-if="selectedVariant" class="variantBox"><strong>候选 {{ selectedVariant.attemptNumber }}</strong><span>{{ selectedVariant.filePath }}</span></div><uiTextarea v-model="reviewComment" :rows="3" resize="vertical" placeholder="填写审片意见，可用于退回重拍或留档" /><div class="dialogActions"><uiButton variant="secondary" :disabled="busy" @click="submitDecision('changesRequested')">退回重拍</uiButton><uiButton :loading="busy" :disabled="busy" @click="submitDecision('approved')">批准候选</uiButton></div></div>
+    <uiDialog v-model="reviewVisible" title="候选片段审片" :width="620" @closed="closeReview">
+      <div v-if="selectedShot" class="reviewPanel"><div class="reviewMeta"><span>镜头 {{ selectedShot.shotNumber }}</span><uiTag tone="warning">待审片</uiTag></div><p class="reviewPrompt">{{ selectedShot.prompt }}</p><div v-if="selectedVariant" class="variantBox"><strong>候选 {{ selectedVariant.attemptNumber }}</strong><span>{{ selectedVariant.filePath }}</span><video v-if="variantUrl && selectedVariant.mimeType.startsWith('video/')" class="variantPreview" :src="variantUrl" controls preload="metadata" /><audio v-else-if="variantUrl && selectedVariant.mimeType.startsWith('audio/')" class="variantPreview" :src="variantUrl" controls preload="metadata" /><img v-else-if="variantUrl && selectedVariant.mimeType.startsWith('image/')" class="variantPreview" :src="variantUrl" alt="候选片段预览" /></div><uiTextarea v-model="reviewComment" :rows="3" resize="vertical" placeholder="填写审片意见，可用于退回重拍或留档" /><div class="dialogActions"><uiButton variant="secondary" :disabled="busy" @click="submitDecision('changesRequested')">退回重拍</uiButton><uiButton :loading="busy" :disabled="busy" @click="submitDecision('approved')">批准候选</uiButton></div></div>
     </uiDialog>
   </accountShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { uiButton, uiCard, uiDialog, uiField, uiInput, uiNumberInput, uiSelect, uiTag, uiTextarea } from "@omnistudio-next/ui";
 import accountShell from "@/components/account/accountShell.vue";
 import { useAuthStore } from "@/stores/auth";
+import useWorkspaceFiles from "@/lib/workspaceFiles";
 
 type ProjectStatus = "draft" | "scripted" | "storyboarded" | "generating" | "editing" | "review" | "approved" | "delivered";
 type ShotStatus = "draft" | "ready" | "generating" | "review" | "changesRequested" | "approved";
@@ -87,7 +88,9 @@ const reviewVisible = ref(false);
 const selectedEpisodeId = ref("");
 const selectedShot = ref<Shot>();
 const selectedVariant = ref<Variant>();
+const variantUrl = ref("");
 const reviewComment = ref("");
+let variantRelease: (() => void) | undefined;
 const episodeForm = reactive({ seasonNumber: 1, seasonTitle: "第一季", episodeNumber: 1, title: "第一集" });
 const shotForm = reactive({ sceneNumber: 1, sceneTitle: "场景 01", shotNumber: 1, durationMs: 6000, prompt: "" });
 const generationForm = reactive<{ providerId: string; modelId: string; directory: string; mediaType: "image" | "video" | "audio"; resolution: string; prompt: string }>({ providerId: "", modelId: "", directory: "", mediaType: "video", resolution: "480p", prompt: "" });
@@ -113,13 +116,15 @@ async function loadProject() { loading.value = true; errorMessage.value = ""; tr
 function resetDialog() { dialogError.value = ""; }
 function openShotForm(episodeId: string) { selectedEpisodeId.value = episodeId; resetDialog(); shotVisible.value = true; }
 function selectShotForGeneration(shot: Shot) { selectedShot.value = shot; generationForm.directory = auth.personalDirectory; generationForm.prompt = shot.prompt ?? ""; resetDialog(); generateVisible.value = true; }
-function selectShotForReview(shot: Shot) { selectedShot.value = shot; selectedVariant.value = project.value?.variants.find(variant => variant.shotId === shot.id && variant.status === "candidate"); reviewComment.value = ""; resetDialog(); reviewVisible.value = true; }
+async function selectShotForReview(shot: Shot) { selectedShot.value = shot; selectedVariant.value = project.value?.variants.find(variant => variant.shotId === shot.id && variant.status === "candidate"); reviewComment.value = ""; resetDialog(); variantRelease?.(); variantRelease = undefined; variantUrl.value = ""; if (selectedVariant.value) { try { const preview = useWorkspaceFiles(auth.personalDirectory).acquireUrl(selectedVariant.value.filePath, selectedVariant.value.mimeType); variantRelease = preview.release; variantUrl.value = await preview.url; } catch (error) { dialogError.value = errorText(error); } } reviewVisible.value = true; }
+function closeReview() { variantRelease?.(); variantRelease = undefined; variantUrl.value = ""; }
 async function submitEpisode() { if (!project.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/episodes/create", { projectId: project.value.id, ...episodeForm }); episodeVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function submitShot() { if (!project.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/shots/create", { projectId: project.value.id, episodeId: selectedEpisodeId.value, ...shotForm }); shotVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function submitGeneration() { if (!project.value || !selectedShot.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/shots/generate", { projectId: project.value.id, shotId: selectedShot.value.id, directory: generationForm.directory || auth.personalDirectory, mediaType: generationForm.mediaType, providerId: generationForm.providerId, modelId: generationForm.modelId, prompt: generationForm.prompt, resolution: generationForm.mediaType === "video" ? generationForm.resolution : undefined, duration: generationForm.mediaType === "video" ? selectedShot.value.durationMs / 1000 : undefined }, { headers: { "Idempotency-Key": crypto.randomUUID() } }); generateVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function submitDecision(decision: "approved" | "changesRequested") { if (!project.value || !selectedVariant.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/reviews/decision", { projectId: project.value.id, variantId: selectedVariant.value.id, decision, comment: reviewComment.value.trim() || undefined }); reviewVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
 async function exportDelivery() { if (!project.value) return; exporting.value = true; errorMessage.value = ""; try { await axios.post("/api/productionProjects/delivery/export", { projectId: project.value.id, directory: auth.personalDirectory }); await loadProject(); } catch (error) { errorMessage.value = errorText(error); } finally { exporting.value = false; } }
 onMounted(async () => { await auth.restoreSession(); await loadProject(); });
+onBeforeUnmount(() => variantRelease?.());
 </script>
 
 <style scoped lang="scss">
@@ -141,7 +146,7 @@ onMounted(async () => { await auth.restoreSession(); await loadProject(); });
 .auditSummary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; div { display: grid; gap: 5px; } strong { font-size: 24px; } span { color: var(--uiTextMuted); font-size: 11px; } } .sideHint { margin: 18px 0 0; color: var(--uiTextMuted); font-size: 12px; line-height: 1.7; } .deliveryItem { display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--uiBorderDefault); &:last-child { border-bottom: 0; } div { display: flex; justify-content: space-between; gap: 12px; } span, small { color: var(--uiTextMuted); font-size: 11px; } code { overflow-wrap: anywhere; color: var(--uiTextSecondary); font-size: 10px; }
 }
 .dialogForm { display: grid; gap: 16px; .dialogActions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; } .sectionHint { margin: 0; color: var(--uiTextMuted); font-size: 12px; line-height: 1.7; } }
-.reviewPanel { display: grid; gap: 16px; .reviewMeta { display: flex; align-items: center; justify-content: space-between; } .reviewPrompt { margin: 0; padding: 14px; border-radius: 10px; background: var(--uiBackgroundSubtle); line-height: 1.7; } .variantBox { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--uiBorderDefault); border-radius: 10px; span { color: var(--uiTextMuted); font: 11px ui-monospace, monospace; overflow-wrap: anywhere; } } }
+.reviewPanel { display: grid; gap: 16px; .reviewMeta { display: flex; align-items: center; justify-content: space-between; } .reviewPrompt { margin: 0; padding: 14px; border-radius: 10px; background: var(--uiBackgroundSubtle); line-height: 1.7; } .variantBox { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--uiBorderDefault); border-radius: 10px; span { color: var(--uiTextMuted); font: 11px ui-monospace, monospace; overflow-wrap: anywhere; } .variantPreview { width: 100%; max-height: 280px; border-radius: 8px; background: #000; object-fit: contain; } } }
 @media (max-width: 860px) { .detailGrid { grid-template-columns: 1fr; } .workflowRail { overflow-x: auto; grid-template-columns: repeat(7, minmax(100px, 1fr)); } }
 @media (max-width: 620px) { .projectHero { display: grid; .heroStatus { justify-items: start; } } .shotRow { grid-template-columns: 30px minmax(0, 1fr); .uiTag, .shotActions { grid-column: 2; justify-self: start; } } }
 </style>
