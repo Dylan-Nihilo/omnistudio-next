@@ -17,6 +17,8 @@ const router = createRouter({
     { path: "/workspace", component: () => import("@/pages/workspace/index.vue") },
     { path: "/account", component: () => import("@/pages/account/index.vue") },
     { path: "/teams", component: () => import("@/pages/teams/index.vue") },
+    { path: "/productionProjects", component: () => import("@/pages/productionProjects/index.vue") },
+    { path: "/productionProjects/:projectId", component: () => import("@/pages/productionProjects/detail.vue") },
     { path: "/admin", meta: { rootOnly: true }, component: () => import("@/pages/admin/index.vue") },
     { path: "/:pathMatch(.*)*", redirect: "/home" },
   ],

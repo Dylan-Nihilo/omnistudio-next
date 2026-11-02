@@ -4,6 +4,7 @@
       <a class="accountBrand" href="#/home"><img :src="logoUrl" alt="万象点点" /></a>
       <nav class="accountNavigation">
         <router-link to="/home" class="navigationLink"><icon-folders :size="18" aria-hidden="true" />我的项目</router-link>
+        <router-link to="/productionProjects" class="navigationLink"><icon-movie :size="18" aria-hidden="true" />生产项目</router-link>
         <router-link to="/account" class="navigationLink"><icon-user-circle :size="18" aria-hidden="true" />个人账户</router-link>
         <router-link to="/teams" class="navigationLink"><icon-users-group :size="18" aria-hidden="true" />团队空间</router-link>
         <router-link v-if="auth.isRoot" to="/admin" class="navigationLink"><icon-shield-lock :size="18" aria-hidden="true" />平台管理</router-link>
