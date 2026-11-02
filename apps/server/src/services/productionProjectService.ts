@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { GeneratedMedia, MediaGenerationRequest } from "@omnistudio-next/tools-scaffold/runtime";
 import { getDatabase } from "@/db/database";
-import { auditEvents, generationJobs, productionApprovals, productionClipVariants, productionEpisodes, productionProjectMembers, productionProjects, productionReviews, productionScenes, productionSeasons, productionShots, teamMembers, teams, users } from "@/db/schema";
+import { auditEvents, generationJobs, productionApprovals, productionClipVariants, productionDeliveries, productionEpisodes, productionProjectMembers, productionProjects, productionReviews, productionScenes, productionSeasons, productionShots, teamMembers, teams, users } from "@/db/schema";
 import { requireAccount } from "@/utils/accountContext";
 import { roleAllows, type ProductionProjectAction, type ProductionProjectRole } from "@/utils/productionProject/permissions";
 import { generateMedia, getVideoBillingKind } from "@/utils/media/generation";
@@ -80,7 +80,8 @@ export async function getProductionProject(projectId: string) {
   const variantIds = variants.map(item => item.id);
   const reviews = variantIds.length ? await database.select().from(productionReviews).where(inArray(productionReviews.variantId, variantIds)).orderBy(desc(productionReviews.createdAt)) : [];
   const approvals = variantIds.length ? await database.select().from(productionApprovals).where(inArray(productionApprovals.variantId, variantIds)).orderBy(desc(productionApprovals.createdAt)) : [];
-  return { project, members, seasons, episodes, scenes, shots, variants, reviews, approvals };
+  const deliveries = await database.select().from(productionDeliveries).where(eq(productionDeliveries.projectId, projectId)).orderBy(desc(productionDeliveries.createdAt));
+  return { project, members, seasons, episodes, scenes, shots, variants, reviews, approvals, deliveries };
 }
 
 export async function updateProductionProject(input: { projectId: string; title?: string; customerId?: string | null; budgetCents?: string; status?: ProductionProjectStatus }) {
@@ -241,8 +242,14 @@ export async function decideProductionVariant(input: { projectId: string; varian
   const { variant, shot } = await getProjectVariant(input.projectId, input.variantId);
   if (variant.status !== "candidate") invalid("当前候选片段已经处理，不能重复审批", 409);
   const now = new Date();
-  const approval = { id: randomUUID(), projectId: input.projectId, shotId: shot.id, variantId: variant.id, actorUserId: account.userId, decision: input.decision, comment: input.comment?.trim() || null, createdAt: now, updatedAt: now };
+  const comment = input.comment?.trim() || null;
+  const review = comment ? { id: randomUUID(), projectId: input.projectId, shotId: shot.id, variantId: variant.id, authorUserId: account.userId, body: comment, timecodeMs: null, mentions: [], status: "open" as const, createdAt: now, updatedAt: now } : null;
+  const approval = { id: randomUUID(), projectId: input.projectId, shotId: shot.id, variantId: variant.id, actorUserId: account.userId, decision: input.decision, comment, createdAt: now, updatedAt: now };
   await getDatabase().transaction(async tx => {
+    if (review) {
+      await tx.insert(productionReviews).values(review);
+      await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionReview.create", metadata: { projectId: input.projectId, shotId: shot.id, variantId: variant.id, reviewId: review.id }, createdAt: now, updatedAt: now });
+    }
     await tx.insert(productionApprovals).values(approval);
     await tx.update(productionClipVariants).set({ status: input.decision, updatedAt: now }).where(eq(productionClipVariants.id, variant.id));
     await tx.update(productionShots).set({ status: input.decision === "approved" ? "approved" : "changesRequested", updatedAt: now }).where(eq(productionShots.id, shot.id));
