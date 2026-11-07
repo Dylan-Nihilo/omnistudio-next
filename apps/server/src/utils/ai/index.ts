@@ -142,22 +142,23 @@ export function streamAi(
   references: Awaited<ReturnType<typeof readAiReferences>> = [],
   idempotencyKey?: string,
   directory?: string,
+  options: { maxTokens?: number; projectId?: string; enforceProjectBudget?: boolean } = {},
 ) {
   const { provider, model: configuredModel, baseUrl } = configured;
+  const maxTokens = Math.min(options.maxTokens ?? configuredModel.maxOutputTokens, configuredModel.maxOutputTokens);
   const model: Model<typeof provider.protocol> = {
     id: configuredModel.id, name: configuredModel.label, provider: "omnistudio-next", api: provider.protocol, baseUrl,
     reasoning: false, input: ["text", "image"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: configuredModel.contextWindow,
-    maxTokens: configuredModel.maxOutputTokens,
+    maxTokens,
   };
   const videoInput = getVideoInputCapability(configured.catalog.providerId, configured.catalog.modelId);
   if (references.some(item => item.dataType === "VIDEO") && !videoInput?.supported) {
     throw Object.assign(new Error("当前模型不支持原生视频输入，请切换到百炼 qwen3.7-plus"), { status: 400 });
   }
-  const maxTokens = configuredModel.maxOutputTokens;
   const useOss = references.some(item => (item as { useOss?: boolean }).useOss);
-  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, directory, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
+  return createChargedStream({ providerId: configured.catalog.providerId, modelId: configured.catalog.modelId, model, context, budgetContext: { context, references }, directory, projectId: options.projectId, enforceProjectBudget: options.enforceProjectBudget, signal, idempotencyKey }, (streamSignal, recordPayload, guardedFetch) => aiApis[provider.protocol].streamSimple(model, context, {
     apiKey: provider.apiKey,
     signal: streamSignal,
     fetch: ((input, init) => {
@@ -167,14 +168,17 @@ export function streamAi(
     }) as typeof fetch,
     maxTokens,
     onPayload: async (payload) => {
-      if (!references.length) { await recordPayload(payload); return payload; }
       const body = payload as Record<string, unknown>;
+      const providerPayload = configured.catalog.providerId === "dashscope" && configured.catalog.modelId === "text/deepseek-v4.1-flash"
+        ? { ...body, enable_thinking: false }
+        : body;
+      if (!references.length) { await recordPayload(providerPayload); return providerPayload; }
       const field = provider.protocol === "openai-responses" ? "input" : "messages";
-      const messages = body[field] as { role: string; content: unknown }[];
+      const messages = providerPayload[field] as { role: string; content: unknown }[];
       // ACT: 后续 Anthropic 工具结果也使用 user 角色，附件只补充到最初的输入。
       const firstUser = messages.findIndex(message => message.role === "user");
       const attachmentContent = referenceContent(provider.protocol, "", references).slice(1);
-      const finalPayload = { ...body, [field]: messages.map((message, index) => index === firstUser
+      const finalPayload = { ...providerPayload, [field]: messages.map((message, index) => index === firstUser
         ? { ...message, content: [
           ...(Array.isArray(message.content) ? message.content : referenceContent(provider.protocol, String(message.content ?? ""), [])),
           ...attachmentContent,

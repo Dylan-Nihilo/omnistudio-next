@@ -24,6 +24,7 @@ import * as personalization from "@/utils/personalization";
 import * as mentionFiles from "@/agent/mentionFiles";
 import * as demos from "@/utils/demos";
 import * as billingCredits from "@/utils/billing/credits";
+import * as productionScriptDraft from "@/utils/productionProject/scriptDraftSchemas";
 
 export default {
   assets,
@@ -53,4 +54,5 @@ export default {
   mentionFiles,
   demos,
   billingCredits,
+  productionScriptDraft,
 };

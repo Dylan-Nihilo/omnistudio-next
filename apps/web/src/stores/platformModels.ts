@@ -47,7 +47,11 @@ export const usePlatformModelsStore = defineStore("platformModels", () => {
       if (getSessionSnapshot().revision === session.revision) [textModels.value, mediaModels.value] = models;
     } catch (error) {
       if (getSessionSnapshot().revision === session.revision) errorMessage.value = error instanceof Error ? error.message : "读取平台模型失败";
-    } finally { if (getSessionSnapshot().revision === session.revision) loading.value = false; }
+    } finally {
+      // A session refresh can happen while the requests are in flight. Always
+      // release the gate so a later authenticated page can retry the catalog.
+      loading.value = false;
+    }
   }
 
   function resetModels() { textModels.value = []; mediaModels.value = []; defaultModels.value = { text: null, image: null, video: null }; loading.value = false; errorMessage.value = ""; }

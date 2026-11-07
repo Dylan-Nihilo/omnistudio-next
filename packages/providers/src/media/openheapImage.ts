@@ -12,8 +12,8 @@ const rules = [
     type: "input",
     field: "baseUrl" as const,
     title: "请求地址",
-    value: "https://openheapstack.com/v1",
-    props: { placeholder: "https://openheapstack.com/v1" },
+    value: "https://open302.com",
+    props: { placeholder: "https://open302.com" },
   },
 ] as const;
 
@@ -29,15 +29,17 @@ function mediaBytes(input: MediaInput) {
 }
 
 function sizeValue(request: ImageRequest) {
-  const imageSizes: Record<string, Record<string, string>> = {
-    "1K": { "1:1": "1024x1024", "16:9": "1280x720", "9:16": "720x1280" },
-    "2K": { "1:1": "2048x2048", "16:9": "2048x1152", "9:16": "1152x2048" },
-    "4K": { "1:1": "2880x2880", "16:9": "3840x2160", "9:16": "2160x3840" },
-  };
-  const value = request.size?.trim().toUpperCase() ?? (request.ratio ? "2K" : "1K");
-  const size = imageSizes[value]?.[request.ratio ?? "1:1"] ?? value.toLowerCase();
+  const value = request.size?.trim().toUpperCase() ?? "1K";
+  if (request.ratio && ["1K", "2K", "4K"].includes(value)) return request.ratio;
+  const squareSizes: Record<string, string> = { "1K": "1024x1024", "2K": "2048x2048", "4K": "2880x2880" };
+  const size = squareSizes[value] ?? value.toLowerCase();
   if (/^[1-9]\d{2,4}x[1-9]\d{2,4}$/.test(size)) return size;
   throw new Error("图片分辨率须为 1K、2K、4K 或宽x高像素尺寸");
+}
+
+function resolutionValue(request: ImageRequest) {
+  const value = request.size?.trim().toUpperCase() ?? "1K";
+  return ["1K", "2K", "4K"].includes(value) ? value : "1K";
 }
 
 function wait(signal?: AbortSignal, milliseconds = 2000) {
@@ -59,8 +61,10 @@ function wait(signal?: AbortSignal, milliseconds = 2000) {
 async function generate(request: ImageRequest, context: ProviderContext<{ apiKey: string; baseUrl: string }>) {
   const apiKey = context.config.apiKey.trim();
   if (!apiKey) throw new Error("平台模型凭证未配置");
-  const baseUrl = (context.config.baseUrl.trim() || "https://openheapstack.com/v1").replace(/\/$/, "");
+  const baseUrl = (context.config.baseUrl.trim() || "https://open302.com").replace(/\/+$/, "");
+  const apiBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
   const size = sizeValue(request);
+  const resolution = resolutionValue(request);
   const headers = { Authorization: `Bearer ${apiKey}` };
   const references = request.images ?? [];
   const maxAttempts = 3;
@@ -72,16 +76,20 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
       form.append("model", request.model);
       form.append("prompt", request.prompt);
       form.append("size", size);
+      if (request.ratio) {
+        form.append("resolution", resolution);
+        form.append("aspect_ratio", request.ratio);
+      }
       for (const [index, image] of references.entries()) {
         const mimeType = image.mimeType || "image/png";
         const extension = mimeType.split("/")[1] || "png";
         form.append("image", new File([mediaBytes(image) as unknown as BlobPart], `reference-${index}.${extension}`, { type: mimeType }));
       }
-      response = await context.tool.fetch(`${baseUrl}/images/edits`, { method: "POST", headers, body: form, signal: context.signal });
+      response = await context.tool.fetch(`${apiBaseUrl}/images/edits`, { method: "POST", headers, body: form, signal: context.signal });
     } else {
-      response = await context.tool.fetch(`${baseUrl}/images/generations`, {
+      response = await context.tool.fetch(`${apiBaseUrl}/images/generations`, {
         method: "POST", headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: request.model, prompt: request.prompt, size, n: 1 }), signal: context.signal,
+        body: JSON.stringify({ model: request.model, prompt: request.prompt, size, n: 1, ...(request.ratio ? { resolution, aspect_ratio: request.ratio } : {}) }), signal: context.signal,
       });
     }
     if (response.status === 429 && attempt < maxAttempts) {
@@ -107,8 +115,8 @@ async function generate(request: ImageRequest, context: ProviderContext<{ apiKey
 export default {
   id: "openheapImage",
   label: "OpenHeap 图片",
-  version: "1.0.1",
-  apiUrl: "https://openheapstack.com/v1",
+  version: "1.0.2",
+  apiUrl: "https://open302.com",
   protocol: "openai-completions",
   readme: "OpenHeapStack OpenAI 兼容图片服务。",
   rules,

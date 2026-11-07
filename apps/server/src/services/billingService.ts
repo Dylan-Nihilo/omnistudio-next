@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase, hashSecret, serverInstanceId } from "@/db/database";
-import { auditEvents, creditLedger, creditTransfers, generationJobs, platformRoles, pricingItems, pricingSettings, priceBookVersions, teamMembers, teams, users, wallets } from "@/db/schema";
+import { auditEvents, creditLedger, creditTransfers, generationJobs, platformRoles, pricingItems, pricingSettings, priceBookVersions, productionProjects, teamMembers, teams, users, wallets } from "@/db/schema";
 import { accountContext, requireAccount, requireActiveAccount, requireRootAccount } from "@/utils/accountContext";
 import { getUserPresence } from "@/services/presenceService";
 import u from "@/utils";
@@ -157,7 +157,7 @@ export async function estimateMediaCredits(providerId: string, modelId: string, 
   }
 }
 
-export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown; projectId?: string; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string }) {
+export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown; projectId?: string; enforceProjectBudget?: boolean; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string }) {
   const account = requireAccount();
   if (input.userId !== account.userId) invalid("生成任务只能使用调用者自己的积分", 403);
   const key = requestKey(input.idempotencyKey, "generation");
@@ -175,6 +175,16 @@ export async function reserveGeneration(input: { userId: string; providerId: str
         invalid(fingerprint(previous?.request ?? existing.requestSnapshot) !== fingerprint(input.requestSnapshot) ? "幂等键已用于另一条生成请求" : "相同生成请求已接收，请勿重复提交", 409);
       }
       const quoted = u.billingCredits.parseCredits(quote.credits);
+      if (input.enforceProjectBudget && input.projectId) {
+        const [project] = await tx.select({ budgetCents: productionProjects.budgetCents }).from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+        if (!project) invalid("生产项目不存在", 404);
+        const budget = u.billingCredits.parseCredits(project.budgetCents);
+        if (budget > 0n) {
+          const projectJobs = await tx.select({ status: generationJobs.status, quotedCredits: generationJobs.quotedCredits, capturedCredits: generationJobs.capturedCredits }).from(generationJobs).where(eq(generationJobs.projectId, input.projectId));
+          const committed = projectJobs.reduce((total, row) => total + (row.status === "reserved" || row.status === "running" ? u.billingCredits.parseCredits(row.quotedCredits) : row.status === "succeeded" ? u.billingCredits.parseCredits(row.capturedCredits) : 0n), 0n);
+          if (committed + quoted > budget) invalid("项目预算不足，已阻止本次生成", 402);
+        }
+      }
       const frozen = u.billingCredits.parseCredits(wallet.frozen);
       let balance = u.billingCredits.parseCredits(wallet.balance);
       if (account.isRoot && balance < u.billingCredits.parseCredits(10000000)) balance = u.billingCredits.parseCredits(99999999);

@@ -5,6 +5,7 @@ import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
 import { formatAgentError } from "@/agent/runtime/errors";
+import { requireProjectAccess } from "@/services/productionProjectService";
 
 const textPart = z.object({ type: z.literal("text"), text: z.string(), textSignature: z.string().optional() });
 const imagePart = z.object({ type: z.literal("image"), data: z.string(), mimeType: z.string().startsWith("image/") });
@@ -55,6 +56,8 @@ const contextSchema: z.ZodType<Context> = z.object({
 const inputSchema = z.object({
   providerId: z.string().min(1), modelId: z.string().min(1),
   context: contextSchema,
+  projectId: z.uuid().optional(),
+  maxTokens: z.number().int().min(256).max(32768).optional(),
   directory: z.string().min(1).max(4096).optional(),
   references: z.array(u.ai.aiReferenceSchema).max(32).optional(),
 });
@@ -62,6 +65,10 @@ const inputSchema = z.object({
 export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema.shape), async (req, res) => {
   const input = inputSchema.parse(req.body);
   const configured = await u.ai.getConfiguredModel(input.providerId, input.modelId);
+  if (input.projectId) {
+    const { project } = await requireProjectAccess(input.projectId, "create");
+    if (project.status !== "draft") throw Object.assign(new Error("剧本只能在尚未创建剧集的项目草稿中生成"), { status: 409 });
+  }
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const controller = new AbortController();
@@ -75,7 +82,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
     let send: ((event: object) => void) | undefined;
     try {
       const references = await u.ai.readAiReferences(directory, input.references ?? [], controller.signal, u.ai.getVideoInputCapability(input.providerId, input.modelId), configured.provider.apiKey);
-      const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey, directory);
+      const stream = u.ai.streamAi(configured, input.context, controller.signal, references, idempotencyKey, directory, { maxTokens: input.maxTokens, projectId: input.projectId, enforceProjectBudget: Boolean(input.projectId) });
       res.set({ "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
       res.flushHeaders();
       send = (event: object) => { if (!res.destroyed) res.write(`data: ${JSON.stringify(event)}\n\n`); };

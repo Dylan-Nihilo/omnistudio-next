@@ -94,6 +94,24 @@
         :disabled="!canvasId || !project?.directory" />
       <nodeSearch ref="nodeSearchRef" :disabled="!active || settingsVisible || !canvasId || !project?.directory" />
     </vue-flow>
+    <div v-if="showCanvasGuide" class="canvasGuide" aria-label="漫剧创作引导">
+      <div class="canvasGuidePanel">
+        <div class="canvasGuideMark" aria-hidden="true"><icon-sparkles :size="28" /></div>
+        <h2>双击添加节点</h2>
+        <p>或从下面开始画布创作吧！</p>
+        <div class="canvasGuideActions">
+          <uiButton
+            v-for="item in canvasGuideItems"
+            :key="item.key"
+            class="canvasGuideAction"
+            variant="secondary"
+            :icon="item.icon"
+            @click="startCanvasGuide(item.prompt)">
+            {{ item.label }}
+          </uiButton>
+        </div>
+      </div>
+    </div>
     <teleport to="body">
       <uiIconButton
         v-if="edgeDisconnect && findEdge(edgeDisconnect.id)"
@@ -118,9 +136,9 @@ import feedback from "@/lib/uiFeedback";
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, onScopeDispose, provide, ref, shallowReactive, shallowRef, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash-es";
-import { uiIconButton } from "@omnistudio-next/ui";
+import { uiButton, uiIconButton } from "@omnistudio-next/ui";
 import { storeToRefs } from "pinia";
-import { IconUnlink } from "@tabler/icons-vue";
+import { Icon3dCubeSphere, IconMovie, IconPhoto, IconScissors, IconScript, IconSparkles, IconUnlink, IconVideo } from "@tabler/icons-vue";
 import * as vueRuntime from "vue";
 import * as uiRuntime from "@omnistudio-next/ui";
 import * as tiptapRuntime from "@tiptap/core";
@@ -185,11 +203,19 @@ const props = withDefaults(defineProps<{
   resolveCanvasContext?: (canvasId: string) => CanvasContext | undefined;
   flushCanvases?: (action?: () => Promise<void>) => Promise<void>;
 }>(), { active: true, settingsVisible: false });
-const { project } = storeToRefs(useWorkspaceStore());
+const workspaceStore = useWorkspaceStore();
+const { project } = storeToRefs(workspaceStore);
 
 const canvasElement = ref<HTMLElement>();
 const flowData = ref<(Node | Edge)[]>([]);
 const canvasId = ref("");
+const canvasGuideItems = [
+  { key: "script", label: "剧本生成", icon: IconScript, prompt: "帮我从一个创意开始生成漫剧剧本，先和我确认题材、人物、集数和时长。" },
+  { key: "image", label: "图片生成", icon: IconPhoto, prompt: "帮我生成漫剧角色和场景的图片素材，先和我确认画风、构图和需要的资产。" },
+  { key: "video", label: "视频生成", icon: IconVideo, prompt: "帮我把当前漫剧创意拆成可生成的视频镜头，先和我确认分镜、时长和视频模型。" },
+  { key: "edit", label: "智能剪辑", icon: IconScissors, prompt: "帮我把当前漫剧素材整理成剪辑方案，先和我确认片段顺序、节奏、字幕和配乐。" },
+  { key: "director", label: "3D 导演台", icon: Icon3dCubeSphere, prompt: "帮我搭建漫剧 3D 导演台方案，先和我确认场景、机位、角色走位和镜头运动。" },
+] as const;
 const nodeMenuRef = ref<InstanceType<typeof nodeMenu>>();
 const canvasMenuRef = ref<InstanceType<typeof canvasMenu>>();
 const canvasControlsRef = ref<InstanceType<typeof canvasControls>>();
@@ -271,6 +297,15 @@ function getCanvasVersionValue() {
   return canvasId.value ? getCanvasVersion(toObject()) : "";
 }
 const canvasReady = computed(() => !!canvasId.value && !nodeListLoading.value && nodeLoads.size === 0);
+const showCanvasGuide = computed(() => props.active && !props.settingsVisible && canvasReady.value && flow.nodes.value.length === 0);
+function startCanvasGuide(prompt: string) {
+  const directory = project.value?.directory;
+  if (!directory) {
+    feedback.message({ tone: "warning", message: "请先打开一个工作区" });
+    return;
+  }
+  workspaceStore.pendingAgentMessage = { directory, prompt, model: "", reasoningEffort: "" };
+}
 provide("canvas", getCanvasContext);
 defineExpose({ canvasId, canvasReady, getCanvasContext, getCanvasVersion: getCanvasVersionValue, readDocumentNode, saveDocumentNode, flushSave: flushCanvasSave, cancelSave: cancelCanvasSave,
   getMentionNodes: () => flow.nodes.value, findMentionNode: flow.findNode,
@@ -917,6 +952,7 @@ const defaultEdgeOptions = markRaw({
 
 <style lang="scss" scoped>
 .canvas {
+  position: relative;
   width: 100%;
   height: 100%;
 
@@ -953,6 +989,44 @@ const defaultEdgeOptions = markRaw({
     padding: 8px;
     margin: -8px;
     border-radius: 4px;
+  }
+}
+.canvasGuide {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+  .canvasGuidePanel {
+    display: grid;
+    justify-items: center;
+    max-width: min(760px, 100%);
+    padding: 32px 36px 28px;
+    color: var(--uiTextPrimary);
+    text-align: center;
+    pointer-events: auto;
+    .canvasGuideMark {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      margin-bottom: 14px;
+      border: 1px solid color-mix(in srgb, var(--uiActionPrimary) 58%, transparent);
+      border-radius: 18px;
+      color: var(--uiActionPrimary);
+      background: radial-gradient(circle, color-mix(in srgb, var(--uiActionPrimary) 18%, transparent), transparent 70%);
+      box-shadow: 0 0 32px color-mix(in srgb, var(--uiActionPrimary) 22%, transparent);
+    }
+    h2 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.03em; }
+    p { margin: 9px 0 22px; color: var(--uiTextMuted); font-size: 13px; }
+    .canvasGuideActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .canvasGuideAction { min-width: 120px; border-color: color-mix(in srgb, var(--uiActionPrimary) 24%, var(--uiBorderControl)); background: color-mix(in srgb, var(--uiSurfaceRaised) 82%, transparent); box-shadow: var(--uiShadowPopover); :deep(.buttonLabel) { gap: 8px; } }
+  }
+  @media (max-width: 700px) {
+    padding: 16px;
+    .canvasGuidePanel { padding: 24px 18px; .canvasGuideActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .canvasGuideAction { width: 100%; min-width: 0; } }
   }
 }
 .edgeDisconnect {

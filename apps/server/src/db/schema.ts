@@ -307,9 +307,50 @@ export const productionProjects = mysqlTable("production_projects", {
   title: varchar("title", { length: 200 }).notNull(),
   status: mysqlEnum("status", ["draft", "scripted", "storyboarded", "generating", "editing", "review", "approved", "delivered"]).notNull().default("draft"),
   budgetCents: decimal("budget_cents", { precision: 26, scale: 6, unsigned: true }).notNull().default("0"),
+  creativeSettings: json("creative_settings").$type<{ genre: string; fusionGenres: string[]; style: string; aspectRatio: string; stylePrompt?: string; styleNegativePrompt?: string } | null>(),
   createdBy: varchar("created_by", { length: 36 }).notNull(),
   ...timestamps,
 }, table => ({ workspaceIndex: index("production_project_workspace_index").on(table.workspaceId, table.createdAt), creatorIndex: index("production_project_creator_index").on(table.createdBy) }));
+
+export const productionScriptDrafts = mysqlTable("production_script_drafts", {
+  projectId: varchar("project_id", { length: 36 }).primaryKey(),
+  revision: int("revision", { unsigned: true }).notNull().default(1),
+  draftData: json("draft_data").$type<Record<string, unknown>>().notNull(),
+  generationData: json("generation_data").$type<Record<string, unknown> | null>(),
+  updatedBy: varchar("updated_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ updatedByIndex: index("production_script_draft_updated_by_index").on(table.updatedBy, table.updatedAt) }));
+
+export const productionScriptRecords = mysqlTable("production_script_records", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  revision: int("revision", { unsigned: true }).notNull().default(1),
+  generationData: json("generation_data").$type<Record<string, unknown>>().notNull(),
+  confirmedSnapshot: json("confirmed_snapshot").$type<Record<string, unknown>>().notNull(),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({
+  projectRevisionIndex: uniqueIndex("production_script_record_project_revision_unique").on(table.projectId, table.revision),
+  creatorIndex: index("production_script_record_creator_index").on(table.createdBy, table.createdAt),
+}));
+
+export const productionProjectAssets = mysqlTable("production_project_assets", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  assetType: mysqlEnum("asset_type", ["character", "scene", "prop"]).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  visualDescription: text("visual_description"),
+  episodeIds: json("episode_ids").$type<string[] | null>(),
+  referencePath: varchar("reference_path", { length: 2048 }),
+  referenceMimeType: varchar("reference_mime_type", { length: 120 }),
+  referencePrompt: text("reference_prompt"),
+  referenceGenerationJobId: varchar("reference_generation_job_id", { length: 36 }),
+  referenceStatus: mysqlEnum("reference_status", ["none", "generating", "succeeded", "failed"]).notNull().default("none"),
+  referenceRevision: int("reference_revision", { unsigned: true }).notNull().default(0),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  ...timestamps,
+}, table => ({ projectIndex: index("production_project_asset_project_index").on(table.projectId, table.assetType, table.createdAt) }));
 
 export const productionSeasons = mysqlTable("production_seasons", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -437,6 +478,9 @@ export const schema = {
   providerHealth,
   platformModels,
   productionProjects,
+  productionScriptDrafts,
+  productionScriptRecords,
+  productionProjectAssets,
   productionSeasons,
   productionEpisodes,
   productionScenes,
