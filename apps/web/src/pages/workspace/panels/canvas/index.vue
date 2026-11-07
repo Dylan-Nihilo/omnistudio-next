@@ -94,6 +94,31 @@
         :disabled="!canvasId || !project?.directory" />
       <nodeSearch ref="nodeSearchRef" :disabled="!active || settingsVisible || !canvasId || !project?.directory" />
     </vue-flow>
+    <aside class="canvasToolbar nodrag nopan nowheel" aria-label="画布工具">
+      <uiTooltip content="添加节点" placement="right">
+        <uiIconButton :icon="IconPlus" label="添加节点" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="addNodeAtCenter" />
+      </uiTooltip>
+      <uiTooltip content="从本地上传" placement="right">
+        <uiIconButton :icon="IconUpload" label="从本地上传" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="selectFiles(centerCanvasPosition())" />
+      </uiTooltip>
+      <uiTooltip :content="assetsVisible ? '关闭素材库' : '打开素材库'" placement="right">
+        <uiIconButton :icon="IconFolders" label="素材库" :aria-pressed="assetsVisible" :class="{ isActive: assetsVisible }" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="assetsVisible = !assetsVisible" />
+      </uiTooltip>
+      <div class="toolbarDivider" role="separator" />
+      <uiTooltip content="选择 / 移动" placement="right">
+        <uiIconButton :icon="IconPointer" label="选择 / 移动" :aria-pressed="selectedTool === 'move'" :class="{ isActive: selectedTool === 'move' }" :disabled="!props.active || props.settingsVisible" @click="selectedTool = 'move'" />
+      </uiTooltip>
+      <uiTooltip content="拖动画布" placement="right">
+        <uiIconButton :icon="IconHandTwoFingers" label="拖动画布" :aria-pressed="selectedTool === 'hand'" :class="{ isActive: selectedTool === 'hand' }" :disabled="!props.active || props.settingsVisible" @click="selectedTool = 'hand'" />
+      </uiTooltip>
+      <div class="toolbarDivider" role="separator" />
+      <uiTooltip content="撤销" placement="right">
+        <uiIconButton :icon="IconArrowBackUp" label="撤销" :disabled="!canUndo || !props.active || props.settingsVisible" @click="changeHistory('undo')" />
+      </uiTooltip>
+      <uiTooltip content="重做" placement="right">
+        <uiIconButton :icon="IconArrowForwardUp" label="重做" :disabled="!canRedo || !props.active || props.settingsVisible" @click="changeHistory('redo')" />
+      </uiTooltip>
+    </aside>
     <div v-if="showCanvasGuide" class="canvasGuide" aria-label="漫剧创作引导">
       <div class="canvasGuidePanel">
         <div class="canvasGuideMark" aria-hidden="true"><icon-sparkles :size="28" /></div>
@@ -136,9 +161,9 @@ import feedback from "@/lib/uiFeedback";
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, onScopeDispose, provide, ref, shallowReactive, shallowRef, watch } from "vue";
 import axios from "axios";
 import { debounce } from "lodash-es";
-import { uiButton, uiIconButton } from "@omnistudio-next/ui";
+import { uiButton, uiIconButton, uiTooltip } from "@omnistudio-next/ui";
 import { storeToRefs } from "pinia";
-import { Icon3dCubeSphere, IconMovie, IconPhoto, IconScissors, IconScript, IconSparkles, IconUnlink, IconVideo } from "@tabler/icons-vue";
+import { Icon3dCubeSphere, IconArrowBackUp, IconArrowForwardUp, IconFolders, IconHandTwoFingers, IconMovie, IconPhoto, IconPointer, IconPlus, IconScissors, IconScript, IconSparkles, IconUnlink, IconUpload, IconVideo } from "@tabler/icons-vue";
 import * as vueRuntime from "vue";
 import * as uiRuntime from "@omnistudio-next/ui";
 import * as tiptapRuntime from "@tiptap/core";
@@ -459,6 +484,17 @@ function addNodeAtPointer() {
   if (!rect) return;
   const position = pointerPosition ?? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   void nodeMenuRef.value?.openMenu(new MouseEvent("contextmenu", { clientX: position.x, clientY: position.y }), true);
+}
+
+function addNodeAtCenter() {
+  const rect = canvasElement.value?.getBoundingClientRect();
+  if (!rect) return;
+  void nodeMenuRef.value?.openMenu(new MouseEvent("contextmenu", { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }), true);
+}
+
+function centerCanvasPosition() {
+  const rect = canvasElement.value?.getBoundingClientRect();
+  return rect ? screenToFlowCoordinate({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }) : { x: 0, y: 0 };
 }
 
 async function changeHistory(direction: "undo" | "redo") {
@@ -990,6 +1026,26 @@ const defaultEdgeOptions = markRaw({
     margin: -8px;
     border-radius: 4px;
   }
+}
+.canvasToolbar {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 5px;
+  border: 1px solid var(--uiBorderControl);
+  border-radius: 24px;
+  background: var(--uiSurfaceRaised);
+  box-shadow: var(--uiShadowPopover);
+  transform: translateY(-50%);
+  .isActive { color: var(--uiActionPrimary); background: var(--uiActionSoft); }
+  .toolbarDivider { width: 24px; height: 1px; margin: 3px 0; background: var(--uiBorderDefault); }
+  @media (max-height: 480px) { top: 12px; transform: none; }
+  @media (max-width: 520px) { left: 8px; gap: 2px; padding: 5px 3px; }
 }
 .canvasGuide {
   position: absolute;
