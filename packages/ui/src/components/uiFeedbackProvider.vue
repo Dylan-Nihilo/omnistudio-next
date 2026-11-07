@@ -10,8 +10,8 @@
       </div>
       <uiDialog v-if="request" :key="request.id" :modelValue="true" :title="request.title" :width="480" :showClose="!validating" :closeOnClickModal="request.closeOnClickModal ?? false" :closeOnPressEscape="(request.closeOnPressEscape ?? true) && !validating" @update:modelValue="value => !value && finish('close')">
         <div class="boxMessage"><uiContentRenderer :content="request.message" /></div>
-        <uiField v-if="request.kind === 'prompt'" class="boxField" :label="request.title" :error="inputError">
-          <template #default="{ id, describedBy, invalid }"><uiInput ref="promptInput" :id="id" v-model="inputValue" :type="request.inputType" :disabled="validating" :placeholder="request.inputPlaceholder" :error="invalid" :aria-describedby="describedBy" autofocus @keydown.enter="handleInputEnter" /></template>
+        <uiField v-if="request.kind === 'prompt'" class="boxField" :error="inputError">
+          <template #default="{ id, describedBy, invalid }"><uiInput ref="promptInput" :id="id" v-model="inputValue" :type="request.inputType" :disabled="validating" :placeholder="request.inputPlaceholder" :error="invalid" :aria-label="request.title" :aria-describedby="describedBy" autofocus @keydown.enter="handleInputEnter" /></template>
         </uiField>
         <template #footer>
           <uiButton v-if="request.kind !== 'alert'" variant="secondary" :disabled="validating" @click="finish('cancel')">{{ request.cancelButtonText ?? '取消' }}</uiButton>

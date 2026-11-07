@@ -58,12 +58,13 @@ defineExpose({ focus, blur, select, clear, input });
   background: var(--uiBackgroundSubtle); cursor: text; transition: border-color var(--uiMotionDuration) var(--uiMotionEase);
   &.sizeSmall { --inputHeight: var(--uiControlSmall); }
   &.sizeLarge { --inputHeight: var(--uiControlLarge); }
-  &:focus-within { border-color: var(--uiBorderFocus); outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; }
+  &:focus-within { border-color: var(--uiBorderFocus); }
   &.isError { border-color: var(--uiStatusError); }
   &.isDisabled { background: var(--uiStateDisabled); border-color: var(--uiBorderDefault); cursor: not-allowed; }
   input {
     min-width: 0; width: 100%; min-height: calc(var(--inputHeight) - 2px); padding: 0; border: 0; outline: 0;
     font-size: var(--uiFontControl); line-height: 1.5; color: var(--uiTextPrimary); background: transparent;
+    &:focus-visible { outline: none; }
     &::placeholder { color: var(--uiTextMuted); }
     &:disabled { color: var(--uiStateDisabledText); cursor: not-allowed; }
   }
