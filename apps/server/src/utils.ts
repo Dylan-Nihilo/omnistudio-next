@@ -25,6 +25,7 @@ import * as mentionFiles from "@/agent/mentionFiles";
 import * as demos from "@/utils/demos";
 import * as billingCredits from "@/utils/billing/credits";
 import * as productionScriptDraft from "@/utils/productionProject/scriptDraftSchemas";
+import * as editorMediaCache from "@/utils/editorMedia/cache";
 
 export default {
   assets,
@@ -55,4 +56,5 @@ export default {
   demos,
   billingCredits,
   productionScriptDraft,
+  editorMediaCache,
 };

@@ -69,7 +69,7 @@ export async function composeVideos(
         resolve();
       });
 
-      command.concat(outputPath);
+      command.composeVideos(inputPaths, outputPath);
     } catch (err) {
       cleanup();
       reject(err);

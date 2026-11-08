@@ -6,18 +6,19 @@
         <div class="projectTitle"><strong>剪辑台</strong><span>{{ workspaceStore.project?.name || "未命名项目" }}</span></div>
       </div>
       <div class="headerActions">
-        <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || projectLoading || importBusy || sourceImportBusy || exportBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
+        <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
-        <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || sourceImportBusy || exportBusy" @click="openRecovery">项目恢复</button>
-        <button class="exportButton" type="button" :disabled="!canExport || exportBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
+        <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
+        <button class="exportButton" type="button" :disabled="!canExport || exportBusy || exportRecordBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
       </div>
     </header>
     <section v-if="!directory" class="noProject"><icon-movie :size="40" /><h1>请先打开项目</h1><button class="secondaryButton" @click="router.push('/workspace')">返回工作区</button></section>
     <template v-else>
-      <div v-if="draftAvailable" class="noticeBar" role="status"><span>发现尚未保存的本地草稿，恢复前会保留当前工程备份。</span><button @click="restoreDraft">恢复草稿</button><button @click="discardDraft">忽略草稿</button></div>
-      <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button></div>
+      <div v-if="draftAvailable" class="noticeBar" role="status"><span>发现尚未保存的本地草稿，恢复前会保留当前工程备份。</span><button :disabled="exportRecordBusy" @click="restoreDraft">恢复草稿</button><button :disabled="exportRecordBusy" @click="discardDraft">忽略草稿</button></div>
+      <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy || exportRecordBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button></div>
       <div v-if="saveBlocked" class="noticeBar errorNotice" role="alert"><span>项目已被其他窗口修改。当前编辑保留为本地草稿，请重新读取后选择是否恢复。</span><button @click="reloadProject">重新读取项目</button></div>
-      <div v-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button @click="openRecovery">从备份恢复</button></div>
+      <div v-if="saveRetryable" class="noticeBar errorNotice" role="alert"><span>{{ saveError }}当前更改已保留为本地草稿。</span><button type="button" :disabled="saveBusy" @click="saveProject">重试保存</button></div>
+      <div v-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button :disabled="exportRecordBusy" @click="openRecovery">从备份恢复</button></div>
       <div class="editorBody" :class="{ isUnavailable: !projectReady }">
         <aside class="mediaPanel" @dragover.prevent @drop.prevent="dropFiles">
           <nav class="sideNav" aria-label="剪辑工具">
@@ -38,6 +39,11 @@
                 <button class="tinyAction" type="button" :aria-label="`预览源素材 ${asset.name}`" title="预览源素材，设置入出点" @click.stop="openSourceAsset(asset)"><icon-player-play :size="14" /></button>
                 <button class="tinyAction" type="button" :aria-label="`重新链接 ${asset.name}`" title="重新链接素材" :disabled="!canEdit" @click.stop="chooseRelink(asset)"><icon-link :size="14" /></button>
                 <button class="tinyAction" type="button" :aria-label="`添加 ${asset.name} 到时间线`" :disabled="!canEdit || missingAssetIds.includes(asset.id)" @click.stop="addAssetToTimeline(asset)"><icon-plus :size="15" /></button>
+                <div v-if="asset.kind === 'video' || asset.kind === 'audio'" class="cacheControls" @click.stop>
+                  <span class="cacheState" :class="{ hasError: cacheError(asset) }" :title="cacheStatusText(asset)">{{ cacheStatusText(asset) }}</span>
+                  <button type="button" class="cacheButton" :disabled="!canEdit || missingAssetIds.includes(asset.id) || cacheBusyIds.has(asset.id) || cacheStatus(asset)?.state === 'processing'" @click="toggleMediaCache(asset)">{{ cacheActionText(asset) }}</button>
+                  <button v-if="cachePreparingIds.has(asset.id)" type="button" class="cacheButton cancelCacheButton" @click="cancelMediaCache(asset)">取消</button>
+                </div>
               </div>
             </div>
             <button class="dropHint" :disabled="!canEdit" @click="fileInput?.click()">拖入视频 / 音频 / 图片 · 单文件最大 8 GiB</button>
@@ -69,9 +75,9 @@
                 <template v-for="clip in activeVisualClips" :key="clip.id">
                   <editorText v-if="clip.kind === 'text'" :clip="clip" :width="textRenderSize.width" :height="textRenderSize.height" :style="{ opacity: textOpacity(clip) }" />
                   <img v-else-if="clip.kind === 'image'" class="previewVideo" :src="assetUrl(clip)" :style="visualStyle(clip)" alt="" @error="mediaFailed(clip)" />
-                  <video v-else :ref="element => setVideoElement(clip.id, element)" class="previewVideo" :src="assetUrl(clip)" :style="visualStyle(clip)" muted playsinline preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></video>
+                  <video v-else :ref="element => setVideoElement(clip.id, element)" class="previewVideo" :src="previewAssetUrl(clip)" :style="visualStyle(clip)" muted playsinline preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></video>
                 </template>
-                <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="assetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers"></audio>
+                <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="previewAssetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers"></audio>
                 <div v-if="!clips.length" class="previewEmpty"><icon-movie :size="38" /><span>将素材添加到时间线</span></div>
               </div></div>
               <div v-if="previewError" class="previewAlert" role="alert">{{ previewError }}<button aria-label="关闭提示" @click="previewError = ''">×</button></div>
@@ -84,7 +90,10 @@
             </section>
             <editorSource v-if="previewMode !== 'program' && sourceAsset" class="sourceMonitorPanel" :asset="sourceAsset" :url="sourceAssetUrl" :frameRate="frameRate" :disabled="!canEdit" @focusin="stopPlayback" @insert="insertSourceSelection" />
           </div>
-          <editorDelivery v-if="lastExport" :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery>
+          <editorDelivery v-if="lastExport" :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport || exportRecordBusy"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport || exportRecordBusy" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery>
+          <p v-if="exportRecordError" class="exportError" role="alert">{{ exportRecordError }}<button v-if="lastExport && !exportRecordSaved" class="secondaryButton" type="button" :disabled="exportRecordBusy || !canRegisterExport" @click="persistLastExport">{{ exportRecordBusy ? '正在保存记录…' : '重试保存导出记录' }}</button></p>
+          <p v-else-if="exportRecordBusy" class="exportStale" role="status">正在核验导出记录…</p>
+          <p v-else-if="lastExport && exportRecordSaved" class="exportStale" role="status">导出记录已保存，重新打开此工程后可继续登记与回写。</p>
           <p v-if="lastExport && !canRegisterExport" class="exportStale" role="status">工程已变更或正在保存，请重新导出后登记与回写。</p>
         </section>
         <aside class="inspectorPanel">
@@ -141,7 +150,8 @@
             </div></div>
             <div class="trackContent">
               <button v-for="clip in clips.filter(item => item.track === track.id)" :key="clip.id" class="timelineClip" :class="[clip.kind, { isSelected: selectedClipId === clip.id }]" :style="clipStyle(clip)" :title="`${clip.title} · ${formatTime(clipDuration(clip))}`" :aria-label="`片段 ${clip.title}`" @pointerdown.stop="startClipDrag($event, clip)" @click.stop="selectClip(clip)">
-                <editorFilmstrip v-if="clip.kind === 'video' || clip.kind === 'image'" :source="assetUrl(clip)" :kind="clip.kind" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :frameRate="frameRate" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" :generator="thumbnailGenerator" />
+                <editorFilmstrip v-if="clip.kind === 'video' || clip.kind === 'image'" :source="assetUrl(clip)" :kind="clip.kind" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :frameRate="frameRate" :thumbnailSprite="cachedMediaById.get(clip.assetId ?? '')?.thumbnailSprite" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" :generator="thumbnailGenerator" />
+                <editorAudioWaveform v-if="(clip.kind === 'audio' || (clip.kind === 'video' && assets.find(asset => asset.id === clip.assetId)?.hasAudio)) && waveformForClip(clip)" :peaks="waveformForClip(clip)!.peaks" :duration="waveformForClip(clip)!.duration" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" />
                 <span class="clipTitle">{{ clip.title }}</span><span class="clipDuration">{{ formatTime(clipDuration(clip)) }}</span>
                 <span class="trimHandle leftHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'left')"></span><span class="trimHandle rightHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'right')"></span>
               </button>
@@ -153,8 +163,8 @@
       </section>
     </template>
     <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
-    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
-    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false"><div class="recoveryDialog editorProjectsDialog"><h2>剪辑工程</h2><p>每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。</p><label class="fieldLabel" for="newEditorProjectName">新建工程</label><div class="buttonRow"><input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" @keydown.enter.prevent="createEditorProjectFromDialog" /><button class="exportButton" :disabled="!newEditorProjectName || projectBusy" @click="createEditorProjectFromDialog">新建</button></div><div v-if="editorProjectOptions.length" class="editorProjectList"><button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: item.path === activeEditorProjectPath }" :disabled="projectBusy || item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)"><span><strong>{{ item.name }}</strong><small>{{ item.path }}</small></span><span>{{ item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span></button></div><p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p><div class="buttonRow"><button class="secondaryButton" @click="editorProjectsOpen = false">关闭</button></div></div></div>
+    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
+    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false"><div class="recoveryDialog editorProjectsDialog"><h2>剪辑工程</h2><p>每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。</p><label class="fieldLabel" for="newEditorProjectName">新建工程</label><div class="buttonRow"><input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" :disabled="exportRecordBusy" @keydown.enter.prevent="createEditorProjectFromDialog" /><button class="exportButton" :disabled="!newEditorProjectName || projectBusy || exportRecordBusy" @click="createEditorProjectFromDialog">新建</button></div><div v-if="editorProjectOptions.length" class="editorProjectList"><button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: item.path === activeEditorProjectPath }" :disabled="projectBusy || exportRecordBusy || item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)"><span><strong>{{ item.name }}</strong><small>{{ item.path }}</small></span><span>{{ item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span></button></div><p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="editorProjectsOpen = false">关闭</button></div></div></div>
     <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportController?.signal.aborted ? '正在停止导出' : '正在导出视频' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportController?.signal.aborted" @click="exportController?.abort()">取消导出</button></div></div>
   </main>
 </template>
@@ -165,12 +175,14 @@ import axios from "axios";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
-import { getSessionSnapshot } from "@/lib/sessionState";
+import { getSessionSnapshot, sessionInvalidated } from "@/lib/sessionState";
 import { clipDuration, clipKeyframeValue, createDefaultTracks, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
 import { backupEditorContent, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
 import { exportEditorProject } from "./editorExport";
 import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slipEditClip } from "./editorTimeline";
 import { createTimelineThumbnailGenerator } from "./editorThumbnails";
+import type { ApiResponse } from "@/lib/authApi";
+import editorAudioWaveform from "./editorAudioWaveform.vue";
 import editorFilmstrip from "./editorFilmstrip.vue";
 import editorMediaPicker from "./editorMediaPicker.vue";
 import editorDelivery from "./editorDelivery.vue";
@@ -180,7 +192,11 @@ import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, Ic
 
 type ProjectContext = { directory: string; projectPath: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };
 type PendingSave = { context: ProjectContext; project: EditorProject; sequence: number };
+type EditorExportRecord = { id: string; projectPath: string; revision: string; exportPath: string };
 type DragState = { clipId?: string; element?: HTMLElement; startX: number; startY: number; start?: number; inPoint?: number; outPoint?: number; keyframes?: EditorKeyframe[]; edge?: "left" | "right"; playhead?: boolean; historySaved?: boolean; mode?: "select" | "ripple" | "roll" | "slip"; clips?: EditorClip[]; track?: string };
+type EditorCacheStatus = { state: "missing" | "stale" | "processing" | "ready"; proxyPath?: string; thumbnails?: { path: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { path: string; duration?: number; peaks: number[] }; duration?: number };
+type EditorCacheEntry = { path: string; status: EditorCacheStatus };
+type CachedMedia = { proxyUrl?: string; thumbnailSprite?: { url: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { duration: number; peaks: number[] } };
 type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "fontSize" | "textX" | "textY";
 const router = useRouter();
 const route = useRoute();
@@ -214,6 +230,10 @@ const precisionFrames = ref(1);
 const editError = ref("");
 const mediaFilter = ref<"all" | MediaKind>("all");
 const assets = ref<EditorAsset[]>([]);
+const cacheStates = ref(new Map<string, EditorCacheEntry>());
+const cacheErrors = ref(new Map<string, { path: string; message: string }>());
+const cacheBusyIds = ref(new Set<string>());
+const cachePreparingIds = ref(new Set<string>());
 const clips = ref<EditorClip[]>([]);
 const tracks = ref<EditorTrack[]>(createDefaultTracks());
 const aspectRatio = ref("16:9");
@@ -237,6 +257,7 @@ const importController = shallowRef<AbortController>();
 const saveBusy = ref(false);
 const savePending = ref(false);
 const saveBlocked = ref(false);
+const saveRetryable = ref(false);
 const projectLoading = ref(false);
 const loadedDirectory = ref<string>();
 const activeEditorProjectPath = ref(legacyEditorProjectPath);
@@ -261,7 +282,13 @@ const exportError = ref("");
 const exportBusy = ref(false);
 const exportProgress = ref<number>();
 const exportController = shallowRef<AbortController>();
+const cacheStatusController = shallowRef<AbortController>();
 const lastExport = ref<{ id: string; directory: string; url: string; name: string; path: string; projectPath: string; revision: string; sourceReferences: { type: string; id: string; label?: string }[] }>();
+const exportRecordError = ref("");
+const exportRecordSaved = ref(false);
+const exportRecordBusy = ref(false);
+let exportRecordController: AbortController | undefined;
+let exportRecordVersion = 0;
 const fileInput = ref<HTMLInputElement>();
 const relinkInput = ref<HTMLInputElement>();
 const subtitleInput = ref<HTMLInputElement>();
@@ -297,6 +324,9 @@ let releaseDragEvents: (() => void) | undefined;
 let dragState: DragState | undefined;
 let draggedClipId: string | undefined;
 let relinkAssetId: string | undefined;
+let cacheGeneration = 0;
+let cachePollTimer: ReturnType<typeof setTimeout> | undefined;
+const cacheControllers = new Map<string, AbortController>();
 let mounted = true;
 let audioContext: AudioContext | undefined;
 let audioLimiter: DynamicsCompressorNode | undefined;
@@ -306,7 +336,7 @@ const projectReady = computed(() => !!directory.value && loadedDirectory.value =
 const canRegisterExport = computed(() => !!lastExport.value && projectReady.value && activeEditorProjectPath.value === lastExport.value.projectPath && !saveBlocked.value && !saveError.value && !saveBusy.value && !savePending.value && !exportBusy.value && !sourceImportBusy.value && getProjectContent() === exportedProjectContent.value);
 const exportedProjectContent = ref("");
 const returnCanvasPath = computed(() => assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
-const canEdit = computed(() => projectReady.value && !importBusy.value && !sourceImportBusy.value && !projectBusy.value && !exportBusy.value);
+const canEdit = computed(() => projectReady.value && !importBusy.value && !sourceImportBusy.value && !projectBusy.value && !exportBusy.value && !exportRecordBusy.value);
 const selectedClip = computed(() => clips.value.find(clip => clip.id === selectedClipId.value));
 const sourceAsset = computed(() => assets.value.find(asset => asset.id === sourceAssetId.value));
 const sourceAssetUrl = computed(() => mediaUrls.value.get(sourceAssetId.value ?? ""));
@@ -357,6 +387,23 @@ const mediaUrls = computed(() => {
   const files = useWorkspaceFiles(directory.value);
   return new Map(assets.value.filter(asset => !missingAssetIds.value.includes(asset.id)).map(asset => [asset.id, files.mediaUrl(asset.path)]));
 });
+const cacheSignature = computed(() => JSON.stringify([directory.value, missingAssetIds.value, assets.value.filter(asset => asset.kind === "video" || asset.kind === "audio").map(asset => [asset.id, asset.path])]));
+const cachedMediaById = computed(() => {
+  if (!directory.value) return new Map<string, CachedMedia>();
+  const files = useWorkspaceFiles(directory.value);
+  const result = new Map<string, CachedMedia>();
+  for (const asset of assets.value) {
+    const entry = cacheStates.value.get(asset.id);
+    if (!entry || entry.path !== asset.path || entry.status.state !== "ready") continue;
+    const status = entry.status;
+    result.set(asset.id, {
+      ...(status.proxyPath ? { proxyUrl: files.mediaUrl(status.proxyPath) } : {}),
+      ...(status.thumbnails ? { thumbnailSprite: { ...status.thumbnails, url: files.mediaUrl(status.thumbnails.path) } } : {}),
+      ...(status.waveform ? { waveform: { duration: status.waveform.duration ?? status.duration ?? asset.duration, peaks: status.waveform.peaks } } : {}),
+    });
+  }
+  return result;
+});
 const rulerTicks = computed(() => {
   const desiredStep = 90 / zoom.value;
   const magnitude = 10 ** Math.floor(Math.log10(Math.max(1, desiredStep)));
@@ -371,6 +418,12 @@ watch(directory, (next, previous) => {
   if (pendingSave && !saveBlocked.value) void saveProject();
   importController.value?.abort();
   exportController.value?.abort();
+  cacheStatusController.value?.abort();
+  if (cachePollTimer) clearTimeout(cachePollTimer);
+  for (const controller of cacheControllers.values()) controller.abort();
+  cacheControllers.clear();
+  cacheBusyIds.value = new Set();
+  cachePreparingIds.value = new Set();
   projectVersion++;
   stopPlayback();
   clearEditor();
@@ -379,8 +432,10 @@ watch(directory, (next, previous) => {
     void loadProject(next, activeEditorProjectPath.value);
   }
 }, { immediate: true, flush: "sync" });
-watch([projectReady, sourceImportKey], ([ready, key]) => {
-  if (ready && (route.query.canvasPath || route.query.variantIds || route.query.variantId) && key !== processedSourceImportKey.value) void importEditorSources();
+watch(cacheSignature, () => { void refreshCacheStatuses(); }, { immediate: true, flush: "post" });
+watch(sessionInvalidated, value => { if (value) invalidateExportIdentity(); });
+watch([projectReady, sourceImportKey, exportRecordBusy], ([ready, key, recordBusy]) => {
+  if (ready && !recordBusy && (route.query.canvasPath || route.query.variantIds || route.query.variantId) && key !== processedSourceImportKey.value) void importEditorSources();
 }, { immediate: true, flush: "post" });
 watch([assets, clips, tracks, aspectRatio, frameRate, exportHeight, exportQuality, editorProjectName], scheduleSave, { deep: true, flush: "sync" });
 watch([currentTime, clips, tracks], syncPlayers, { deep: true, flush: "post" });
@@ -406,6 +461,7 @@ watch(timelineViewport, element => {
   updateTimelineViewport();
 });
 onMounted(() => {
+  window.addEventListener("omnistudio-next:account-changed", invalidateExportIdentity);
   window.addEventListener("keydown", onEditorKeydown);
   window.addEventListener("beforeunload", handleBeforeUnload);
   playbackTime = performance.now();
@@ -417,12 +473,19 @@ onMounted(() => {
   }, 20);
 });
 onBeforeRouteLeave(async () => {
-  if (importBusy.value || sourceImportBusy.value || exportBusy.value) return false;
+  if (importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value) return false;
   stopPlayback();
   return await saveProject();
 });
 onBeforeUnmount(() => {
   mounted = false;
+  exportRecordController?.abort();
+  window.removeEventListener("omnistudio-next:account-changed", invalidateExportIdentity);
+  cacheStatusController.value?.abort();
+  if (cachePollTimer) clearTimeout(cachePollTimer);
+  for (const controller of cacheControllers.values()) controller.abort();
+  cacheControllers.clear();
+  cachePreparingIds.value = new Set();
   projectVersion++;
   window.removeEventListener("keydown", onEditorKeydown);
   window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -457,6 +520,11 @@ function applyProject(project: EditorProject) {
   applyingProject = false;
 }
 function clearEditor() {
+  exportRecordController?.abort();
+  exportRecordVersion++;
+  exportRecordError.value = "";
+  exportRecordSaved.value = false;
+  exportRecordBusy.value = false;
   thumbnailGenerator.value.dispose();
   thumbnailGenerator.value = createTimelineThumbnailGenerator();
   applyingProject = true;
@@ -480,6 +548,7 @@ function clearEditor() {
   exportBusy.value = false;
   saveBlocked.value = false;
   saveError.value = "";
+  saveRetryable.value = false;
   previewError.value = "";
   editError.value = "";
   exportError.value = "";
@@ -528,6 +597,161 @@ function visualStyle(clip: EditorClip) {
 }
 function textOpacity(clip: EditorClip) { return (clip.opacity ?? 1) * fadeLevel(clip); }
 function assetUrl(clip: EditorClip) { return mediaUrls.value.get(clip.assetId ?? ""); }
+function previewAssetUrl(clip: EditorClip) { return cachedMediaById.value.get(clip.assetId ?? "")?.proxyUrl ?? assetUrl(clip); }
+function waveformForClip(clip: EditorClip) { return cachedMediaById.value.get(clip.assetId ?? "")?.waveform; }
+function cacheStatus(asset: EditorAsset) {
+  const entry = cacheStates.value.get(asset.id);
+  return entry?.path === asset.path ? entry.status : undefined;
+}
+function cacheError(asset: EditorAsset) {
+  const entry = cacheErrors.value.get(asset.id);
+  return entry?.path === asset.path ? entry.message : "";
+}
+function cacheStatusText(asset: EditorAsset) {
+  const error = cacheError(asset);
+  if (error) return error;
+  const state = cacheStatus(asset)?.state;
+  if (state === "ready") return asset.kind === "video" ? "代理与逐帧缓存就绪" : "波形缓存就绪";
+  if (state === "stale") return "缓存已过期";
+  if (state === "processing") return "缓存处理中";
+  return "尚未生成缓存";
+}
+function cacheActionText(asset: EditorAsset) {
+  if (cacheBusyIds.value.has(asset.id)) return "正在处理";
+  const state = cacheStatus(asset)?.state;
+  if (state === "ready") return "清理缓存";
+  if (state === "stale") return "重新生成";
+  if (cacheError(asset)) return "重试生成";
+  return "生成缓存";
+}
+function setCacheState(asset: EditorAsset, targetDirectory: string, status: EditorCacheStatus) {
+  if (directory.value !== targetDirectory || !assets.value.some(item => item.id === asset.id && item.path === asset.path)) return;
+  const next = new Map(cacheStates.value);
+  next.set(asset.id, { path: asset.path, status });
+  cacheStates.value = next;
+}
+function setCacheError(asset: EditorAsset, targetDirectory: string, message: string) {
+  if (directory.value !== targetDirectory || !assets.value.some(item => item.id === asset.id && item.path === asset.path)) return;
+  const next = new Map(cacheErrors.value);
+  next.set(asset.id, { path: asset.path, message });
+  cacheErrors.value = next;
+}
+function cacheRequestError(error: unknown, fallback: string) {
+  return axios.isAxiosError<ApiResponse<unknown>>(error) ? error.response?.data?.message || fallback : error instanceof Error ? error.message : fallback;
+}
+async function fetchCacheStatus(asset: EditorAsset, targetDirectory: string, signal: AbortSignal) {
+  const { data } = await axios.get<ApiResponse<EditorCacheStatus>>("/api/videoEditor/cache/status", { params: { directory: targetDirectory, path: asset.path }, signal });
+  return data.data;
+}
+async function refreshCacheStatuses() {
+  cacheStatusController.value?.abort();
+  const controller = new AbortController();
+  cacheStatusController.value = controller;
+  const generation = ++cacheGeneration;
+  const targetDirectory = directory.value;
+  if (!targetDirectory) {
+    cacheStates.value = new Map();
+    cacheErrors.value = new Map();
+    return;
+  }
+  const targets = assets.value.filter(asset => (asset.kind === "video" || asset.kind === "audio") && !missingAssetIds.value.includes(asset.id));
+  const targetIds = new Set(targets.map(asset => asset.id));
+  cacheStates.value = new Map([...cacheStates.value].filter(([id, entry]) => targetIds.has(id) && targets.some(asset => asset.id === id && asset.path === entry.path)));
+  cacheErrors.value = new Map([...cacheErrors.value].filter(([id, entry]) => targetIds.has(id) && targets.some(asset => asset.id === id && asset.path === entry.path)));
+  let offset = 0;
+  const worker = async () => {
+    while (!controller.signal.aborted && offset < targets.length) {
+      const asset = targets[offset++];
+      if (!asset) return;
+      try {
+        const status = await fetchCacheStatus(asset, targetDirectory, controller.signal);
+        if (generation === cacheGeneration) setCacheState(asset, targetDirectory, status);
+      } catch (error) {
+        if (!controller.signal.aborted && generation === cacheGeneration) setCacheError(asset, targetDirectory, cacheRequestError(error, "读取缓存状态失败"));
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, targets.length) }, worker));
+  if (!controller.signal.aborted && generation === cacheGeneration && [...cacheStates.value.values()].some(entry => entry.status.state === "processing")) {
+    cachePollTimer = setTimeout(() => { void refreshCacheStatuses(); }, 1500);
+  }
+}
+async function toggleMediaCache(asset: EditorAsset) {
+  if (cacheStatus(asset)?.state === "ready") await clearMediaCache(asset);
+  else await prepareMediaCache(asset);
+}
+async function prepareMediaCache(asset: EditorAsset) {
+  const targetDirectory = directory.value;
+  if (!targetDirectory || !canEdit.value || missingAssetIds.value.includes(asset.id)) return;
+  cacheControllers.get(asset.id)?.abort();
+  const controller = new AbortController();
+  cacheControllers.set(asset.id, controller);
+  cacheBusyIds.value = new Set(cacheBusyIds.value).add(asset.id);
+  cachePreparingIds.value = new Set(cachePreparingIds.value).add(asset.id);
+  const nextErrors = new Map(cacheErrors.value);
+  nextErrors.delete(asset.id);
+  cacheErrors.value = nextErrors;
+  setCacheState(asset, targetDirectory, { state: "processing" });
+  try {
+    const { data } = await axios.post<ApiResponse<EditorCacheStatus>>("/api/videoEditor/cache/prepare", { directory: targetDirectory, path: asset.path }, { signal: controller.signal });
+    setCacheState(asset, targetDirectory, data.data);
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      const nextStates = new Map(cacheStates.value);
+      nextStates.delete(asset.id);
+      cacheStates.value = nextStates;
+      setCacheError(asset, targetDirectory, cacheRequestError(error, "缓存生成失败"));
+    }
+  } finally {
+    if (cacheControllers.get(asset.id) === controller) {
+      cacheControllers.delete(asset.id);
+      const nextBusy = new Set(cacheBusyIds.value);
+      nextBusy.delete(asset.id);
+      cacheBusyIds.value = nextBusy;
+      const nextPreparing = new Set(cachePreparingIds.value);
+      nextPreparing.delete(asset.id);
+      cachePreparingIds.value = nextPreparing;
+      if (controller.signal.aborted) void refreshCacheStatuses();
+    }
+  }
+}
+async function clearMediaCache(asset: EditorAsset) {
+  const targetDirectory = directory.value;
+  if (!targetDirectory || !canEdit.value || missingAssetIds.value.includes(asset.id)) return;
+  const controller = new AbortController();
+  cacheControllers.set(asset.id, controller);
+  cacheBusyIds.value = new Set(cacheBusyIds.value).add(asset.id);
+  const nextErrors = new Map(cacheErrors.value);
+  nextErrors.delete(asset.id);
+  cacheErrors.value = nextErrors;
+  try {
+    await axios.post<ApiResponse<{ cleared: boolean }>>("/api/videoEditor/cache/clear", { directory: targetDirectory, path: asset.path }, { signal: controller.signal });
+    const status = await fetchCacheStatus(asset, targetDirectory, controller.signal);
+    setCacheState(asset, targetDirectory, status);
+  } catch (error) {
+    if (!controller.signal.aborted) setCacheError(asset, targetDirectory, cacheRequestError(error, "清理缓存失败"));
+  } finally {
+    if (cacheControllers.get(asset.id) === controller) {
+      cacheControllers.delete(asset.id);
+      const nextBusy = new Set(cacheBusyIds.value);
+      nextBusy.delete(asset.id);
+      cacheBusyIds.value = nextBusy;
+    }
+  }
+}
+async function cancelMediaCache(asset: EditorAsset) {
+  const controller = cacheControllers.get(asset.id);
+  const targetDirectory = directory.value;
+  if (!controller || !targetDirectory) return;
+  controller.abort();
+  try {
+    await axios.post<ApiResponse<{ cancelled: boolean }>>("/api/videoEditor/cache/cancel", { directory: targetDirectory, path: asset.path });
+    const status = await fetchCacheStatus(asset, targetDirectory, new AbortController().signal);
+    setCacheState(asset, targetDirectory, status);
+  } catch (error) {
+    if (directory.value === targetDirectory) setCacheError(asset, targetDirectory, cacheRequestError(error, "停止缓存生成失败"));
+  }
+}
 function mediaFailed(clip: EditorClip) { previewError.value = `无法播放「${clip.title}」，请检查素材是否存在或使用当前浏览器支持的编码。`; }
 function selectClip(clip: EditorClip) {
   if (draggedClipId === clip.id) { draggedClipId = undefined; return; }
@@ -837,6 +1061,7 @@ function beginPointerTracking() {
     const state = dragState;
     if (!state) return;
     if (state.playhead) { seekFromClient(event.clientX); return; }
+    if (!canEdit.value) return;
     const clip = clips.value.find(item => item.id === state.clipId);
     if (!clip || isLocked(clip)) return;
     if (!state.historySaved && Math.hypot(event.clientX - state.startX, event.clientY - state.startY) < 3) return;
@@ -1158,6 +1383,7 @@ async function loadProject(path: string, editorPath = activeEditorProjectPath.va
       draftAvailable.value = !!recoverableDraft.value;
     } catch { previewError.value = "本地草稿无法读取，工程文件保持完整。"; }
     void checkMedia();
+    void restoreLastExport(projectContext);
   } catch (error) {
     if (version === projectVersion && directory.value === path) { saveError.value = errorMessage(error, "读取工程失败"); projectLoading.value = false; }
   }
@@ -1191,6 +1417,7 @@ function saveProject(): Promise<boolean> {
       pending.context.content = result.content;
       if (projectContext === pending.context) {
         saveError.value = "";
+        saveRetryable.value = false;
         if (pending.sequence === pending.context.sequence) {
           try { localStorage.removeItem(pending.context.draftKey); }
           catch (error) { console.warn("工程已保存，但本地草稿清理失败", error); }
@@ -1199,8 +1426,11 @@ function saveProject(): Promise<boolean> {
       return true;
     } catch (error) {
       if (projectContext === pending.context) {
+        const apiCode = (error as { response?: { data?: { data?: { code?: string } } } })?.response?.data?.data?.code;
+        const temporarilyBusy = httpStatus(error) === 409 && apiCode === "EBUSY";
         saveError.value = errorMessage(error, "工程保存失败");
-        saveBlocked.value = httpStatus(error) === 409;
+        saveRetryable.value = temporarilyBusy;
+        saveBlocked.value = httpStatus(error) === 409 && !temporarilyBusy;
         pending.context.blocked = saveBlocked.value;
         if (pending.sequence === pending.context.sequence && (!pendingSave || pending.sequence > pendingSave.sequence)) pendingSave = pending;
       }
@@ -1215,14 +1445,14 @@ function saveProject(): Promise<boolean> {
 }
 async function reloadProject() {
   const path = directory.value;
-  if (!path || importBusy.value || sourceImportBusy.value || exportBusy.value) return;
+  if (!path || importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value) return;
   stopPlayback();
   projectVersion++;
   clearEditor();
   await loadProject(path);
 }
 async function openRecovery() {
-  if (!directory.value) return;
+  if (!directory.value || exportRecordBusy.value) return;
   recoveryOpen.value = true;
   recoveryError.value = "";
   try { backups.value = await listEditorBackups(directory.value, activeEditorProjectPath.value); selectedBackup.value = backups.value[0]?.path ?? ""; }
@@ -1233,7 +1463,7 @@ async function restoreBackup() {
   const editorPath = activeEditorProjectPath.value;
   const backupPath = selectedBackup.value;
   const version = projectVersion;
-  if (!path || !backupPath || importBusy.value || sourceImportBusy.value || exportBusy.value) return;
+  if (!path || !backupPath || importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value) return;
   projectLoading.value = true;
   try {
     if (!saveBlocked.value && pendingSave && !await saveProject()) throw new Error("当前工程保存失败，请先解决保存问题");
@@ -1252,14 +1482,14 @@ async function restoreBackup() {
     applyProject(backup);
     loadedDirectory.value = path;
     undoStack.value = []; redoStack.value = [];
-    saveBlocked.value = false; saveError.value = "";
+    saveBlocked.value = false; saveError.value = ""; saveRetryable.value = false;
     recoveryOpen.value = false;
     void checkMedia();
   } catch (error) { recoveryError.value = errorMessage(error, "恢复备份失败"); }
   finally { if (version === projectVersion) projectLoading.value = false; }
 }
 async function openEditorProjects() {
-  if (!directory.value || projectBusy.value) return;
+  if (!directory.value || projectBusy.value || exportRecordBusy.value) return;
   projectError.value = "";
   newEditorProjectName.value = "";
   try { editorProjectOptions.value = await listEditorProjects(directory.value); }
@@ -1268,7 +1498,7 @@ async function openEditorProjects() {
 }
 async function selectEditorProject(path: string, fromCreate = false) {
   const projectDirectory = directory.value;
-  if (!projectDirectory || sourceImportBusy.value || importBusy.value || exportBusy.value || projectBusy.value && !fromCreate || path === activeEditorProjectPath.value) return;
+  if (!projectDirectory || sourceImportBusy.value || importBusy.value || exportBusy.value || exportRecordBusy.value || projectBusy.value && !fromCreate || path === activeEditorProjectPath.value) return;
   if (path !== legacyEditorProjectPath && !/^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(path)) {
     projectError.value = "剪辑工程路径无效";
     return;
@@ -1293,7 +1523,7 @@ async function selectEditorProject(path: string, fromCreate = false) {
 async function createEditorProjectFromDialog() {
   const projectDirectory = directory.value;
   const name = newEditorProjectName.value.trim();
-  if (!projectDirectory || !name || projectBusy.value) return;
+  if (!projectDirectory || !name || projectBusy.value || exportRecordBusy.value) return;
   projectBusy.value = true;
   projectError.value = "";
   try {
@@ -1349,7 +1579,7 @@ function discardDraft() {
   catch (error) { previewError.value = errorMessage(error, "清理本地草稿失败"); }
 }
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (!pendingSave && !saveBusy.value && !importBusy.value && !sourceImportBusy.value && !exportBusy.value) return;
+  if (!pendingSave && !saveBusy.value && !importBusy.value && !sourceImportBusy.value && !exportBusy.value && !exportRecordBusy.value) return;
   event.preventDefault(); event.returnValue = "";
 }
 function onEditorKeydown(event: KeyboardEvent) {
@@ -1406,6 +1636,7 @@ async function removeImportedAssets(incoming: EditorAsset[], targetDirectory = d
   await Promise.allSettled(incoming.map(asset => files.remove(asset.path)));
 }
 async function retrySourceImport() {
+  if (exportRecordBusy.value) return;
   if (pendingPickedAsset.value) {
     sourceImportBusy.value = true;
     sourceImportError.value = "";
@@ -1436,7 +1667,7 @@ async function retrySourceImport() {
 }
 async function importEditorSources() {
   const currentDirectory = directory.value;
-  if (!currentDirectory || !projectReady.value || sourceImportBusy.value) return;
+  if (!currentDirectory || !projectReady.value || sourceImportBusy.value || exportRecordBusy.value) return;
   const key = sourceImportKey.value;
   if (processedSourceImportKey.value === key) return;
   processedSourceImportKey.value = key;
@@ -1604,6 +1835,87 @@ function sourceReferences() {
     return id ? [{ type: source.type, id, label: asset.name }] : [];
   });
 }
+function invalidateExportIdentity() {
+  exportRecordController?.abort();
+  exportRecordVersion++;
+  exportRecordSaved.value = false;
+  lastExport.value = undefined;
+  exportedProjectContent.value = "";
+  exportRecordError.value = "登录账户已更新，请重新打开剪辑台后恢复导出记录。";
+}
+function exportRequestCurrent(version: number, context: ProjectContext, session: ReturnType<typeof getSessionSnapshot>) {
+  const current = getSessionSnapshot();
+  return mounted && version === exportRecordVersion && projectContext === context && directory.value === context.directory && activeEditorProjectPath.value === context.projectPath && !sessionInvalidated.value && current.userId === session.userId;
+}
+function validateExportRecord(record: EditorExportRecord, context: ProjectContext, revision: string) {
+  if (!record || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/.test(record.id) || record.projectPath !== context.projectPath || record.revision !== revision || !/^assets\/videoEditor\/exports\/edited\d{13}[\da-f]{8}\.mp4$/.test(record.exportPath)) throw new Error("服务端返回的导出记录无效");
+}
+async function restoreLastExport(context: ProjectContext) {
+  if (!/^[\da-f]{64}$/.test(context.revision) || !clips.value.length) return;
+  exportRecordController?.abort();
+  const controller = new AbortController();
+  exportRecordController = controller;
+  const version = ++exportRecordVersion;
+  const session = getSessionSnapshot();
+  const revision = context.revision;
+  const content = getProjectContent();
+  exportRecordBusy.value = true;
+  try {
+    const request = saveProject().then(saved => {
+      if (!saved || !exportRequestCurrent(version, context, session) || context.revision !== revision || getProjectContent() !== content) return;
+      return axios.get<ApiResponse<EditorExportRecord | null>>("/api/videoEditor/exports/latest", { params: { directory: context.directory, projectPath: context.projectPath, revision }, signal: controller.signal });
+    });
+    // ACT: 核验与现有保存队列串行，延迟完成的编辑也不能撞上自己的工程文件锁。
+    saveQueue = request.then(() => true, () => true);
+    const response = await request;
+    if (!response) return;
+    const { data } = response;
+    if (!exportRequestCurrent(version, context, session) || context.revision !== revision || getProjectContent() !== content || exportBusy.value || !data.data) return;
+    validateExportRecord(data.data, context, revision);
+    lastExport.value = { id: data.data.id, directory: context.directory, url: useWorkspaceFiles(context.directory).mediaUrl(data.data.exportPath), name: data.data.exportPath.split("/").pop()!, path: data.data.exportPath, projectPath: context.projectPath, revision, sourceReferences: sourceReferences() };
+    exportedProjectContent.value = content;
+    exportRecordSaved.value = true;
+    exportRecordError.value = "";
+  } catch (error) {
+    if (!controller.signal.aborted && exportRequestCurrent(version, context, session)) exportRecordError.value = `无法恢复上次导出记录：${errorMessage(error, "读取失败，请重新打开工程后重试")}`;
+  } finally {
+    if (exportRecordController === controller) {
+      exportRecordController = undefined;
+      exportRecordBusy.value = false;
+    }
+  }
+}
+async function persistLastExport() {
+  const result = lastExport.value;
+  const context = projectContext;
+  if (!result || !context || context.directory !== result.directory || context.projectPath !== result.projectPath || context.revision !== result.revision || getProjectContent() !== exportedProjectContent.value || exportRecordBusy.value) return;
+  exportRecordController?.abort();
+  const controller = new AbortController();
+  exportRecordController = controller;
+  const version = ++exportRecordVersion;
+  const session = getSessionSnapshot();
+  exportRecordBusy.value = true;
+  exportRecordError.value = "";
+  try {
+    const request = saveProject().then(saved => {
+      if (!saved || !exportRequestCurrent(version, context, session) || context.revision !== result.revision || getProjectContent() !== exportedProjectContent.value) throw new Error("工程尚未保存或已变化，请重新导出后保存记录");
+      return axios.post<ApiResponse<EditorExportRecord>>("/api/videoEditor/exports/record", { directory: result.directory, projectPath: result.projectPath, revision: result.revision, exportPath: result.path }, { signal: controller.signal });
+    });
+    saveQueue = request.then(() => true, () => true);
+    const { data } = await request;
+    if (!exportRequestCurrent(version, context, session) || lastExport.value !== result) return;
+    validateExportRecord(data.data, context, result.revision);
+    lastExport.value = { ...result, id: data.data.id };
+    exportRecordSaved.value = true;
+  } catch (error) {
+    if (!controller.signal.aborted && exportRequestCurrent(version, context, session) && lastExport.value === result) exportRecordError.value = `MP4 已保留，但导出记录未保存；刷新后可能无法恢复登记入口。${errorMessage(error, "请重试保存导出记录")}`;
+  } finally {
+    if (exportRecordController === controller) {
+      exportRecordController = undefined;
+      exportRecordBusy.value = false;
+    }
+  }
+}
 function returnExportToCanvas() {
   const result = lastExport.value;
   const canvasPath = returnCanvasPath.value;
@@ -1618,25 +1930,35 @@ function returnExportToCanvas() {
 }
 async function exportTimeline() {
   const context = projectContext;
-  if (!context || !canExport.value || exportBusy.value) return;
+  if (!context || !canExport.value || exportBusy.value || exportRecordBusy.value) return;
   stopPlayback();
+  exportRecordController?.abort();
+  exportRecordVersion++;
+  exportRecordSaved.value = false;
+  exportRecordBusy.value = false;
+  exportRecordError.value = "";
   exportError.value = "";
   exportBusy.value = true;
   exportProgress.value = undefined;
   const controller = new AbortController();
   exportController.value = controller;
   const version = projectVersion;
+  const exportIdentityVersion = exportRecordVersion;
+  const session = getSessionSnapshot();
   try {
     if (!await saveProject()) throw new Error("工程尚未保存成功，请解决保存问题后导出");
     const snapshot = parseEditorProject(getProject());
     exportedProjectContent.value = getProjectContent();
     const revision = context.revision;
     const result = await exportEditorProject(snapshot, context.directory, controller.signal, progress => { if (version === projectVersion) exportProgress.value = progress; });
-    if (version !== projectVersion) return;
+    if (version !== projectVersion || exportIdentityVersion !== exportRecordVersion || sessionInvalidated.value || getSessionSnapshot().userId !== session.userId) return;
     const url = useWorkspaceFiles(context.directory).mediaUrl(result.path);
     const name = result.path.split("/").pop()!;
     lastExport.value = { id: crypto.randomUUID(), directory: context.directory, url, name, path: result.path, projectPath: context.projectPath, revision, sourceReferences: sourceReferences() };
+    exportBusy.value = false;
+    exportController.value = undefined;
     downloadUrl(url, name);
+    await persistLastExport();
   } catch (error) {
     if (version === projectVersion) exportError.value = controller.signal.aborted ? "已取消导出，临时文件已清理。" : errorMessage(error, "导出失败");
   } finally {
@@ -1910,6 +2232,7 @@ async function exportTimeline() {
             .assetIcon { display: flex; grid-row: 1 / span 2; align-items: center; justify-content: center; width: 30px; height: 34px; border-radius: 4px; color: #9dd9b6; background: #284234; &.audio { color: #e7c681; background: #4a4028; } &.image { color: #b8d2ef; background: #2d3d4d; } }
             .assetInfo { display: flex; grid-column: 2 / -1; flex-direction: column; gap: 4px; min-width: 0; strong { overflow: hidden; color: #dce3dc; font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; } span { color: #8b958d; font-size: 10px; white-space: nowrap; } }
             .tinyAction { grid-row: 2; width: 100%; height: 23px; &:nth-of-type(1) { grid-column: 2; } &:nth-of-type(2) { grid-column: 3; } &:nth-of-type(3) { grid-column: 4; } }
+            .cacheControls { display: flex; grid-column: 2 / -1; grid-row: 3; align-items: center; gap: 6px; min-width: 0; .cacheState { flex: 1; min-width: 0; overflow: hidden; color: #8fa496; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; &.hasError { color: #e6a38f; } } .cacheButton { flex: 0 0 auto; min-height: 21px; padding: 2px 5px; border: 1px solid #465a4b; border-radius: 3px; color: #c1d9c7; background: #26372b; font-size: 9px; &:hover:not(:disabled) { border-color: #6a9075; background: #304536; } &:disabled { opacity: .55; cursor: not-allowed; } } .cancelCacheButton { border-color: #6c5547; color: #e2b39c; background: #352921; } }
           }
         }
         .dropHint { flex: 0 0 auto; margin-top: 10px; padding: 9px 5px; border: 1px dashed #485249; border-radius: 4px; color: #929b94; background: transparent; text-align: center; font-size: 10px; line-height: 1.5; &:hover:not(:disabled) { border-color: #77ae8e; color: #c7dbcc; } }
@@ -2128,6 +2451,7 @@ async function exportTimeline() {
               &.video, &.image { top: 8px; height: 59px; align-items: flex-start; padding-top: 2px; background: #263b2e; .clipTitle, .clipDuration { position: relative; z-index: 1; line-height: 15px; } }
               .clipTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
               .clipDuration { flex: 0 0 auto; color: rgb(255 255 255 / 68%); font-size: 9px; font-variant-numeric: tabular-nums; }
+              &.audio { .clipTitle, .clipDuration { position: relative; z-index: 1; } }
               .trimHandle { position: absolute; top: 0; z-index: 1; width: 6px; height: 100%; background: rgb(255 255 255 / 22%); cursor: ew-resize; &.leftHandle { left: 0; } &.rightHandle { right: 0; } }
             }
           }

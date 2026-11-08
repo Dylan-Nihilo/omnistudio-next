@@ -5,8 +5,8 @@ import { basename, extname, resolve } from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { and, eq } from "drizzle-orm";
-import { getDatabase } from "@/db/database";
-import { generationJobs, personalProjects, productionClipVariants, productionEpisodes, productionScenes, productionSeasons, productionShots } from "@/db/schema";
+import { getDatabase, hashSecret } from "@/db/database";
+import { auditEvents, generationJobs, personalProjects, productionClipVariants, productionEpisodes, productionScenes, productionSeasons, productionShots } from "@/db/schema";
 import { requireProjectAccess } from "@/services/productionProjectService";
 import { authorizeProjectDirectory, getPersonalProjectRoot } from "@/services/accountService";
 import { requireAccount } from "@/utils/accountContext";
@@ -19,7 +19,7 @@ type SourceInput =
   | { type: "production"; projectId: string; variantId: string }
   | { type: "library"; path: string };
 
-type SourceSnapshot = { type: SourceInput["type"]; path: string; hash: string; importedAt: string; canvasPath?: string; nodeId?: string; outputId?: string; projectId?: string; episodeId?: string; shotId?: string; variantId?: string; attemptNumber?: number; revision?: string };
+type SourceSnapshot = { type: SourceInput["type"]; path: string; hash: string; importedAt: string; sourceDirectoryHash: string; canvasPath?: string; nodeId?: string; outputId?: string; projectId?: string; episodeId?: string; shotId?: string; variantId?: string; attemptNumber?: number; revision?: string };
 
 const mediaExtensions: Record<string, { kind: "video" | "audio" | "image"; mimeType: string }> = {
   mp4: { kind: "video", mimeType: "video/mp4" }, mov: { kind: "video", mimeType: "video/quicktime" }, webm: { kind: "video", mimeType: "video/webm" }, m4v: { kind: "video", mimeType: "video/mp4" }, mkv: { kind: "video", mimeType: "video/x-matroska" }, avi: { kind: "video", mimeType: "video/x-msvideo" }, mpeg: { kind: "video", mimeType: "video/mpeg" }, mpg: { kind: "video", mimeType: "video/mpeg" },
@@ -110,14 +110,14 @@ async function resolveMediaSource(directory: string, source: SourceInput, projec
   if (source.type === "workspace") {
     const canvas = await verifyWorkspaceCanvas(directory, source);
     const { path } = await resolveWorkspacePath(directory, source.path);
-    return { path, relativePath: source.path, mimeType: canvas?.mimeType, snapshot: { type: source.type, path: source.path, ...(canvas ? { canvasPath: source.canvasPath, nodeId: source.nodeId, outputId: source.outputId, revision: canvas.revision } : {}) } };
+    return { path, relativePath: source.path, mimeType: canvas?.mimeType, sourceDirectory: directory, snapshot: { type: source.type, path: source.path, ...(canvas ? { canvasPath: source.canvasPath, nodeId: source.nodeId, outputId: source.outputId, revision: canvas.revision } : {}) } };
   }
   if (source.type === "library") {
     const record = await u.assets.getAsset(source.path);
     const assetsDirectory = await getAssetsDirectory();
     const { path } = await resolveWorkspacePath(assetsDirectory, source.path);
     if (await sourceHash(path) !== record.hash) invalid("素材库文件与已登记版本不一致", 409);
-    return { path, relativePath: source.path, mimeType: record.mimeType, expectedHash: record.hash, snapshot: { type: source.type, path: source.path } };
+    return { path, relativePath: source.path, mimeType: record.mimeType, expectedHash: record.hash, sourceDirectory: assetsDirectory, snapshot: { type: source.type, path: source.path } };
   }
 
   await requireProjectAccess(source.projectId, projectAction);
@@ -143,7 +143,7 @@ async function resolveMediaSource(directory: string, source: SourceInput, projec
   if (typeof result.directory !== "string" || !result.directory) invalid("生成任务未记录原工作区，不能导入候选素材", 409);
   const sourceDirectory = await authorizeJobDirectory(row.job.userId, result.directory);
   const { path } = await resolveWorkspacePath(sourceDirectory, row.variant.filePath);
-  return { path, relativePath: row.variant.filePath, mimeType: row.variant.mimeType, snapshot: { type: source.type, path: row.variant.filePath, projectId: source.projectId, episodeId: row.episode.id, shotId: row.shot.id, variantId: source.variantId, attemptNumber: row.variant.attemptNumber } };
+  return { path, relativePath: row.variant.filePath, mimeType: row.variant.mimeType, sourceDirectory, snapshot: { type: source.type, path: row.variant.filePath, projectId: source.projectId, episodeId: row.episode.id, shotId: row.shot.id, variantId: source.variantId, attemptNumber: row.variant.attemptNumber } };
 }
 
 async function probeMedia(path: string, kind: "video" | "audio" | "image", signal?: AbortSignal) {
@@ -216,15 +216,26 @@ async function importMedia(input: { directory: string; source: SourceInput }, pr
       if (await workspaceFileRevision(canvas.path) !== canvasRevision) invalid("素材来源画布在导入期间发生变化，请重新导入", 409);
     }
     const media = await probeMedia(target.path, format.kind, account.signal);
-    const sourceSnapshot = { ...source.snapshot, hash, importedAt: new Date().toISOString() } as SourceSnapshot;
-    return { asset: { id: randomUUID(), name: basename(source.relativePath), path: relativePath, kind: format.kind, duration: media.duration, size: bytes, ...(media.width ? { width: media.width } : {}), ...(media.height ? { height: media.height } : {}), ...(format.kind === "video" ? { hasAudio: media.hasAudio } : {}), source: sourceSnapshot } };
+    const fixedInfo = await lstat(target.path);
+    if (!fixedInfo.isFile() || fixedInfo.size !== bytes || await workspaceFileRevision(target.path) !== hash) invalid("剪辑素材在登记来源凭据前发生变化，请重新导入", 409);
+    if (await realpath(targetDirectory) !== targetDirectory) invalid("剪辑素材目录在导入期间发生变化", 409);
+    const assetId = randomUUID();
+    const importedAt = new Date().toISOString();
+    const sourceSnapshot: SourceSnapshot = { ...source.snapshot, hash, importedAt, sourceDirectoryHash: hashSecret(source.sourceDirectory) };
+    await getDatabase().insert(auditEvents).values({
+      id: assetId,
+      actorUserId: account.userId,
+      action: "editorMedia.import",
+      metadata: { format: "omnistudio.editor.media-import.v1", directoryHash: hashSecret(directory), assetPath: relativePath, assetHash: hash, sourceSnapshot },
+      createdAt: new Date(importedAt),
+      updatedAt: new Date(importedAt),
+    });
+    return { asset: { id: assetId, name: basename(source.relativePath), path: relativePath, kind: format.kind, duration: media.duration, size: bytes, ...(media.width ? { width: media.width } : {}), ...(media.height ? { height: media.height } : {}), ...(format.kind === "video" ? { hasAudio: media.hasAudio } : {}), source: sourceSnapshot } };
   } catch (error) {
     await unlink(target.path).catch((cleanupError: NodeJS.ErrnoException) => { if (cleanupError.code !== "ENOENT") throw cleanupError; });
     throw error;
   } finally {
-    try {
-      if (await realpath(targetDirectory) !== targetDirectory) invalid("剪辑素材目录在导入期间发生变化", 409);
-    } finally { release(); }
+    release();
   }
 }
 

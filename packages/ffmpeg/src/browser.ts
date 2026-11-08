@@ -160,6 +160,11 @@ export async function createBrowserFfmpeg(directory: string, signal?: AbortSigna
           active?.abort(new DOMException("FFmpeg 任务已取消", "AbortError"));
           return command;
         };
+        if (name === "composeVideos") return (inputPaths: readonly string[], outputPath: string) => {
+          if (calls.length) throw new Error("专用拼接操作不可与其他 FFmpeg 参数混用");
+          start(createCall(name, [inputPaths, outputPath]));
+          return command;
+        };
         if (queryNames.has(name)) return (...args: unknown[]) => {
           const callback = args.pop();
           if (typeof callback !== "function") throw new Error("FFmpeg 查询需要回调函数");

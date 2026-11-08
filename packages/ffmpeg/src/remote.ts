@@ -1,8 +1,9 @@
 import { tmpdir } from "node:os";
 import { constants } from "node:fs";
 import { spawn } from "node:child_process";
-import { copyFile, lstat, mkdtemp, open, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { copyFile, link, lstat, mkdtemp, open, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { randomUUID } from "node:crypto";
 import { chainMethods, queryMethods, runMethods } from "./browserTypes";
 import type { BrowserFfmpegRequest, FfmpegCall, FfmpegRemoteEvent } from "./browserTypes";
 import type { FfmpegCommand, FfmpegFactory, FfprobeData } from "./types";
@@ -108,7 +109,68 @@ function validateGraph(graph: string) {
 
 async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequest, signal: AbortSignal) {
   const probing = request.operation.method === "ffprobe";
-  if ((!probing && request.operation.method !== "run") || request.operation.args.length || request.operation.undefinedArgs?.length) throw new Error("远程 FFmpeg 仅支持无自定义参数的 run/ffprobe");
+  const composing = request.operation.method === "composeVideos";
+  if (composing) {
+    const { inputPaths, outputPath } = validateComposeOperation(request);
+    const command = factory({ timeout: 0, stdoutLines: 100 }) as RemoteCommand;
+    const settleProbes = controlProbe(command, signal);
+    for (const inputPath of inputPaths) command.input(inputPath).inputOptions(["-protocol_whitelist", "file", "-format_whitelist", mediaFormats]);
+    const streams: FfprobeData["streams"][] = [];
+    for (let index = 0; index < inputPaths.length; index++) {
+      signal.throwIfAborted();
+      streams.push(await probeInput(command, index));
+    }
+    signal.throwIfAborted();
+    if (streams.some(stream => !stream.some(item => item.codec_type === "video"))) throw new Error("所有拼接输入都必须包含视频流");
+    const audioPresence = streams.map(items => items.some(item => item.codec_type === "audio"));
+    if (audioPresence.some(hasAudio => hasAudio !== audioPresence[0])) throw new Error("输入视频的音频轨不一致，请先统一音频轨");
+
+    const root = await realpath(request.directory);
+    const destination = resolve(root, outputPath);
+    const destinationOffset = relative(root, destination);
+    if (destinationOffset === ".." || destinationOffset.startsWith(`..${sep}`) || isAbsolute(destinationOffset)) throw new Error("拼接输出必须位于当前工作区");
+    const destinationDirectory = await realpath(dirname(destination));
+    const directoryOffset = relative(root, destinationDirectory);
+    if (directoryOffset === ".." || directoryOffset.startsWith(`..${sep}`) || isAbsolute(directoryOffset)) throw new Error("拼接输出目录必须位于当前工作区");
+    try {
+      await lstat(destination);
+      throw new Error("拼接输出文件已存在，请重新执行");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+
+    const temporaryPath = `${outputPath.slice(0, outputPath.lastIndexOf("/") + 1)}.compose-${randomUUID()}.mp4`;
+    const temporary = resolve(root, temporaryPath);
+    try {
+      await lstat(temporary);
+      throw new Error("拼接临时文件已存在，请重新执行");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const output = command.output(temporaryPath).videoCodec("libx264");
+    if (audioPresence[0]) output.audioCodec("aac");
+    output.outputOptions(["-movflags +faststart"])
+      .complexFilter({ filter: "concat", options: { n: inputPaths.length, v: 1, a: audioPresence[0] ? 1 : 0 } });
+    const originalArguments = command._getArguments.bind(command);
+    command._getArguments = () => {
+      const args = originalArguments();
+      const overwriteIndex = args.indexOf("-y");
+      if (overwriteIndex >= 0) args[overwriteIndex] = "-n";
+      return args;
+    };
+    const publish = async () => {
+      signal.throwIfAborted();
+      const outputInfo = await stat(temporary);
+      if (!outputInfo.isFile() || outputInfo.size === 0) throw new Error("视频拼接未生成有效文件");
+      await link(temporary, destination);
+      if (signal.aborted) {
+        await rm(destination).catch(error => { throw new Error("取消后清理拼接输出失败", { cause: error }); });
+        signal.throwIfAborted();
+      }
+    };
+    return { command, operation: { method: "run", args: [] }, temporary, publish, settleProbes };
+  }
+  if ((!probing && request.operation.method !== "run") || request.operation.args.length || request.operation.undefinedArgs?.length) throw new Error("远程 FFmpeg 仅支持受限拼接及无自定义参数的 run/ffprobe");
   for (const call of request.calls) {
     if (call.args.length !== 1 || call.undefinedArgs?.length) throw new Error(`远程 FFmpeg 参数数量无效：${call.method}`);
   }
@@ -178,6 +240,33 @@ async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequ
     await rm(temporary, { recursive: true, force: true });
     throw error;
   }
+}
+
+function validateComposeOperation(request: BrowserFfmpegRequest) {
+  if (request.calls.length || request.operation.args.length !== 2 || request.operation.undefinedArgs?.length) throw new Error("受限拼接参数无效");
+  const [inputPaths, outputPath] = request.operation.args;
+  if (!Array.isArray(inputPaths) || inputPaths.length < 2 || inputPaths.length > 32 || inputPaths.some(path => typeof path !== "string")) {
+    throw new Error("视频拼接仅支持 2 至 32 个工作区素材");
+  }
+  for (const inputPath of inputPaths) {
+    assertPath(inputPath);
+    if (!/\.(mp4|mov|m4v|webm|mkv)$/i.test(inputPath)) throw new Error("视频拼接仅支持工作区视频素材");
+  }
+  assertPath(outputPath);
+  if (typeof outputPath !== "string" || !/^assets\/[A-Za-z0-9_-]{1,128}\/combined-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.mp4$/i.test(outputPath)) {
+    throw new Error("视频拼接输出路径无效");
+  }
+  if (inputPaths.includes(outputPath)) throw new Error("视频拼接不能覆盖输入素材");
+  return { inputPaths: inputPaths as string[], outputPath };
+}
+
+function probeInput(command: RemoteCommand, index: number) {
+  return new Promise<NonNullable<FfprobeData["streams"]>>((resolve, reject) => {
+    command.ffprobe(index, (error, data) => {
+      if (error) reject(error);
+      else resolve(data?.streams ?? []);
+    });
+  });
 }
 
 function validateExportCalls(calls: FfmpegCall[]) {
@@ -286,7 +375,10 @@ export async function executeRemoteFfmpeg(
       command.on("error", (error, ...args) => fail(signal.aborted ? signal.reason ?? new DOMException("FFmpeg 已取消", "AbortError") : error, ...args));
       command.on("end", (...args) => {
         if (signal.aborted) fail(signal.reason ?? new DOMException("FFmpeg 已取消", "AbortError"));
-        else void (prepared.publish?.() ?? Promise.resolve()).then(() => finish("end", args), fail);
+        else void (prepared.publish?.() ?? Promise.resolve()).then(() => {
+          if (signal.aborted) fail(signal.reason ?? new DOMException("FFmpeg 已取消", "AbortError"));
+          else finish("end", args);
+        }, fail);
       });
       for (const event of ["progress", "stderr", "codecData", "filenames"] as const) {
         command.addListener(event, (...args: unknown[]) => send(event, args));

@@ -475,7 +475,39 @@ export const productionCuts = mysqlTable("production_cuts", {
   height: int("height", { unsigned: true }).notNull(),
   frameRate: varchar("frame_rate", { length: 32 }).notNull(),
   mimeType: varchar("mime_type", { length: 120 }).notNull(),
-  metadata: json("metadata").$type<{ sourceDirectoryHash: string; sourceVideoPath: string; sourceProjectPath: string; sourceProjectRevision: string; sourceReferences: { type: string; id: string; label?: string }[] }>().notNull(),
+  metadata: json("metadata").$type<{
+    sourceDirectoryHash: string;
+    sourceVideoPath: string;
+    sourceProjectPath: string;
+    sourceProjectRevision: string;
+    sourceReferences: { type: string; id: string; label?: string }[];
+    sourceSnapshots?: {
+      assetId: string;
+      assetName: string;
+      assetPath: string;
+      assetHash: string;
+      verified: boolean;
+      importedBy?: string;
+      importedAt?: string;
+      source?: {
+        type: "workspace" | "production" | "library";
+        path: string;
+        hash: string;
+        sourceDirectoryHash: string;
+        importedAt: string;
+        canvasPath?: string;
+        revision?: string;
+        nodeId?: string;
+        outputId?: string;
+        projectId?: string;
+        episodeId?: string;
+        shotId?: string;
+        variantId?: string;
+        attemptNumber?: number;
+      };
+    }[];
+    manifestHash?: string;
+  }>().notNull(),
   createdBy: varchar("created_by", { length: 36 }).notNull(),
   comment: text("comment"),
   reviewedBy: varchar("reviewed_by", { length: 36 }),

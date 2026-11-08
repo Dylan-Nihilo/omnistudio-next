@@ -30,6 +30,7 @@ export type BrowserFfmpegCommand = Pick<FfmpegCommand, typeof queryMethods[numbe
   duration(seconds: number): BrowserFfmpegCommand;
   outputOptions(options: string[]): BrowserFfmpegCommand;
   output(path: string): BrowserFfmpegCommand;
+  composeVideos(inputPaths: readonly string[], outputPath: string): BrowserFfmpegCommand;
   on<K extends keyof BrowserFfmpegEvents>(event: K, listener: (...args: BrowserFfmpegEvents[K]) => void): BrowserFfmpegCommand;
   once: BrowserFfmpegCommand["on"];
   addListener: BrowserFfmpegCommand["on"];
