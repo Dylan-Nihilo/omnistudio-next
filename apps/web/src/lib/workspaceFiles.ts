@@ -58,6 +58,12 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
     return data;
   }
 
+  function mediaUrl(path: string) {
+    const request = requestConfig();
+    const params = new URLSearchParams({ directory: getDirectory(), path, accountId: request.headers["x-account-id"] });
+    return `/api/workspaces/files/read?${params}`;
+  }
+
   function acquireUrl(path: string, mimeType?: string) {
     const request = requestConfig();
     const directory = getDirectory();
@@ -113,11 +119,40 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
     return JSON.parse(await readText(path));
   }
 
+  async function readVersionedText(path: string) {
+    const { data } = await client.get<{ data: { content: string; revision: string } }>("/read", { params: { directory: getDirectory(), path, versioned: true }, ...requestConfig() });
+    return data.data;
+  }
+
+  async function writeVersionedText(path: string, content: string, expectedRevision: string) {
+    const directory = getDirectory();
+    const request = requestConfig();
+    const { data } = await client.put<{ data: { revision: string } }>("/write", content, {
+      params: { directory, path, expectedRevision }, ...request,
+      headers: { ...request.headers, "Content-Type": "application/octet-stream" },
+    });
+    invalidateUrls(directory, path);
+    return data.data;
+  }
+
   async function write(path: string, content: string | Blob | ArrayBuffer, exclusive = false, signal?: AbortSignal) {
     const request = requestConfig();
     signal = signal ? AbortSignal.any([signal, request.signal]) : request.signal;
     const directory = getDirectory();
     await client.put("/write", content, { params: { directory, path, exclusive }, signal, headers: { ...request.headers, "Content-Type": "application/octet-stream" } });
+    invalidateUrls(directory, path);
+  }
+
+  async function upload(path: string, content: Blob, options: { signal?: AbortSignal; onProgress?: (percent: number) => void } = {}) {
+    if (content.size > 8 * 1024 ** 3) throw new Error("单个文件不能超过 8 GiB");
+    const request = requestConfig();
+    const directory = getDirectory();
+    const signal = options.signal ? AbortSignal.any([options.signal, request.signal]) : request.signal;
+    await client.post("/upload", content, {
+      params: { directory, path, size: content.size }, signal,
+      headers: { ...request.headers, "Content-Type": "application/octet-stream" },
+      onUploadProgress: event => options.onProgress?.(content.size ? Math.min(100, Math.round(event.loaded / content.size * 100)) : 100),
+    });
     invalidateUrls(directory, path);
   }
 
@@ -143,5 +178,5 @@ export default function useWorkspaceFiles(directory?: MaybeRefOrGetter<string | 
   }
 
   // ACT: 当前目录逐次读取；跨 await 或防抖的操作传入目录字符串，固定本次目标。
-  return { list, read, acquireUrl, readText, readJson, write, writeJson, rename, remove, mkdir };
+  return { list, read, mediaUrl, acquireUrl, readText, readJson, readVersionedText, writeVersionedText, write, upload, writeJson, rename, remove, mkdir };
 }

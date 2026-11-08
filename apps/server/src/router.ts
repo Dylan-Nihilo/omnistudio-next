@@ -172,9 +172,10 @@ import route169 from "./routes/workspaces/files/mkdir";
 import route170 from "./routes/workspaces/files/read";
 import route171 from "./routes/workspaces/files/remove";
 import route172 from "./routes/workspaces/files/rename";
-import route173 from "./routes/workspaces/files/write";
-import route174 from "./routes/workspaces/list";
-import route175 from "./routes/workspaces/selectDirectory";
+import route173 from "./routes/workspaces/files/upload";
+import route174 from "./routes/workspaces/files/write";
+import route175 from "./routes/workspaces/list";
+import route176 from "./routes/workspaces/selectDirectory";
 
 export default (app: Express) => {
   app.use("/api/account/teamAssets/copy", route1);
@@ -349,7 +350,8 @@ export default (app: Express) => {
   app.use("/api/workspaces/files/read", route170);
   app.use("/api/workspaces/files/remove", route171);
   app.use("/api/workspaces/files/rename", route172);
-  app.use("/api/workspaces/files/write", route173);
-  app.use("/api/workspaces/list", route174);
-  app.use("/api/workspaces/selectDirectory", route175);
+  app.use("/api/workspaces/files/upload", route173);
+  app.use("/api/workspaces/files/write", route174);
+  app.use("/api/workspaces/list", route175);
+  app.use("/api/workspaces/selectDirectory", route176);
 }

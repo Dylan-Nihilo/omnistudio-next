@@ -89,7 +89,23 @@ export function createFfmpeg(directory: string): typeof ffmpeg {
   };
   proto._getArguments = function() {
     checkFiles(this);
-    return native._getArguments.call(this);
+    const args = native._getArguments.call(this);
+    for (let index = 0; index < args.length; index++) {
+      const argument = args[index]!;
+      if (typeof argument !== "string") continue;
+      if (argument === "-filter_complex_script") {
+        if (!args[index + 1]) throw new Error("FFmpeg 滤镜脚本路径无效");
+        args[index + 1] = resolvePath(args[index + 1]!);
+        index++;
+      } else if (argument.startsWith("-filter_complex_script=")) {
+        args[index] = `-filter_complex_script=${resolvePath(argument.slice("-filter_complex_script=".length))}`;
+      }
+    }
+    // ACT: Windows CreateProcess 上限为 32767 个 UTF-16 字符；预留程序路径与引号，避免异步 spawn 抛错终止服务。
+    if (process.platform === "win32" && args.reduce((length, argument) => length + JSON.stringify(argument).length + 1, 1024) > 30000) {
+      throw new Error("本次 FFmpeg 输入或参数过多，请减少素材数量或分段导出");
+    }
+    return args;
   };
   proto.ffprobe = function(...args: unknown[]) {
     try { checkFiles(this); }

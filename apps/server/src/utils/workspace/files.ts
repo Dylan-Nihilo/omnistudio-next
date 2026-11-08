@@ -1,8 +1,29 @@
-import { constants } from "node:fs";
+import { createHash } from "node:crypto";
+import { constants, createReadStream, createWriteStream } from "node:fs";
 import { copyFile, link, lstat, rename, unlink, writeFile, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { Transform, type Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { Request } from "express";
+import { requireAccount } from "@/utils/accountContext";
 import { resolveWorkspace } from "@/utils/workspace";
+
+export const maxUploadBytes = 8 * 1024 ** 3;
+
+export function contentRevision(content: string | Uint8Array) {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+export async function workspaceFileRevision(path: string) {
+  const hash = createHash("sha256");
+  try {
+    for await (const chunk of createReadStream(path)) hash.update(chunk);
+    return hash.digest("hex");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
+    throw error;
+  }
+}
 
 export async function writeWorkspaceFile(path: string, content: string | Uint8Array, exclusive = false) {
   const temporary = `${path}.${crypto.randomUUID()}.tmp`;
@@ -10,6 +31,32 @@ export async function writeWorkspaceFile(path: string, content: string | Uint8Ar
     await writeFile(temporary, content, { flag: "wx", mode: 0o600 });
     if (exclusive) await link(temporary, path);
     else await rename(temporary, path);
+  } finally {
+    await unlink(temporary).catch((err: NodeJS.ErrnoException) => { if (err.code !== "ENOENT") throw err; });
+  }
+}
+
+export async function uploadWorkspaceFile(path: string, source: Readable, size: number, signal: AbortSignal) {
+  if (!Number.isSafeInteger(size) || size < 0 || size > maxUploadBytes) throw Object.assign(new Error("单个文件不能超过 8 GiB"), { status: 413 });
+  const accountSignal = requireAccount().signal;
+  if (accountSignal) signal = AbortSignal.any([signal, accountSignal]);
+  signal.throwIfAborted();
+  const exists = await lstat(path).catch((err: NodeJS.ErrnoException) => { if (err.code === "ENOENT") return null; throw err; });
+  if (exists) throw Object.assign(new Error("已存在同名文件或目录"), { code: "EEXIST" });
+  const temporary = `${path}.${crypto.randomUUID()}.tmp`;
+  let received = 0;
+  const counter = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      received += chunk.length;
+      callback(received > size ? Object.assign(new Error("上传内容超过声明的文件大小"), { status: 413 }) : null, chunk);
+    },
+  });
+  try {
+    // ACT: 使用流背压写入临时文件，内存不随视频大小增长；仅完整文件可独占发布。
+    await pipeline(source, counter, createWriteStream(temporary, { flags: "wx", mode: 0o600 }), { signal });
+    if (received !== size) throw Object.assign(new Error("文件上传不完整，请重新导入"), { status: 400 });
+    signal.throwIfAborted();
+    await link(temporary, path);
   } finally {
     await unlink(temporary).catch((err: NodeJS.ErrnoException) => { if (err.code !== "ENOENT") throw err; });
   }

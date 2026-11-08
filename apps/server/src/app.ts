@@ -108,7 +108,7 @@ export async function createApp({
     next();
   });
   app.use("/a2a", express.json({ limit: "2mb" }));
-  app.use(["/api/assets/save", "/api/workspaces/files/write", "/api/account/teamAssets/upload"], concurrencyMiddleware("upload"));
+  app.use(["/api/assets/save", "/api/workspaces/files/write", "/api/workspaces/files/upload", "/api/account/teamAssets/upload"], concurrencyMiddleware("upload"));
   app.use("/api/assets/save", express.raw({ type: "application/octet-stream", limit: "200mb" }));
   app.use(["/api/workspaces/files/write", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
   // JSON 接口目前最大的声明输入是技能包的 20 MB 文件（Base64 后约 28 MB）；
