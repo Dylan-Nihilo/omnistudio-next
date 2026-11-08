@@ -5,6 +5,10 @@
       <uiRadioGroup :modelValue="activePanel" class="panelSwitcher" :options="panelOptions" variant="segmented" aria-label="切换面板" @change="switchPanel" />
       <div class="headerActions"><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="万象点点 Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
     </header>
+    <div v-if="editorResultError" class="editorResultRecovery" role="alert">
+      <span>{{ editorResultError }}</span>
+      <uiButton size="small" variant="secondary" :loading="editorResultRetrying" :disabled="editorResultRetrying" @click="retryEditorResult">重试成片回写</uiButton>
+    </div>
     <div class="workspaceStage">
       <canvasPanel :key="workspaceStore.project?.directory" ref="canvasPanelRef" class="canvasPanel" :class="{ backgroundPanel: activePanel !== 'canvas' }" :inert="activePanel !== 'canvas'" :aria-hidden="activePanel !== 'canvas'" :active="activePanel === 'canvas'" :settingsVisible="settingsVisible" />
       <keep-alive :max="1"><documentPanel v-if="activePanel === 'document'" :key="workspaceStore.project?.directory" ref="documentPanelRef" :readNode="readDocumentNode" :saveNode="saveDocumentNode" /></keep-alive>
@@ -18,7 +22,7 @@
 
 <script setup lang="ts">
 import { defineAsyncComponent, nextTick, onMounted, onScopeDispose, provide, ref, watch } from "vue";
-import { onBeforeRouteLeave } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { IconLayoutDashboard, IconFileText, IconMessageCircle } from "@tabler/icons-vue";
 import { uiRadioGroup, uiButton, useUiFeedback } from "@omnistudio-next/ui";
@@ -37,6 +41,8 @@ const floatingAgent = defineAsyncComponent(() => import("./components/floatingAg
 const documentPanel = defineAsyncComponent(() => import("./panels/document/index.vue"));
 
 const feedback = useUiFeedback();
+const route = useRoute();
+const router = useRouter();
 const headerElement = ref<HTMLElement>();
 const headerHeight = ref(0);
 watch(headerElement, (element, _previous, onCleanup) => {
@@ -78,6 +84,55 @@ provide("activateCanvas", async (canvasId: string, signal?: AbortSignal, expecte
 
 const controlLifetime = new AbortController();
 onScopeDispose(() => controlLifetime.abort(new Error("工作区已关闭")));
+const handledEditorResults = new Set<string>();
+const editorResultError = ref("");
+const editorResultRetrying = ref(false);
+watch(() => route.query.editorResultId, resultId => {
+  if (typeof resultId !== "string" || handledEditorResults.has(resultId)) return;
+  handledEditorResults.add(resultId);
+  editorResultError.value = "";
+  void importEditorResult(resultId);
+}, { immediate: true });
+
+async function importEditorResult(resultId: string) {
+  if (editorResultRetrying.value) return;
+  const query = route.query;
+  const directory = query.editorResultDirectory;
+  const canvasPath = query.editorCanvasPath;
+  const resultPath = query.editorResultPath;
+  const editorProjectPath = query.editorProjectPath;
+  let imported = false;
+  editorResultRetrying.value = true;
+  editorResultError.value = "";
+  try {
+    if (typeof directory !== "string" || typeof canvasPath !== "string" || typeof resultPath !== "string" || typeof editorProjectPath !== "string") throw new Error("剪辑成片回写信息不完整");
+    if (directory !== workspaceStore.project?.directory) throw new Error("当前工作区与剪辑成片来源不一致，请重新打开原工作区后再回写");
+    if (!(await switchPanel("canvas"))) throw new Error("画布面板无法打开");
+    controlLifetime.signal.throwIfAborted();
+    if (route.query.editorResultId !== resultId || directory !== workspaceStore.project?.directory) throw new Error("回写上下文已变化，请重新触发成片回写");
+    const panel = await waitForControlValue(() => canvasPanelRef.value, controlLifetime.signal);
+    await panel.addEditorResult({ directory, canvasPath, resultPath, resultId, editorProjectPath });
+    controlLifetime.signal.throwIfAborted();
+    if (route.query.editorResultId !== resultId || directory !== workspaceStore.project?.directory) throw new Error("回写上下文已变化，请确认画布后重试");
+    imported = true;
+    feedback.message({ tone: "success", message: "剪辑成片已添加到原画布" });
+  } catch (error) {
+    editorResultError.value = error instanceof Error ? error.message : "剪辑成片回写失败";
+    feedback.message({ tone: "error", message: editorResultError.value });
+  } finally {
+    editorResultRetrying.value = false;
+    if (imported && route.query.editorResultId === resultId) {
+      const cleanQuery = { ...route.query };
+      for (const key of ["editorResultId", "editorResultDirectory", "editorCanvasPath", "editorResultPath", "editorProjectPath"]) delete cleanQuery[key];
+      await router.replace({ path: route.path, query: cleanQuery });
+    }
+  }
+}
+
+function retryEditorResult() {
+  const resultId = route.query.editorResultId;
+  if (typeof resultId === "string") void importEditorResult(resultId);
+}
 registerWorkspaceControl({
   getState: () => ({
     directory: workspaceStore.project?.directory ?? null,
@@ -187,6 +242,7 @@ function saveDocumentNode(directory: string, canvasPath: string, nodeId: string,
 <style scoped lang="scss">
 .workspacePage {
   display: flex; flex-direction: column; position: relative; width: 100%; height: 100dvh; min-width: 0; overflow: hidden; background: var(--uiBackgroundBase);
+  .editorResultRecovery { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 16px; border-bottom: 1px solid var(--uiStatusWarning); color: var(--uiTextPrimary); background: var(--uiStatusWarningSoft); font-size: 12px; }
   .workspaceHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; flex-shrink: 0; min-height: 72px; padding: 12px 20px; border-bottom: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundSubtle); z-index: var(--uiLayerSticky); .projectBrand { display: flex; align-items: center; gap: 20px; min-width: 0; .brandLogo { display: block; width: 128px; height: auto; flex-shrink: 0; border-radius: var(--uiRadiusControl); } .projectInfo { display: flex; flex-direction: column; gap: 6px; min-width: 0; strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextPrimary); font-size: var(--uiFontLabel); font-weight: 600; } span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--uiTextMuted); font-size: var(--uiFontControl); } } } .headerActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; .isActive { color: var(--uiActionPrimary); background: var(--uiActionSoft); } } }
   .workspaceStage { position: relative; flex: 1; min-width: 0; min-height: 0; margin-right: var(--agentWidth); isolation: isolate; .canvasPanel { position: absolute; inset: 0; &.backgroundPanel { opacity: 0; visibility: hidden; pointer-events: none; } } :deep(.canvasMenu) { margin-left: 0; } :deep(.documentPanel) { height: 100%; min-height: 0; } }
   @media (max-width: 1100px) { .workspaceHeader { gap: 12px; padding-inline: 16px; .projectBrand { gap: 12px; .brandLogo { width: 96px; } } } }

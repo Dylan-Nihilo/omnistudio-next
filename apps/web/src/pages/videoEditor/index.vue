@@ -6,14 +6,16 @@
         <div class="projectTitle"><strong>剪辑台</strong><span>{{ workspaceStore.project?.name || "未命名项目" }}</span></div>
       </div>
       <div class="headerActions">
+        <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || projectLoading || importBusy || sourceImportBusy || exportBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
-        <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || exportBusy" @click="openRecovery">项目恢复</button>
+        <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || sourceImportBusy || exportBusy" @click="openRecovery">项目恢复</button>
         <button class="exportButton" type="button" :disabled="!canExport || exportBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
       </div>
     </header>
     <section v-if="!directory" class="noProject"><icon-movie :size="40" /><h1>请先打开项目</h1><button class="secondaryButton" @click="router.push('/workspace')">返回工作区</button></section>
     <template v-else>
       <div v-if="draftAvailable" class="noticeBar" role="status"><span>发现尚未保存的本地草稿，恢复前会保留当前工程备份。</span><button @click="restoreDraft">恢复草稿</button><button @click="discardDraft">忽略草稿</button></div>
+      <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button></div>
       <div v-if="saveBlocked" class="noticeBar errorNotice" role="alert"><span>项目已被其他窗口修改。当前编辑保留为本地草稿，请重新读取后选择是否恢复。</span><button @click="reloadProject">重新读取项目</button></div>
       <div v-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button @click="openRecovery">从备份恢复</button></div>
       <div class="editorBody" :class="{ isUnavailable: !projectReady }">
@@ -25,14 +27,14 @@
             <div class="panelHeading"><div><h2>{{ activeTab === 'audio' ? '音频素材' : '媒体素材' }}</h2><span>{{ assets.length }} 个文件</span></div><button class="tinyAction" aria-label="导入媒体" :disabled="!canEdit" @click="fileInput?.click()"><icon-plus :size="17" /></button></div>
             <input ref="fileInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" multiple @change="importFiles" />
             <input ref="relinkInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" @change="relinkFile" />
-            <button class="importButton" type="button" :disabled="!canEdit" @click="fileInput?.click()"><icon-upload :size="16" />导入素材</button>
+            <div class="importActions"><button class="importButton" type="button" :disabled="!canEdit" @click="fileInput?.click()"><icon-upload :size="16" />本地导入</button><button class="importButton" type="button" :disabled="!canEdit" @click="mediaPickerOpen = true"><icon-link :size="16" />项目 / 共享素材</button></div>
             <div v-if="importBusy" class="assetHint" role="status">{{ importLabel }} {{ importProgress }}% <button @click="importController?.abort()">取消</button></div>
             <input v-model="assetSearch" class="assetSearch" type="search" aria-label="搜索素材" placeholder="搜索素材" />
             <div v-if="activeTab === 'media'" class="assetFilters"><button v-for="filter in mediaFilters" :key="filter.id" :class="{ isActive: mediaFilter === filter.id }" @click="mediaFilter = filter.id">{{ filter.label }}</button></div>
             <div class="assetList">
               <div v-for="asset in visibleAssets" :key="asset.id" class="assetRow" :class="{ isMissing: missingAssetIds.includes(asset.id), isSelected: sourceAssetId === asset.id }" :draggable="canEdit" @dragstart="dragAsset($event, asset)" @click="openSourceAsset(asset)" @dblclick.stop="openSourceAsset(asset)">
                 <span class="assetIcon" :class="asset.kind"><icon-music v-if="asset.kind === 'audio'" :size="18" /><icon-photo v-else-if="asset.kind === 'image'" :size="18" /><icon-video v-else :size="18" /></span>
-                <div class="assetInfo"><strong :title="asset.name">{{ asset.name }}</strong><span>{{ missingAssetIds.includes(asset.id) ? '素材缺失' : `${formatTime(asset.duration)} · ${formatBytes(asset.size)}` }}</span></div>
+                <div class="assetInfo"><strong :title="asset.name">{{ asset.name }}</strong><span>{{ missingAssetIds.includes(asset.id) ? '素材缺失' : `${formatTime(asset.duration)} · ${formatBytes(asset.size)}` }}</span><span v-if="asset.source" :title="asset.source.path">{{ asset.source.type === 'production' ? `项目镜头 · 候选 ${asset.source.attemptNumber || 1}` : asset.source.canvasPath ? `画布 · ${asset.source.canvasPath}` : asset.source.type === 'library' ? '共享素材快照' : '工作区素材快照' }} · {{ asset.source.hash.slice(0, 8) }}</span></div>
                 <button class="tinyAction" type="button" :aria-label="`预览源素材 ${asset.name}`" title="预览源素材，设置入出点" @click.stop="openSourceAsset(asset)"><icon-player-play :size="14" /></button>
                 <button class="tinyAction" type="button" :aria-label="`重新链接 ${asset.name}`" title="重新链接素材" :disabled="!canEdit" @click.stop="chooseRelink(asset)"><icon-link :size="14" /></button>
                 <button class="tinyAction" type="button" :aria-label="`添加 ${asset.name} 到时间线`" :disabled="!canEdit || missingAssetIds.includes(asset.id)" @click.stop="addAssetToTimeline(asset)"><icon-plus :size="15" /></button>
@@ -79,10 +81,11 @@
                 <input class="previewRange" type="range" min="0" :max="timelineDuration || 1" :step="1 / frameRate" :value="currentTime" aria-label="时间线播放位置" @input="seekFromRange" />
                 <span class="transportTime">{{ formatTime(currentTime) }} / {{ formatTime(timelineDuration) }}</span><button class="transportButton" aria-label="跳转到时间线开头" @click="seekTo(0)"><icon-player-skip-back :size="18" /></button>
               </div>
-              <a v-if="lastExport" class="exportResult" :href="lastExport.url" :download="lastExport.name">导出完成 · 下载 {{ lastExport.name }}</a>
             </section>
             <editorSource v-if="previewMode !== 'program' && sourceAsset" class="sourceMonitorPanel" :asset="sourceAsset" :url="sourceAssetUrl" :frameRate="frameRate" :disabled="!canEdit" @focusin="stopPlayback" @insert="insertSourceSelection" />
           </div>
+          <editorDelivery v-if="lastExport" :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery>
+          <p v-if="lastExport && !canRegisterExport" class="exportStale" role="status">工程已变更或正在保存，请重新导出后登记与回写。</p>
         </section>
         <aside class="inspectorPanel">
           <div class="panelHeading"><div><h2>片段属性</h2><span>{{ selectedClip?.title || '未选择片段' }}</span></div></div>
@@ -130,45 +133,60 @@
           <button v-for="kind in trackKinds" :key="kind.id" class="trackAdd" :disabled="!canEdit" @click="addTrack(kind.id)">+ {{ kind.label }}轨</button>
         </div><div class="timelineZoom"><label>缩放 <input v-model.number="zoom" type="range" min=".2" max="100" step=".2" aria-label="时间线缩放" /></label><button class="trackAdd" @click="fitTimeline">适合全长</button></div></header>
         <div v-if="editError" class="editNotice" role="alert"><span>{{ editError }}</span><button type="button" aria-label="关闭剪辑提示" @click="editError = ''">×</button></div>
-        <div ref="timelineViewport" class="timelineViewport"><div class="timelineCanvas" :style="{ width: `${timelineWidth}px` }">
+        <div ref="timelineViewport" class="timelineViewport" @scroll.passive="updateTimelineViewport"><div class="timelineCanvas" :style="{ width: `${timelineWidth}px` }">
           <div class="timelineRuler" @pointerdown="seekTimeline"><div class="rulerLabel">时间</div><div class="rulerTicks"><span v-for="tick in rulerTicks" :key="tick" class="rulerTick" :style="{ left: `${tick * zoom}px` }">{{ formatTime(tick) }}</span></div></div>
           <div v-for="(track, index) in tracks" :key="track.id" class="timelineTrack" :class="[track.kind, { isLocked: track.locked, isHidden: track.hidden }]" :data-track-id="track.id" @pointerdown="seekTimeline" @dragover.prevent @drop.prevent="dropOnTrack($event, track)">
             <div class="trackLabel" @pointerdown.stop><div class="trackName"><input :value="track.label" :aria-label="`轨道名称 ${track.label}`" :disabled="!canEdit || track.locked" @change="renameTrack(track, $event)" /><small>{{ clips.filter(clip => clip.track === track.id).length }}</small></div><div class="trackControls">
               <button :aria-label="`${track.locked ? '解锁' : '锁定'} ${track.label}`" :aria-pressed="track.locked" :disabled="!canEdit" @click="toggleTrack(track, 'locked')">{{ track.locked ? '锁' : '锁定' }}</button><button v-if="track.kind !== 'audio'" :aria-label="`${track.hidden ? '显示' : '隐藏'} ${track.label}`" :aria-pressed="track.hidden" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'hidden')">{{ track.hidden ? '显' : '隐藏' }}</button><button v-if="track.kind !== 'text'" :aria-label="`${track.muted ? '取消静音' : '静音'} ${track.label}`" :aria-pressed="track.muted" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'muted')">{{ track.muted ? '有声' : '静音' }}</button><button :aria-label="`上移 ${track.label}`" :disabled="!canEdit || track.locked || index === 0" @click="reorderTrack(index, -1)">↑</button><button :aria-label="`下移 ${track.label}`" :disabled="!canEdit || track.locked || index === tracks.length - 1" @click="reorderTrack(index, 1)">↓</button><button :aria-label="`删除轨道 ${track.label}`" :disabled="!canEdit || track.locked" @click="removeTrack(track)">×</button>
             </div></div>
-            <div class="trackContent"><button v-for="clip in clips.filter(item => item.track === track.id)" :key="clip.id" class="timelineClip" :class="[clip.kind, { isSelected: selectedClipId === clip.id }]" :style="clipStyle(clip)" :title="`${clip.title} · ${formatTime(clipDuration(clip))}`" :aria-label="`片段 ${clip.title}`" @pointerdown.stop="startClipDrag($event, clip)" @click.stop="selectClip(clip)"><span class="trimHandle leftHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'left')"></span><span class="clipTitle">{{ clip.title }}</span><span class="clipDuration">{{ formatTime(clipDuration(clip)) }}</span><span class="trimHandle rightHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'right')"></span></button></div>
+            <div class="trackContent">
+              <button v-for="clip in clips.filter(item => item.track === track.id)" :key="clip.id" class="timelineClip" :class="[clip.kind, { isSelected: selectedClipId === clip.id }]" :style="clipStyle(clip)" :title="`${clip.title} · ${formatTime(clipDuration(clip))}`" :aria-label="`片段 ${clip.title}`" @pointerdown.stop="startClipDrag($event, clip)" @click.stop="selectClip(clip)">
+                <editorFilmstrip v-if="clip.kind === 'video' || clip.kind === 'image'" :source="assetUrl(clip)" :kind="clip.kind" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :frameRate="frameRate" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" :generator="thumbnailGenerator" />
+                <span class="clipTitle">{{ clip.title }}</span><span class="clipDuration">{{ formatTime(clipDuration(clip)) }}</span>
+                <span class="trimHandle leftHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'left')"></span><span class="trimHandle rightHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'right')"></span>
+              </button>
+            </div>
           </div>
           <div class="playhead" :style="{ left: `${trackLabelWidth + currentTime * zoom}px` }" @pointerdown.stop="startPlayheadDrag"><span class="playheadCap"></span><span class="playheadLine"></span></div>
         </div></div>
         <footer class="timelineFooter"><span>{{ tracks.length }} 轨 · {{ clips.length }} 个片段</span><span class="timelineFooterNote">{{ editMode === 'select' ? 'V 选择 · B 波纹修剪 · N 滚动 · Y 滑移 · Shift Delete 波纹删除' : editMode === 'slip' ? '拖动片段整体滑移源范围，时间线位置保持不变 · V 返回选择' : '拖动片段边缘执行修剪 · V 返回选择' }} · 空格 播放 · ← → 逐帧 · S 分割 · Ctrl Z 撤销</span><span>总时长 {{ formatTime(timelineDuration) }}</span></footer>
       </section>
     </template>
+    <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
     <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
+    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false"><div class="recoveryDialog editorProjectsDialog"><h2>剪辑工程</h2><p>每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。</p><label class="fieldLabel" for="newEditorProjectName">新建工程</label><div class="buttonRow"><input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" @keydown.enter.prevent="createEditorProjectFromDialog" /><button class="exportButton" :disabled="!newEditorProjectName || projectBusy" @click="createEditorProjectFromDialog">新建</button></div><div v-if="editorProjectOptions.length" class="editorProjectList"><button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: item.path === activeEditorProjectPath }" :disabled="projectBusy || item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)"><span><strong>{{ item.name }}</strong><small>{{ item.path }}</small></span><span>{{ item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span></button></div><p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p><div class="buttonRow"><button class="secondaryButton" @click="editorProjectsOpen = false">关闭</button></div></div></div>
     <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportController?.signal.aborted ? '正在停止导出' : '正在导出视频' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportController?.signal.aborted" @click="exportController?.abort()">取消导出</button></div></div>
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
-import { onBeforeRouteLeave, useRouter } from "vue-router";
+import axios from "axios";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { getSessionSnapshot } from "@/lib/sessionState";
 import { clipDuration, clipKeyframeValue, createDefaultTracks, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
-import { backupEditorContent, ensureEditorFolders, loadEditorProject, listEditorBackups, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
+import { backupEditorContent, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
 import { exportEditorProject } from "./editorExport";
 import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slipEditClip } from "./editorTimeline";
+import { createTimelineThumbnailGenerator } from "./editorThumbnails";
+import editorFilmstrip from "./editorFilmstrip.vue";
+import editorMediaPicker from "./editorMediaPicker.vue";
+import editorDelivery from "./editorDelivery.vue";
 import editorSource from "./editorSource.vue";
 import editorText from "./editorText.vue";
 import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, IconCopy, IconDownload, IconLink, IconMagnet, IconMovie, IconMusic, IconPhoto, IconPhotoVideo, IconPlayerPause, IconPlayerPlay, IconPlayerSkipBack, IconPlayerTrackNext, IconPlayerTrackPrev, IconPlus, IconScissors, IconTextSize, IconTrash, IconUpload, IconVideo } from "@tabler/icons-vue";
 
-type ProjectContext = { directory: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };
+type ProjectContext = { directory: string; projectPath: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };
 type PendingSave = { context: ProjectContext; project: EditorProject; sequence: number };
 type DragState = { clipId?: string; element?: HTMLElement; startX: number; startY: number; start?: number; inPoint?: number; outPoint?: number; keyframes?: EditorKeyframe[]; edge?: "left" | "right"; playhead?: boolean; historySaved?: boolean; mode?: "select" | "ripple" | "roll" | "slip"; clips?: EditorClip[]; track?: string };
 type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "fontSize" | "textX" | "textY";
 const router = useRouter();
+const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const directory = computed(() => workspaceStore.project?.directory);
+const legacyEditorProjectPath = "assets/videoEditor/timeline.json";
 const trackLabelWidth = 174;
 const panelTabs = [{ id: "media", label: "媒体", icon: IconPhotoVideo }, { id: "audio", label: "音频", icon: IconMusic }, { id: "text", label: "文字", icon: IconTextSize }, { id: "settings", label: "设置", icon: IconAdjustments }] as const;
 const mediaFilters = [{ id: "all", label: "全部" }, { id: "video", label: "视频" }, { id: "audio", label: "音频" }, { id: "image", label: "图片" }] as const;
@@ -212,6 +230,7 @@ const textDraft = ref("");
 const zoom = ref(30);
 const snapEnabled = ref(true);
 const importBusy = ref(false);
+const mediaPickerOpen = ref(false);
 const importLabel = ref("");
 const importProgress = ref(0);
 const importController = shallowRef<AbortController>();
@@ -220,17 +239,35 @@ const savePending = ref(false);
 const saveBlocked = ref(false);
 const projectLoading = ref(false);
 const loadedDirectory = ref<string>();
+const activeEditorProjectPath = ref(legacyEditorProjectPath);
+const editorProjectName = ref("默认剪辑项目");
+const editorProjectOptions = ref<{ path: string; name: string }[]>([]);
+const editorProjectsOpen = ref(false);
+const newEditorProjectName = ref("");
+const projectBusy = ref(false);
+const projectError = ref("");
+const sourceImportBusy = ref(false);
+const sourceImportError = ref("");
+const sourceImportNotice = ref("");
+const sourceImportLabel = ref("");
+const processedSourceImportKey = ref("");
+const pendingSourceImportKey = ref("");
+const pendingSourceImportAssets = ref<EditorAsset[]>([]);
+const retryPickedSource = ref<{ type: "workspace" | "library"; path: string }>();
+const pendingPickedAsset = ref<EditorAsset>();
 const saveError = ref("");
 const previewError = ref("");
 const exportError = ref("");
 const exportBusy = ref(false);
 const exportProgress = ref<number>();
 const exportController = shallowRef<AbortController>();
-const lastExport = ref<{ url: string; name: string }>();
+const lastExport = ref<{ id: string; directory: string; url: string; name: string; path: string; projectPath: string; revision: string; sourceReferences: { type: string; id: string; label?: string }[] }>();
 const fileInput = ref<HTMLInputElement>();
 const relinkInput = ref<HTMLInputElement>();
 const subtitleInput = ref<HTMLInputElement>();
 const timelineViewport = ref<HTMLElement>();
+const timelineView = ref({ left: -trackLabelWidth, width: 1200 });
+const thumbnailGenerator = shallowRef(createTimelineThumbnailGenerator());
 const previewStage = ref<HTMLElement>();
 const stageSize = ref({ width: 640, height: 360 });
 const undoStack = ref<string[]>([]);
@@ -255,6 +292,7 @@ let saveRequests = 0;
 let playbackTime = 0;
 let playbackTimer: ReturnType<typeof setInterval> | undefined;
 let resizeObserver: ResizeObserver | undefined;
+let timelineResizeObserver: ResizeObserver | undefined;
 let releaseDragEvents: (() => void) | undefined;
 let dragState: DragState | undefined;
 let draggedClipId: string | undefined;
@@ -265,7 +303,10 @@ let audioLimiter: DynamicsCompressorNode | undefined;
 const audioNodes = new Map<string, { element: HTMLAudioElement; source: MediaElementAudioSourceNode; gain: GainNode }>();
 
 const projectReady = computed(() => !!directory.value && loadedDirectory.value === directory.value && !projectLoading.value);
-const canEdit = computed(() => projectReady.value && !importBusy.value && !exportBusy.value);
+const canRegisterExport = computed(() => !!lastExport.value && projectReady.value && activeEditorProjectPath.value === lastExport.value.projectPath && !saveBlocked.value && !saveError.value && !saveBusy.value && !savePending.value && !exportBusy.value && !sourceImportBusy.value && getProjectContent() === exportedProjectContent.value);
+const exportedProjectContent = ref("");
+const returnCanvasPath = computed(() => assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
+const canEdit = computed(() => projectReady.value && !importBusy.value && !sourceImportBusy.value && !projectBusy.value && !exportBusy.value);
 const selectedClip = computed(() => clips.value.find(clip => clip.id === selectedClipId.value));
 const sourceAsset = computed(() => assets.value.find(asset => asset.id === sourceAssetId.value));
 const sourceAssetUrl = computed(() => mediaUrls.value.get(sourceAssetId.value ?? ""));
@@ -305,7 +346,7 @@ const activeClips = computed(() => clips.value.filter(clip => currentTime.value 
 const activeVisualClips = computed(() => tracks.value.slice().reverse().filter(track => track.kind !== "audio" && !track.hidden).flatMap(track => activeClips.value.filter(clip => clip.track === track.id).sort((a, b) => a.start - b.start).slice(-1)));
 const activeSoundClips = computed(() => activeClips.value.filter(clip => (clip.kind === "video" || clip.kind === "audio") && !tracks.value.find(track => track.id === clip.track)?.muted && assets.value.find(asset => asset.id === clip.assetId)?.hasAudio !== false));
 const visibleAssets = computed(() => assets.value.filter(asset => (mediaFilter.value === "all" || mediaFilter.value === asset.kind) && (activeTab.value !== "audio" || asset.kind === "audio") && asset.name.toLowerCase().includes(assetSearch.value.trim().toLowerCase())));
-const canExport = computed(() => projectReady.value && clips.value.length > 0 && !importBusy.value && !saveBlocked.value && !missingAssetIds.value.length);
+const canExport = computed(() => canEdit.value && clips.value.length > 0 && !saveBlocked.value && !missingAssetIds.value.length);
 const stageStyle = computed(() => {
   const [w, h] = aspectRatio.value.split(":").map(Number) as [number, number];
   const width = Math.min(stageSize.value.width, stageSize.value.height * w / h);
@@ -323,6 +364,7 @@ const rulerTicks = computed(() => {
   const end = (timelineWidth.value - trackLabelWidth) / zoom.value;
   return Array.from({ length: Math.min(1000, Math.ceil(end / step) + 1) }, (_, index) => index * step);
 });
+const sourceImportKey = computed(() => JSON.stringify([route.query.sourceDirectory, route.query.canvasPath, route.query.nodeIds, route.query.productionProjectId, route.query.episodeId, route.query.variantIds, route.query.variantId]));
 
 watch(directory, (next, previous) => {
   if (next === previous) return;
@@ -332,9 +374,15 @@ watch(directory, (next, previous) => {
   projectVersion++;
   stopPlayback();
   clearEditor();
-  if (next) void loadProject(next);
+  if (next) {
+    activeEditorProjectPath.value = selectedEditorProjectPath(next);
+    void loadProject(next, activeEditorProjectPath.value);
+  }
 }, { immediate: true, flush: "sync" });
-watch([assets, clips, tracks, aspectRatio, frameRate, exportHeight, exportQuality], scheduleSave, { deep: true, flush: "sync" });
+watch([projectReady, sourceImportKey], ([ready, key]) => {
+  if (ready && (route.query.canvasPath || route.query.variantIds || route.query.variantId) && key !== processedSourceImportKey.value) void importEditorSources();
+}, { immediate: true, flush: "post" });
+watch([assets, clips, tracks, aspectRatio, frameRate, exportHeight, exportQuality, editorProjectName], scheduleSave, { deep: true, flush: "sync" });
 watch([currentTime, clips, tracks], syncPlayers, { deep: true, flush: "post" });
 watch([selectedClipId, keyframeProperty, keyframePosition, keyframeValue], () => { keyframeValueDraft.value = roundNumber(keyframeValue.value); }, { immediate: true });
 watch(selectedClipId, () => { if (selectedClip.value?.kind !== "video" && selectedClip.value?.kind !== "audio" && precisionOperation.value === "slip") precisionOperation.value = "rippleOut"; });
@@ -350,6 +398,13 @@ watch(previewStage, stage => {
   });
   resizeObserver.observe(host);
 });
+watch(timelineViewport, element => {
+  timelineResizeObserver?.disconnect();
+  if (!element) return;
+  timelineResizeObserver = new ResizeObserver(updateTimelineViewport);
+  timelineResizeObserver.observe(element);
+  updateTimelineViewport();
+});
 onMounted(() => {
   window.addEventListener("keydown", onEditorKeydown);
   window.addEventListener("beforeunload", handleBeforeUnload);
@@ -362,7 +417,7 @@ onMounted(() => {
   }, 20);
 });
 onBeforeRouteLeave(async () => {
-  if (importBusy.value || exportBusy.value) return false;
+  if (importBusy.value || sourceImportBusy.value || exportBusy.value) return false;
   stopPlayback();
   return await saveProject();
 });
@@ -374,6 +429,8 @@ onBeforeUnmount(() => {
   if (playbackTimer) clearInterval(playbackTimer);
   if (persistTimer) clearTimeout(persistTimer);
   resizeObserver?.disconnect();
+  timelineResizeObserver?.disconnect();
+  thumbnailGenerator.value.dispose();
   releaseDragEvents?.();
   stopPlayback();
   importController.value?.abort();
@@ -382,10 +439,12 @@ onBeforeUnmount(() => {
 });
 
 function getProject(): EditorProject {
-  return JSON.parse(JSON.stringify({ version: 2, assets: assets.value, clips: clips.value, tracks: tracks.value, aspectRatio: aspectRatio.value, frameRate: frameRate.value, exportHeight: exportHeight.value, exportQuality: exportQuality.value }));
+  return JSON.parse(JSON.stringify({ version: 2, name: editorProjectName.value.trim(), assets: assets.value, clips: clips.value, tracks: tracks.value, aspectRatio: aspectRatio.value, frameRate: frameRate.value, exportHeight: exportHeight.value, exportQuality: exportQuality.value }));
 }
+function getProjectContent() { return JSON.stringify(getProject()); }
 function applyProject(project: EditorProject) {
   applyingProject = true;
+  editorProjectName.value = project.name || (activeEditorProjectPath.value === legacyEditorProjectPath ? "默认剪辑项目" : activeEditorProjectPath.value.split("/").at(-1)?.replace(/\.json$/, "") || "剪辑项目");
   assets.value = project.assets;
   clips.value = project.clips;
   tracks.value = project.tracks;
@@ -398,14 +457,26 @@ function applyProject(project: EditorProject) {
   applyingProject = false;
 }
 function clearEditor() {
+  thumbnailGenerator.value.dispose();
+  thumbnailGenerator.value = createTimelineThumbnailGenerator();
   applyingProject = true;
   loadedDirectory.value = undefined;
   projectContext = undefined;
   projectLoading.value = !!directory.value;
+  editorProjectName.value = activeEditorProjectPath.value === legacyEditorProjectPath ? "默认剪辑项目" : activeEditorProjectPath.value.split("/").at(-1)?.replace(/\.json$/, "") || "剪辑项目";
   pendingSave = undefined;
   savePending.value = false;
   saveBusy.value = saveRequests > 0;
   importBusy.value = false;
+  mediaPickerOpen.value = false;
+  sourceImportBusy.value = false;
+  sourceImportError.value = "";
+  sourceImportNotice.value = "";
+  processedSourceImportKey.value = "";
+  pendingSourceImportKey.value = "";
+  pendingSourceImportAssets.value = [];
+  retryPickedSource.value = undefined;
+  pendingPickedAsset.value = undefined;
   exportBusy.value = false;
   saveBlocked.value = false;
   saveError.value = "";
@@ -424,6 +495,7 @@ function clearEditor() {
   draftAvailable.value = false;
   recoverableDraft.value = undefined;
   lastExport.value = undefined;
+  exportedProjectContent.value = "";
   currentTime.value = 0;
   applyingProject = false;
 }
@@ -442,6 +514,10 @@ function clampFades(clip: EditorClip) {
   clip.fadeOut = Math.min(clip.fadeOut ?? 0, clipDuration(clip));
 }
 function clipStyle(clip: EditorClip) { return { left: `${clip.start * zoom.value}px`, width: `${Math.max(2, clipDuration(clip) * zoom.value)}px` }; }
+function updateTimelineViewport() {
+  const element = timelineViewport.value;
+  if (element) timelineView.value = { left: element.scrollLeft - trackLabelWidth, width: element.clientWidth };
+}
 function fadeLevel(clip: EditorClip) {
   const time = currentTime.value - clip.start;
   return Math.max(0, Math.min(1, clip.fadeIn ? time / clip.fadeIn : 1, clip.fadeOut ? (clipDuration(clip) - time) / clip.fadeOut : 1));
@@ -955,7 +1031,7 @@ async function importMedia(incoming: File[], replaceId?: string) {
       const safeName = file.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/, "") || `${kind}.dat`;
       const path = `assets/videoEditor/media/${id}-${safeName}`;
       await files.upload(path, file, { signal: controller.signal, onProgress: percent => { if (version === projectVersion) importProgress.value = percent; } });
-      if (version !== projectVersion || projectContext !== context) return;
+      if (version !== projectVersion || projectContext !== context) { await files.remove(path); return; }
       saveHistory();
       const asset = { id: existing?.id ?? id, name: file.name, path, kind, size: file.size, ...metadata };
       if (existing) assets.value.splice(assets.value.indexOf(existing), 1, asset);
@@ -1046,16 +1122,25 @@ async function checkMedia() {
   }
   if (projectContext === context && snapshot.every(asset => assets.value.some(current => current.id === asset.id && current.path === asset.path))) missingAssetIds.value = missing;
 }
-async function loadProject(path: string) {
+function selectedEditorProjectPath(directory: string) {
+  try {
+    const value = localStorage.getItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${directory}`);
+    return value === legacyEditorProjectPath || /^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(value ?? "") ? value! : legacyEditorProjectPath;
+  } catch { return legacyEditorProjectPath; }
+}
+async function loadProject(path: string, editorPath = activeEditorProjectPath.value) {
   const version = projectVersion;
   projectLoading.value = true;
   try {
-    const loaded = await loadEditorProject(path);
-    if (version !== projectVersion || directory.value !== path || !mounted) return;
-    const draftKey = `omnistudioEditorDraft:${getSessionSnapshot().userId}:${path}`;
-    projectContext = { directory: path, revision: loaded.revision, content: loaded.content, draftKey: `${draftKey}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
+    const loaded = await loadEditorProject(path, editorPath);
+    if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || !mounted) return;
+    const draftKey = `omnistudioEditorDraft:${getSessionSnapshot().userId}:${path}:${editorPath}`;
+    projectContext = { directory: path, projectPath: editorPath, revision: loaded.revision, content: loaded.content, draftKey: `${draftKey}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
     applyProject(loaded.project);
     backups.value = loaded.backups;
+    try { editorProjectOptions.value = await listEditorProjects(path); }
+    catch (error) { console.warn("剪辑工程列表读取失败", error); }
+    if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || !mounted) return;
     loadedDirectory.value = path;
     projectLoading.value = false;
     saveBlocked.value = false;
@@ -1101,7 +1186,7 @@ function saveProject(): Promise<boolean> {
   saveQueue = saveQueue.then(async () => {
     try {
       if (pending.context.blocked) return false;
-      const result = await saveEditorProject(pending.context.directory, pending.project, pending.context.revision, pending.context.content);
+      const result = await saveEditorProject(pending.context.directory, pending.project, pending.context.revision, pending.context.content, pending.context.projectPath);
       pending.context.revision = result.revision;
       pending.context.content = result.content;
       if (projectContext === pending.context) {
@@ -1130,7 +1215,7 @@ function saveProject(): Promise<boolean> {
 }
 async function reloadProject() {
   const path = directory.value;
-  if (!path || importBusy.value || exportBusy.value) return;
+  if (!path || importBusy.value || sourceImportBusy.value || exportBusy.value) return;
   stopPlayback();
   projectVersion++;
   clearEditor();
@@ -1140,27 +1225,30 @@ async function openRecovery() {
   if (!directory.value) return;
   recoveryOpen.value = true;
   recoveryError.value = "";
-  try { backups.value = await listEditorBackups(directory.value); selectedBackup.value = backups.value[0]?.path ?? ""; }
+  try { backups.value = await listEditorBackups(directory.value, activeEditorProjectPath.value); selectedBackup.value = backups.value[0]?.path ?? ""; }
   catch (error) { recoveryError.value = errorMessage(error, "读取备份失败"); }
 }
 async function restoreBackup() {
   const path = directory.value;
+  const editorPath = activeEditorProjectPath.value;
+  const backupPath = selectedBackup.value;
   const version = projectVersion;
-  if (!path || !selectedBackup.value || importBusy.value || exportBusy.value) return;
+  if (!path || !backupPath || importBusy.value || sourceImportBusy.value || exportBusy.value) return;
   projectLoading.value = true;
   try {
     if (!saveBlocked.value && pendingSave && !await saveProject()) throw new Error("当前工程保存失败，请先解决保存问题");
     const files = useWorkspaceFiles(path);
-    const backup = await readEditorBackup(path, selectedBackup.value);
-    const current = await files.readVersionedText("assets/videoEditor/timeline.json");
-    const preserved = current.content ? await backupEditorContent(path, current.content) : undefined;
-    const restored = await saveEditorProject(path, backup, current.revision, "");
-    try { await pruneEditorBackups(path, preserved); }
+    const backup = await readEditorBackup(path, backupPath, editorPath);
+    const current = await files.readVersionedText(editorPath);
+    const preserved = current.content ? await backupEditorContent(path, current.content, editorPath) : undefined;
+    if (version !== projectVersion || directory.value !== path) return;
+    const restored = await saveEditorProject(path, backup, current.revision, "", editorPath);
+    try { await pruneEditorBackups(path, preserved, editorPath); }
     catch (error) { console.warn("工程已恢复，但旧备份清理失败", error); }
     if (version !== projectVersion || directory.value !== path) return;
     pendingSave = undefined;
     savePending.value = false;
-    projectContext = { directory: path, revision: restored.revision, content: restored.content, draftKey: `omnistudioEditorDraft:${getSessionSnapshot().userId}:${path}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
+    projectContext = { directory: path, projectPath: editorPath, revision: restored.revision, content: restored.content, draftKey: `omnistudioEditorDraft:${getSessionSnapshot().userId}:${path}:${editorPath}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
     applyProject(backup);
     loadedDirectory.value = path;
     undoStack.value = []; redoStack.value = [];
@@ -1169,6 +1257,55 @@ async function restoreBackup() {
     void checkMedia();
   } catch (error) { recoveryError.value = errorMessage(error, "恢复备份失败"); }
   finally { if (version === projectVersion) projectLoading.value = false; }
+}
+async function openEditorProjects() {
+  if (!directory.value || projectBusy.value) return;
+  projectError.value = "";
+  newEditorProjectName.value = "";
+  try { editorProjectOptions.value = await listEditorProjects(directory.value); }
+  catch (error) { projectError.value = errorMessage(error, "读取剪辑工程失败"); }
+  editorProjectsOpen.value = true;
+}
+async function selectEditorProject(path: string, fromCreate = false) {
+  const projectDirectory = directory.value;
+  if (!projectDirectory || sourceImportBusy.value || importBusy.value || exportBusy.value || projectBusy.value && !fromCreate || path === activeEditorProjectPath.value) return;
+  if (path !== legacyEditorProjectPath && !/^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(path)) {
+    projectError.value = "剪辑工程路径无效";
+    return;
+  }
+  projectBusy.value = true;
+  projectError.value = "";
+  try {
+    if (!saveBlocked.value && !await saveProject()) throw new Error("当前剪辑工程尚未保存，请先解决保存问题");
+    if (projectDirectory !== directory.value) throw new Error("工作区已切换，请重新选择剪辑工程");
+    activeEditorProjectPath.value = path;
+    try { localStorage.setItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${projectDirectory}`, path); }
+    catch (error) { console.warn("当前剪辑工程无法记入本地偏好", error); }
+    projectVersion++;
+    stopPlayback();
+    clearEditor();
+    await loadProject(projectDirectory, path);
+    if (loadedDirectory.value !== projectDirectory) throw new Error(saveError.value || "剪辑工程读取失败");
+    editorProjectsOpen.value = false;
+  } catch (error) { projectError.value = errorMessage(error, "切换剪辑工程失败"); }
+  finally { projectBusy.value = false; }
+}
+async function createEditorProjectFromDialog() {
+  const projectDirectory = directory.value;
+  const name = newEditorProjectName.value.trim();
+  if (!projectDirectory || !name || projectBusy.value) return;
+  projectBusy.value = true;
+  projectError.value = "";
+  try {
+    if (!saveBlocked.value && !await saveProject()) throw new Error("当前剪辑工程尚未保存，请先解决保存问题");
+    if (directory.value !== projectDirectory) throw new Error("工作区已切换，请重试");
+    const created = await createEditorProjectFile(projectDirectory, name);
+    editorProjectOptions.value = await listEditorProjects(projectDirectory);
+    if (directory.value !== projectDirectory) throw new Error("工作区已切换，工程已保留在原工作区");
+    await selectEditorProject(created.path, true);
+    newEditorProjectName.value = "";
+  } catch (error) { projectError.value = errorMessage(error, "新建剪辑工程失败"); }
+  finally { projectBusy.value = false; }
 }
 function restoreDraft() {
   const context = projectContext;
@@ -1212,12 +1349,12 @@ function discardDraft() {
   catch (error) { previewError.value = errorMessage(error, "清理本地草稿失败"); }
 }
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (!pendingSave && !saveBusy.value && !importBusy.value && !exportBusy.value) return;
+  if (!pendingSave && !saveBusy.value && !importBusy.value && !sourceImportBusy.value && !exportBusy.value) return;
   event.preventDefault(); event.returnValue = "";
 }
 function onEditorKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || event.isComposing) return;
-  if (recoveryOpen.value || importBusy.value || exportBusy.value || !projectReady.value) return;
+  if (recoveryOpen.value || editorProjectsOpen.value || mediaPickerOpen.value || !canEdit.value) return;
   if (dragState) { event.preventDefault(); return; }
   if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable='true']")) return;
   if (event.code === "Space") { event.preventDefault(); togglePlayback(); }
@@ -1239,6 +1376,246 @@ function httpStatus(error: unknown) { return (error as { response?: { status?: n
 function downloadUrl(url: string, name: string) {
   const link = document.createElement("a"); link.href = url; link.download = name; link.click();
 }
+function workspaceRelativePath(value: unknown) {
+  if (typeof value !== "string" || !value.trim() || /^[a-z][a-z\d+.-]*:/i.test(value) || /[\\:<>&"|?*\u0000-\u001f]/.test(value) || value.startsWith("/") || value.split("/").some(part => !part || part === "." || part === ".." || part.endsWith(".") || part.endsWith(" "))) throw new Error("素材路径必须是工作区内的相对文件路径");
+  return value;
+}
+function queryString(value: unknown) { return typeof value === "string" ? value : undefined; }
+function queryIdList() {
+  const raw = queryString(route.query.variantIds);
+  let ids: unknown[];
+  if (raw) {
+    try { ids = JSON.parse(raw); }
+    catch { throw new Error("项目候选列表格式无效"); }
+    if (!Array.isArray(ids)) throw new Error("项目候选列表格式无效");
+  } else ids = [route.query.variantId].filter(value => value !== undefined);
+  if (ids.length > 200 || ids.some(id => typeof id !== "string" || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(id))) throw new Error("项目候选数量或编号无效");
+  return [...new Set(ids as string[])];
+}
+function clearSourceImportQuery() {
+  const query = { ...route.query };
+  for (const key of ["canvasPath", "nodeIds", "variantIds", "variantId"]) delete query[key];
+  sourceImportError.value = "";
+  retryPickedSource.value = undefined;
+  pendingPickedAsset.value = undefined;
+  void router.replace({ path: route.path, query });
+}
+async function removeImportedAssets(incoming: EditorAsset[], targetDirectory = directory.value) {
+  if (!incoming.length || !targetDirectory) return;
+  const files = useWorkspaceFiles(targetDirectory);
+  await Promise.allSettled(incoming.map(asset => files.remove(asset.path)));
+}
+async function retrySourceImport() {
+  if (pendingPickedAsset.value) {
+    sourceImportBusy.value = true;
+    sourceImportError.value = "";
+    try {
+      if (!await saveProject()) throw new Error("工程保存失败，请解决保存问题后重试");
+      pendingPickedAsset.value = undefined;
+      sourceImportNotice.value = "素材已加入当前剪辑工程。";
+    } catch (error) { sourceImportError.value = errorMessage(error, "工程保存失败"); }
+    finally { sourceImportBusy.value = false; }
+    return;
+  }
+  if (retryPickedSource.value) { await importPickedMedia(retryPickedSource.value); return; }
+  if (pendingSourceImportKey.value === sourceImportKey.value && pendingSourceImportAssets.value.length) {
+    sourceImportBusy.value = true;
+    sourceImportError.value = "";
+    try {
+      if (!await saveProject()) throw new Error("工程保存失败，请解决保存问题后重试");
+      pendingSourceImportKey.value = "";
+      pendingSourceImportAssets.value = [];
+      sourceImportNotice.value = "素材已加入当前剪辑工程。";
+      clearSourceImportQuery();
+    } catch (error) { sourceImportError.value = errorMessage(error, "工程保存失败"); }
+    finally { sourceImportBusy.value = false; }
+    return;
+  }
+  processedSourceImportKey.value = "";
+  await importEditorSources();
+}
+async function importEditorSources() {
+  const currentDirectory = directory.value;
+  if (!currentDirectory || !projectReady.value || sourceImportBusy.value) return;
+  const key = sourceImportKey.value;
+  if (processedSourceImportKey.value === key) return;
+  processedSourceImportKey.value = key;
+  sourceImportBusy.value = true;
+  sourceImportError.value = "";
+  sourceImportNotice.value = "";
+  sourceImportLabel.value = "正在读取素材来源";
+  const version = projectVersion;
+  const canvasIncoming: EditorAsset[] = [];
+  const productionIncoming: EditorAsset[] = [];
+  let applied = false;
+  try {
+    const canvasPath = queryString(route.query.canvasPath);
+    if (canvasPath) {
+      if (queryString(route.query.sourceDirectory) !== currentDirectory) throw new Error("画布与剪辑工程工作区不一致，请从原工作区重新打开剪辑台");
+      workspaceRelativePath(canvasPath);
+      if (!canvasPath.toLowerCase().endsWith(".json")) throw new Error("画布路径无效");
+      const rawNodeIds = queryString(route.query.nodeIds);
+      let nodeIds: string[] = [];
+      if (rawNodeIds) {
+        try {
+          const parsed = JSON.parse(rawNodeIds) as unknown;
+          if (!Array.isArray(parsed) || parsed.length > 500 || parsed.some(id => typeof id !== "string" || !id.trim() || id.length > 256)) throw new Error();
+          nodeIds = [...new Set(parsed)];
+        } catch { throw new Error("画布节点列表无效"); }
+      }
+      const canvas = await useWorkspaceFiles(currentDirectory).readJson<{ toonflowCanvas?: boolean; nodes?: { id?: string; data?: { label?: string; outputs?: Record<string, { dataType?: string; value?: { url?: unknown } } | undefined> } }[] }>(canvasPath);
+      if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
+      if (canvas?.toonflowCanvas !== true || !Array.isArray(canvas.nodes) || canvas.nodes.length > 10000) throw new Error("画布文件格式无效");
+      const selected = nodeIds.length ? new Set(nodeIds) : undefined;
+      const sources = canvas.nodes.flatMap(node => {
+        if (!node || typeof node.id !== "string" || selected && !selected.has(node.id)) return [];
+        return Object.entries(node.data?.outputs ?? {}).flatMap(([outputId, output]) => {
+          const path = output?.value?.url;
+          const kind = output?.dataType === "VIDEO" ? "video" : output?.dataType === "AUDIO" ? "audio" : output?.dataType === "IMAGE" ? "image" : undefined;
+          return kind && typeof path === "string" ? [{ nodeId: node.id, outputId, path, label: node.data?.label || node.id, kind }] : [];
+        });
+      });
+      if (sources.length > 500) throw new Error("单次最多导入 500 个画布素材");
+      for (const [index, source] of sources.entries()) {
+        if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
+        sourceImportLabel.value = `正在冻结画布素材 ${index + 1}/${sources.length} · ${source.label}`;
+        const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/videoEditor/importMedia", { directory: currentDirectory, source: { type: "workspace", path: source.path, canvasPath, nodeId: source.nodeId, outputId: source.outputId } });
+        canvasIncoming.push(data.data.asset);
+        if (data.data.asset.kind !== source.kind) throw new Error(`画布输出「${source.label}」的素材类型已变化，请重新打开画布后再试`);
+      }
+      if (!sources.length) throw new Error("所选画布节点没有可导入的图片、视频或音频输出");
+    }
+
+    const projectId = queryString(route.query.productionProjectId);
+    const variantIds = queryIdList();
+    if (variantIds.length && !projectId) throw new Error("缺少制作项目编号，请从项目重新选择候选");
+    if (projectId && variantIds.length) {
+      for (const [index, variantId] of variantIds.entries()) {
+        if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
+        sourceImportLabel.value = `正在导入项目候选 ${index + 1}/${variantIds.length}`;
+        const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/productionProjects/cuts/importSource", { projectId, variantId, directory: currentDirectory });
+        productionIncoming.push(data.data.asset);
+      }
+    }
+    if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
+    const unused = addImportedAssets([...canvasIncoming, ...productionIncoming], productionIncoming);
+    applied = true;
+    pendingSourceImportKey.value = key;
+    pendingSourceImportAssets.value = [...canvasIncoming, ...productionIncoming];
+    await removeImportedAssets(unused, currentDirectory);
+    if (!await saveProject()) throw new Error("素材已加入当前编辑，但工程保存失败；请先解决保存问题后重试");
+    pendingSourceImportKey.value = "";
+    pendingSourceImportAssets.value = [];
+    sourceImportNotice.value = projectId && variantIds.length
+      ? `已按镜头顺序导入 ${variantIds.length} 个项目候选并追加到时间线。`
+      : `已从画布冻结导入 ${canvasIncoming.length} 个媒体素材。`;
+    clearSourceImportQuery();
+  } catch (error) {
+    if (!applied) await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory);
+    if (version === projectVersion) {
+      if (pendingSourceImportKey.value !== key) {
+        sourceImportError.value = errorMessage(error, "导入素材失败");
+        processedSourceImportKey.value = "";
+      } else sourceImportError.value = errorMessage(error, "工程保存失败，素材已保留在当前编辑中，请重试保存");
+    }
+  } finally {
+    if (version === projectVersion) sourceImportBusy.value = false;
+  }
+}
+function addImportedAssets(incoming: EditorAsset[], timelineAssets: EditorAsset[] = []): EditorAsset[] {
+  if (!incoming.length) return [];
+  const next = getProject();
+  const resolved: EditorAsset[] = [];
+  const unused: EditorAsset[] = [];
+  const initialAssetCount = next.assets.length;
+  for (const asset of incoming) {
+    const addToTimeline = timelineAssets.some(item => item.id === asset.id);
+    const existing = next.assets.find(item => item.id === asset.id || item.path === asset.path || (asset.source && item.source
+      && item.source.type === asset.source.type && item.source.path === asset.source.path && item.source.hash === asset.source.hash
+      && item.source.variantId === asset.source.variantId && item.source.canvasPath === asset.source.canvasPath
+      && item.source.nodeId === asset.source.nodeId && item.source.outputId === asset.source.outputId));
+    if (existing) {
+      if (existing.path !== asset.path) unused.push(asset);
+      if (!addToTimeline || next.clips.some(clip => clip.assetId === existing.id)) continue;
+      resolved.push(existing);
+    } else { next.assets.push(asset); if (addToTimeline) resolved.push(asset); }
+  }
+  let lastClip: EditorClip | undefined;
+  const hasChanges = next.assets.length !== initialAssetCount || resolved.length > 0;
+  if (!hasChanges) return unused;
+  if (resolved.length) {
+    for (const asset of resolved) {
+      const kind = asset.kind === "image" ? "video" : asset.kind;
+      let track = next.tracks.find(item => item.kind === kind && !item.locked);
+      if (!track) {
+        track = { id: crypto.randomUUID(), kind, label: kind === "video" ? "视频" : "音频", locked: false, muted: false, hidden: false };
+        next.tracks.push(track);
+      }
+      const start = Math.max(0, ...next.clips.filter(clip => clip.track === track.id).map(clip => clip.start + clipDuration(clip)));
+      if (start + asset.duration > 86400) throw new Error("候选素材累计时长超过 24 小时，未能追加到时间线");
+      lastClip = { id: crypto.randomUUID(), assetId: asset.id, title: asset.name, kind: asset.kind, track: track.id, start, inPoint: 0, outPoint: asset.duration, volume: 1 };
+      next.clips.push(lastClip);
+    }
+  }
+  const validated = parseEditorProject(next);
+  saveHistory();
+  applyProject(validated);
+  selectedClipId.value = lastClip?.id;
+  missingAssetIds.value = missingAssetIds.value.filter(id => !resolved.some(asset => asset.id === id));
+  scheduleSave();
+  if (lastClip) seekTo(lastClip.start);
+  return unused;
+}
+async function importPickedMedia(source: { type: "workspace" | "library"; path: string }) {
+  const currentDirectory = directory.value;
+  if (!currentDirectory || !canEdit.value) return;
+  const version = projectVersion;
+  sourceImportBusy.value = true;
+  sourceImportError.value = "";
+  sourceImportNotice.value = "正在固定素材副本";
+  retryPickedSource.value = source;
+  let imported: EditorAsset | undefined;
+  let applied = false;
+  try {
+    const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/videoEditor/importMedia", { directory: currentDirectory, source });
+    imported = data.data.asset;
+    if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets([imported], currentDirectory); return; }
+    const unused = addImportedAssets([imported]);
+    applied = true;
+    pendingPickedAsset.value = imported;
+    await removeImportedAssets(unused, currentDirectory);
+    if (!await saveProject()) throw new Error("素材已固定，但工程保存失败，请解决保存问题后重试");
+    pendingPickedAsset.value = undefined;
+    retryPickedSource.value = undefined;
+    mediaPickerOpen.value = false;
+    sourceImportNotice.value = `已固定「${data.data.asset.name}」到当前剪辑工程。`;
+  } catch (error) {
+    if (imported && !applied) await removeImportedAssets([imported], currentDirectory);
+    if (version === projectVersion) sourceImportError.value = errorMessage(error, "固定素材失败");
+  } finally {
+    if (version === projectVersion) sourceImportBusy.value = false;
+  }
+}
+function sourceReferences() {
+  return assets.value.filter(asset => clips.value.some(clip => clip.assetId === asset.id)).flatMap(asset => {
+    const source = asset.source;
+    if (!source) return [];
+    const id = source.type === "production" ? source.variantId : source.hash;
+    return id ? [{ type: source.type, id, label: asset.name }] : [];
+  });
+}
+function returnExportToCanvas() {
+  const result = lastExport.value;
+  const canvasPath = returnCanvasPath.value;
+  if (!result || !canvasPath || !canRegisterExport.value || !directory.value) return;
+  void router.push({ path: "/workspace", query: {
+    editorResultId: result.id,
+    editorResultDirectory: result.directory,
+    editorCanvasPath: canvasPath,
+    editorResultPath: result.path,
+    editorProjectPath: result.projectPath,
+  } });
+}
 async function exportTimeline() {
   const context = projectContext;
   if (!context || !canExport.value || exportBusy.value) return;
@@ -1252,11 +1629,13 @@ async function exportTimeline() {
   try {
     if (!await saveProject()) throw new Error("工程尚未保存成功，请解决保存问题后导出");
     const snapshot = parseEditorProject(getProject());
+    exportedProjectContent.value = getProjectContent();
+    const revision = context.revision;
     const result = await exportEditorProject(snapshot, context.directory, controller.signal, progress => { if (version === projectVersion) exportProgress.value = progress; });
     if (version !== projectVersion) return;
     const url = useWorkspaceFiles(context.directory).mediaUrl(result.path);
     const name = result.path.split("/").pop()!;
-    lastExport.value = { url, name };
+    lastExport.value = { id: crypto.randomUUID(), directory: context.directory, url, name, path: result.path, projectPath: context.projectPath, revision, sourceReferences: sourceReferences() };
     downloadUrl(url, name);
   } catch (error) {
     if (version === projectVersion) exportError.value = controller.signal.aborted ? "已取消导出，临时文件已清理。" : errorMessage(error, "导出失败");
@@ -1468,6 +1847,7 @@ async function exportTimeline() {
         padding: 15px 12px 11px;
         overflow-y: auto;
         &.textPanel, &.settingsPanel { gap: 10px; }
+        .importActions { display: grid; flex: 0 0 auto; gap: 6px; }
         .importButton {
           display: inline-flex;
           flex: 0 0 auto;
@@ -1544,7 +1924,8 @@ async function exportTimeline() {
       min-height: 0;
       padding: 10px 18px 12px;
       background: #151816;
-      overflow: hidden;
+      overflow: auto;
+      .exportStale { flex: 0 0 auto; margin: 6px 0 0; color: #d2aa7c; font-size: 10px; }
       .monitorModes { display: flex; flex: 0 0 29px; align-items: center; justify-content: center; gap: 3px; padding-bottom: 5px;
         button { min-height: 24px; padding: 0 11px; border: 1px solid transparent; border-radius: 3px; color: #82968a; background: transparent; font-size: 10px; &.isActive { border-color: #415d49; color: #c7e7d0; background: #263d2e; } }
       }
@@ -1744,6 +2125,7 @@ async function exportTimeline() {
               &.isSelected { z-index: 2; border-color: #a3d5b0; box-shadow: 0 0 0 1px #a3d5b0; }
               &.audio { border-color: #8a7443; color: #f3e4bb; background: #554a2d; }
               &.text { border-color: #6c618a; color: #e1d8f4; background: #423950; }
+              &.video, &.image { top: 8px; height: 59px; align-items: flex-start; padding-top: 2px; background: #263b2e; .clipTitle, .clipDuration { position: relative; z-index: 1; line-height: 15px; } }
               .clipTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
               .clipDuration { flex: 0 0 auto; color: rgb(255 255 255 / 68%); font-size: 9px; font-variant-numeric: tabular-nums; }
               .trimHandle { position: absolute; top: 0; z-index: 1; width: 6px; height: 100%; background: rgb(255 255 255 / 22%); cursor: ew-resize; &.leftHandle { left: 0; } &.rightHandle { right: 0; } }

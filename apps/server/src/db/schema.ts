@@ -458,6 +458,33 @@ export const productionDeliveries = mysqlTable("production_deliveries", {
   ...timestamps,
 }, table => ({ projectIndex: index("production_delivery_project_index").on(table.projectId, table.createdAt) }));
 
+export const productionCuts = mysqlTable("production_cuts", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  episodeId: varchar("episode_id", { length: 36 }),
+  version: int("version", { unsigned: true }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  status: mysqlEnum("status", ["review", "changesRequested", "approved", "delivered"]).notNull().default("review"),
+  videoPath: varchar("video_path", { length: 255 }).notNull(),
+  projectPath: varchar("project_path", { length: 255 }).notNull(),
+  manifestPath: varchar("manifest_path", { length: 255 }).notNull(),
+  fileHash: varchar("file_hash", { length: 64 }).notNull(),
+  fileSize: bigint("file_size", { mode: "number", unsigned: true }).notNull(),
+  durationMs: bigint("duration_ms", { mode: "number", unsigned: true }).notNull(),
+  width: int("width", { unsigned: true }).notNull(),
+  height: int("height", { unsigned: true }).notNull(),
+  frameRate: varchar("frame_rate", { length: 32 }).notNull(),
+  mimeType: varchar("mime_type", { length: 120 }).notNull(),
+  metadata: json("metadata").$type<{ sourceDirectoryHash: string; sourceVideoPath: string; sourceProjectPath: string; sourceProjectRevision: string; sourceReferences: { type: string; id: string; label?: string }[] }>().notNull(),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  comment: text("comment"),
+  reviewedBy: varchar("reviewed_by", { length: 36 }),
+  reviewedAt: datetime("reviewed_at", { mode: "date" }),
+  deliveredBy: varchar("delivered_by", { length: 36 }),
+  deliveredAt: datetime("delivered_at", { mode: "date" }),
+  ...timestamps,
+}, table => ({ projectIndex: index("production_cut_project_index").on(table.projectId, table.createdAt), episodeVersionIndex: index("production_cut_episode_version_index").on(table.projectId, table.episodeId, table.version) }));
+
 export const schema = {
   users,
   workspaces,
@@ -490,6 +517,7 @@ export const schema = {
   productionReviews,
   productionApprovals,
   productionDeliveries,
+  productionCuts,
   teams,
   teamMembers,
   teamInvitations,

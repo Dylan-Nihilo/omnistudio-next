@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onScopeDispose, provide, shallowReactive, shallowRef, ref, watch, type ComponentPublicInstance } from "vue";
+import { computed, nextTick, onScopeDispose, provide, shallowReactive, shallowRef, ref, watch, type ComponentPublicInstance } from "vue";
 import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
 import { waitForControlValue } from "@/lib/mcpControl";
 import canvasPanel from "./index.vue";
@@ -88,6 +88,17 @@ async function activateCanvas(fileName: string, signal?: AbortSignal, expectedVe
     if (!instances.get(key)?.canvasId) entries.value = entries.value.filter(item => item.key !== key);
     throw error;
   }
+}
+
+async function addEditorResult(input: { directory: string; canvasPath: string; resultPath: string; resultId: string; editorProjectPath: string }) {
+  if (input.directory !== workspaceStore.project?.directory) throw new Error("工作目录已切换，未写入成片节点");
+  await activateCanvas(input.canvasPath);
+  await nextTick();
+  lifetime.signal.throwIfAborted();
+  if (!props.active || input.directory !== workspaceStore.project?.directory) throw new Error("工作区已切换，未写入成片节点");
+  const instance = activeInstance.value;
+  if (!instance || instance.canvasId !== input.canvasPath) throw new Error("目标画布未能激活");
+  await instance.addEditorResult(input);
 }
 
 function resolveCanvasContext(fileName: string): CanvasContext | undefined {
@@ -163,7 +174,7 @@ const mentionSource: MentionCanvasSource = {
 };
 
 defineExpose({ canvasId, canvasReady, getCanvasContext, readDocumentNode, saveDocumentNode, flushSave, cancelSave,
-  mentionSource, activateCanvas,
+  mentionSource, activateCanvas, addEditorResult,
   get saveBusy() { return [...instances.values()].some(panel => panel.saveBusy); },
 });
 </script>

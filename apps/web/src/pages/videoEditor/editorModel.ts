@@ -11,6 +11,23 @@ export type EditorAsset = {
   width?: number;
   height?: number;
   hasAudio?: boolean;
+  source?: EditorAssetSource;
+};
+
+export type EditorAssetSource = {
+  type: "workspace" | "production" | "library";
+  path: string;
+  hash: string;
+  importedAt: string;
+  canvasPath?: string;
+  revision?: string;
+  nodeId?: string;
+  outputId?: string;
+  projectId?: string;
+  episodeId?: string;
+  shotId?: string;
+  variantId?: string;
+  attemptNumber?: number;
 };
 
 export type EditorTrack = {
@@ -61,6 +78,7 @@ export type EditorClip = {
 
 export type EditorProject = {
   version: 2;
+  name?: string;
   assets: EditorAsset[];
   clips: EditorClip[];
   tracks: EditorTrack[];
@@ -152,6 +170,38 @@ function parseAsset(value: unknown, index: number): EditorAsset {
     asset[key] = dimension;
   }
   if (item.hasAudio !== undefined) asset.hasAudio = readBoolean(item.hasAudio, "素材音轨标记");
+  if (item.source !== undefined) {
+    const source = readObject(item.source, `素材 ${index + 1} 来源`);
+    const sourceType = readChoice(source.type, ["workspace", "production", "library"] as const, "素材来源类型");
+    const hash = readString(source.hash, "素材来源摘要");
+    if (!/^[\da-f]{64}$/i.test(hash)) throw new Error("素材来源摘要格式无效");
+    const importedAt = readString(source.importedAt, "素材导入时间");
+    if (!Number.isFinite(Date.parse(importedAt))) throw new Error("素材导入时间格式无效");
+    const parsedSource: EditorAssetSource = {
+      type: sourceType,
+      path: readRelativePath(source.path),
+      hash: hash.toLowerCase(),
+      importedAt,
+    };
+    for (const key of ["canvasPath", "nodeId", "outputId", "projectId", "episodeId", "shotId", "variantId"] as const) {
+      if (source[key] === undefined) continue;
+      const value = readString(source[key], `素材来源 ${key}`);
+      parsedSource[key] = key === "canvasPath" ? readRelativePath(value) : value;
+    }
+    if (source.revision !== undefined) {
+      const revision = readString(source.revision, "画布修订");
+      if (!/^[\da-f]{64}$/i.test(revision)) throw new Error("画布修订格式无效");
+      parsedSource.revision = revision.toLowerCase();
+    }
+    if (source.attemptNumber !== undefined) {
+      const attemptNumber = readNumber(source.attemptNumber, "候选版本", 1);
+      if (!Number.isSafeInteger(attemptNumber)) throw new Error("候选版本必须为正整数");
+      parsedSource.attemptNumber = attemptNumber;
+    }
+    if ((parsedSource.canvasPath || parsedSource.nodeId || parsedSource.outputId || parsedSource.revision) && (sourceType !== "workspace" || !parsedSource.canvasPath || !parsedSource.nodeId || !parsedSource.outputId || !parsedSource.revision)) throw new Error("画布素材来源信息不完整");
+    if (sourceType === "production" && (!parsedSource.projectId || !parsedSource.shotId || !parsedSource.variantId)) throw new Error("项目候选素材来源信息不完整");
+    asset.source = parsedSource;
+  }
   return asset;
 }
 
@@ -248,6 +298,7 @@ export function parseEditorProject(value: unknown): EditorProject {
   assertUniqueIds(clips, "片段");
   return {
     version: 2,
+    ...(item.name === undefined ? {} : { name: readString(item.name, "剪辑项目名称").trim().slice(0, 200) }),
     assets,
     clips,
     tracks,

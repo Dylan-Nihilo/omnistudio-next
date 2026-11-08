@@ -102,7 +102,7 @@
         <uiIconButton :icon="IconUpload" label="从本地上传" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="selectFiles(centerCanvasPosition())" />
       </uiTooltip>
       <uiTooltip content="剪辑台" placement="right">
-        <uiIconButton :icon="IconScissors" label="打开剪辑台" :disabled="!props.active || props.settingsVisible || !project?.directory" @click="router.push('/videoEditor')" />
+        <uiIconButton :icon="IconScissors" label="选中素材送入剪辑台" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="openVideoEditor" />
       </uiTooltip>
       <uiTooltip :content="assetsVisible ? '关闭素材库' : '打开素材库'" placement="right">
         <uiIconButton :icon="IconFolders" label="素材库" :aria-pressed="assetsVisible" :class="{ isActive: assetsVisible }" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="assetsVisible = !assetsVisible" />
@@ -336,9 +336,62 @@ function startCanvasGuide(prompt: string) {
   }
   workspaceStore.pendingAgentMessage = { directory, prompt, model: "", reasoningEffort: "" };
 }
+async function openVideoEditor() {
+  const directory = project.value?.directory;
+  const sourceCanvas = canvasId.value;
+  if (!props.active || props.settingsVisible || !directory || !sourceCanvas) return;
+  const nodeIds = flow.getNodes.value.filter(node => node.selected).map(node => node.id);
+  try {
+    await flushCanvasSave();
+    if (directory !== project.value?.directory || sourceCanvas !== canvasId.value) throw new Error("工作区或画布已切换，请重试");
+    await router.push({ path: "/videoEditor", query: { sourceDirectory: directory, canvasPath: sourceCanvas, nodeIds: JSON.stringify(nodeIds) } });
+  } catch (error) {
+    feedback.message({ tone: "error", message: error instanceof Error ? error.message : "打开剪辑台失败" });
+  }
+}
+
+async function addEditorResult(input: { directory: string; canvasPath: string; resultPath: string; resultId: string; editorProjectPath: string }) {
+  checkDocumentDirectory(input.directory);
+  if (!props.active || input.canvasPath !== canvasId.value) throw new Error("目标画布尚未激活");
+  if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(input.resultId)) throw new Error("剪辑结果编号无效");
+  if (input.editorProjectPath !== "assets/videoEditor/timeline.json" && !/^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(input.editorProjectPath)) throw new Error("剪辑工程路径无效");
+  if (!/^assets\/videoEditor\/exports\/edited\d{13}[\da-f]{8}\.mp4$/i.test(input.resultPath)) throw new Error("成片路径无效");
+  const files = useWorkspaceFiles(input.directory);
+  const parent = input.resultPath.slice(0, input.resultPath.lastIndexOf("/"));
+  const listing = await files.list(parent);
+  if (input.directory !== project.value?.directory || input.canvasPath !== canvasId.value) throw new Error("工作区或画布已切换，请重新打开后操作");
+  if (!listing.entries.some(entry => entry.type === "file" && entry.path === input.resultPath)) throw new Error("剪辑成片文件不存在");
+  const nodeId = `editorResult-${input.resultId}`;
+  const existingNode = findNode(nodeId);
+  if (existingNode) {
+    if (existingNode.data?.outputs?.video?.value?.url !== input.resultPath || existingNode.data?.editorProjectPath !== input.editorProjectPath) throw new Error("剪辑结果编号已被其他节点使用");
+    await flushCanvasSave();
+    checkDocumentDirectory(input.directory);
+    if (!props.active || input.canvasPath !== canvasId.value) throw new Error("目标画布已切换，成片节点尚未确认保存");
+    return;
+  }
+  const nodes = flow.getNodes.value;
+  const position = nodes.length
+    ? { x: Math.max(...nodes.map(node => node.position.x + (node.dimensions?.width ?? 220))) + 80, y: Math.max(...nodes.map(node => node.position.y)) }
+    : centerCanvasPosition();
+  await canvasHistory.batch(async () => {
+    if (!props.active || input.directory !== project.value?.directory || input.canvasPath !== canvasId.value) throw new Error("工作区或画布已切换，请重新打开后操作");
+    addNodes({
+      id: nodeId,
+      type: "remote-videoNode",
+      position,
+      data: { label: `剪辑成片 ${input.resultId.slice(0, 8)}`, editorProjectPath: input.editorProjectPath, outputs: { video: { dataType: "VIDEO", value: { url: input.resultPath, mimeType: "video/mp4" } } } },
+    });
+  });
+  await flushCanvasSave();
+  checkDocumentDirectory(input.directory);
+  if (!props.active || input.canvasPath !== canvasId.value) throw new Error("目标画布已切换，成片节点保存状态未确认");
+}
+
 provide("canvas", getCanvasContext);
 defineExpose({ canvasId, canvasReady, getCanvasContext, getCanvasVersion: getCanvasVersionValue, readDocumentNode, saveDocumentNode, flushSave: flushCanvasSave, cancelSave: cancelCanvasSave,
   getMentionNodes: () => flow.nodes.value, findMentionNode: flow.findNode,
+  addEditorResult,
   getRetainedNodes: canvasHistory.getRetainedNodes,
   get saveBusy() { return savePaused; }, get loadError() { return canvasMenuRef.value?.loadError ?? ""; },
 });
