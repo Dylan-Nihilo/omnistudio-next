@@ -27,6 +27,16 @@
         </uiPopover>
       </div>
       <div class="toolGroup">
+        <uiPopover v-model:visible="shortcutVisible" placement="top-end" :width="300">
+          <template #reference="{ triggerAttrs }"><uiTooltip content="快捷键速览" :disabled="shortcutVisible"><uiIconButton v-bind="triggerAttrs" :icon="IconKeyboard" label="快捷键速览" :aria-expanded="shortcutVisible" /></uiTooltip></template>
+          <section class="shortcutMenu" aria-label="快捷键操作">
+            <h3>快捷键操作</h3>
+            <div v-for="item in shortcutRows" :key="item.label" class="shortcutRow">
+              <span>{{ item.label }}</span>
+              <kbd>{{ item.value || "未设置" }}</kbd>
+            </div>
+          </section>
+        </uiPopover>
         <uiPopover v-model:visible="helpVisible" placement="top-end" :width="216">
           <template #reference="{ triggerAttrs }"><uiIconButton v-bind="triggerAttrs" :icon="IconHelp" label="帮助" /></template>
           <div class="helpMenu">
@@ -44,8 +54,10 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { Panel, useVueFlow, type XYPosition } from "@vue-flow/core";
 import { MiniMap } from "@vue-flow/minimap";
-import { IconFolders, IconSitemap, IconArrowGuide, IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat } from "@tabler/icons-vue";
+import { IconFolders, IconSitemap, IconArrowGuide, IconMap, IconMagnet, IconFocusCentered, IconHelp, IconBook, IconBug, IconBrandWechat, IconKeyboard } from "@tabler/icons-vue";
 import { uiIconButton, uiButton, uiTooltip, uiPopover, uiField, uiNumberInput, useUiFeedback } from "@omnistudio-next/ui";
+import { generalSettings } from "@/stores/settings";
+import { shortcutLabel } from "@/lib/canvasShortcuts";
 import { arrangeCanvas } from "../arrangeCanvas";
 
 const feedback = useUiFeedback();
@@ -60,6 +72,26 @@ const assetsVisible = defineModel<boolean>("assetsVisible", { default: false });
 const showMap = ref(false);
 const zoomMenuVisible = ref(false);
 const helpVisible = ref(false);
+const shortcutVisible = ref(false);
+const shortcutRows = computed(() => {
+  const shortcuts = generalSettings.value.canvasShortcuts;
+  const label = (value: string) => shortcutLabel(value) || "未设置";
+  const copyShortcut = navigator.platform.includes("Mac") ? "Meta+KeyC" : "Ctrl+KeyC";
+  return [
+    { label: "复制", value: label(copyShortcut) },
+    { label: "粘贴", value: label(shortcuts.paste) },
+    { label: "拖动复制节点", value: `${label(shortcuts.copyOnDrag)} + 鼠标拖动` },
+    { label: "拖动复制连线", value: `${label(shortcuts.duplicateOnDrag)} + 鼠标拖动` },
+    { label: "撤销", value: label(shortcuts.undo) },
+    { label: "删除", value: label(shortcuts.delete) },
+    { label: "选择模式", value: label(shortcuts.moveTool) },
+    { label: "手型模式", value: label(shortcuts.handTool) },
+    { label: "移动画布", value: `${label(shortcuts.pan)} + 鼠标拖动` },
+    { label: "缩放", value: `${label(shortcuts.zoom)} + 滚轮` },
+    { label: "添加节点", value: label(shortcuts.addNode) },
+    { label: "退出编辑", value: "Esc" },
+  ];
+});
 const flow = useVueFlow();
 const { viewport, zoomTo, zoomIn, zoomOut, fitView, getNodes, updateNode } = flow;
 const zoomPercent = computed(() => Math.round(viewport.value.zoom * 100));
@@ -142,6 +174,7 @@ async function undoArrange() {
   @media (max-width: 700px) { gap: 0; padding: 4px; .toolGroup { gap: 0; padding-inline: 2px; } }
 }
 .zoomMenu, .helpMenu { display: flex; flex-direction: column; gap: 8px; .menuAction { width: 100%; justify-content: flex-start; } }
+.shortcutMenu { max-height: min(70vh, 520px); overflow: auto; padding: 4px 2px; h3 { margin: 0 0 12px; color: var(--uiTextMuted); font-size: var(--uiFontControl); font-weight: 500; } .shortcutRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; color: var(--uiTextPrimary); font-size: var(--uiFontControl); } kbd { flex: 0 0 auto; padding: 3px 7px; border: 1px solid var(--uiBorderControl); border-radius: 5px; color: var(--uiTextSecondary); background: var(--uiSurfaceSubtle); font: inherit; font-size: 12px; white-space: nowrap; } }
 .menuAction { width: 100%; justify-content: flex-start; }
 :deep(.undoArrangePopover) { padding: 6px; }
 </style>

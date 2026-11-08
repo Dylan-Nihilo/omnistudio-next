@@ -101,6 +101,9 @@
       <uiTooltip content="从本地上传" placement="right">
         <uiIconButton :icon="IconUpload" label="从本地上传" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="selectFiles(centerCanvasPosition())" />
       </uiTooltip>
+      <uiTooltip content="剪辑台" placement="right">
+        <uiIconButton :icon="IconScissors" label="打开剪辑台" :disabled="!props.active || props.settingsVisible || !project?.directory" @click="router.push('/videoEditor')" />
+      </uiTooltip>
       <uiTooltip :content="assetsVisible ? '关闭素材库' : '打开素材库'" placement="right">
         <uiIconButton :icon="IconFolders" label="素材库" :aria-pressed="assetsVisible" :class="{ isActive: assetsVisible }" :disabled="!props.active || props.settingsVisible || !canvasId || !project?.directory" @click="assetsVisible = !assetsVisible" />
       </uiTooltip>
@@ -159,6 +162,7 @@
 <script setup lang="ts">
 import feedback from "@/lib/uiFeedback";
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, onScopeDispose, provide, ref, shallowReactive, shallowRef, watch } from "vue";
+import { useRouter } from "vue-router";
 import axios from "axios";
 import { debounce } from "lodash-es";
 import { uiButton, uiIconButton, uiTooltip } from "@omnistudio-next/ui";
@@ -229,6 +233,7 @@ const props = withDefaults(defineProps<{
   flushCanvases?: (action?: () => Promise<void>) => Promise<void>;
 }>(), { active: true, settingsVisible: false });
 const workspaceStore = useWorkspaceStore();
+const router = useRouter();
 const { project } = storeToRefs(workspaceStore);
 
 const canvasElement = ref<HTMLElement>();

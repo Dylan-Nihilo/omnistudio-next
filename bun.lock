@@ -92,6 +92,7 @@
         "@form-create/element-ui": "^3",
         "@markmend/ast": "1.1.0",
         "@omnistudio-next/assets": "workspace:*",
+        "@omnistudio-next/ffmpeg": "workspace:*",
         "@omnistudio-next/model-icons": "workspace:*",
         "@omnistudio-next/nodes-scaffold": "workspace:*",
         "@omnistudio-next/providers": "workspace:*",

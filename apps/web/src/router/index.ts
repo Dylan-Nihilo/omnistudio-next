@@ -15,6 +15,7 @@ const router = createRouter({
     { path: "/home", component: () => import("@/pages/home/index.vue") },
     { path: "/canvas", redirect: "/workspace" },
     { path: "/workspace", component: () => import("@/pages/workspace/index.vue") },
+    { path: "/videoEditor", component: () => import("@/pages/videoEditor/index.vue") },
     { path: "/account", component: () => import("@/pages/account/index.vue") },
     { path: "/teams", component: () => import("@/pages/teams/index.vue") },
     { path: "/productionProjects", component: () => import("@/pages/productionProjects/index.vue") },

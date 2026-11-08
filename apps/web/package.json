@@ -31,6 +31,7 @@
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/vue-3": "3.31.3",
     "@omnistudio-next/assets": "workspace:*",
+    "@omnistudio-next/ffmpeg": "workspace:*",
     "@omnistudio-next/model-icons": "workspace:*",
     "@omnistudio-next/nodes-scaffold": "workspace:*",
     "@omnistudio-next/providers": "workspace:*",
