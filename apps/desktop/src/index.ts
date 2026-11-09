@@ -11,6 +11,7 @@ import Electrobun, { BrowserWindow, PATHS, Screen, Utils, Updater } from "electr
 import { parseInstallUrl } from "./protocol";
 import saveFile, { selectSaveFile } from "./saveFile";
 import createWindowsUpdater from "./update/windowsUpdater";
+import { DesktopServerConfigError, loadDesktopServerConfig } from "./serverConfig";
 
 const execFileAsync = promisify(execFile);
 const pendingInstalls: PluginInstallRequest[] = [];
@@ -70,11 +71,15 @@ async function restoreInstallRegistration(installDirectory: string) {
 async function start() {
   let splash: Awaited<ReturnType<typeof showNativeSplash>> | undefined;
   let isClosing = false;
+  let serverConfigPath = "";
+  let startupStage = "数据库配置";
 
   try {
     // Windows 的 data 与 app 同级；macOS 的 data 与 .app 同级，避免随程序更新被替换。
     const installDirectory = resolve(PATHS.RESOURCES_FOLDER, process.platform === "darwin" ? "../../.." : "../..");
     const dataDirectory = process.env.OMNISTUDIO_NEXT_DATA_DIR ?? process.env.TOONFLOW_DATA_DIR ?? resolve(installDirectory, "data");
+    serverConfigPath = resolve(dataDirectory, "server.env");
+    await loadDesktopServerConfig(dataDirectory);
     // ACT: 先显示原生动画，再加载服务，避免初始化期间没有反馈。
     const startupSettings = await Bun.file(resolve(dataDirectory, "settings.json")).json().catch((error) => {
       if (error.code !== "ENOENT") console.error("读取启动设置失败，使用默认启动动画：", error);
@@ -96,6 +101,7 @@ async function start() {
       return;
     }
     process.env.omniStudioNextDesktop = "1";
+    startupStage = "服务与数据初始化";
     const { createApp } = await import("@omnistudio-next/server/app");
     const { hash } = await Bun.file(resolve(PATHS.RESOURCES_FOLDER, "version.json")).json();
     if (typeof hash !== "string" || !hash) throw new Error("应用构建标识缺失，无法同步内置插件");
@@ -122,6 +128,7 @@ async function start() {
     console.log(`桌面服务：http://127.0.0.1:${address.port}`);
 
     const { workArea } = Screen.getPrimaryDisplay();
+    startupStage = "窗口初始化";
     // ACT: 宽高分别限制在屏幕可用区域内，预留标题栏和边距，不固定比例。
     const width = Math.min(1280, workArea.width - 64);
     const height = Math.min(960, workArea.height - 64);
@@ -238,7 +245,12 @@ async function start() {
     }
   } catch (error) {
     splash?.close();
-    console.error("桌面启动失败：", error);
+    const code = (error as NodeJS.ErrnoException)?.code;
+    console.error("桌面启动失败", { stage: startupStage, code: typeof code === "string" && /^[A-Z][A-Z0-9_]{1,50}$/.test(code) ? code : "unknown" });
+    const message = error instanceof DesktopServerConfigError ? error.message : `${startupStage}失败。请确认 MySQL 8.0+ 服务可用、独立数据库已创建，且没有其他应用实例占用该数据库。`;
+    try {
+      await Utils.showMessageBox({ type: "error", title: "万象点点启动失败", message: `${message}\n配置文件：${serverConfigPath}\n修改配置后请重新启动。不要分享包含数据库凭据的配置文件。` });
+    } catch { console.error("桌面启动错误提示无法显示"); }
     Utils.quit(1);
   }
 }

@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os";
 import { constants } from "node:fs";
 import { spawn } from "node:child_process";
-import { copyFile, link, lstat, mkdtemp, open, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, link, lstat, mkdtemp, open, realpath, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { chainMethods, queryMethods, runMethods } from "./browserTypes";
@@ -179,6 +179,12 @@ async function createRenderTemporaryDirectory(executionOptions: RemoteFfmpegExec
   return mkdtemp(join(parent, "attempt"));
 }
 
+async function checkRenderSpace(directory: string, neededBytes: number) {
+  const filesystem = await statfs(directory);
+  const availableBytes = Number(filesystem.bavail) * Number(filesystem.bsize);
+  if (!Number.isFinite(availableBytes) || availableBytes < neededBytes) throw Object.assign(new Error("磁盘空间不足，无法完成视频导出"), { code: "ENOSPC" });
+}
+
 export function validateRemoteExportRequest(request: BrowserFfmpegRequest, graph?: string): RemoteExportRequestInfo {
   const info = exportRequestInfo(request);
   if (graph !== undefined) return { ...info, ...graphDimensions(graph, info.frameRate, info.duration) };
@@ -313,6 +319,8 @@ async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequ
   signal.throwIfAborted();
   const temporary = await createRenderTemporaryDirectory(executionOptions);
   try {
+    // ACT: 启动前保留 64 MiB 最低余量；成片体积受编码内容影响，发布复制前另按实际文件大小核验。
+    await checkRenderSpace(temporary, 64 * 1024 ** 2);
     const snapshot = join(temporary, "graph.txt");
     const rendered = join(temporary, "render.mp4");
     await writeFile(snapshot, graph, { flag: "wx", mode: 0o600, signal });
@@ -329,8 +337,25 @@ async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequ
       const destination = originalArguments().at(-1)!;
       await executionOptions.beforePublish?.(rendered);
       signal.throwIfAborted();
-      // 宿主临时目录不对工作区文件接口暴露；完成后排他发布，失败不会触碰预存文件。
-      await copyFile(rendered, destination, constants.COPYFILE_EXCL);
+      const renderedInfo = await stat(rendered);
+      if (!renderedInfo.isFile() || renderedInfo.size < 1) throw new Error("渲染未生成有效文件");
+      try {
+        await link(rendered, destination);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+        await checkRenderSpace(dirname(destination), renderedInfo.size);
+        // 跨盘先复制到目标目录的临时文件，再硬链接排他发布；崩溃残留由队列按输出编号回收。
+        const staging = `${destination}.tmp-${randomUUID()}`;
+        let canRemoveStaging = true;
+        try {
+          try { await copyFile(rendered, staging, constants.COPYFILE_EXCL); }
+          catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") canRemoveStaging = false; throw error; }
+          signal.throwIfAborted();
+          await link(staging, destination);
+        } finally {
+          if (canRemoveStaging) await rm(staging, { force: true });
+        }
+      }
       if (signal.aborted) {
         await rm(destination).catch(error => { throw new Error("取消后清理未发布的导出文件失败", { cause: error }); });
         signal.throwIfAborted();

@@ -1,9 +1,9 @@
 export type ProductionProjectRole = "owner" | "producer" | "writer" | "director" | "artist" | "editor" | "reviewer" | "viewer";
-export type ProductionProjectAction = "read" | "create" | "edit" | "generate" | "retry" | "comment" | "review" | "approve" | "export" | "manageBudget" | "invite";
+export type ProductionProjectAction = "read" | "create" | "edit" | "generate" | "retry" | "comment" | "review" | "approve" | "export" | "manageBudget" | "invite" | "manageMembers";
 
 const roleActions: Record<ProductionProjectRole, readonly ProductionProjectAction[]> = {
-  owner: ["read", "create", "edit", "generate", "retry", "comment", "review", "approve", "export", "manageBudget", "invite"],
-  producer: ["read", "create", "edit", "generate", "retry", "comment", "review", "approve", "export", "manageBudget", "invite"],
+  owner: ["read", "create", "edit", "generate", "retry", "comment", "review", "approve", "export", "manageBudget", "invite", "manageMembers"],
+  producer: ["read", "create", "edit", "generate", "retry", "comment", "review", "approve", "export", "manageBudget", "invite", "manageMembers"],
   writer: ["read", "create", "edit", "comment"],
   director: ["read", "create", "edit", "generate", "retry", "comment", "review"],
   artist: ["read", "create", "edit", "generate", "retry", "comment"],

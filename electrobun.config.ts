@@ -13,6 +13,7 @@ export default {
     mainProcess: "bun",
     bun: { entrypoint: "apps/desktop/src/index.ts", minify: true },
     copy: {
+      "apps/server/src/db/migrations": "bun/migrations",
       ...(process.platform === "win32" ? {
         "build/desktop/protocol/protocolLauncher.exe": "protocolLauncher.exe",
         "build/desktop/protocol/saveFileDialog.exe": "saveFileDialog.exe",

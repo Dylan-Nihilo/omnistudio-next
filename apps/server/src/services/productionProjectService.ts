@@ -95,6 +95,94 @@ export async function requireProjectAccess(projectId: string, action: Production
   return result;
 }
 
+const productionProjectRoles: readonly ProductionProjectRole[] = ["owner", "producer", "writer", "director", "artist", "editor", "reviewer", "viewer"];
+
+function assertProductionProjectRole(role: string): asserts role is ProductionProjectRole {
+  if (!productionProjectRoles.includes(role as ProductionProjectRole)) invalid("项目成员角色无效", 422);
+}
+
+function memberView(member: typeof productionProjectMembers.$inferSelect, user: { id: string; email: string; displayName: string | null }) {
+  return { id: member.id, userId: user.id, email: user.email, displayName: user.displayName, role: member.role, status: member.status };
+}
+
+async function requireProjectMemberManager(projectId: string) {
+  const result = await requireProjectAccess(projectId, "manageMembers");
+  if (result.member.role !== "owner" && result.member.role !== "producer") invalid("只有项目所有者或制片人可以管理项目成员", 403);
+  return result;
+}
+
+export async function listProductionProjectMembers(projectId: string) {
+  const { project } = await requireProjectMemberManager(projectId);
+  const database = getDatabase();
+  const members = await database.select({ member: productionProjectMembers, user: { id: users.id, email: users.email, displayName: users.displayName } })
+    .from(productionProjectMembers).innerJoin(users, eq(users.id, productionProjectMembers.userId))
+    .where(eq(productionProjectMembers.projectId, projectId)).orderBy(asc(productionProjectMembers.createdAt));
+  const teamUsers = await database.select({ id: users.id, email: users.email, displayName: users.displayName })
+    .from(teamMembers).innerJoin(users, eq(users.id, teamMembers.userId)).innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(eq(teamMembers.teamId, project.workspaceId), eq(teams.status, "active"), eq(users.status, "active")))
+    .orderBy(asc(users.displayName), asc(users.email));
+  const activeIds = new Set(members.filter(item => item.member.status === "active").map(item => item.user.id));
+  return {
+    members: members.map(item => memberView(item.member, item.user)),
+    availableUsers: teamUsers.filter(user => !activeIds.has(user.id)),
+  };
+}
+
+export async function saveProductionProjectMember(input: { projectId: string; userId: string; role: ProductionProjectRole }) {
+  const account = requireAccount();
+  assertProductionProjectRole(input.role);
+  const { project } = await requireProjectMemberManager(input.projectId);
+  return getDatabase().transaction(async tx => {
+    const [lockedProject] = await tx.select({ id: productionProjects.id, workspaceId: productionProjects.workspaceId }).from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+    if (!lockedProject) invalid("生产项目不存在", 404);
+    const [actor] = await tx.select({ role: productionProjectMembers.role }).from(productionProjectMembers).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.userId, account.userId), eq(productionProjectMembers.status, "active"))).limit(1);
+    if (!actor || (actor.role !== "owner" && actor.role !== "producer")) invalid("只有项目所有者或制片人可以管理项目成员", 403);
+    if (actor.role === "producer" && (input.userId === account.userId || input.role === "owner" || input.role === "producer")) invalid("制片人不能提权或修改自己的项目角色", 403);
+    const [current] = await tx.select().from(productionProjectMembers).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.userId, input.userId))).limit(1).for("update");
+    if (actor.role === "producer" && (current?.role === "owner" || current?.role === "producer")) invalid("制片人不能修改 owner 或其他制片人的项目角色", 403);
+    if (current?.status === "active" && current.role === "owner" && input.role !== "owner") {
+      const owners = await tx.select({ id: productionProjectMembers.id }).from(productionProjectMembers).innerJoin(users, eq(users.id, productionProjectMembers.userId)).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.status, "active"), eq(productionProjectMembers.role, "owner"), eq(users.status, "active")));
+      if (!owners.some(owner => owner.id !== current.id)) invalid("项目至少需要保留一名有效 owner", 409);
+    }
+    const [teamUser] = await tx.select({ id: users.id, email: users.email, displayName: users.displayName, teamId: teams.id }).from(users)
+      .leftJoin(teamMembers, and(eq(teamMembers.userId, users.id), eq(teamMembers.teamId, lockedProject.workspaceId)))
+      .leftJoin(teams, and(eq(teams.id, teamMembers.teamId), eq(teams.status, "active")))
+      .where(and(eq(users.id, input.userId), eq(users.status, "active"))).limit(1);
+    const existingOwner = current?.status === "active" && current.role === "owner" && actor.role === "owner" && input.userId === account.userId;
+    if (!teamUser || (!teamUser.teamId && !existingOwner)) invalid("只能添加当前项目所属团队中的有效账户", 404);
+    if (current?.status === "active" && current.role === input.role) return { member: memberView(current, teamUser), changed: false };
+    const now = new Date();
+    if (current) await tx.update(productionProjectMembers).set({ role: input.role, status: "active", updatedAt: now }).where(eq(productionProjectMembers.id, current.id));
+    else await tx.insert(productionProjectMembers).values({ id: randomUUID(), projectId: input.projectId, userId: input.userId, role: input.role, status: "active", createdBy: account.userId, createdAt: now, updatedAt: now });
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: current?.status === "removed" ? "productionProjectMember.restore" : current ? "productionProjectMember.update" : "productionProjectMember.add", metadata: { projectId: input.projectId, userId: input.userId, beforeRole: current?.role ?? null, beforeStatus: current?.status ?? null, role: input.role }, createdAt: now, updatedAt: now });
+    const [saved] = await tx.select().from(productionProjectMembers).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.userId, input.userId))).limit(1);
+    return { member: memberView(saved!, teamUser), changed: true };
+  });
+}
+
+export async function removeProductionProjectMember(input: { projectId: string; userId: string }) {
+  const account = requireAccount();
+  const { project } = await requireProjectMemberManager(input.projectId);
+  return getDatabase().transaction(async tx => {
+    const [lockedProject] = await tx.select({ id: productionProjects.id }).from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+    if (!lockedProject) invalid("生产项目不存在", 404);
+    const [actor] = await tx.select({ role: productionProjectMembers.role }).from(productionProjectMembers).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.userId, account.userId), eq(productionProjectMembers.status, "active"))).limit(1);
+    if (!actor || (actor.role !== "owner" && actor.role !== "producer")) invalid("只有项目所有者或制片人可以管理项目成员", 403);
+    const [current] = await tx.select().from(productionProjectMembers).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.userId, input.userId))).limit(1).for("update");
+    if (!current || current.status === "removed") return { changed: false };
+    if (input.userId === account.userId) invalid("不能移除自己的项目成员资格", 409);
+    if (actor.role === "producer" && (current.role === "owner" || current.role === "producer")) invalid("制片人不能移除 owner 或其他制片人", 403);
+    if (current.role === "owner") {
+      const owners = await tx.select({ id: productionProjectMembers.id }).from(productionProjectMembers).innerJoin(users, eq(users.id, productionProjectMembers.userId)).where(and(eq(productionProjectMembers.projectId, input.projectId), eq(productionProjectMembers.status, "active"), eq(productionProjectMembers.role, "owner"), eq(users.status, "active")));
+      if (!owners.some(owner => owner.id !== current.id)) invalid("项目至少需要保留一名有效 owner", 409);
+    }
+    const now = new Date();
+    await tx.update(productionProjectMembers).set({ status: "removed", updatedAt: now }).where(eq(productionProjectMembers.id, current.id));
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionProjectMember.remove", metadata: { projectId: input.projectId, userId: input.userId, role: current.role }, createdAt: now, updatedAt: now });
+    return { changed: true };
+  });
+}
+
 export async function getProductionProject(projectId: string) {
   const { project } = await requireProjectAccess(projectId, "read");
   const database = getDatabase();

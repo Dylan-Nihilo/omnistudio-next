@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, readdir, realpath, rm, rmdir, unlink } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { validateRemoteExportRequest } from "@omnistudio-next/ffmpeg";
 import type { BrowserFfmpegRequest } from "@omnistudio-next/ffmpeg";
@@ -204,7 +204,7 @@ export async function retryEditorRender(input: JobInput): Promise<RenderJob> {
   const resolved = await Promise.all([...row.payload.files.filter(file => file.kind !== "project").map(file => file.path), row.outputPath].map(path => resolveWorkspacePath(row.directory, path)));
   const release = lockWorkspaceFiles(resolved.map(file => file.path));
   try {
-    try { await clearTaskTemporary(row.id); }
+    try { await clearTaskTemporary(row.id); await clearPublishedStaging(row); }
     catch (error) {
       console.error("重试前清理渲染临时文件失败", { jobId: row.id, error: formatAgentError(error instanceof Error ? error.message : String(error)) });
       invalid("旧渲染临时文件仍被占用或无法清理，已保留文件；释放占用后再重试");
@@ -264,6 +264,20 @@ async function clearTaskTemporary(id: string, removeDirectory = false) {
   if (removeDirectory) await rmdir(directory);
 }
 
+async function clearPublishedStaging(row: RenderRow) {
+  const output = await resolveWorkspacePath(row.directory, row.outputPath);
+  const prefix = `${basename(output.path)}.tmp-`;
+  const directory = dirname(output.path);
+  const entries = await readdir(directory, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+  for (const entry of entries) {
+    if (!entry.isFile() || entry.isSymbolicLink() || !entry.name.startsWith(prefix) || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(entry.name.slice(prefix.length))) continue;
+    await unlink(resolve(directory, entry.name));
+  }
+}
+
 export async function removeEditorRender(input: JobInput): Promise<void> {
   const row = await ownedJob(input);
   if (!terminalStatuses.includes(row.status as typeof terminalStatuses[number])) invalid("请先取消任务，再删除任务记录");
@@ -286,6 +300,7 @@ export async function removeEditorRender(input: JobInput): Promise<void> {
     await getDatabase().transaction(async tx => {
       const [current] = await tx.select().from(editorRenderJobs).where(eq(editorRenderJobs.id, row.id)).limit(1).for("update");
       if (!current || !terminalStatuses.includes(current.status as typeof terminalStatuses[number]) || current.updatedAt.getTime() !== row.updatedAt.getTime()) invalid("任务状态已变化，请刷新后删除");
+      await clearPublishedStaging(row);
       for (const path of removable) await unlink(path);
       await clearTaskTemporary(row.id, true);
       await tx.delete(editorRenderJobs).where(eq(editorRenderJobs.id, row.id));
@@ -367,6 +382,7 @@ async function runJob(row: RenderRow, controller: AbortController) {
       signal.throwIfAborted();
       if (terminal !== "end") {
         console.error("后台渲染命令失败", { jobId: row.id, error: formatAgentError(JSON.stringify(terminalError ?? "缺少完成事件")) });
+        if (terminalError && typeof terminalError === "object" && ("code" in terminalError && terminalError.code === "ENOSPC" || "message" in terminalError && /no space left|not enough space|disk full/i.test(String(terminalError.message)))) invalid("磁盘空间不足，未发布成片，请清理工作区后重试", 507);
         invalid("渲染失败，请检查素材和导出设置后重试");
       }
     });
@@ -433,7 +449,7 @@ export async function initializeEditorRenderRuntime() {
   await getDatabase().update(editorRenderJobs).set({ status: "interrupted", error: "服务已重启，任务可从头重试；原输出文件会保留", updatedAt: new Date() }).where(eq(editorRenderJobs.status, "running"));
   const jobs = await getDatabase().select().from(editorRenderJobs);
   for (const row of jobs) {
-    try { await clearTaskTemporary(row.id); }
+    try { await clearTaskTemporary(row.id); await clearPublishedStaging(row); }
     catch (error) {
       const message = "旧渲染临时文件仍被占用或无法清理，已保留文件；释放占用后可重试或删除任务";
       await getDatabase().update(editorRenderJobs).set({ status: row.status === "queued" ? "interrupted" : row.status, error: message, updatedAt: new Date() }).where(eq(editorRenderJobs.id, row.id));

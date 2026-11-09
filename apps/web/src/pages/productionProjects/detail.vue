@@ -3,6 +3,7 @@
     <template #actions>
       <uiButton variant="ghost" @click="router.push('/productionProjects')">返回项目列表</uiButton>
       <uiButton variant="secondary" :loading="loading" @click="loadProject">刷新详情</uiButton>
+      <uiButton v-if="project && (currentRole === 'owner' || currentRole === 'producer')" variant="secondary" @click="memberVisible = true">项目成员</uiButton>
     </template>
 
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
@@ -120,6 +121,8 @@
       <productionCutPanel :key="project.id" :projectId="project.id" :episodes="project.episodes" :canReview="canReview" :canApprove="canApprove" :canDeliver="canDeliverCut" :refreshKey="projectRefreshKey" />
     </template>
 
+    <productionMemberPanel v-if="project" v-model="memberVisible" :projectId="project.id" :currentUserId="currentUserId" :currentRole="currentRole" :refreshKey="projectRefreshKey" @changed="loadProject" />
+
     <uiDialog v-model="episodeVisible" title="添加剧集" :width="500">
       <form class="dialogForm" @submit.prevent="submitEpisode"><uiField label="季编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="episodeForm.seasonNumber" :min="1" :precision="0" /></template></uiField><uiField label="季名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="episodeForm.seasonTitle" /></template></uiField><uiField label="集编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="episodeForm.episodeNumber" :min="1" :precision="0" /></template></uiField><uiField label="集名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="episodeForm.title" /></template></uiField><p v-if="dialogError" class="pageError">{{ dialogError }}</p><div class="dialogActions"><uiButton variant="secondary" type="button" @click="episodeVisible = false">取消</uiButton><uiButton htmlType="submit" :loading="busy" :disabled="busy || !episodeForm.title">创建剧集</uiButton></div></form>
     </uiDialog>
@@ -162,6 +165,7 @@ import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { readProductionDraft, readProductionDraftFile, removeProductionDraftFile, saveProductionDraft, saveProductionDraftFile, type ProductionDramaDraft, type ProductionDramaDraftMode, type ProductionDraftFileRef, type ProductionDraftGeneration } from "@/lib/productionDraft";
 import { defaultProductionStyle, findProductionStyle } from "@/lib/productionStyles";
 import productionCutPanel from "./productionCutPanel.vue";
+import productionMemberPanel from "./productionMemberPanel.vue";
 
 type ProjectStatus = "draft" | "scripted" | "storyboarded" | "generating" | "editing" | "review" | "approved" | "delivered";
 type ShotStatus = "draft" | "ready" | "generating" | "review" | "changesRequested" | "approved";
@@ -170,7 +174,8 @@ type Episode = { id: string; seasonId: string; episodeNumber: number; title: str
 type Shot = { id: string; sceneId: string; shotNumber: number; durationMs: number; shotType: string | null; camera: string | null; lighting: string | null; dialogue: string | null; narration: string | null; prompt: string | null; status: ShotStatus; revision: number };
 type ProductionAsset = { id: string; assetType: AssetType; name: string; description: string | null; visualDescription: string | null; episodeIds: string[]; referencePath: string | null; referenceMimeType: string | null; referencePrompt: string | null; referenceGenerationJobId: string | null; referenceStatus: "none" | "generating" | "succeeded" | "failed"; referenceRevision: number };
 type Variant = { id: string; shotId: string; attemptNumber: number; filePath: string; mimeType: string; mediaType: string; status: string };
-type Member = { id: string; userId: string; displayName: string | null; email: string; role: string; status: string };
+type ProjectRole = "owner" | "producer" | "writer" | "director" | "artist" | "editor" | "reviewer" | "viewer";
+type Member = { id: string; userId: string; displayName: string | null; email: string; role: ProjectRole; status: string };
 type Delivery = { id: string; status: string; mp4Path: string; srtPath: string; manifestPath: string; auditPackagePath: string; manifestHash: string; createdAt: string };
 type Project = { id: string; workspaceId: string; title: string; status: ProjectStatus; budgetCents: string; creativeSettings: { genre: string; fusionGenres: string[]; style: string; aspectRatio: string; stylePrompt?: string; styleNegativePrompt?: string } | null; members: Member[]; seasons: unknown[]; episodes: Episode[]; scenes: unknown[]; shots: Shot[]; assets: ProductionAsset[]; variants: Variant[]; reviews: unknown[]; approvals: unknown[]; deliveries: Delivery[] };
 type ProjectPayload = { project: Omit<Project, "members" | "seasons" | "episodes" | "scenes" | "shots" | "assets" | "variants" | "reviews" | "approvals" | "deliveries">; members: Member[]; seasons: unknown[]; episodes: Episode[]; scenes: unknown[]; shots: Shot[]; assets: ProductionAsset[]; variants: Variant[]; reviews: unknown[]; approvals: unknown[]; deliveries: Delivery[] };
@@ -192,6 +197,7 @@ const auth = useAuthStore();
 const platformModels = usePlatformModelsStore();
 const project = ref<Project>();
 const projectRefreshKey = ref(0);
+const memberVisible = ref(false);
 const loading = ref(false);
 const busy = ref(false);
 const exporting = ref(false);
@@ -284,7 +290,7 @@ const currentInstruction = computed({
 });
 const currentProjectId = computed(() => typeof route.params.projectId === "string" ? route.params.projectId : "");
 const currentUserId = computed(() => auth.user?.id ?? "");
-const currentRole = computed(() => project.value?.members.find(member => member.userId === auth.user?.id)?.role ?? "viewer");
+const currentRole = computed(() => project.value?.members.find(member => member.userId === auth.user?.id && member.status === "active")?.role ?? "viewer");
 const primaryWorkflowSteps: { stage: ProductionStep; label: string }[] = [{ stage: "scripted", label: "分镜剧集" }, { stage: "assets", label: "主体资产" }, { stage: "storyboarded", label: "分镜脚本" }, { stage: "generating", label: "视频生成" }];
 const stageKeys: StageKey[] = ["draft", "scripted", "assets", "storyboarded", "generating", "review", "approved", "delivered"];
 const stageOrder = ["draft", "scripted", "storyboarded", "generating", "editing", "review", "approved", "delivered"] as const;

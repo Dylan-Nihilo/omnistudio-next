@@ -450,8 +450,8 @@ watch(directory, (next, previous) => {
 }, { immediate: true, flush: "sync" });
 watch(cacheSignature, () => { void refreshCacheStatuses(); }, { immediate: true, flush: "post" });
 watch(sessionInvalidated, value => { if (value) invalidateExportIdentity(); });
-watch([projectReady, sourceImportKey, exportRecordBusy], ([ready, key, recordBusy]) => {
-  if (ready && !recordBusy && (route.query.canvasPath || route.query.variantIds || route.query.variantId) && key !== processedSourceImportKey.value) void importEditorSources();
+watch([projectReady, sourceImportKey, exportRecordBusy, sourceImportBusy], ([ready, key, recordBusy, importing]) => {
+  if (ready && !recordBusy && !importing && (route.query.canvasPath || route.query.variantIds || route.query.variantId) && key !== processedSourceImportKey.value) void importEditorSources();
 }, { immediate: true, flush: "post" });
 watch([assets, clips, tracks, aspectRatio, frameRate, exportHeight, exportQuality, editorProjectName], scheduleSave, { deep: true, flush: "sync" });
 watch([currentTime, clips, tracks], syncPlayers, { deep: true, flush: "post" });
@@ -1791,12 +1791,15 @@ async function importEditorSources() {
   sourceImportError.value = "";
   sourceImportNotice.value = "";
   sourceImportLabel.value = "正在读取素材来源";
-  const version = projectVersion;
+  let version = projectVersion;
+  const isCurrent = () => mounted && version === projectVersion && currentDirectory === directory.value && key === sourceImportKey.value;
   const canvasIncoming: EditorAsset[] = [];
   const productionIncoming: EditorAsset[] = [];
   let applied = false;
   try {
     const canvasPath = queryString(route.query.canvasPath);
+    const projectId = queryString(route.query.productionProjectId);
+    const variantIds = queryIdList();
     if (canvasPath) {
       if (queryString(route.query.sourceDirectory) !== currentDirectory) throw new Error("画布与剪辑工程工作区不一致，请从原工作区重新打开剪辑台");
       workspaceRelativePath(canvasPath);
@@ -1811,46 +1814,68 @@ async function importEditorSources() {
         } catch { throw new Error("画布节点列表无效"); }
       }
       const canvas = await useWorkspaceFiles(currentDirectory).readJson<{ toonflowCanvas?: boolean; nodes?: { id?: string; data?: { label?: string; outputs?: Record<string, { dataType?: string; value?: { url?: unknown } } | undefined> } }[] }>(canvasPath);
-      if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
+      if (!isCurrent()) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
       if (canvas?.toonflowCanvas !== true || !Array.isArray(canvas.nodes) || canvas.nodes.length > 10000) throw new Error("画布文件格式无效");
-      const selected = nodeIds.length ? new Set(nodeIds) : undefined;
+      const selected = new Set(nodeIds);
       const sources = canvas.nodes.flatMap(node => {
-        if (!node || typeof node.id !== "string" || selected && !selected.has(node.id)) return [];
+        if (!node || typeof node.id !== "string" || !selected.has(node.id)) return [];
         return Object.entries(node.data?.outputs ?? {}).flatMap(([outputId, output]) => {
           const path = output?.value?.url;
           const kind = output?.dataType === "VIDEO" ? "video" : output?.dataType === "AUDIO" ? "audio" : output?.dataType === "IMAGE" ? "image" : undefined;
-          return kind && typeof path === "string" ? [{ nodeId: node.id, outputId, path, label: node.data?.label || node.id, kind }] : [];
+          return kind && typeof path === "string" && path.trim() ? [{ nodeId: node.id, outputId, path, label: node.data?.label || node.id, kind }] : [];
         });
       });
       if (sources.length > 500) throw new Error("单次最多导入 500 个画布素材");
+      if (!sources.length && !(projectId && variantIds.length)) {
+        if (!await saveProject()) throw new Error("原剪辑工程尚未保存，无法切换为空工程；请先解决保存问题");
+        if (!isCurrent()) return;
+        const created = await createEditorProjectFile(currentDirectory, `${canvasPath.replace(/\.json$/i, "").split("/").at(-1)} · 剪辑`.slice(0, 120));
+        if (!isCurrent()) return;
+        activeEditorProjectPath.value = created.path;
+        try { localStorage.setItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${currentDirectory}`, created.path); }
+        catch (error) { console.warn("当前剪辑工程无法记入本地偏好", error); }
+        projectVersion++;
+        version = projectVersion;
+        const emptyVersion = version;
+        stopPlayback();
+        clearEditor();
+        processedSourceImportKey.value = key;
+        sourceImportBusy.value = true;
+        await loadProject(currentDirectory, created.path);
+        if (emptyVersion !== projectVersion || currentDirectory !== directory.value || !mounted) return;
+        sourceImportBusy.value = false;
+        if (key !== sourceImportKey.value) return;
+        if (!projectReady.value) throw new Error(saveError.value || "空剪辑工程读取失败");
+        sourceImportNotice.value = "所选画布节点没有可导入的媒体，已打开空剪辑工程。";
+        clearSourceImportQuery();
+        return;
+      }
       for (const [index, source] of sources.entries()) {
-        if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
+        if (!isCurrent()) { await removeImportedAssets(canvasIncoming, currentDirectory); return; }
         sourceImportLabel.value = `正在冻结画布素材 ${index + 1}/${sources.length} · ${source.label}`;
         const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/videoEditor/importMedia", { directory: currentDirectory, source: { type: "workspace", path: source.path, canvasPath, nodeId: source.nodeId, outputId: source.outputId } });
         canvasIncoming.push(data.data.asset);
         if (data.data.asset.kind !== source.kind) throw new Error(`画布输出「${source.label}」的素材类型已变化，请重新打开画布后再试`);
       }
-      if (!sources.length) throw new Error("所选画布节点没有可导入的图片、视频或音频输出");
     }
 
-    const projectId = queryString(route.query.productionProjectId);
-    const variantIds = queryIdList();
     if (variantIds.length && !projectId) throw new Error("缺少制作项目编号，请从项目重新选择候选");
     if (projectId && variantIds.length) {
       for (const [index, variantId] of variantIds.entries()) {
-        if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
+        if (!isCurrent()) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
         sourceImportLabel.value = `正在导入项目候选 ${index + 1}/${variantIds.length}`;
         const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/productionProjects/cuts/importSource", { projectId, variantId, directory: currentDirectory });
         productionIncoming.push(data.data.asset);
       }
     }
-    if (version !== projectVersion || currentDirectory !== directory.value) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
+    if (!isCurrent()) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
     const unused = addImportedAssets([...canvasIncoming, ...productionIncoming], productionIncoming);
     applied = true;
     pendingSourceImportKey.value = key;
     pendingSourceImportAssets.value = [...canvasIncoming, ...productionIncoming];
     await removeImportedAssets(unused, currentDirectory);
     if (!await saveProject()) throw new Error("素材已加入当前编辑，但工程保存失败；请先解决保存问题后重试");
+    if (!isCurrent()) return;
     pendingSourceImportKey.value = "";
     pendingSourceImportAssets.value = [];
     sourceImportNotice.value = projectId && variantIds.length
@@ -1859,10 +1884,9 @@ async function importEditorSources() {
     clearSourceImportQuery();
   } catch (error) {
     if (!applied) await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory);
-    if (version === projectVersion) {
+    if (isCurrent()) {
       if (pendingSourceImportKey.value !== key) {
         sourceImportError.value = errorMessage(error, "导入素材失败");
-        processedSourceImportKey.value = "";
       } else sourceImportError.value = errorMessage(error, "工程保存失败，素材已保留在当前编辑中，请重试保存");
     }
   } finally {
