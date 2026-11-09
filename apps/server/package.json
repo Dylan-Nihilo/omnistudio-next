@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./app": "./src/app.ts",
+    "./editorRender": "./src/services/editorRenderService.ts",
     "./desktop": "./src/types/desktop.ts",
     "./mcp": "./src/utils/mcp/runtime.ts",
     "./agent/types": "./src/agent/runtime/types.ts",

@@ -37,6 +37,7 @@ export type BrowserFfmpegCommand = Pick<FfmpegCommand, typeof queryMethods[numbe
   off: BrowserFfmpegCommand["on"];
   removeListener: BrowserFfmpegCommand["on"];
   removeAllListeners(event?: keyof BrowserFfmpegEvents): BrowserFfmpegCommand;
+  toRequest(): BrowserFfmpegRequest;
   run(): void;
   kill(signal?: "SIGKILL" | "SIGTERM"): BrowserFfmpegCommand;
 };

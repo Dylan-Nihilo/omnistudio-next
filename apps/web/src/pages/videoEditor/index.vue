@@ -9,6 +9,7 @@
         <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
         <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
+        <button class="secondaryButton" type="button" :disabled="!projectReady" @click="openRenderQueue">渲染队列</button>
         <button class="exportButton" type="button" :disabled="!canExport || exportBusy || exportRecordBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
       </div>
     </header>
@@ -61,6 +62,8 @@
             <label class="fieldLabel" for="frameRate">帧率</label><select id="frameRate" :value="frameRate" :disabled="!canEdit" @change="changeSetting('frameRate', $event)"><option v-for="fps in [24,25,30,60]" :key="fps" :value="fps">{{ fps }} fps</option></select>
             <label class="fieldLabel" for="exportHeight">输出高度</label><select id="exportHeight" :value="exportHeight" :disabled="!canEdit" @change="changeSetting('exportHeight', $event)"><option :value="720">720p</option><option :value="1080">1080p</option><option :value="2160">2160p · 4K</option></select>
             <label class="fieldLabel" for="exportQuality">输出质量</label><select id="exportQuality" :value="exportQuality" :disabled="!canEdit" @change="changeSetting('exportQuality', $event)"><option value="draft">快速预览</option><option value="standard">标准</option><option value="high">高质量</option></select>
+            <input ref="edlInput" class="hiddenInput" type="file" accept=".edl,.txt" @change="importEdlFile" />
+            <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canEdit" @click="edlInput?.click()">导入 EDL</button><button class="secondaryButton" type="button" :disabled="!clips.some(clip => clip.kind === 'video' || clip.kind === 'image')" @click="exportEdlFile">导出 EDL</button></div>
             <p class="featureNote">画面等比适配。轨道从上到下对应画面上层到下层，空隙填充黑色。隐藏控制画面，静音控制声音。</p>
           </section>
         </aside>
@@ -77,7 +80,7 @@
                   <img v-else-if="clip.kind === 'image'" class="previewVideo" :src="assetUrl(clip)" :style="visualStyle(clip)" alt="" @error="mediaFailed(clip)" />
                   <video v-else :ref="element => setVideoElement(clip.id, element)" class="previewVideo" :src="previewAssetUrl(clip)" :style="visualStyle(clip)" muted playsinline preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></video>
                 </template>
-                <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="previewAssetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers"></audio>
+                <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="previewAssetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></audio>
                 <div v-if="!clips.length" class="previewEmpty"><icon-movie :size="38" /><span>将素材添加到时间线</span></div>
               </div></div>
               <div v-if="previewError" class="previewAlert" role="alert">{{ previewError }}<button aria-label="关闭提示" @click="previewError = ''">×</button></div>
@@ -90,7 +93,7 @@
             </section>
             <editorSource v-if="previewMode !== 'program' && sourceAsset" class="sourceMonitorPanel" :asset="sourceAsset" :url="sourceAssetUrl" :frameRate="frameRate" :disabled="!canEdit" @focusin="stopPlayback" @insert="insertSourceSelection" />
           </div>
-          <editorDelivery v-if="lastExport" :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport || exportRecordBusy"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport || exportRecordBusy" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery>
+          <details v-if="lastExport" class="exportDetails"><summary>成片登记与画布回写<span>{{ lastExport.name }}</span></summary><editorDelivery :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport || exportRecordBusy"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport || exportRecordBusy" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery></details>
           <p v-if="exportRecordError" class="exportError" role="alert">{{ exportRecordError }}<button v-if="lastExport && !exportRecordSaved" class="secondaryButton" type="button" :disabled="exportRecordBusy || !canRegisterExport" @click="persistLastExport">{{ exportRecordBusy ? '正在保存记录…' : '重试保存导出记录' }}</button></p>
           <p v-else-if="exportRecordBusy" class="exportStale" role="status">正在核验导出记录…</p>
           <p v-else-if="lastExport && exportRecordSaved" class="exportStale" role="status">导出记录已保存，重新打开此工程后可继续登记与回写。</p>
@@ -112,7 +115,7 @@
                 <div class="buttonRow"><button class="secondaryButton" type="button" @click="applyPrecisionEdit(-1)">−1 帧</button><button class="secondaryButton" type="button" @click="applyPrecisionEdit(1)">+1 帧</button><button class="secondaryButton" type="button" :disabled="!Number.isInteger(precisionFrames) || !precisionFrames" @click="applyPrecisionEdit(precisionFrames)">应用</button></div>
                 <p class="featureNote">{{ precisionDescription }}</p>
               </details>
-              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="1" step=".01" :value="Math.min(1, selectedClip.volume)" @change="updateSelectedClip('volume', $event)" /></template>
+              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="2" step=".01" :value="selectedClip.volume" @change="updateSelectedClip('volume', $event)" /></template>
               <template v-if="selectedClip.kind === 'text'"><label class="fieldLabel" for="clipText">文字内容</label><textarea id="clipText" rows="4" :value="selectedClip.text" @change="updateSelectedText"></textarea><label class="fieldLabel" for="textColor">文字颜色</label><input id="textColor" type="color" :value="selectedClip.textColor ?? '#ffffff'" @change="updateTextColor" /><label v-for="field in textFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></template>
               <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><details open><summary>画面变换</summary><label v-for="field in transformFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details><details><summary>基础调色</summary><label v-for="field in colorFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details></template>
               <label class="fieldLabel" for="clipOpacity">不透明度</label><input id="clipOpacity" type="range" min="0" max="1" step=".01" :value="selectedClip.opacity ?? 1" @change="updateSelectedClip('opacity', $event)" />
@@ -126,6 +129,7 @@
                 <div v-if="keyframeFrames.length" class="keyframeList"><div v-for="frame in keyframeFrames" :key="`${frame.property}:${frame.time}`" class="keyframeRow"><button type="button" class="keyframeJump" @click="seekTo(selectedClip.start + frame.time)">{{ formatTime(frame.time) }}<span>{{ roundNumber(frame.value) }}{{ keyframePropertySpec.unit }}</span></button><button type="button" class="keyframeRemove" :aria-label="`删除 ${formatTime(frame.time)} 关键帧`" @click="removeKeyframe(frame)">×</button></div></div>
               </details>
               <label class="fieldLabel" for="fadeIn">淡入 <span>秒</span></label><input id="fadeIn" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeIn ?? 0" @change="updateSelectedClip('fadeIn', $event)" /><label class="fieldLabel" for="fadeOut">淡出 <span>秒</span></label><input id="fadeOut" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeOut ?? 0" @change="updateSelectedClip('fadeOut', $event)" />
+              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><label class="fieldLabel" for="transitionIn">转场进入 <span>秒</span></label><input id="transitionIn" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionIn ?? 0" @change="updateSelectedClip('transitionIn', $event)" /><label class="fieldLabel" for="transitionOut">转场离开 <span>秒</span></label><input id="transitionOut" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionOut ?? 0" @change="updateSelectedClip('transitionOut', $event)" /><div class="buttonRow"><button class="secondaryButton" type="button" @click="applyCrossfade">应用交叉淡化</button><button class="secondaryButton" type="button" @click="clearCrossfade">清除转场</button></div></template>
               <div class="inspectorFooter"><span>时间线时长</span><strong>{{ formatTime(clipDuration(selectedClip)) }}</strong></div><button class="removeButton" @click="deleteSelectedClip"><icon-trash :size="16" />删除片段</button>
             </fieldset>
           </template>
@@ -163,9 +167,10 @@
       </section>
     </template>
     <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
+    <dialog v-if="directory && projectContext" ref="renderQueueDialog" class="renderQueueDialog" aria-label="后台渲染队列"><header class="renderDialogHeader"><strong>后台渲染</strong><button class="secondaryButton" type="button" @click="renderQueueDialog?.close()">关闭</button></header><editorRenderQueue :directory="directory" :projectPath="projectContext.projectPath" :revision="renderProjectRevision" :refreshKey="renderQueueRefreshKey" :disabled="!!sessionInvalidated" @completed="completeEditorRender" @useResult="useEditorRenderResult" /></dialog>
     <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
     <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false"><div class="recoveryDialog editorProjectsDialog"><h2>剪辑工程</h2><p>每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。</p><label class="fieldLabel" for="newEditorProjectName">新建工程</label><div class="buttonRow"><input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" :disabled="exportRecordBusy" @keydown.enter.prevent="createEditorProjectFromDialog" /><button class="exportButton" :disabled="!newEditorProjectName || projectBusy || exportRecordBusy" @click="createEditorProjectFromDialog">新建</button></div><div v-if="editorProjectOptions.length" class="editorProjectList"><button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: item.path === activeEditorProjectPath }" :disabled="projectBusy || exportRecordBusy || item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)"><span><strong>{{ item.name }}</strong><small>{{ item.path }}</small></span><span>{{ item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span></button></div><p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="editorProjectsOpen = false">关闭</button></div></div></div>
-    <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportController?.signal.aborted ? '正在停止导出' : '正在导出视频' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportController?.signal.aborted" @click="exportController?.abort()">取消导出</button></div></div>
+    <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportSubmitting ? '正在提交后台渲染任务' : exportController?.signal.aborted ? '正在停止任务准备' : '正在准备渲染任务' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportSubmitting || exportController?.signal.aborted" @click="exportController?.abort()">取消准备</button></div></div>
   </main>
 </template>
 
@@ -176,9 +181,10 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { getSessionSnapshot, sessionInvalidated } from "@/lib/sessionState";
-import { clipDuration, clipKeyframeValue, createDefaultTracks, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
+import { clipDuration, clipKeyframeValue, createDefaultTracks, crossfadeDuration, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
 import { backupEditorContent, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
-import { exportEditorProject } from "./editorExport";
+import { exportEditorProject, type EditorRenderJob } from "./editorExport";
+import { exportEdl, importEdl } from "./editorExchange";
 import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slipEditClip } from "./editorTimeline";
 import { createTimelineThumbnailGenerator } from "./editorThumbnails";
 import type { ApiResponse } from "@/lib/authApi";
@@ -188,6 +194,7 @@ import editorMediaPicker from "./editorMediaPicker.vue";
 import editorDelivery from "./editorDelivery.vue";
 import editorSource from "./editorSource.vue";
 import editorText from "./editorText.vue";
+import editorRenderQueue from "./editorRenderQueue.vue";
 import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, IconCopy, IconDownload, IconLink, IconMagnet, IconMovie, IconMusic, IconPhoto, IconPhotoVideo, IconPlayerPause, IconPlayerPlay, IconPlayerSkipBack, IconPlayerTrackNext, IconPlayerTrackPrev, IconPlus, IconScissors, IconTextSize, IconTrash, IconUpload, IconVideo } from "@tabler/icons-vue";
 
 type ProjectContext = { directory: string; projectPath: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };
@@ -197,7 +204,7 @@ type DragState = { clipId?: string; element?: HTMLElement; startX: number; start
 type EditorCacheStatus = { state: "missing" | "stale" | "processing" | "ready"; proxyPath?: string; thumbnails?: { path: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { path: string; duration?: number; peaks: number[] }; duration?: number };
 type EditorCacheEntry = { path: string; status: EditorCacheStatus };
 type CachedMedia = { proxyUrl?: string; thumbnailSprite?: { url: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { duration: number; peaks: number[] } };
-type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "fontSize" | "textX" | "textY";
+type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "transitionIn" | "transitionOut" | "fontSize" | "textX" | "textY";
 const router = useRouter();
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
@@ -281,7 +288,11 @@ const previewError = ref("");
 const exportError = ref("");
 const exportBusy = ref(false);
 const exportProgress = ref<number>();
+const exportSubmitting = ref(false);
+const renderQueueRefreshKey = ref(0);
+const renderQueueDialog = ref<HTMLDialogElement>();
 const exportController = shallowRef<AbortController>();
+const renderSnapshots = new Map<string, { content: string; sourceReferences: { type: string; id: string; label?: string }[]; userId: string }>();
 const cacheStatusController = shallowRef<AbortController>();
 const lastExport = ref<{ id: string; directory: string; url: string; name: string; path: string; projectPath: string; revision: string; sourceReferences: { type: string; id: string; label?: string }[] }>();
 const exportRecordError = ref("");
@@ -292,6 +303,7 @@ let exportRecordVersion = 0;
 const fileInput = ref<HTMLInputElement>();
 const relinkInput = ref<HTMLInputElement>();
 const subtitleInput = ref<HTMLInputElement>();
+const edlInput = ref<HTMLInputElement>();
 const timelineViewport = ref<HTMLElement>();
 const timelineView = ref({ left: -trackLabelWidth, width: 1200 });
 const thumbnailGenerator = shallowRef(createTimelineThumbnailGenerator());
@@ -333,6 +345,7 @@ let audioLimiter: DynamicsCompressorNode | undefined;
 const audioNodes = new Map<string, { element: HTMLAudioElement; source: MediaElementAudioSourceNode; gain: GainNode }>();
 
 const projectReady = computed(() => !!directory.value && loadedDirectory.value === directory.value && !projectLoading.value);
+const renderProjectRevision = computed(() => projectReady.value && !saveBusy.value && !savePending.value && !saveError.value ? projectContext?.revision ?? "" : "");
 const canRegisterExport = computed(() => !!lastExport.value && projectReady.value && activeEditorProjectPath.value === lastExport.value.projectPath && !saveBlocked.value && !saveError.value && !saveBusy.value && !savePending.value && !exportBusy.value && !sourceImportBusy.value && getProjectContent() === exportedProjectContent.value);
 const exportedProjectContent = ref("");
 const returnCanvasPath = computed(() => assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
@@ -373,7 +386,10 @@ const canPlaceKeyframe = computed(() => {
 const timelineDuration = computed(() => Math.max(0, ...clips.value.map(clip => clip.start + clipDuration(clip))));
 const timelineWidth = computed(() => Math.max(timelineViewport.value?.clientWidth ?? 1200, trackLabelWidth + (timelineDuration.value + 5) * zoom.value));
 const activeClips = computed(() => clips.value.filter(clip => currentTime.value >= clip.start && currentTime.value < clip.start + clipDuration(clip)));
-const activeVisualClips = computed(() => tracks.value.slice().reverse().filter(track => track.kind !== "audio" && !track.hidden).flatMap(track => activeClips.value.filter(clip => clip.track === track.id).sort((a, b) => a.start - b.start).slice(-1)));
+const activeVisualClips = computed(() => tracks.value.slice().reverse().filter(track => track.kind !== "audio" && !track.hidden).flatMap(track => {
+  const active = activeClips.value.filter(clip => clip.track === track.id).sort((a, b) => a.start - b.start);
+  return active.filter((clip, index) => index === active.length - 1 || active.slice(index + 1).every(other => crossfadeDuration(clip, other, 1 / frameRate.value) !== undefined));
+}));
 const activeSoundClips = computed(() => activeClips.value.filter(clip => (clip.kind === "video" || clip.kind === "audio") && !tracks.value.find(track => track.id === clip.track)?.muted && assets.value.find(asset => asset.id === clip.assetId)?.hasAudio !== false));
 const visibleAssets = computed(() => assets.value.filter(asset => (mediaFilter.value === "all" || mediaFilter.value === asset.kind) && (activeTab.value !== "audio" || asset.kind === "audio") && asset.name.toLowerCase().includes(assetSearch.value.trim().toLowerCase())));
 const canExport = computed(() => canEdit.value && clips.value.length > 0 && !saveBlocked.value && !missingAssetIds.value.length);
@@ -581,15 +597,20 @@ function isLocked(clip: EditorClip) { return tracks.value.find(track => track.id
 function clampFades(clip: EditorClip) {
   clip.fadeIn = Math.min(clip.fadeIn ?? 0, clipDuration(clip));
   clip.fadeOut = Math.min(clip.fadeOut ?? 0, clipDuration(clip));
+  clip.transitionIn = Math.min(clip.transitionIn ?? 0, clipDuration(clip) / 2);
+  clip.transitionOut = Math.min(clip.transitionOut ?? 0, clipDuration(clip) / 2);
 }
 function clipStyle(clip: EditorClip) { return { left: `${clip.start * zoom.value}px`, width: `${Math.max(2, clipDuration(clip) * zoom.value)}px` }; }
 function updateTimelineViewport() {
   const element = timelineViewport.value;
   if (element) timelineView.value = { left: element.scrollLeft - trackLabelWidth, width: element.clientWidth };
 }
-function fadeLevel(clip: EditorClip) {
+function fadeLevel(clip: EditorClip, sound = false) {
   const time = currentTime.value - clip.start;
-  return Math.max(0, Math.min(1, clip.fadeIn ? time / clip.fadeIn : 1, clip.fadeOut ? (clipDuration(clip) - time) / clip.fadeOut : 1));
+  const fadeIn = Math.max(clip.fadeIn ?? 0, clip.transitionIn ?? 0);
+  const hasCrossfadeOut = !sound && clips.value.some(other => other.id !== clip.id && crossfadeDuration(clip, other, 1 / frameRate.value) !== undefined);
+  const fadeOut = Math.max(clip.fadeOut ?? 0, hasCrossfadeOut ? 0 : clip.transitionOut ?? 0);
+  return Math.max(0, Math.min(1, fadeIn ? time / fadeIn : 1, fadeOut ? (clipDuration(clip) - time) / fadeOut : 1));
 }
 function visualStyle(clip: EditorClip) {
   const time = currentTime.value - clip.start;
@@ -967,6 +988,75 @@ function duplicateSelectedClip() {
   clips.value.push(next);
   selectedClipId.value = next.id;
 }
+function applyCrossfade() {
+  const clip = selectedClip.value;
+  if (!canEdit.value || !clip || (clip.kind !== "video" && clip.kind !== "image") || isLocked(clip)) return;
+  const frameDuration = 1 / frameRate.value;
+  const tolerance = frameDuration;
+  const duration = clipDuration(clip);
+  const candidates = clips.value.filter(item => item.id !== clip.id && item.track === clip.track && (item.kind === "video" || item.kind === "image") && !isLocked(item));
+  const next = candidates.filter(item => {
+    const end = clip.start + duration;
+    const configured = clip.transitionOut ?? 0;
+    return Math.abs(item.start - end) <= tolerance || configured >= frameDuration / 2 && Math.abs(item.start - (end - configured)) <= tolerance && crossfadeDuration(clip, item, frameDuration) !== undefined;
+  }).sort((a, b) => a.start - b.start)[0];
+  const previous = candidates.filter(item => {
+    const end = item.start + clipDuration(item);
+    const configured = clip.transitionIn ?? 0;
+    return Math.abs(end - clip.start) <= tolerance || configured >= frameDuration / 2 && Math.abs(clip.start - (end - configured)) <= tolerance && crossfadeDuration(item, clip, frameDuration) !== undefined;
+  }).sort((a, b) => b.start - a.start)[0];
+  const outgoing = next ? clip : previous;
+  const incoming = next ?? clip;
+  if (!outgoing || !incoming || incoming.id === outgoing.id) { previewError.value = "请先在同一视频轨上放置相邻片段"; return; }
+  const outgoingDuration = clipDuration(outgoing);
+  const incomingDuration = clipDuration(incoming);
+  const overlap = Math.min(.5, outgoingDuration / 2, incomingDuration / 2);
+  const snapped = Math.floor(overlap * frameRate.value + 0.000001) / frameRate.value;
+  if (snapped < frameDuration) { previewError.value = "片段至少需要两帧才能应用一帧转场"; return; }
+  const targetStart = frameTime(outgoing.start + outgoingDuration - snapped);
+  const delta = targetStart - incoming.start;
+  const followers = clips.value.filter(item => item.id !== outgoing.id && item.id !== incoming.id && item.track === clip.track && item.start > incoming.start + 0.000001);
+  if (followers.some(item => item.start + delta < -0.000001 || item.start + delta + clipDuration(item) > 86400.000001)) { previewError.value = "转场会使后续片段超出时间线边界"; return; }
+  saveHistory();
+  outgoing.transitionOut = snapped;
+  incoming.transitionIn = snapped;
+  incoming.start = targetStart;
+  for (const follower of followers) follower.start = frameTime(follower.start + delta);
+  clampFades(outgoing);
+  clampFades(incoming);
+  scheduleSave();
+}
+function clearCrossfade() {
+  const clip = selectedClip.value;
+  if (!canEdit.value || !clip || isLocked(clip)) return;
+  const frameDuration = 1 / frameRate.value;
+  const previous = clips.value.filter(item => item.id !== clip.id && crossfadeDuration(item, clip, frameDuration) !== undefined).sort((a, b) => b.start - a.start)[0];
+  const next = clips.value.filter(item => item.id !== clip.id && crossfadeDuration(clip, item, frameDuration) !== undefined).sort((a, b) => a.start - b.start)[0];
+  if (!previous && !next && !(clip.transitionIn || clip.transitionOut)) return;
+  const updates = new Map(clips.value.map(item => [item.id, { ...item }]));
+  const clearPair = (outgoing: EditorClip, incoming: EditorClip) => {
+    const beforeStart = incoming.start;
+    const targetStart = Math.round((outgoing.start + clipDuration(outgoing)) * frameRate.value) / frameRate.value;
+    const delta = targetStart - beforeStart;
+    outgoing.transitionOut = 0;
+    incoming.transitionIn = 0;
+    incoming.start = targetStart;
+    for (const follower of updates.values()) {
+      if (follower.id !== outgoing.id && follower.id !== incoming.id && follower.track === incoming.track && follower.start > beforeStart + 0.000001) follower.start = Math.round((follower.start + delta) * frameRate.value) / frameRate.value;
+    }
+  };
+  const changedClip = updates.get(clip.id)!;
+  if (previous) clearPair(updates.get(previous.id)!, changedClip);
+  if (next) clearPair(changedClip, updates.get(next.id)!);
+  if (!previous && !next) {
+    changedClip.transitionIn = 0;
+    changedClip.transitionOut = 0;
+  }
+  if ([...updates.values()].some(item => item.start < -0.000001 || item.start + clipDuration(item) > 86400.000001)) { previewError.value = "清除转场会使后续片段超出时间线边界"; return; }
+  saveHistory();
+  for (const item of clips.value) Object.assign(item, updates.get(item.id)!);
+  scheduleSave();
+}
 function splitSelectedClip() {
   const clip = selectedClip.value;
   if (!canEdit.value || !clip || isLocked(clip)) return;
@@ -997,7 +1087,7 @@ function updateSelectedClip(field: NumericField, event: Event) {
   else if (field === "inPoint") clip.inPoint = Math.min(Math.max(clip.outPoint - Math.max(0, 86400 - clip.start) * (clip.speed ?? 1), Math.max(0, frameTime(value))), Math.max(0, clip.outPoint - minDuration));
   else if (field === "outPoint") clip.outPoint = Math.min(Math.max(clip.inPoint + minDuration, frameTime(value)), assetDuration(clip), clip.inPoint + Math.max(0, 86400 - clip.start) * (clip.speed ?? 1));
   else {
-    const limits: Record<string, [number, number]> = { volume: [0, 1], speed: [.25, 4], x: [-200, 200], y: [-200, 200], scale: [.1, 5], rotation: [-360, 360], opacity: [0, 1], brightness: [0, 3], contrast: [0, 3], saturation: [0, 3], fadeIn: [0, clipDuration(clip)], fadeOut: [0, clipDuration(clip)], fontSize: [1, 20], textX: [0, 100], textY: [0, 100] };
+    const limits: Record<string, [number, number]> = { volume: [0, 2], speed: [.25, 4], x: [-200, 200], y: [-200, 200], scale: [.1, 5], rotation: [-360, 360], opacity: [0, 1], brightness: [0, 3], contrast: [0, 3], saturation: [0, 3], fadeIn: [0, clipDuration(clip)], fadeOut: [0, clipDuration(clip)], transitionIn: [0, clipDuration(clip) / 2], transitionOut: [0, clipDuration(clip) / 2], fontSize: [1, 20], textX: [0, 100], textY: [0, 100] };
     const [min, max] = limits[field]!;
     clip[field] = Math.min(max, Math.max(min, value));
   }
@@ -1195,14 +1285,14 @@ function syncElement(id: string, element: HTMLMediaElement, sound: boolean) {
       gain.connect(audioLimiter);
       audioNodes.set(id, { source, gain, element: audio });
     }
-    const volume = clip.volume * fadeLevel(clip);
+    const volume = clip.volume * fadeLevel(clip, true);
     const node = audioNodes.get(id);
     if (node) { node.gain.gain.value = volume; element.volume = 1; }
     else element.volume = Math.min(1, volume);
   }
   if (isPlaying.value && element.paused) void element.play().catch(error => {
     if (error instanceof DOMException && error.name === "AbortError") return;
-    if (!sound) { stopPlayback(); previewError.value = `「${clip.title}」播放失败，请确认媒体编码受浏览器支持。`; }
+    stopPlayback(); previewError.value = `「${clip.title}」播放失败，请确认媒体编码受浏览器支持。`;
   });
   else if (!isPlaying.value && !element.paused) element.pause();
 }
@@ -1326,6 +1416,32 @@ function exportSubtitles(format: "srt" | "vtt") {
     downloadUrl(url, `subtitles.${format}`);
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   } catch (error) { previewError.value = errorMessage(error, "导出字幕失败"); }
+}
+async function importEdlFile(event: Event) {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0]; input.value = "";
+  if (!file || !canEdit.value) return;
+  const version = projectVersion;
+  try {
+    if (file.size > 2 * 1024 ** 2) throw new Error("EDL 文件不能超过 2 MiB");
+    if (tracks.value.some(track => track.kind === "video" && track.locked)) throw new Error("请先解锁视频轨道再导入 EDL");
+    const imported = importEdl(await file.text(), getProject());
+    if (version !== projectVersion || !canEdit.value) return;
+    if (clips.value.some(clip => clip.kind === "video" || clip.kind === "image") && !window.confirm("EDL 将替换当前画面剪辑，音频与文字片段会保留。是否继续？")) return;
+    stopPlayback();
+    saveHistory();
+    clips.value = imported.clips;
+    selectedClipId.value = undefined;
+    scheduleSave();
+  } catch (error) { previewError.value = errorMessage(error, "导入 EDL 失败"); }
+}
+function exportEdlFile() {
+  try {
+    const content = exportEdl(getProject());
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    downloadUrl(url, `${editorProjectName.value}.edl`);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch (error) { previewError.value = errorMessage(error, "导出 EDL 失败"); }
 }
 async function checkMedia() {
   const context = projectContext;
@@ -1841,6 +1957,7 @@ function invalidateExportIdentity() {
   exportRecordSaved.value = false;
   lastExport.value = undefined;
   exportedProjectContent.value = "";
+  renderSnapshots.clear();
   exportRecordError.value = "登录账户已更新，请重新打开剪辑台后恢复导出记录。";
 }
 function exportRequestCurrent(version: number, context: ProjectContext, session: ReturnType<typeof getSessionSnapshot>) {
@@ -1928,6 +2045,38 @@ function returnExportToCanvas() {
     editorProjectPath: result.projectPath,
   } });
 }
+function setEditorRenderResult(job: EditorRenderJob, restore: boolean) {
+  const context = projectContext;
+  if (!context || job.status !== "succeeded" || job.projectPath !== context.projectPath || job.revision !== context.revision || job.outputPath === "") return false;
+  const snapshot = renderSnapshots.get(job.id);
+  const content = getProjectContent();
+  const savedContent = (() => {
+    try { return JSON.stringify(parseEditorProject(JSON.parse(context.content))); }
+    catch { return ""; }
+  })();
+  if (saveBusy.value || savePending.value || content !== (snapshot?.content ?? savedContent)) {
+    if (restore) exportError.value = "成片对应的是旧版工程；当前工程已变化，无法用它登记审片或回写画布。";
+    return false;
+  }
+  const files = useWorkspaceFiles(context.directory);
+  const references = snapshot?.userId === getSessionSnapshot().userId ? snapshot.sourceReferences : sourceReferences();
+  lastExport.value = { id: crypto.randomUUID(), directory: context.directory, url: files.mediaUrl(job.outputPath), name: job.outputPath.split("/").pop()!, path: job.outputPath, projectPath: job.projectPath, revision: job.revision, sourceReferences: references };
+  exportedProjectContent.value = content;
+  exportRecordSaved.value = false;
+  exportRecordError.value = "";
+  void persistLastExport();
+  return true;
+}
+function completeEditorRender(job: EditorRenderJob) {
+  setEditorRenderResult(job, false);
+}
+function openRenderQueue() {
+  const dialog = renderQueueDialog.value;
+  if (dialog && !dialog.open) dialog.showModal();
+}
+function useEditorRenderResult(job: EditorRenderJob) {
+  if (setEditorRenderResult(job, true)) renderQueueDialog.value?.close();
+}
 async function exportTimeline() {
   const context = projectContext;
   if (!context || !canExport.value || exportBusy.value || exportRecordBusy.value) return;
@@ -1939,6 +2088,7 @@ async function exportTimeline() {
   exportRecordError.value = "";
   exportError.value = "";
   exportBusy.value = true;
+  exportSubmitting.value = false;
   exportProgress.value = undefined;
   const controller = new AbortController();
   exportController.value = controller;
@@ -1950,19 +2100,30 @@ async function exportTimeline() {
     const snapshot = parseEditorProject(getProject());
     exportedProjectContent.value = getProjectContent();
     const revision = context.revision;
-    const result = await exportEditorProject(snapshot, context.directory, controller.signal, progress => { if (version === projectVersion) exportProgress.value = progress; });
+    const projectContent = exportedProjectContent.value;
+    const references = sourceReferences();
+    const job = await exportEditorProject(snapshot, context.directory, controller.signal, progress => {
+      if (version !== projectVersion) return;
+      exportProgress.value = progress;
+      exportSubmitting.value = progress >= 90;
+    }, {
+      projectPath: context.projectPath,
+      revision,
+      projectName: editorProjectName.value.trim(),
+    });
     if (version !== projectVersion || exportIdentityVersion !== exportRecordVersion || sessionInvalidated.value || getSessionSnapshot().userId !== session.userId) return;
-    const url = useWorkspaceFiles(context.directory).mediaUrl(result.path);
-    const name = result.path.split("/").pop()!;
-    lastExport.value = { id: crypto.randomUUID(), directory: context.directory, url, name, path: result.path, projectPath: context.projectPath, revision, sourceReferences: sourceReferences() };
+    renderSnapshots.set(job.id, { content: projectContent, sourceReferences: references, userId: session.userId });
+    if (renderSnapshots.size > 50) renderSnapshots.delete(renderSnapshots.keys().next().value!);
+    renderQueueRefreshKey.value++;
+    openRenderQueue();
+    exportError.value = "";
     exportBusy.value = false;
+    exportSubmitting.value = false;
     exportController.value = undefined;
-    downloadUrl(url, name);
-    await persistLastExport();
   } catch (error) {
     if (version === projectVersion) exportError.value = controller.signal.aborted ? "已取消导出，临时文件已清理。" : errorMessage(error, "导出失败");
   } finally {
-    if (version === projectVersion) { exportBusy.value = false; exportController.value = undefined; }
+    if (version === projectVersion) { exportBusy.value = false; exportSubmitting.value = false; exportController.value = undefined; renderQueueRefreshKey.value++; }
   }
 }
 </script>
@@ -2249,10 +2410,16 @@ async function exportTimeline() {
       background: #151816;
       overflow: auto;
       .exportStale { flex: 0 0 auto; margin: 6px 0 0; color: #d2aa7c; font-size: 10px; }
+      .exportDetails { flex: 0 0 auto; width: 100%; max-height: 230px; margin-top: 8px; overflow-y: auto;
+        summary { padding: 9px 10px; border: 1px solid #3d4d41; border-radius: 4px; color: #b8d3c0; background: #222d25; font-size: 11px; cursor: pointer;
+          span { display: inline-block; max-width: 55%; margin-left: 12px; overflow: hidden; color: #8b9d91; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+          &:focus-visible { outline: 2px solid #90c9a2; outline-offset: -2px; }
+        }
+      }
       .monitorModes { display: flex; flex: 0 0 29px; align-items: center; justify-content: center; gap: 3px; padding-bottom: 5px;
         button { min-height: 24px; padding: 0 11px; border: 1px solid transparent; border-radius: 3px; color: #82968a; background: transparent; font-size: 10px; &.isActive { border-color: #415d49; color: #c7e7d0; background: #263d2e; } }
       }
-      .monitorGrid { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; gap: 14px; width: 100%; min-width: 0; min-height: 0; overflow: auto;
+      .monitorGrid { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; gap: 14px; width: 100%; min-width: 0; min-height: 220px; overflow: auto;
         &.isDual { grid-template-columns: minmax(275px, 1fr) minmax(275px, 1fr); }
         .programMonitor { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
         .sourceMonitorPanel { order: -1; min-height: 0; height: 100%; }
@@ -2462,6 +2629,10 @@ async function exportTimeline() {
     .timelineFooter { display: flex; flex: 0 0 26px; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; padding: 0 12px; color: #8d978f; font-size: 9px; > span { flex: 0 0 auto; } .timelineFooterNote { flex: 1; min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; } }
   }
   .noProject { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #a5b1a7; h1 { margin: 8px 0 0; color: #e0e6e0; font-size: 19px; } }
+  .renderQueueDialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 18px; overflow-y: auto; border: 1px solid #465148; border-radius: 7px; color: #d8e0d9; background: #1c231e; box-shadow: 0 18px 70px rgb(0 0 0 / 42%);
+    &::backdrop { background: rgb(5 7 6 / 72%); }
+    .renderDialogHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; strong { font-size: 15px; } }
+  }
   .exportOverlay {
     position: fixed;
     inset: 0;

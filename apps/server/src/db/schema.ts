@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
+import type { BrowserFfmpegRequest } from "@omnistudio-next/ffmpeg";
 
 const timestamps = {
   createdAt: datetime("created_at", { mode: "date" }).notNull(),
@@ -268,6 +269,31 @@ export const auditEvents = mysqlTable("audit_events", {
   metadata: json("metadata"),
   ...timestamps,
 }, table => ({ actionIndex: index("audit_event_action_index").on(table.action, table.createdAt) }));
+
+export const editorRenderJobs = mysqlTable("editor_render_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: varchar("user_id", { length: 36 }).notNull(),
+  directory: varchar("directory", { length: 4096 }).notNull(),
+  directoryHash: varchar("directory_hash", { length: 64 }).notNull(),
+  projectPath: varchar("project_path", { length: 255 }).notNull(),
+  revision: varchar("revision", { length: 64 }).notNull(),
+  projectName: varchar("project_name", { length: 120 }).notNull(),
+  requestId: varchar("request_id", { length: 36 }).notNull(),
+  requestHash: varchar("request_hash", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["queued", "running", "succeeded", "failed", "cancelled", "interrupted"]).notNull().default("queued"),
+  progress: int("progress", { unsigned: true }).notNull().default(0),
+  graphPath: varchar("graph_path", { length: 255 }).notNull(),
+  outputPath: varchar("output_path", { length: 255 }).notNull(),
+  payload: json("payload").$type<{ request: BrowserFfmpegRequest; projectContent: string; files: { path: string; size: number; hash: string; kind: "media" | "helper" | "project" }[] }>().notNull(),
+  runtimeId: varchar("runtime_id", { length: 36 }),
+  error: text("error"),
+  ...timestamps,
+}, table => ({
+  queueIndex: index("editor_render_queue_index").on(table.status, table.createdAt),
+  userIndex: index("editor_render_user_index").on(table.userId, table.directoryHash, table.createdAt),
+  graphIndex: uniqueIndex("editor_render_graph_unique").on(table.directoryHash, table.graphPath),
+  requestIndex: uniqueIndex("editor_render_request_unique").on(table.userId, table.requestId),
+}));
 
 export const platformProviderConfigs = mysqlTable("platform_provider_configs", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -533,6 +559,7 @@ export const schema = {
   generationUsageDaily,
   generationOutputs,
   auditEvents,
+  editorRenderJobs,
   platformProviderConfigs,
   providerHealth,
   platformModels,

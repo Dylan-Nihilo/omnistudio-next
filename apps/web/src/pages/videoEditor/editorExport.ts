@@ -1,14 +1,30 @@
-import { createBrowserFfmpeg, type BrowserFfmpegCommand, type BrowserFfmpegFactory, type FfprobeData } from "@omnistudio-next/ffmpeg/browser";
+import { createBrowserFfmpeg, type BrowserFfmpegFactory, type FfprobeData } from "@omnistudio-next/ffmpeg/browser";
+import axios from "axios";
+import type { ApiResponse } from "@/lib/authApi";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
-import { clipDuration, parseEditorProject, type EditorClip, type EditorKeyframeProperty, type EditorProject } from "./editorModel";
+import { clipDuration, crossfadeDuration, parseEditorProject, type EditorClip, type EditorKeyframeProperty, type EditorProject } from "./editorModel";
 import { renderEditorText } from "./editorText";
+
+export type EditorRenderJob = {
+  id: string;
+  projectPath: string;
+  revision: string;
+  projectName: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "interrupted";
+  progress: number;
+  outputPath: string;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export async function exportEditorProject(
   project: EditorProject,
   directory: string,
   signal: AbortSignal,
   onProgress: (percent: number) => void,
-): Promise<{ path: string }> {
+  context: { projectPath: string; revision: string; projectName: string },
+): Promise<EditorRenderJob> {
   const snapshot = parseEditorProject(JSON.parse(JSON.stringify(project)));
   signal.throwIfAborted();
   if (!snapshot.clips.length) throw new Error("时间线上没有可导出的片段");
@@ -20,8 +36,7 @@ export async function exportEditorProject(
   const jobId = crypto.randomUUID().replaceAll("-", "");
   const outputPath = `assets/videoEditor/exports/edited${Date.now()}${jobId.slice(0, 8)}.mp4`;
   const temporaryPaths: string[] = [];
-  let succeeded = false;
-  let commandCompleted = false;
+  let retainArtifacts = false;
   let progress = 0;
   const report = (value: number) => {
     progress = Math.max(progress, Math.min(100, Math.round(value)));
@@ -60,7 +75,7 @@ export async function exportEditorProject(
       }
       probes.set(asset.id, data);
     }
-    report(3);
+    report(20);
     const command = ffmpeg();
     const assetIndexes = new Map<string, number>();
     usedAssets.forEach((asset, index) => {
@@ -79,13 +94,14 @@ export async function exportEditorProject(
       const clipLength = clipDuration(clip);
       const label = `visual${index}`;
       const nextBase = `base${index + 1}`;
+      const crossfadeOut = visualClips.some(other => crossfadeDuration(clip, other, 1 / snapshot.frameRate) !== undefined);
       if (clip.kind === "text") {
         const path = `assets/videoEditor/exports/exportText${jobId}${index}.png`;
         temporaryPaths.push(path);
         await files.write(path, await renderEditorText(clip, width, height), true, signal);
         command.input(path).inputOptions(["-loop 1", `-framerate ${snapshot.frameRate}`]);
         const input = usedAssets.length + temporaryPaths.length - 1;
-        graph.push(`[${input}:v]trim=duration=${clipLength},setpts=PTS-STARTPTS,format=rgba${alphaFilters(clip)},setpts=PTS+${clip.start}/TB[${label}]`);
+        graph.push(`[${input}:v]trim=duration=${clipLength},setpts=PTS-STARTPTS,format=rgba${alphaFilters(clip, crossfadeOut)},setpts=PTS+${clip.start}/TB[${label}]`);
       } else {
         const input = assetIndexes.get(clip.assetId ?? "");
         if (input === undefined) throw new Error(`找不到素材「${clip.title}」`);
@@ -95,15 +111,16 @@ export async function exportEditorProject(
         const angle = (clip.rotation ?? 0) * Math.PI / 180;
         const asset = usedAssets.find(item => item.id === clip.assetId)!;
         const sourceStart = asset.kind === "image" ? 0 : clip.inPoint;
-        graph.push(`[${input}:v]trim=start=${sourceStart}:duration=${clip.outPoint - clip.inPoint},setpts=(PTS-STARTPTS)/${speed},fps=${snapshot.frameRate},scale=${scaledWidth}:${scaledHeight}:force_original_aspect_ratio=decrease,setsar=1,format=rgba,${colorFilters(clip)},pad=${scaledWidth}:${scaledHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0,rotate=${angle}:ow=rotw(${angle}):oh=roth(${angle}):c=black@0${alphaFilters(clip)},setpts=PTS+${clip.start}/TB[${label}]`);
+        graph.push(`[${input}:v]trim=start=${sourceStart}:duration=${clip.outPoint - clip.inPoint},setpts=(PTS-STARTPTS)/${speed},fps=${snapshot.frameRate},scale=${scaledWidth}:${scaledHeight}:force_original_aspect_ratio=decrease,setsar=1,format=rgba,${colorFilters(clip)},pad=${scaledWidth}:${scaledHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0,rotate=${angle}:ow=rotw(${angle}):oh=roth(${angle}):c=black@0${alphaFilters(clip, crossfadeOut)},setpts=PTS+${clip.start}/TB[${label}]`);
       }
       const xValue = clip.kind === "text" ? undefined : keyframeExpression(clip, "x", `(t-${clip.start})`);
       const yValue = clip.kind === "text" ? undefined : keyframeExpression(clip, "y", `(t-${clip.start})`);
       const x = xValue ? `(${xValue})*${width}/100` : String(clip.kind === "text" ? 0 : width * (clip.x ?? 0) / 100);
       const y = yValue ? `(${yValue})*${height}/100` : String(clip.kind === "text" ? 0 : height * (clip.y ?? 0) / 100);
-      const enable = visibleExpression(clip, visualClips);
+      const enable = visibleExpression(clip, visualClips, snapshot.frameRate);
       graph.push(`[${videoBase}][${label}]overlay=x='(W-w)/2+${x}':y='(H-h)/2+${y}':eof_action=pass:repeatlast=0:enable='${enable}'[${nextBase}]`);
       videoBase = nextBase;
+      report(20 + (index + 1) / visualClips.length * 60);
     }
     const audioClips = snapshot.clips.filter(clip => clip.kind !== "text" && clip.kind !== "image" && !tracks.get(clip.track)?.muted && probes.get(clip.assetId ?? "")?.streams.some(stream => stream.codec_type === "audio"));
     const audioLabels: string[] = [];
@@ -113,9 +130,11 @@ export async function exportEditorProject(
       if (input === undefined) throw new Error(`找不到素材「${clip.title}」`);
       const label = `audio${index}`;
       const clipLength = clipDuration(clip);
+      const fadeIn = Math.max(clip.fadeIn ?? 0, clip.transitionIn ?? 0);
+      const fadeOut = Math.max(clip.fadeOut ?? 0, clip.transitionOut ?? 0);
       const fades = [
-        clip.fadeIn ? `afade=t=in:st=0:d=${clip.fadeIn}` : "",
-        clip.fadeOut ? `afade=t=out:st=${Math.max(0, clipLength - clip.fadeOut)}:d=${clip.fadeOut}` : "",
+        fadeIn ? `afade=t=in:st=0:d=${fadeIn}` : "",
+        fadeOut ? `afade=t=out:st=${Math.max(0, clipLength - fadeOut)}:d=${fadeOut}` : "",
       ].filter(Boolean);
       graph.push(`[${input}:a]atrim=start=${clip.inPoint}:duration=${clip.outPoint - clip.inPoint},asetpts=PTS-STARTPTS,${tempoFilters(clip.speed ?? 1)},aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=${clipLength},volume=${clip.volume}${fades.length ? `,${fades.join(",")}` : ""},adelay=${Math.round(clip.start * 48000)}S:all=1[${label}]`);
       audioLabels.push(label);
@@ -135,26 +154,23 @@ export async function exportEditorProject(
       .outputFps(snapshot.frameRate).duration(duration)
       .outputOptions([`-crf ${crf}`, "-preset medium", "-movflags +faststart", "-ar 48000", "-ac 2"])
       .output(outputPath);
-    await runExportCommand(command, signal, duration, value => report(3 + value * 0.94), () => { commandCompleted = true; });
     signal.throwIfAborted();
-    report(98);
-    const exported = await probeMedia(ffmpeg, outputPath, signal);
-    const video = exported.streams.find(stream => stream.codec_type === "video");
-    const audio = exported.streams.find(stream => stream.codec_type === "audio");
-    if (!video || !audio || video.width !== width || video.height !== height) throw new Error("导出文件校验失败：画幅或音视频流不完整");
-    if (video.codec_name !== "h264" || audio.codec_name !== "aac") throw new Error("导出文件校验失败：编码格式不符合 H.264 / AAC 要求");
-    const [fpsNumerator, fpsDenominator = 1] = String(video.avg_frame_rate ?? video.r_frame_rate).split("/").map(Number);
-    const actualFps = fpsNumerator / fpsDenominator;
-    if (!Number.isFinite(actualFps) || Math.abs(actualFps - snapshot.frameRate) > 0.01) throw new Error("导出文件校验失败：帧率与项目设置不一致");
-    const actualDuration = Number(exported.format.duration);
-    if (!Number.isFinite(actualDuration) || Math.abs(actualDuration - duration) > Math.max(0.15, 2 / snapshot.frameRate)) {
-      throw new Error(`导出文件校验失败：时长应为 ${duration.toFixed(2)} 秒，实际为 ${actualDuration.toFixed(2)} 秒`);
+    report(90);
+    // ACT: 入队请求交给服务端接管，不绑定页面 AbortSignal；响应不确定时保留辅助文件，避免破坏已接收的任务。
+    retainArtifacts = true;
+    try {
+      const { data } = await axios.post<ApiResponse<EditorRenderJob>>("/api/videoEditor/renders/create", {
+        directory, ...context, request: command.toRequest(),
+      });
+      report(100);
+      return data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response && error.response.status >= 400 && error.response.status < 500) retainArtifacts = false;
+      if (retainArtifacts) throw new Error("渲染任务提交结果尚未确认，请刷新后台任务列表。准备文件已保留，以免影响服务端已接收的任务。", { cause: error });
+      throw error;
     }
-    succeeded = true;
-    report(100);
-    return { path: outputPath };
   } finally {
-    const paths = succeeded || !commandCompleted ? temporaryPaths : [...temporaryPaths, outputPath];
+    const paths = retainArtifacts ? [] : temporaryPaths;
     const cleanup = await Promise.allSettled(paths.map(path => removeExportFile(files, path)));
     cleanup.forEach((result, index) => {
       if (result.status === "rejected") console.error(`导出文件清理失败：${paths[index]}`, result.reason);
@@ -192,18 +208,20 @@ function probeMedia(ffmpeg: BrowserFfmpegFactory, path: string, signal: AbortSig
   });
 }
 
-function visibleExpression(clip: EditorClip, clips: EditorClip[]) {
+function visibleExpression(clip: EditorClip, clips: EditorClip[], frameRate: number) {
   const end = clip.start + clipDuration(clip);
   const later = clips.filter(other => other.track === clip.track && other.id !== clip.id && (other.start > clip.start || other.start === clip.start && clips.indexOf(other) > clips.indexOf(clip)) && other.start < end && other.start + clipDuration(other) > clip.start);
   const active = (start: number, finish: number) => `gte(t\\,${start})*lt(t\\,${finish})`;
-  return `${active(clip.start, end)}${later.map(other => `*not(${active(other.start, other.start + clipDuration(other))})`).join("")}`;
+  return `${active(clip.start, end)}${later.filter(other => crossfadeDuration(clip, other, 1 / frameRate) === undefined).map(other => `*not(${active(other.start, other.start + clipDuration(other))})`).join("")}`;
 }
 
-function alphaFilters(clip: EditorClip) {
+function alphaFilters(clip: EditorClip, crossfadeOut = false) {
   const opacity = keyframeExpression(clip, "opacity", "T");
   const filters = [opacity ? `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*${opacity}'` : `colorchannelmixer=aa=${clip.opacity ?? 1}`];
-  if (clip.fadeIn) filters.push(`fade=t=in:st=0:d=${clip.fadeIn}:alpha=1`);
-  if (clip.fadeOut) filters.push(`fade=t=out:st=${Math.max(0, clipDuration(clip) - clip.fadeOut)}:d=${clip.fadeOut}:alpha=1`);
+  const fadeIn = Math.max(clip.fadeIn ?? 0, clip.transitionIn ?? 0);
+  const fadeOut = Math.max(clip.fadeOut ?? 0, crossfadeOut ? 0 : clip.transitionOut ?? 0);
+  if (fadeIn) filters.push(`fade=t=in:st=0:d=${fadeIn}:alpha=1`);
+  if (fadeOut) filters.push(`fade=t=out:st=${Math.max(0, clipDuration(clip) - fadeOut)}:d=${fadeOut}:alpha=1`);
   return `,${filters.join(",")}`;
 }
 
@@ -245,32 +263,6 @@ function tempoFilters(speed: number) {
   if (speed < 0.5) return `atempo=0.5,atempo=${speed / 0.5}`;
   if (speed > 2) return `atempo=2,atempo=${speed / 2}`;
   return `atempo=${speed}`;
-}
-
-function runExportCommand(command: BrowserFfmpegCommand, signal: AbortSignal, duration: number, onProgress: (percent: number) => void, onCompleted: () => void) {
-  return new Promise<void>((resolve, reject) => {
-    const onAbort = () => command.kill("SIGKILL");
-    const finish = (error?: unknown) => {
-      signal.removeEventListener("abort", onAbort);
-      if (signal.aborted) reject(signal.reason ?? new DOMException("导出已取消", "AbortError"));
-      else if (error) reject(error);
-      else resolve();
-    };
-    command.on("progress", value => {
-      const parts = value.timemark.split(":").map(Number);
-      const seconds = parts.reduce((total, part) => total * 60 + part, 0);
-      if (Number.isFinite(seconds)) onProgress(Math.min(100, Math.max(0, seconds / duration * 100)));
-    });
-    command.once("error", error => finish(error));
-    command.once("end", () => { onCompleted(); finish(); });
-    signal.addEventListener("abort", onAbort, { once: true });
-    try {
-      signal.throwIfAborted();
-      command.run();
-    } catch (error) {
-      finish(error);
-    }
-  });
 }
 
 async function removeExportFile(files: ReturnType<typeof useWorkspaceFiles>, path: string) {

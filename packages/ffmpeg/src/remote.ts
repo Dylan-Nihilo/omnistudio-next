@@ -19,6 +19,21 @@ type RemoteCommand = FfmpegCommand & {
   _inputs: { source: string }[];
 };
 
+export type RemoteExportRequestInfo = {
+  inputPaths: string[];
+  graphPath: string;
+  outputPath: string;
+  frameRate: number;
+  duration: number;
+  width?: number;
+  height?: number;
+};
+
+export type RemoteFfmpegExecutionOptions = {
+  temporaryDirectory?: string;
+  beforePublish?: (renderedPath: string) => Promise<void>;
+};
+
 function controlProbe(command: RemoteCommand, signal: AbortSignal) {
   const pending = new Set<Promise<void>>();
   command.ffprobe = function(...args: unknown[]) {
@@ -86,6 +101,90 @@ function optionTokens(call: FfmpegCall) {
   return (call.args[0] as string[]).flatMap(value => value.split(" ").length === 2 ? value.split(" ") : [value]);
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function assertKeys(value: Record<string, unknown>, required: string[], optional: string[] = []) {
+  if (required.some(key => !Object.hasOwn(value, key)) || Object.keys(value).some(key => !required.includes(key) && !optional.includes(key))) {
+    throw new Error("远程 FFmpeg 请求结构无效");
+  }
+}
+
+function validateRequestShape(request: BrowserFfmpegRequest) {
+  if (!isObject(request)) throw new Error("远程 FFmpeg 请求结构无效");
+  assertKeys(request, ["directory", "requestId", "options", "calls", "operation"]);
+  if (typeof request.directory !== "string" || !request.directory || request.directory.length > 4096) throw new Error("远程 FFmpeg 工作区无效");
+  if (typeof request.requestId !== "string" || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(request.requestId)) throw new Error("远程 FFmpeg 请求编号无效");
+  if (!isObject(request.options)) throw new Error("远程 FFmpeg 工厂参数无效");
+  assertKeys(request.options, [], ["timeout"]);
+  if (request.options.timeout !== undefined && (typeof request.options.timeout !== "number" || !Number.isFinite(request.options.timeout) || request.options.timeout <= 0 || request.options.timeout > 86400)) throw new Error("远程 FFmpeg 工厂参数不可用");
+  if (!Array.isArray(request.calls) || request.calls.length > 2048) throw new Error("远程 FFmpeg 调用数量无效");
+  for (const call of request.calls) {
+    if (!isObject(call)) throw new Error("远程 FFmpeg 调用结构无效");
+    assertKeys(call, ["method", "args"], ["undefinedArgs"]);
+    if (typeof call.method !== "string" || !chainNames.has(call.method) || !Array.isArray(call.args) || call.args.length > 128) throw new Error("远程 FFmpeg 调用参数无效");
+    if (call.method === "input" && call.args.length !== 1) throw new Error("远程 FFmpeg 输入参数数量无效");
+    if (call.undefinedArgs !== undefined && (!Array.isArray(call.undefinedArgs) || call.undefinedArgs.length > 128 || call.undefinedArgs.some(index => !Number.isInteger(index) || (index as number) < 0 || (index as number) >= call.args.length))) throw new Error("远程 FFmpeg 可选参数索引无效");
+    if (call.undefinedArgs?.length) throw new Error("持久渲染不能包含未定义参数");
+  }
+  if (!isObject(request.operation)) throw new Error("远程 FFmpeg 操作无效");
+  assertKeys(request.operation, ["method", "args"], ["undefinedArgs"]);
+  if (request.operation.method !== "run" || !Array.isArray(request.operation.args) || request.operation.args.length || request.operation.undefinedArgs !== undefined && (!Array.isArray(request.operation.undefinedArgs) || request.operation.undefinedArgs.length)) throw new Error("持久渲染仅支持无参数的 run 操作");
+}
+
+function exportRequestInfo(request: BrowserFfmpegRequest): RemoteExportRequestInfo {
+  validateRequestShape(request);
+  validateExportCalls(request.calls);
+  const graphCall = request.calls.find(call => call.method === "outputOptions");
+  const graphTokens = graphCall ? optionTokens(graphCall) : [];
+  const graphIndex = graphTokens.indexOf("-filter_complex_script");
+  const graphPath = graphTokens[graphIndex + 1];
+  const output = request.calls.at(-1);
+  const duration = request.calls.find(call => call.method === "duration")?.args[0];
+  const frameRate = request.calls.find(call => call.method === "outputFps")?.args[0];
+  if (!graphPath || typeof output?.args[0] !== "string" || typeof duration !== "number" || typeof frameRate !== "number") throw new Error("远程 FFmpeg 导出参数不完整");
+  const result: RemoteExportRequestInfo = {
+    inputPaths: request.calls.filter(call => call.method === "input").map(call => call.args[0] as string),
+    graphPath,
+    outputPath: output.args[0],
+    frameRate,
+    duration,
+  };
+  return result;
+}
+
+function graphDimensions(graph: string, frameRate: number, duration: number) {
+  if (graph.length > 512 * 1024) throw new Error("远程 FFmpeg 滤镜图超过 512 KiB，请减少片段数量");
+  validateGraph(graph);
+  const match = /^color=c=black:s=(\d+)x(\d+):r=(\d+):d=(\d+(?:\.\d+)?)(?:\[base0\])?;/.exec(graph);
+  if (!match) throw new Error("持久渲染滤镜图缺少有效的画布定义");
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  const graphFrameRate = Number(match[3]);
+  const graphDuration = Number(match[4]);
+  if (!Number.isSafeInteger(width) || width < 2 || width > 3840 || width % 2 || !Number.isSafeInteger(height) || height < 2 || height > 2160 || height % 2 || width * height > 3840 * 2160) throw new Error("持久渲染输出尺寸超出允许范围");
+  if (graphFrameRate !== frameRate || !Number.isFinite(graphDuration) || Math.abs(graphDuration - duration) > Math.max(1e-9, duration * 1e-9)) throw new Error("持久渲染滤镜图与项目帧率或时长不一致");
+  return { width, height };
+}
+
+async function createRenderTemporaryDirectory(executionOptions: RemoteFfmpegExecutionOptions) {
+  if (!executionOptions.temporaryDirectory) return mkdtemp(join(tmpdir(), "omnistudioFfmpeg"));
+  const parent = resolve(executionOptions.temporaryDirectory);
+  const info = await lstat(parent).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  if (!info?.isDirectory() || info.isSymbolicLink() || await realpath(parent) !== parent) throw new Error("持久渲染临时目录必须是已创建的普通目录");
+  return mkdtemp(join(parent, "attempt"));
+}
+
+export function validateRemoteExportRequest(request: BrowserFfmpegRequest, graph?: string): RemoteExportRequestInfo {
+  const info = exportRequestInfo(request);
+  if (graph !== undefined) return { ...info, ...graphDimensions(graph, info.frameRate, info.duration) };
+  return info;
+}
+
 function validateGraph(graph: string) {
   if (!graph || !/^[\w\[\]:=.,;+*/() @\t\r\n'\\-]+$/.test(graph) || /\\(?!,)|\/[a-z_]\w*=/i.test(graph)) throw new Error("远程 FFmpeg 滤镜图包含不支持的语法");
   let quoted = false;
@@ -107,7 +206,7 @@ function validateGraph(graph: string) {
   checkFilter(graph.length);
 }
 
-async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequest, signal: AbortSignal) {
+async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequest, signal: AbortSignal, executionOptions: RemoteFfmpegExecutionOptions = {}) {
   const probing = request.operation.method === "ffprobe";
   const composing = request.operation.method === "composeVideos";
   if (composing) {
@@ -212,7 +311,7 @@ async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequ
   } finally { await source.close(); }
   validateGraph(graph);
   signal.throwIfAborted();
-  const temporary = await mkdtemp(join(tmpdir(), "omnistudioFfmpeg"));
+  const temporary = await createRenderTemporaryDirectory(executionOptions);
   try {
     const snapshot = join(temporary, "graph.txt");
     const rendered = join(temporary, "render.mp4");
@@ -228,6 +327,8 @@ async function prepareCommand(factory: FfmpegFactory, request: BrowserFfmpegRequ
     const publish = async () => {
       signal.throwIfAborted();
       const destination = originalArguments().at(-1)!;
+      await executionOptions.beforePublish?.(rendered);
+      signal.throwIfAborted();
       // 宿主临时目录不对工作区文件接口暴露；完成后排他发布，失败不会触碰预存文件。
       await copyFile(rendered, destination, constants.COPYFILE_EXCL);
       if (signal.aborted) {
@@ -325,6 +426,7 @@ export async function executeRemoteFfmpeg(
   request: BrowserFfmpegRequest,
   emit: (event: FfmpegRemoteEvent) => void,
   signal: AbortSignal,
+  executionOptions: RemoteFfmpegExecutionOptions = {},
 ): Promise<void> {
   let temporary: string | undefined;
   let settleProbes: (() => Promise<unknown>) | undefined;
@@ -338,7 +440,7 @@ export async function executeRemoteFfmpeg(
     for (const call of request.calls) {
       if (!chainNames.has(call.method)) throw new Error(`FFmpeg 配置方法不可用：${call.method}`);
     }
-    const prepared = await prepareCommand(factory, request, signal);
+    const prepared = await prepareCommand(factory, request, signal, executionOptions);
     temporary = prepared.temporary;
     settleProbes = prepared.settleProbes;
     const operation = prepared.operation;

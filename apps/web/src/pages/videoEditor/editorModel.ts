@@ -69,6 +69,8 @@ export type EditorClip = {
   saturation?: number;
   fadeIn?: number;
   fadeOut?: number;
+  transitionIn?: number;
+  transitionOut?: number;
   fontSize?: number;
   textColor?: string;
   textX?: number;
@@ -267,6 +269,9 @@ function parseClip(value: unknown, index: number, assets: Map<string, EditorAsse
   if (!Number.isFinite(duration) || !Number.isFinite(clip.start + duration) || clip.start + duration > maxDuration) throw new Error("片段结束时间不能超过 24 小时");
   clip.fadeIn = readOptionalNumber(item, "fadeIn", 0, "淡入时长", 0, duration);
   clip.fadeOut = readOptionalNumber(item, "fadeOut", 0, "淡出时长", 0, duration);
+  clip.transitionIn = readOptionalNumber(item, "transitionIn", 0, "转场进入时长", 0, duration / 2);
+  clip.transitionOut = readOptionalNumber(item, "transitionOut", 0, "转场离开时长", 0, duration / 2);
+  if (clip.kind !== "video" && clip.kind !== "image" && (clip.transitionIn || clip.transitionOut)) throw new Error(`片段「${clip.title}」不支持画面转场`);
   if (item.keyframes !== undefined) {
     if (clip.kind !== "video" && clip.kind !== "image") throw new Error("当前仅支持视频和图片片段关键帧");
     clip.keyframes = parseKeyframes(item.keyframes, duration);
@@ -311,6 +316,18 @@ export function parseEditorProject(value: unknown): EditorProject {
 
 export function clipDuration(clip: EditorClip): number {
   return (clip.outPoint - clip.inPoint) / (clip.speed ?? 1);
+}
+
+export function crossfadeDuration(outgoing: EditorClip, incoming: EditorClip, frameDuration: number): number | undefined {
+  if (outgoing.id === incoming.id || outgoing.track !== incoming.track || (outgoing.kind !== "video" && outgoing.kind !== "image") || (incoming.kind !== "video" && incoming.kind !== "image")) return undefined;
+  const outgoingEnd = outgoing.start + clipDuration(outgoing);
+  const incomingEnd = incoming.start + clipDuration(incoming);
+  const overlap = Math.min(outgoingEnd, incomingEnd) - Math.max(outgoing.start, incoming.start);
+  const transitionOut = outgoing.transitionOut ?? 0;
+  const transitionIn = incoming.transitionIn ?? 0;
+  const tolerance = Math.max(0.000001, frameDuration / 2);
+  if (incoming.start < outgoing.start - tolerance || overlap < frameDuration / 2 || transitionOut < frameDuration / 2 || transitionIn < frameDuration / 2 || Math.abs(transitionOut - transitionIn) > tolerance || Math.abs(overlap - transitionOut) > tolerance) return undefined;
+  return overlap;
 }
 
 export function clipKeyframeValue(clip: EditorClip, property: EditorKeyframeProperty, time: number): number {

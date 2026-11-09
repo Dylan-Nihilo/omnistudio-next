@@ -2,7 +2,7 @@ import { EventSourceParserStream } from "eventsource-parser/stream";
 import { chainMethods, queryMethods, runMethods } from "./browserTypes";
 import type { BrowserFfmpegCommand, BrowserFfmpegFactory, BrowserFfmpegOptions, BrowserFfmpegRequest, FfmpegCall, FfmpegRemoteEvent } from "./browserTypes";
 
-export type { BrowserFfmpegCommand, BrowserFfmpegFactory, BrowserFfmpegOptions, BrowserFfmpegEvents } from "./browserTypes";
+export type { BrowserFfmpegCommand, BrowserFfmpegFactory, BrowserFfmpegOptions, BrowserFfmpegEvents, BrowserFfmpegRequest } from "./browserTypes";
 export type { FfprobeData, FilterSpecification, ScreenshotsConfig } from "./types";
 
 const chainNames = new Set<string>(chainMethods);
@@ -139,6 +139,10 @@ export async function createBrowserFfmpeg(directory: string, signal?: AbortSigna
 
     const command = new Proxy({} as BrowserFfmpegCommand, {
       get(_target, name: string) {
+        if (name === "toRequest") return () => {
+          if (active) throw new Error("FFmpeg 执行期间不能提交后台任务");
+          return snapshot({ directory, requestId: crypto.randomUUID(), options, calls, operation: { method: "run", args: [] } });
+        };
         if (["on", "once", "addListener"].includes(name)) return (event: string, callback: Listener) => {
           if (typeof callback !== "function") throw new Error("FFmpeg 事件监听器必须是函数");
           listeners.set(event, [...(listeners.get(event) ?? []), { callback, once: name === "once" }]);

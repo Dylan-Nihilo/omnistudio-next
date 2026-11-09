@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS editor_render_jobs (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  directory VARCHAR(4096) NOT NULL,
+  directory_hash CHAR(64) NOT NULL,
+  project_path VARCHAR(255) NOT NULL,
+  revision CHAR(64) NOT NULL,
+  project_name VARCHAR(120) NOT NULL,
+  status ENUM('queued', 'running', 'succeeded', 'failed', 'cancelled', 'interrupted') NOT NULL DEFAULT 'queued',
+  progress INT UNSIGNED NOT NULL DEFAULT 0,
+  graph_path VARCHAR(255) NOT NULL,
+  output_path VARCHAR(255) NOT NULL,
+  payload JSON NOT NULL,
+  runtime_id VARCHAR(36) NULL,
+  error TEXT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  KEY editor_render_queue_index (status, created_at),
+  KEY editor_render_user_index (user_id, directory_hash, created_at),
+  UNIQUE KEY editor_render_graph_unique (directory_hash, graph_path),
+  CONSTRAINT editor_render_user_fk FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

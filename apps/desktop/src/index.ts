@@ -110,6 +110,8 @@ async function start() {
       // agentsRoot: resolve(PATHS.VIEWS_FOLDER, "../agents"),
       pluginRevision: hash,
     });
+    const { initializeEditorRenderRuntime } = await import("@omnistudio-next/server/editorRender");
+    await initializeEditorRenderRuntime();
     const server = app.listen(0, "127.0.0.1");
 
     await once(server, "listening");
