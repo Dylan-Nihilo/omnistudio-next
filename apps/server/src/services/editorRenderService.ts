@@ -333,6 +333,38 @@ async function verifyRenderedVideo(path: string, row: RenderRow, signal: AbortSi
   const rate = Number(numerator) / Number(denominator);
   const duration = Number(media.format?.duration);
   if (!video || !audio || video.codec_name !== "h264" || audio.codec_name !== "aac" || video.width !== details.width || video.height !== details.height || !Number.isFinite(rate) || Math.abs(rate - details.frameRate) > .01 || !Number.isFinite(duration) || Math.abs(duration - details.duration) > Math.max(.15, 2 / details.frameRate) || !media.format?.format_name?.split(",").includes("mp4")) invalid("渲染结果的编码、画幅、帧率或时长不符合工程设置，未发布成片", 422);
+  if (!tools.ffmpeg.path || tools.ffmpeg.error) invalid("成片音频校验需要可用的 FFmpeg", 424);
+  const measurementTimeout = AbortSignal.timeout((row.payload.request.options.timeout ?? 3600) * 1000);
+  const measurementSignal = AbortSignal.any([signal, measurementTimeout]);
+  const measured = Bun.spawn([tools.ffmpeg.path, "-nostdin", "-hide_banner", "-nostats", "-v", "info", "-protocol_whitelist", "file", "-format_whitelist", "mov", "-i", path, "-map", "0:a:0", "-vn", "-sn", "-dn", "-af", "loudnorm=I=-16:TP=-1:LRA=11:print_format=json", "-f", "null", "-"], { stdin: "ignore", stdout: "ignore", stderr: "pipe", windowsHide: true, signal: measurementSignal, env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toUpperCase() !== "FFREPORT")) });
+  try {
+    const [measurement, exitCode] = await Promise.all([readFfmpegOutput(measured.stderr, measured), measured.exited]);
+    measurementSignal.throwIfAborted();
+    if (exitCode !== 0) invalid("成片音频峰值校验失败，未发布成片，请重新导出", 422);
+    const json = measurement.match(/\{\s*"input_i"\s*:[^{}]*\}/g)?.at(-1);
+    let result: { input_tp?: unknown } | null;
+    try { result = JSON.parse(json ?? "null"); }
+    catch { invalid("无法解析成片音频峰值，未发布成片，请重新导出", 422); }
+    const peak = result?.input_tp === "-inf" ? -Infinity : typeof result?.input_tp === "string" ? Number(result.input_tp) : Number.NaN;
+    if (!Number.isFinite(peak) && peak !== -Infinity) invalid("无法确认成片音频峰值，未发布成片，请重新导出", 422);
+    if (peak >= 0) invalid("混音过载，请降低轨道/片段音量", 422);
+  } catch (error) {
+    try { measured.kill("SIGKILL"); } catch { /* 测量进程可能已退出 */ }
+    await measured.exited.catch(() => {});
+    if (measurementTimeout.aborted && !signal.aborted) invalid("成片音频峰值校验超时，未发布成片，请重新导出", 504);
+    throw error;
+  }
+}
+
+async function readFfmpegOutput(stream: ReadableStream<Uint8Array>, child: ReturnType<typeof Bun.spawn>) {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of stream) {
+    size += chunk.byteLength;
+    if (size > 128 * 1024) { child.kill("SIGKILL"); invalid("成片音频峰值校验输出超过限制", 422); }
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks, size).toString("utf8");
 }
 
 async function runJob(row: RenderRow, controller: AbortController) {
@@ -352,6 +384,7 @@ async function runJob(row: RenderRow, controller: AbortController) {
       const directory = await taskDirectory(row.id, true);
       if (!directory) invalid("无法创建渲染临时目录");
       const factory = await u.ffmpeg.createWorkspaceFfmpeg(row.directory, signal);
+      let publishFailure: unknown;
       let terminal = "";
       let terminalError: unknown;
       await u.ffmpeg.executeRemoteFfmpeg(factory, row.payload.request, event => {
@@ -368,18 +401,25 @@ async function runJob(row: RenderRow, controller: AbortController) {
           await getDatabase().update(editorRenderJobs).set({ progress: value, updatedAt: new Date() }).where(and(eq(editorRenderJobs.id, row.id), eq(editorRenderJobs.status, "running")));
         }).catch(error => { progressFailure = error; controller.abort(new Error("渲染进度无法持久化")); });
       }, signal, { temporaryDirectory: directory, beforePublish: async renderedPath => {
-        await verifyRenderedVideo(renderedPath, row, signal);
-        const currentAccount = await backgroundAccount(row, signal);
-        await accountContext.run(currentAccount, async () => {
-          await authorizeProjectDirectory(row.directory);
-          await verifyFingerprints(row);
-          const [current] = await getDatabase().select({ status: editorRenderJobs.status }).from(editorRenderJobs).where(eq(editorRenderJobs.id, row.id)).limit(1);
-          if (current?.status !== "running") invalid("任务已取消，未发布成片");
-        });
+        try {
+          await verifyRenderedVideo(renderedPath, row, signal);
+          const currentAccount = await backgroundAccount(row, signal);
+          await accountContext.run(currentAccount, async () => {
+            await authorizeProjectDirectory(row.directory);
+            await verifyFingerprints(row);
+            const [current] = await getDatabase().select({ status: editorRenderJobs.status }).from(editorRenderJobs).where(eq(editorRenderJobs.id, row.id)).limit(1);
+            if (current?.status !== "running") invalid("任务已取消，未发布成片");
+          });
+        } catch (error) {
+          // 远程事件会序列化 Error；保留本地发布错误的安全标记，供任务公开提示。
+          publishFailure = error;
+          throw error;
+        }
       } });
       await progressQueue;
       if (progressFailure) throw progressFailure;
       signal.throwIfAborted();
+      if (publishFailure) throw publishFailure;
       if (terminal !== "end") {
         console.error("后台渲染命令失败", { jobId: row.id, error: formatAgentError(JSON.stringify(terminalError ?? "缺少完成事件")) });
         if (terminalError && typeof terminalError === "object" && ("code" in terminalError && terminalError.code === "ENOSPC" || "message" in terminalError && /no space left|not enough space|disk full/i.test(String(terminalError.message)))) invalid("磁盘空间不足，未发布成片，请清理工作区后重试", 507);

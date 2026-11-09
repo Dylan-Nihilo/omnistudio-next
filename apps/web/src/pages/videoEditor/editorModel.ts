@@ -37,9 +37,11 @@ export type EditorTrack = {
   locked: boolean;
   muted: boolean;
   hidden: boolean;
+  volume?: number;
+  solo?: boolean;
 };
 
-export type EditorKeyframeProperty = "x" | "y" | "opacity";
+export type EditorKeyframeProperty = "x" | "y" | "opacity" | "volume";
 
 export type EditorKeyframe = {
   property: EditorKeyframeProperty;
@@ -57,6 +59,7 @@ export type EditorClip = {
   inPoint: number;
   outPoint: number;
   volume: number;
+  gainDb?: number;
   text?: string;
   speed?: number;
   x?: number;
@@ -97,7 +100,11 @@ export function createDefaultTracks(): EditorTrack[] {
     { id: "text", label: "文字", kind: "text" },
     { id: "video", label: "视频", kind: "video" },
     { id: "audio", label: "音频", kind: "audio" },
-  ] as const).map(track => ({ ...track, locked: false, muted: false, hidden: false }));
+  ] as const).map(track => ({ ...track, locked: false, muted: false, hidden: false, volume: 1, solo: false }));
+}
+
+export function trackAudioEnabled(track: EditorTrack | undefined, tracks: readonly EditorTrack[]): boolean {
+  return !!track && track.kind !== "text" && !track.muted && (!tracks.some(item => item.kind !== "text" && item.solo) || !!track.solo);
 }
 
 function readObject(value: unknown, label: string): Record<string, unknown> {
@@ -216,6 +223,8 @@ function parseTrack(value: unknown, index: number): EditorTrack {
     locked: readBoolean(item.locked, "轨道锁定状态"),
     muted: readBoolean(item.muted, "轨道静音状态"),
     hidden: readBoolean(item.hidden, "轨道隐藏状态"),
+    volume: readOptionalNumber(item, "volume", 1, "轨道音量", 0, 2),
+    solo: item.solo === undefined ? false : readBoolean(item.solo, "轨道独听状态"),
   };
 }
 
@@ -226,9 +235,9 @@ function parseKeyframes(value: unknown, duration: number): EditorKeyframe[] {
   return items.map((value, index) => {
     const item = readObject(value, `关键帧 ${index + 1}`);
     if (Object.keys(item).some(key => !["property", "time", "value"].includes(key))) throw new Error(`关键帧 ${index + 1} 包含不支持的字段`);
-    const property = readChoice(item.property, ["x", "y", "opacity"] as const, "关键帧属性");
+    const property = readChoice(item.property, ["x", "y", "opacity", "volume"] as const, "关键帧属性");
     const time = readTime(item.time, "关键帧时间");
-    const [minimum, maximum] = property === "opacity" ? [0, 1] : [-200, 200];
+    const [minimum, maximum] = property === "opacity" ? [0, 1] : property === "volume" ? [0, 2] : [-200, 200];
     if (time > duration + .000001) throw new Error("关键帧时间不能超出片段时长");
     const frame = { property, time: Math.min(time, duration), value: readNumber(item.value, "关键帧数值", minimum, maximum) };
     const identity = `${property}:${frame.time}`;
@@ -249,6 +258,7 @@ function parseClip(value: unknown, index: number, assets: Map<string, EditorAsse
     inPoint: readTime(item.inPoint, "片段入点"),
     outPoint: readTime(item.outPoint, "片段出点"),
     volume: readNumber(item.volume, "片段音量", 0, 2),
+    gainDb: readOptionalNumber(item, "gainDb", 0, "片段增益", -60, 24),
     speed: readOptionalNumber(item, "speed", 1, "片段速度", 0.25, 4),
     x: readOptionalNumber(item, "x", 0, "水平位置", -200, 200),
     y: readOptionalNumber(item, "y", 0, "垂直位置", -200, 200),
@@ -273,8 +283,10 @@ function parseClip(value: unknown, index: number, assets: Map<string, EditorAsse
   clip.transitionOut = readOptionalNumber(item, "transitionOut", 0, "转场离开时长", 0, duration / 2);
   if (clip.kind !== "video" && clip.kind !== "image" && (clip.transitionIn || clip.transitionOut)) throw new Error(`片段「${clip.title}」不支持画面转场`);
   if (item.keyframes !== undefined) {
-    if (clip.kind !== "video" && clip.kind !== "image") throw new Error("当前仅支持视频和图片片段关键帧");
+    if (clip.kind === "text") throw new Error("文字片段不支持关键帧");
     clip.keyframes = parseKeyframes(item.keyframes, duration);
+    if (clip.kind === "audio" && clip.keyframes.some(frame => frame.property !== "volume")) throw new Error("音频片段仅支持音量关键帧");
+    if (clip.kind === "image" && clip.keyframes.some(frame => frame.property === "volume")) throw new Error("图片片段不支持音量关键帧");
   }
   const track = tracks.get(clip.track);
   if (!track || track.kind !== (clip.kind === "image" ? "video" : clip.kind)) throw new Error(`片段「${clip.title}」引用了不存在或类型不匹配的轨道`);
@@ -348,7 +360,7 @@ export function clipKeyframeValue(clip: EditorClip, property: EditorKeyframeProp
 export function sliceClipKeyframes(clip: EditorClip, start: number, end: number): EditorKeyframe[] | undefined {
   if (!clip.keyframes?.length) return clip.keyframes;
   const frames: EditorKeyframe[] = [];
-  for (const property of ["x", "y", "opacity"] as const) {
+  for (const property of ["x", "y", "opacity", "volume"] as const) {
     const points = clip.keyframes.filter(frame => frame.property === property);
     if (!points.length) continue;
     const shifted = points.filter(frame => frame.time >= start && frame.time <= end).map(frame => ({ ...frame, time: frame.time - start }));

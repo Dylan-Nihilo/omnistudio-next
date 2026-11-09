@@ -30,6 +30,7 @@
             <input ref="fileInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" multiple @change="importFiles" />
             <input ref="relinkInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" @change="relinkFile" />
             <div class="importActions"><button class="importButton" type="button" :disabled="!canEdit" @click="fileInput?.click()"><icon-upload :size="16" />本地导入</button><button class="importButton" type="button" :disabled="!canEdit" @click="mediaPickerOpen = true"><icon-link :size="16" />项目 / 共享素材</button></div>
+            <editorAudioMixer v-if="activeTab === 'audio'" :tracks="tracks" :disabled="!canEdit" :peakDb="audioPeakDb" :peakHoldDb="audioPeakHoldDb" @volume="changeTrackVolume" @toggle="toggleMixerTrack" />
             <div v-if="importBusy" class="assetHint" role="status">{{ importLabel }} {{ importProgress }}% <button @click="importController?.abort()">取消</button></div>
             <input v-model="assetSearch" class="assetSearch" type="search" aria-label="搜索素材" placeholder="搜索素材" />
             <div v-if="activeTab === 'media'" class="assetFilters"><button v-for="filter in mediaFilters" :key="filter.id" :class="{ isActive: mediaFilter === filter.id }" @click="mediaFilter = filter.id">{{ filter.label }}</button></div>
@@ -115,13 +116,21 @@
                 <div class="buttonRow"><button class="secondaryButton" type="button" @click="applyPrecisionEdit(-1)">−1 帧</button><button class="secondaryButton" type="button" @click="applyPrecisionEdit(1)">+1 帧</button><button class="secondaryButton" type="button" :disabled="!Number.isInteger(precisionFrames) || !precisionFrames" @click="applyPrecisionEdit(precisionFrames)">应用</button></div>
                 <p class="featureNote">{{ precisionDescription }}</p>
               </details>
-              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="2" step=".01" :value="selectedClip.volume" @change="updateSelectedClip('volume', $event)" /></template>
+              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">基础音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="2" step=".01" :value="selectedClip.volume" @change="updateSelectedClip('volume', $event)" /><span v-if="selectedClip.keyframes?.some(frame => frame.property === 'volume')" class="featureNote">音量关键帧已接管基础音量。</span></template>
+              <details v-if="selectedClipHasAudio" class="loudnessPanel" open>
+                <summary>响度校准</summary>
+                <label class="fieldLabel" for="clipGain">片段增益 <span>dB</span></label><input id="clipGain" type="number" min="-60" max="24" step=".1" :value="selectedClip.gainDb ?? 0" @change="updateSelectedClip('gainDb', $event)" />
+                <label class="fieldLabel" for="targetLoudness">目标响度</label><select id="targetLoudness" v-model.number="targetLoudness" :disabled="loudnessBusy"><option :value="-16">网络视频 · -16 LUFS</option><option :value="-14">音乐内容 · -14 LUFS</option><option :value="-23">广播参考 · -23 LUFS</option></select>
+                <button class="wideButton" type="button" :disabled="loudnessBusy || !canEdit || isLocked(selectedClip)" @click="analyzeSelectedAudio">{{ loudnessBusy ? '正在测量…' : '测量并校准片段' }}</button><button v-if="loudnessBusy" class="secondaryButton" type="button" @click="loudnessController?.abort()">取消测量</button>
+                <p class="featureNote">测量当前源选区，以恒定增益校准并限制真峰值至 -1 dBTP；原素材保持完整。</p>
+                <p v-if="loudnessNotice" class="featureNote" role="status">{{ loudnessNotice }}</p><p v-if="loudnessError" class="exportError" role="alert">{{ loudnessError }}</p>
+              </details>
               <template v-if="selectedClip.kind === 'text'"><label class="fieldLabel" for="clipText">文字内容</label><textarea id="clipText" rows="4" :value="selectedClip.text" @change="updateSelectedText"></textarea><label class="fieldLabel" for="textColor">文字颜色</label><input id="textColor" type="color" :value="selectedClip.textColor ?? '#ffffff'" @change="updateTextColor" /><label v-for="field in textFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></template>
               <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><details open><summary>画面变换</summary><label v-for="field in transformFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details><details><summary>基础调色</summary><label v-for="field in colorFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details></template>
               <label class="fieldLabel" for="clipOpacity">不透明度</label><input id="clipOpacity" type="range" min="0" max="1" step=".01" :value="selectedClip.opacity ?? 1" @change="updateSelectedClip('opacity', $event)" />
-              <details v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'" class="keyframePanel" open>
+              <details v-if="availableKeyframeProperties.length" class="keyframePanel" open>
                 <summary>动画关键帧</summary>
-                <label class="fieldLabel" for="keyframeProperty">动画属性</label><select id="keyframeProperty" v-model="keyframeProperty"><option v-for="item in keyframeProperties" :key="item.id" :value="item.id">{{ item.label }}</option></select>
+                <label class="fieldLabel" for="keyframeProperty">关键帧属性</label><select id="keyframeProperty" v-model="keyframeProperty"><option v-for="item in availableKeyframeProperties" :key="item.id" :value="item.id">{{ item.label }}</option></select>
                 <label class="fieldLabel" for="keyframeValue">{{ keyframePropertySpec.label }} <span>{{ keyframePosition === undefined ? "播放头未在片段内" : formatTime(keyframePosition) }}</span></label>
                 <input id="keyframeValue" type="number" :min="keyframePropertySpec.min" :max="keyframePropertySpec.max" :step="keyframePropertySpec.step" :value="keyframeValueDraft" :disabled="keyframePosition === undefined" @input="updateKeyframeDraft" />
                 <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe" @click="writeKeyframe">{{ currentPropertyKeyframe ? "更新关键帧" : "添加关键帧" }}</button><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe || !currentPropertyKeyframe" @click="removeCurrentKeyframe">删除当前</button></div>
@@ -181,7 +190,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { getSessionSnapshot, sessionInvalidated } from "@/lib/sessionState";
-import { clipDuration, clipKeyframeValue, createDefaultTracks, crossfadeDuration, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
+import { clipDuration, clipKeyframeValue, createDefaultTracks, crossfadeDuration, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, trackAudioEnabled, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
 import { backupEditorContent, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
 import { exportEditorProject, type EditorRenderJob } from "./editorExport";
 import { exportEdl, importEdl } from "./editorExchange";
@@ -189,6 +198,7 @@ import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slip
 import { createTimelineThumbnailGenerator } from "./editorThumbnails";
 import type { ApiResponse } from "@/lib/authApi";
 import editorAudioWaveform from "./editorAudioWaveform.vue";
+import editorAudioMixer from "./editorAudioMixer.vue";
 import editorFilmstrip from "./editorFilmstrip.vue";
 import editorMediaPicker from "./editorMediaPicker.vue";
 import editorDelivery from "./editorDelivery.vue";
@@ -204,7 +214,8 @@ type DragState = { clipId?: string; element?: HTMLElement; startX: number; start
 type EditorCacheStatus = { state: "missing" | "stale" | "processing" | "ready"; proxyPath?: string; thumbnails?: { path: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { path: string; duration?: number; peaks: number[] }; duration?: number };
 type EditorCacheEntry = { path: string; status: EditorCacheStatus };
 type CachedMedia = { proxyUrl?: string; thumbnailSprite?: { url: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { duration: number; peaks: number[] } };
-type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "transitionIn" | "transitionOut" | "fontSize" | "textX" | "textY";
+type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "gainDb" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "transitionIn" | "transitionOut" | "fontSize" | "textX" | "textY";
+type AudioLoudnessResult = { integratedLufs: number; truePeakDb: number; targetLufs: number; gainDb: number; expectedLufs: number; limited: boolean; hash: string };
 const router = useRouter();
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
@@ -224,6 +235,7 @@ const keyframeProperties = [
   { id: "x", label: "水平位置 X", min: -200, max: 200, step: 1, unit: "%" },
   { id: "y", label: "垂直位置 Y", min: -200, max: 200, step: 1, unit: "%" },
   { id: "opacity", label: "不透明度", min: 0, max: 1, step: .01, unit: "" },
+  { id: "volume", label: "音量", min: 0, max: 2, step: .01, unit: "×" },
 ] as const;
 const colorFields = [{ key: "brightness", label: "亮度", min: 0, max: 3, step: .05, fallback: 1 }, { key: "contrast", label: "对比度", min: 0, max: 3, step: .05, fallback: 1 }, { key: "saturation", label: "饱和度", min: 0, max: 3, step: .05, fallback: 1 }] as const;
 const textFields = [{ key: "fontSize", label: "字号 / 画宽 %", min: 1, max: 20, step: .5, fallback: 4 }, { key: "textX", label: "文字水平位置 %", min: 0, max: 100, step: 1, fallback: 50 }, { key: "textY", label: "文字垂直位置 %", min: 0, max: 100, step: 1, fallback: 90 }] as const;
@@ -341,8 +353,19 @@ let cachePollTimer: ReturnType<typeof setTimeout> | undefined;
 const cacheControllers = new Map<string, AbortController>();
 let mounted = true;
 let audioContext: AudioContext | undefined;
-let audioLimiter: DynamicsCompressorNode | undefined;
+let audioBus: GainNode | undefined;
+let audioSplitter: ChannelSplitterNode | undefined;
+const audioAnalysers: AnalyserNode[] = [];
+let audioMeterSamples: Float32Array<ArrayBuffer> | undefined;
+const audioPeakDb = ref(-60);
+const audioPeakHoldDb = ref(-60);
+const loudnessBusy = ref(false);
+const loudnessNotice = ref("");
+const loudnessError = ref("");
+const targetLoudness = ref(-16);
+const loudnessController = shallowRef<AbortController>();
 const audioNodes = new Map<string, { element: HTMLAudioElement; source: MediaElementAudioSourceNode; gain: GainNode }>();
+const audioSources = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
 
 const projectReady = computed(() => !!directory.value && loadedDirectory.value === directory.value && !projectLoading.value);
 const renderProjectRevision = computed(() => projectReady.value && !saveBusy.value && !savePending.value && !saveError.value ? projectContext?.revision ?? "" : "");
@@ -351,6 +374,11 @@ const exportedProjectContent = ref("");
 const returnCanvasPath = computed(() => assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
 const canEdit = computed(() => projectReady.value && !importBusy.value && !sourceImportBusy.value && !projectBusy.value && !exportBusy.value && !exportRecordBusy.value);
 const selectedClip = computed(() => clips.value.find(clip => clip.id === selectedClipId.value));
+const selectedClipHasAudio = computed(() => {
+  const clip = selectedClip.value;
+  return !!clip && (clip.kind === "audio" || clip.kind === "video" && assets.value.find(asset => asset.id === clip.assetId)?.hasAudio !== false);
+});
+const availableKeyframeProperties = computed(() => keyframeProperties.filter(property => property.id === "volume" ? selectedClipHasAudio.value : selectedClip.value?.kind === "video" || selectedClip.value?.kind === "image"));
 const sourceAsset = computed(() => assets.value.find(asset => asset.id === sourceAssetId.value));
 const sourceAssetUrl = computed(() => mediaUrls.value.get(sourceAssetId.value ?? ""));
 const textRenderSize = computed(() => {
@@ -365,14 +393,14 @@ const precisionDescription = computed(() => ({
 })[precisionOperation.value]);
 const keyframePosition = computed(() => {
   const clip = selectedClip.value;
-  if (!clip || (clip.kind !== "video" && clip.kind !== "image")) return undefined;
+  if (!clip || !availableKeyframeProperties.value.length) return undefined;
   const localTime = currentTime.value - clip.start;
   const duration = clipDuration(clip);
   const tolerance = .5 / frameRate.value;
   if (localTime < -tolerance || localTime > duration + tolerance) return undefined;
   return Math.min(duration, Math.max(0, frameTime(localTime)));
 });
-const keyframePropertySpec = computed(() => keyframeProperties.find(item => item.id === keyframeProperty.value)!);
+const keyframePropertySpec = computed(() => keyframeProperties.find(item => item.id === keyframeProperty.value) ?? keyframeProperties[0]!);
 const keyframeFrames = computed(() => selectedClip.value?.keyframes?.filter(frame => frame.property === keyframeProperty.value) ?? []);
 const keyframeValue = computed(() => {
   const clip = selectedClip.value;
@@ -381,7 +409,7 @@ const keyframeValue = computed(() => {
 const currentPropertyKeyframe = computed(() => keyframePosition.value === undefined ? undefined : keyframeFrames.value.find(frame => Math.abs(frame.time - keyframePosition.value!) <= .5 / frameRate.value));
 const canPlaceKeyframe = computed(() => {
   const clip = selectedClip.value;
-  return canEdit.value && !!clip && !isLocked(clip) && (clip.kind === "video" || clip.kind === "image") && keyframePosition.value !== undefined;
+  return canEdit.value && !!clip && !isLocked(clip) && availableKeyframeProperties.value.some(item => item.id === keyframeProperty.value) && keyframePosition.value !== undefined;
 });
 const timelineDuration = computed(() => Math.max(0, ...clips.value.map(clip => clip.start + clipDuration(clip))));
 const timelineWidth = computed(() => Math.max(timelineViewport.value?.clientWidth ?? 1200, trackLabelWidth + (timelineDuration.value + 5) * zoom.value));
@@ -390,7 +418,7 @@ const activeVisualClips = computed(() => tracks.value.slice().reverse().filter(t
   const active = activeClips.value.filter(clip => clip.track === track.id).sort((a, b) => a.start - b.start);
   return active.filter((clip, index) => index === active.length - 1 || active.slice(index + 1).every(other => crossfadeDuration(clip, other, 1 / frameRate.value) !== undefined));
 }));
-const activeSoundClips = computed(() => activeClips.value.filter(clip => (clip.kind === "video" || clip.kind === "audio") && !tracks.value.find(track => track.id === clip.track)?.muted && assets.value.find(asset => asset.id === clip.assetId)?.hasAudio !== false));
+const activeSoundClips = computed(() => activeClips.value.filter(clip => (clip.kind === "video" || clip.kind === "audio") && assets.value.find(asset => asset.id === clip.assetId)?.hasAudio !== false));
 const visibleAssets = computed(() => assets.value.filter(asset => (mediaFilter.value === "all" || mediaFilter.value === asset.kind) && (activeTab.value !== "audio" || asset.kind === "audio") && asset.name.toLowerCase().includes(assetSearch.value.trim().toLowerCase())));
 const canExport = computed(() => canEdit.value && clips.value.length > 0 && !saveBlocked.value && !missingAssetIds.value.length);
 const stageStyle = computed(() => {
@@ -456,6 +484,14 @@ watch([projectReady, sourceImportKey, exportRecordBusy, sourceImportBusy], ([rea
 watch([assets, clips, tracks, aspectRatio, frameRate, exportHeight, exportQuality, editorProjectName], scheduleSave, { deep: true, flush: "sync" });
 watch([currentTime, clips, tracks], syncPlayers, { deep: true, flush: "post" });
 watch([selectedClipId, keyframeProperty, keyframePosition, keyframeValue], () => { keyframeValueDraft.value = roundNumber(keyframeValue.value); }, { immediate: true });
+watch(availableKeyframeProperties, properties => {
+  if (!properties.some(item => item.id === keyframeProperty.value)) keyframeProperty.value = properties[0]?.id ?? "x";
+}, { immediate: true });
+watch(selectedClipId, () => {
+  loudnessController.value?.abort();
+  loudnessNotice.value = "";
+  loudnessError.value = "";
+});
 watch(selectedClipId, () => { if (selectedClip.value?.kind !== "video" && selectedClip.value?.kind !== "audio" && precisionOperation.value === "slip") precisionOperation.value = "rippleOut"; });
 watch(previewMode, () => stopPlayback());
 watch(sourceAsset, asset => { if (!asset) previewMode.value = "program"; });
@@ -486,6 +522,7 @@ onMounted(() => {
     if (isPlaying.value) currentTime.value = Math.min(timelineDuration.value, currentTime.value + (now - playbackTime) / 1000);
     playbackTime = now;
     if (currentTime.value >= timelineDuration.value) stopPlayback();
+    updateAudioMeter();
   }, 20);
 });
 onBeforeRouteLeave(async () => {
@@ -514,6 +551,12 @@ onBeforeUnmount(() => {
   stopPlayback();
   importController.value?.abort();
   exportController.value?.abort();
+  loudnessController.value?.abort();
+  audioBus?.disconnect();
+  audioSplitter?.disconnect();
+  for (const analyser of audioAnalysers) analyser.disconnect();
+  for (const node of audioNodes.values()) { node.source.disconnect(); node.gain.disconnect(); }
+  audioNodes.clear();
   void audioContext?.close();
 });
 
@@ -522,6 +565,8 @@ function getProject(): EditorProject {
 }
 function getProjectContent() { return JSON.stringify(getProject()); }
 function applyProject(project: EditorProject) {
+  audioPeakDb.value = -60;
+  audioPeakHoldDb.value = -60;
   applyingProject = true;
   editorProjectName.value = project.name || (activeEditorProjectPath.value === legacyEditorProjectPath ? "默认剪辑项目" : activeEditorProjectPath.value.split("/").at(-1)?.replace(/\.json$/, "") || "剪辑项目");
   assets.value = project.assets;
@@ -536,6 +581,13 @@ function applyProject(project: EditorProject) {
   applyingProject = false;
 }
 function clearEditor() {
+  loudnessController.value?.abort();
+  loudnessNotice.value = "";
+  loudnessError.value = "";
+  audioPeakDb.value = -60;
+  audioPeakHoldDb.value = -60;
+  for (const node of audioNodes.values()) { node.source.disconnect(); node.gain.disconnect(); }
+  audioNodes.clear();
   exportRecordController?.abort();
   exportRecordVersion++;
   exportRecordError.value = "";
@@ -605,12 +657,14 @@ function updateTimelineViewport() {
   const element = timelineViewport.value;
   if (element) timelineView.value = { left: element.scrollLeft - trackLabelWidth, width: element.clientWidth };
 }
-function fadeLevel(clip: EditorClip, sound = false) {
-  const time = currentTime.value - clip.start;
+function fadeLevel(clip: EditorClip, sound = false, timelineTime = currentTime.value) {
+  const time = timelineTime - clip.start;
   const fadeIn = Math.max(clip.fadeIn ?? 0, clip.transitionIn ?? 0);
   const hasCrossfadeOut = !sound && clips.value.some(other => other.id !== clip.id && crossfadeDuration(clip, other, 1 / frameRate.value) !== undefined);
   const fadeOut = Math.max(clip.fadeOut ?? 0, hasCrossfadeOut ? 0 : clip.transitionOut ?? 0);
-  return Math.max(0, Math.min(1, fadeIn ? time / fadeIn : 1, fadeOut ? (clipDuration(clip) - time) / fadeOut : 1));
+  const inLevel = Math.max(0, Math.min(1, fadeIn ? time / fadeIn : 1));
+  const outLevel = Math.max(0, Math.min(1, fadeOut ? (clipDuration(clip) - time) / fadeOut : 1));
+  return sound ? inLevel * outLevel : Math.min(inLevel, outLevel);
 }
 function visualStyle(clip: EditorClip) {
   const time = currentTime.value - clip.start;
@@ -865,10 +919,22 @@ function renameTrack(track: EditorTrack, event: Event) {
   if (name && name !== track.label) { saveHistory(); track.label = name; }
   input.value = track.label;
 }
-function toggleTrack(track: EditorTrack, field: "locked" | "muted" | "hidden") {
+function toggleTrack(track: EditorTrack, field: "locked" | "muted" | "hidden" | "solo") {
   if (!canEdit.value || (track.locked && field !== "locked")) return;
   saveHistory();
   track[field] = !track[field];
+}
+function toggleMixerTrack(input: { id: string; field: "muted" | "solo" }) {
+  const track = tracks.value.find(item => item.id === input.id);
+  if (track && track.kind !== "text") toggleTrack(track, input.field);
+}
+function changeTrackVolume(input: { id: string; value: number }) {
+  const track = tracks.value.find(item => item.id === input.id);
+  if (!canEdit.value || !track || track.locked || track.kind === "text" || !Number.isFinite(input.value)) return;
+  const value = Math.max(0, Math.min(2, input.value));
+  if (value === (track.volume ?? 1)) return;
+  saveHistory();
+  track.volume = value;
 }
 function reorderTrack(index: number, delta: number) {
   const track = tracks.value[index];
@@ -1087,7 +1153,7 @@ function updateSelectedClip(field: NumericField, event: Event) {
   else if (field === "inPoint") clip.inPoint = Math.min(Math.max(clip.outPoint - Math.max(0, 86400 - clip.start) * (clip.speed ?? 1), Math.max(0, frameTime(value))), Math.max(0, clip.outPoint - minDuration));
   else if (field === "outPoint") clip.outPoint = Math.min(Math.max(clip.inPoint + minDuration, frameTime(value)), assetDuration(clip), clip.inPoint + Math.max(0, 86400 - clip.start) * (clip.speed ?? 1));
   else {
-    const limits: Record<string, [number, number]> = { volume: [0, 2], speed: [.25, 4], x: [-200, 200], y: [-200, 200], scale: [.1, 5], rotation: [-360, 360], opacity: [0, 1], brightness: [0, 3], contrast: [0, 3], saturation: [0, 3], fadeIn: [0, clipDuration(clip)], fadeOut: [0, clipDuration(clip)], transitionIn: [0, clipDuration(clip) / 2], transitionOut: [0, clipDuration(clip) / 2], fontSize: [1, 20], textX: [0, 100], textY: [0, 100] };
+    const limits: Record<string, [number, number]> = { volume: [0, 2], gainDb: [-60, 24], speed: [.25, 4], x: [-200, 200], y: [-200, 200], scale: [.1, 5], rotation: [-360, 360], opacity: [0, 1], brightness: [0, 3], contrast: [0, 3], saturation: [0, 3], fadeIn: [0, clipDuration(clip)], fadeOut: [0, clipDuration(clip)], transitionIn: [0, clipDuration(clip) / 2], transitionOut: [0, clipDuration(clip) / 2], fontSize: [1, 20], textX: [0, 100], textY: [0, 100] };
     const [min, max] = limits[field]!;
     clip[field] = Math.min(max, Math.max(min, value));
   }
@@ -1246,25 +1312,81 @@ function dropOnTrack(event: DragEvent, track: EditorTrack) {
   const content = (event.currentTarget as HTMLElement).querySelector(".trackContent")!;
   addAssetToTimeline(asset, Math.max(0, (event.clientX - content.getBoundingClientRect().left) / zoom.value), track.id);
 }
+async function analyzeSelectedAudio() {
+  const clip = selectedClip.value;
+  const asset = assets.value.find(item => item.id === clip?.assetId);
+  const context = projectContext;
+  if (!clip || !asset || !context || !selectedClipHasAudio.value || !canEdit.value || isLocked(clip) || loudnessBusy.value) return;
+  const version = projectVersion;
+  const clipContent = JSON.stringify(clip);
+  const session = getSessionSnapshot();
+  const controller = new AbortController();
+  loudnessController.value = controller;
+  loudnessBusy.value = true;
+  loudnessNotice.value = "";
+  loudnessError.value = "";
+  const signal = AbortSignal.any([controller.signal, session.signal]);
+  try {
+    const { data } = await axios.post<ApiResponse<AudioLoudnessResult>>("/api/videoEditor/audio/analyze", {
+      directory: context.directory, path: asset.path, inPoint: clip.inPoint, outPoint: clip.outPoint, speed: clip.speed ?? 1, targetLufs: targetLoudness.value,
+    }, { signal });
+    if (signal.aborted || !mounted || version !== projectVersion || context !== projectContext || getSessionSnapshot().revision !== session.revision) return;
+    if (selectedClip.value !== clip || JSON.stringify(clip) !== clipContent || !assets.value.some(item => item.id === asset.id && item.path === asset.path) || !canEdit.value || isLocked(clip)) throw new Error("片段或工程已变化，未应用旧的响度结果，请重新测量");
+    const result = data.data;
+    if (!result || [result.integratedLufs, result.truePeakDb, result.gainDb, result.expectedLufs].some(value => !Number.isFinite(value)) || result.gainDb < -60 || result.gainDb > 24 || !/^[\da-f]{64}$/i.test(result.hash)) throw new Error("响度测量结果无效，未修改片段");
+    saveHistory();
+    clip.gainDb = result.gainDb;
+    loudnessNotice.value = `原始 ${result.integratedLufs.toFixed(1)} LUFS · 真峰值 ${result.truePeakDb.toFixed(1)} dBTP；已设置 ${result.gainDb >= 0 ? "+" : ""}${result.gainDb.toFixed(1)} dB，预计 ${result.expectedLufs.toFixed(1)} LUFS${result.limited ? "。受真峰值或最大增益限制，未达到目标" : ""}。后续音量、关键帧和混音会改变最终响度。`;
+  } catch (error) {
+    if (!signal.aborted && mounted && version === projectVersion && context === projectContext) loudnessError.value = errorMessage(error, "响度测量失败");
+  } finally {
+    if (loudnessController.value === controller) { loudnessBusy.value = false; loudnessController.value = undefined; }
+  }
+}
+function audioLevel(clip: EditorClip, timelineTime: number) {
+  const track = tracks.value.find(item => item.id === clip.track);
+  if (!trackAudioEnabled(track, tracks.value)) return 0;
+  return clipKeyframeValue(clip, "volume", timelineTime - clip.start) * 10 ** ((clip.gainDb ?? 0) / 20) * (track?.volume ?? 1) * fadeLevel(clip, true, timelineTime);
+}
+function updateAudioMeter() {
+  if (!isPlaying.value || !audioAnalysers.length || !audioMeterSamples) { audioPeakDb.value = -60; return; }
+  let peak = 0;
+  for (const analyser of audioAnalysers) {
+    analyser.getFloatTimeDomainData(audioMeterSamples);
+    for (const sample of audioMeterSamples) peak = Math.max(peak, Math.abs(sample));
+  }
+  audioPeakDb.value = Math.max(-60, 20 * Math.log10(Math.max(peak, .000001)));
+  audioPeakHoldDb.value = Math.max(audioPeakHoldDb.value, audioPeakDb.value);
+}
 function togglePlayback() {
   if (!timelineDuration.value || !projectReady.value) return;
   if (currentTime.value >= timelineDuration.value) currentTime.value = 0;
   isPlaying.value = !isPlaying.value;
   playbackTime = performance.now();
   if (isPlaying.value) {
+    audioPeakHoldDb.value = -60;
     if (!audioContext) {
       audioContext = new AudioContext();
-      audioLimiter = audioContext.createDynamicsCompressor();
-      audioLimiter.threshold.value = 0;
-      audioLimiter.knee.value = 0;
-      audioLimiter.ratio.value = 20;
-      audioLimiter.connect(audioContext.destination);
+      audioBus = audioContext.createGain();
+      audioBus.channelCount = 2;
+      audioBus.channelCountMode = "explicit";
+      audioBus.connect(audioContext.destination);
+      audioSplitter = audioContext.createChannelSplitter(2);
+      audioBus.connect(audioSplitter);
+      // 分声道取峰值，避免立体声下混成单声道时反相抵消而低报电平。
+      for (let channel = 0; channel < 2; channel++) {
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        audioSplitter.connect(analyser, channel);
+        audioAnalysers.push(analyser);
+      }
+      audioMeterSamples = new Float32Array(2048);
     }
     void audioContext.resume();
   }
   syncPlayers();
 }
-function stopPlayback() { isPlaying.value = false; for (const media of [...videoElements.values(), ...audioElements.values()]) media.pause(); }
+function stopPlayback() { isPlaying.value = false; audioPeakDb.value = -60; for (const media of [...videoElements.values(), ...audioElements.values()]) media.pause(); }
 function syncPlayers() {
   for (const [id, element] of videoElements) syncElement(id, element, false);
   for (const [id, element] of audioElements) syncElement(id, element, true);
@@ -1278,16 +1400,29 @@ function syncElement(id: string, element: HTMLMediaElement, sound: boolean) {
   element.playbackRate = speed;
   if (sound) {
     const audio = element as HTMLAudioElement;
-    if (audioContext && audioLimiter && !audioNodes.has(id)) {
-      const source = audioContext.createMediaElementSource(audio);
+    const existing = audioNodes.get(id);
+    if (existing && existing.element !== audio) {
+      existing.source.disconnect();
+      existing.gain.disconnect();
+      audioNodes.delete(id);
+    }
+    if (audioContext && audioBus && !audioNodes.has(id)) {
+      const source = audioSources.get(audio) ?? audioContext.createMediaElementSource(audio);
+      audioSources.set(audio, source);
       const gain = audioContext.createGain();
       source.connect(gain);
-      gain.connect(audioLimiter);
+      gain.connect(audioBus);
       audioNodes.set(id, { source, gain, element: audio });
     }
-    const volume = clip.volume * fadeLevel(clip, true);
+    const volume = audioLevel(clip, currentTime.value);
     const node = audioNodes.get(id);
-    if (node) { node.gain.gain.value = volume; element.volume = 1; }
+    if (node && audioContext) {
+      const now = audioContext.currentTime;
+      node.gain.gain.cancelScheduledValues(now);
+      node.gain.gain.setValueAtTime(volume, now);
+      if (isPlaying.value) node.gain.gain.linearRampToValueAtTime(audioLevel(clip, currentTime.value + .025), now + .025);
+      element.volume = 1;
+    }
     else element.volume = Math.min(1, volume);
   }
   if (isPlaying.value && element.paused) void element.play().catch(error => {

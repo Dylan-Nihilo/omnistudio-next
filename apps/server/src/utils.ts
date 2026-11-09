@@ -26,6 +26,7 @@ import * as demos from "@/utils/demos";
 import * as billingCredits from "@/utils/billing/credits";
 import * as productionScriptDraft from "@/utils/productionProject/scriptDraftSchemas";
 import * as editorMediaCache from "@/utils/editorMedia/cache";
+import * as editorLoudness from "@/utils/editorMedia/loudness";
 
 export default {
   assets,
@@ -57,4 +58,5 @@ export default {
   billingCredits,
   productionScriptDraft,
   editorMediaCache,
+  editorLoudness,
 };

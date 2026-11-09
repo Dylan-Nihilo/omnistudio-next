@@ -61,6 +61,7 @@ function assertEdlClip(clip: EditorClip, frameRate: number, index: number) {
   if (clip.kind !== "video" && clip.kind !== "image") invalid(`第 ${index + 1} 个片段不是视频或图片，无法无损导出`);
   if (clip.speed !== undefined && Math.abs(clip.speed - 1) > 0.000001) invalid(`片段「${clip.title}」使用了变速，EDL 不支持变速`);
   if (clip.keyframes?.length) invalid(`片段「${clip.title}」使用了关键帧，EDL 不支持关键帧`);
+  if (!isDefaultNumber(clip.volume, 1) || !isDefaultNumber(clip.gainDb, 0)) invalid(`片段「${clip.title}」使用了音量或增益，EDL 不支持音频混音参数`);
   if (!isDefaultNumber(clip.x, 0) || !isDefaultNumber(clip.y, 0) || !isDefaultNumber(clip.scale, 1) || !isDefaultNumber(clip.rotation, 0) || !isDefaultNumber(clip.opacity, 1) || !isDefaultNumber(clip.brightness, 1) || !isDefaultNumber(clip.contrast, 1) || !isDefaultNumber(clip.saturation, 1) || !isDefaultNumber(clip.fadeIn, 0) || !isDefaultNumber(clip.fadeOut, 0) || !isDefaultNumber(clip.transitionIn, 0) || !isDefaultNumber(clip.transitionOut, 0)) {
     invalid(`片段「${clip.title}」使用了画面效果或淡化，EDL 不支持这些效果`);
   }
@@ -87,6 +88,7 @@ export function exportEdl(project: EditorProject): string {
     .sort((left, right) => left.start - right.start || left.id.localeCompare(right.id));
   if (!clips.length) invalid("工程没有可导出的画面片段");
   if (snapshot.clips.some(clip => clip.kind === "audio" || clip.kind === "text")) invalid("工程包含音频或文字片段，请先使用音频混音或 SRT/VTT 交换导出");
+  if (snapshot.tracks.some(track => track.kind !== "text" && (!isDefaultNumber(track.volume, 1) || track.solo || track.muted))) invalid("工程使用了轨道混音控制，EDL 不支持音量、独听或静音");
   const lines = [`TITLE: ${safeComment(snapshot.name || "OmniStudio Edit")}`, "FCM: NON-DROP FRAME"];
   let previousEnd = 0;
   clips.forEach((clip, index) => {

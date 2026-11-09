@@ -2,7 +2,7 @@ import { createBrowserFfmpeg, type BrowserFfmpegFactory, type FfprobeData } from
 import axios from "axios";
 import type { ApiResponse } from "@/lib/authApi";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
-import { clipDuration, crossfadeDuration, parseEditorProject, type EditorClip, type EditorKeyframeProperty, type EditorProject } from "./editorModel";
+import { clipDuration, crossfadeDuration, parseEditorProject, trackAudioEnabled, type EditorClip, type EditorKeyframeProperty, type EditorProject } from "./editorModel";
 import { renderEditorText } from "./editorText";
 
 export type EditorRenderJob = {
@@ -122,7 +122,7 @@ export async function exportEditorProject(
       videoBase = nextBase;
       report(20 + (index + 1) / visualClips.length * 60);
     }
-    const audioClips = snapshot.clips.filter(clip => clip.kind !== "text" && clip.kind !== "image" && !tracks.get(clip.track)?.muted && probes.get(clip.assetId ?? "")?.streams.some(stream => stream.codec_type === "audio"));
+    const audioClips = snapshot.clips.filter(clip => clip.kind !== "text" && clip.kind !== "image" && trackAudioEnabled(tracks.get(clip.track), snapshot.tracks) && probes.get(clip.assetId ?? "")?.streams.some(stream => stream.codec_type === "audio"));
     const audioLabels: string[] = [];
     for (let index = 0; index < audioClips.length; index++) {
       const clip = audioClips[index];
@@ -136,11 +136,13 @@ export async function exportEditorProject(
         fadeIn ? `afade=t=in:st=0:d=${fadeIn}` : "",
         fadeOut ? `afade=t=out:st=${Math.max(0, clipLength - fadeOut)}:d=${fadeOut}` : "",
       ].filter(Boolean);
-      graph.push(`[${input}:a]atrim=start=${clip.inPoint}:duration=${clip.outPoint - clip.inPoint},asetpts=PTS-STARTPTS,${tempoFilters(clip.speed ?? 1)},aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=${clipLength},volume=${clip.volume}${fades.length ? `,${fades.join(",")}` : ""},adelay=${Math.round(clip.start * 48000)}S:all=1[${label}]`);
+      const envelope = keyframeExpression(clip, "volume", "t") ?? String(clip.volume);
+      const gain = 10 ** ((clip.gainDb ?? 0) / 20) * (tracks.get(clip.track)?.volume ?? 1);
+      graph.push(`[${input}:a]atrim=start=${clip.inPoint}:duration=${clip.outPoint - clip.inPoint},asetpts=PTS-STARTPTS,${tempoFilters(clip.speed ?? 1)},aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=duration=${clipLength},volume='(${envelope})*${gain}':eval=frame${fades.length ? `,${fades.join(",")}` : ""},adelay=${Math.round(clip.start * 48000)}S:all=1[${label}]`);
       audioLabels.push(label);
     }
     if (audioLabels.length) {
-      graph.push(`${audioLabels.map(label => `[${label}]`).join("")}amix=inputs=${audioLabels.length}:duration=longest:normalize=0,alimiter=limit=0.95:level=0:latency=1,apad,atrim=duration=${duration},asetpts=PTS-STARTPTS[outa]`);
+      graph.push(`${audioLabels.map(label => `[${label}]`).join("")}amix=inputs=${audioLabels.length}:duration=longest:normalize=0,apad,atrim=duration=${duration},asetpts=PTS-STARTPTS[outa]`);
     } else {
       graph.push(`anullsrc=r=48000:cl=stereo,atrim=duration=${duration}[outa]`);
     }
