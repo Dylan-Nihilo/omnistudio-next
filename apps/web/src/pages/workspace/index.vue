@@ -1,7 +1,7 @@
 <template>
   <main class="workspacePage" :style="{ '--agentWidth': `${agentVisible ? agentWidth : 0}px` }">
     <header ref="headerElement" class="workspaceHeader">
-      <div class="projectBrand"><img class="brandLogo" :src="logoUrl" alt="万象点点" /><div class="projectInfo"><strong :title="workspaceStore.project?.name">{{ workspaceStore.project?.name }}</strong><span :title="workspaceStore.project?.directory">{{ workspaceStore.project?.directory }}</span></div></div>
+      <div class="projectBrand"><img class="brandLogo" :src="logoUrl" alt="万象点点" /><div class="projectInfo"><strong :title="workspaceStore.project?.name">{{ workspaceStore.project?.name }}</strong></div></div>
       <uiRadioGroup :modelValue="activePanel" class="panelSwitcher" :options="panelOptions" variant="segmented" aria-label="切换面板" @change="switchPanel" />
       <div class="headerActions"><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="万象点点 Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
     </header>

@@ -4,7 +4,7 @@
       <uiPopover v-model:visible="canvasListVisible" placement="bottom-start" :width="340" :disabled="!directory">
         <template #reference="{ triggerAttrs }"><uiButton v-bind="triggerAttrs" class="canvasTrigger" variant="secondary" :icon="IconLayoutDashboard" :loading="busy" :disabled="busy || !directory" aria-label="切换画布"><span class="canvasName">{{ activeCanvasName }}</span><icon-chevron-down :size="16" /></uiButton></template>
         <div class="canvasPicker">
-          <uiField label="项目名称"><uiInput v-model="projectNameDraft" size="small" :title="directory" :disabled="!workspaceStore.project || projectNameSaving" aria-label="项目名称" @keydown.stop @keydown.enter="saveProjectName" @keydown.esc.prevent="projectNameDraft = workspaceName" @blur="saveProjectName" /></uiField>
+          <uiField label="项目名称"><uiInput v-model="projectNameDraft" size="small" :disabled="!workspaceStore.project || projectNameSaving" aria-label="项目名称" @keydown.stop @keydown.enter="saveProjectName" @keydown.esc.prevent="projectNameDraft = workspaceName" @blur="saveProjectName" /></uiField>
           <div class="pickerHeader">
             <div class="headerTitle">
               <span>剧集 / 画布</span>
