@@ -85,11 +85,10 @@
 
 <script setup lang="ts">
 import axios from "axios";
-import { nextTick, ref, shallowRef, watch } from "vue";
+import { defineAsyncComponent, nextTick, ref, shallowRef, watch } from "vue";
 import { uiButton, uiInput, uiPopover, useUiFeedback } from "@omnistudio-next/ui";
 import type { AgentHistory } from "./types";
 import type { AgentSubAgent } from "@omnistudio-next/server/agent/types";
-import pluginConfigDialog from "@/components/settings/panels/pluginMarket/pluginConfigDialog.vue";
 import type { Plugin } from "@/components/settings/panels/pluginMarket/types";
 import {
   IconMessagePlus, IconHistory,
@@ -97,6 +96,8 @@ import {
   IconMessageCircle, IconCheck, IconAdjustmentsHorizontal,
   IconArrowLeft, IconUsersGroup,
 } from "@tabler/icons-vue";
+
+const pluginConfigDialog = defineAsyncComponent(() => import("@/components/settings/panels/pluginMarket/pluginConfigDialog.vue"));
 
 const props = defineProps<{
   name: string;

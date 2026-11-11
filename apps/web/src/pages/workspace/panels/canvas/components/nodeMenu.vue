@@ -39,8 +39,10 @@ import {
 } from "@tabler/icons-vue";
 
 const feedback = useUiFeedback();
-const { remoteNodes = [], pasteNode, uploadFiles, canUndo = false, canRedo = false, selectionBusy = false, batchHistory } = defineProps<{
+const { remoteNodes = [], loadNode, loadNodes, pasteNode, uploadFiles, canUndo = false, canRedo = false, selectionBusy = false, batchHistory } = defineProps<{
   remoteNodes?: { type: string; label: string }[];
+  loadNode: (type: string) => Promise<void>;
+  loadNodes: () => Promise<void>;
   pasteNode?: (position: { x: number; y: number }) => Promise<boolean>;
   uploadFiles?: (position: { x: number; y: number }) => void;
   canUndo?: boolean;
@@ -54,11 +56,14 @@ const menuLevel = ref<"actions" | "nodes" | "selection" | "arrange">("actions");
 const selectedNodes = shallowRef<GraphNode[]>([]);
 const deleting = ref(false);
 const pasting = ref(false);
+const loadingNodes = ref(false);
+const creatingNode = ref(false);
 const directNodes = ref(false);
 const menuAnchor = shallowRef({ getBoundingClientRect: () => new DOMRect() });
 const flow = useVueFlow();
 const { addNodes, screenToFlowCoordinate, onPaneContextMenu, onSelectionContextMenu, onPaneClick, onMoveStart } = flow;
 let nodePosition = { x: 0, y: 0 };
+let menuRequest = 0;
 type DraggedHandle = { node: GraphNode; id: string; type: HandleType; start: ConnectingHandle };
 const pendingHandle = shallowRef<DraggedHandle>();
 const pendingGroup = shallowRef<GraphNode[]>([]);
@@ -119,8 +124,8 @@ const menuItems = computed<UiMenuItem[]>(() => {
   ];
   return [
     { value: "actions", label: directNodes.value ? "添加节点" : "返回操作菜单", icon: directNodes.value ? IconPlus : IconChevronLeft, disabled: directNodes.value },
-    ...filteredNodes.value.map(node => ({ value: node.type, label: node.label, icon: node.icon })),
-    ...((pendingHandle.value || pendingGroup.value.length) && !filteredNodes.value.length ? [{ value: "empty", label: "没有可连接的节点", disabled: true }] : []),
+    ...filteredNodes.value.map(node => ({ value: node.type, label: node.label, icon: node.icon, disabled: creatingNode.value })),
+    ...((pendingHandle.value || pendingGroup.value.length) && !filteredNodes.value.length ? [{ value: "empty", label: loadingNodes.value ? "正在读取可连接节点…" : "没有可连接的节点", disabled: true }] : []),
   ];
 });
 
@@ -130,6 +135,8 @@ function clearSelectionHandles() {
 }
 
 function clearConnection() {
+  menuRequest++;
+  loadingNodes.value = false;
   if (pendingHandle.value) {
     pendingHandle.value = undefined;
     flow.endConnection();
@@ -190,6 +197,12 @@ async function openMenu(event: MouseEvent | TouchEvent, nodesOnly = false, selec
   }
   await nextTick();
   menu.value?.open();
+  if (handle || group.length) {
+    const request = menuRequest;
+    loadingNodes.value = true;
+    try { await loadNodes(); }
+    finally { if (request === menuRequest) loadingNodes.value = false; }
+  }
 }
 
 onPaneContextMenu(openMenu);
@@ -261,13 +274,19 @@ async function runCommand(command: unknown) {
     return;
   }
   const node = filteredNodes.value.find((option) => option.type === command);
-  if (!node) return;
+  if (!node || creatingNode.value) return;
   const handle = pendingHandle.value;
   const group = pendingGroup.value;
+  const request = menuRequest;
+  const position = { ...nodePosition };
+  creatingNode.value = true;
+  try { await loadNode(node.type); }
+  finally { creatingNode.value = false; }
+  if (request !== menuRequest) return;
   if (handle && flow.findNode(handle.node.id) !== handle.node) return;
   if (group.some(source => flow.findNode(source.id) !== source)) return;
   const id = crypto.randomUUID();
-  addNodes({ id, type: node.type, position: { ...nodePosition }, data: { label: node.label } });
+  addNodes({ id, type: node.type, position, data: { label: node.label } });
   if (!handle && !group.length) {
     flow.removeSelectedElements();
     flow.nodesSelectionActive.value = false;

@@ -1,14 +1,29 @@
 import type { NodeTypesObject } from "@vue-flow/core";
+import * as vueRuntime from "vue";
+import * as uiRuntime from "@omnistudio-next/ui";
+import * as modelIconsRuntime from "@omnistudio-next/model-icons";
+import * as tiptapRuntime from "@tiptap/core";
+import * as starterKitRuntime from "@tiptap/starter-kit";
+import * as vueFlowRuntime from "@vue-flow/core";
+import * as elementPlusRuntime from "element-plus";
+import { runAgentLoop } from "@earendil-works/pi-agent-core";
+import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
+import "element-plus/dist/index.css";
 
 type NodeComponent = Exclude<NodeTypesObject[string], string>;
 
 const components = new Map<string, NodeComponent>();
 const requests = new Map<string, Promise<NodeComponent>>();
+const nodeWindow = window as typeof window & {
+  toonflowNodeHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; modelIcons: typeof modelIconsRuntime; tiptap: typeof tiptapRuntime; starterKit: typeof starterKitRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
+  toonflowNodes?: NodeTypesObject;
+};
+// ACT: 宿主随首次节点加载初始化，保留插件约定的完整导出，空画布不提前加载插件运行时。
+nodeWindow.toonflowNodeHost = { vue: vueRuntime, ui: uiRuntime, modelIcons: modelIconsRuntime, tiptap: tiptapRuntime, starterKit: starterKitRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
 
 export function loadNodeComponent(name: string, url: string, force = false): Promise<NodeComponent> {
   const pending = requests.get(name);
   if (pending) return pending;
-  const nodeWindow = window as typeof window & { toonflowNodes?: NodeTypesObject };
   const cached = components.get(name) ?? (Object.hasOwn(nodeWindow.toonflowNodes ?? {}, name) ? nodeWindow.toonflowNodes?.[name] : undefined);
   if (!force && cached && (typeof cached === "object" || typeof cached === "function")) {
     components.set(name, cached);

@@ -27,7 +27,7 @@ export function isCanvasFileDrag(event: DragEvent) {
 
 type CanvasFileContext = {
   directory: string;
-  availableNodes: { type: string }[];
+  loadNode(type: string): Promise<void>;
   signal: AbortSignal;
   flow: Pick<ReturnType<typeof useVueFlow>, "addNodes" | "screenToFlowCoordinate">;
 };
@@ -52,7 +52,7 @@ export async function dropCanvasFiles(event: DragEvent, context: CanvasFileConte
 }
 
 export async function importCanvasFiles(droppedFiles: File[], position: { x: number; y: number }, context: CanvasFileContext) {
-  const { signal, flow, availableNodes } = context;
+  const { signal, flow } = context;
   const files = useWorkspaceFiles(context.directory);
   for (const [index, file] of droppedFiles.entries()) {
     if (signal.aborted) break;
@@ -66,7 +66,8 @@ export async function importCanvasFiles(droppedFiles: File[], position: { x: num
         : mimeType.startsWith("text/") || /^application\/(json|xml|javascript|x-ndjson)$/.test(mimeType) ? "text" : undefined;
       if (!kind) throw new Error(`${file.name}：该文件类型暂不支持导入画布`);
       const type = `remote-${kind}Node`;
-      if (!availableNodes.some(node => node.type === type)) throw new Error(`${file.name}：请先安装并启用对应的基础节点`);
+      await context.loadNode(type);
+      signal.throwIfAborted();
       let output: NodeOutput | undefined;
       let textSnapshot: string | undefined;
       if (kind === "text") {

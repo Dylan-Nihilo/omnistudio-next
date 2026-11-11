@@ -8,7 +8,8 @@ import { success } from "@/lib/responseFormat";
 const router = Router();
 
 export default router.get("/", validateFields({ directory: z.string().min(1).max(4096), path: z.string().max(4096), versioned: z.enum(["true"]).optional() }, "query"), async (req, res, next) => {
-  const { path } = await u.workspaceFile.resolveWorkspaceFile(req, req.query.directory as string, req.query.path as string);
+  const allowMissingParents = req.query.versioned === "true";
+  const { path } = await u.workspaceFile.resolveWorkspaceFile(req, req.query.directory as string, req.query.path as string, allowMissingParents);
   res.set({ "Cache-Control": "no-store", "Content-Security-Policy": "sandbox" });
   if (req.query.versioned === "true") {
     const release = u.workspaceFile.lockWorkspaceFiles([path]);

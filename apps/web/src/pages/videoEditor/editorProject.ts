@@ -306,14 +306,12 @@ export async function listEditorBackups(directory: string, requestedProjectPath 
     .sort((left, right) => right.name.localeCompare(left.name));
 }
 
-export async function loadEditorProject(directory: string, requestedProjectPath = projectPath): Promise<{ project: EditorProject; revision: string; content: string; backups: EditorBackup[] }> {
+export async function loadEditorProject(directory: string, requestedProjectPath = projectPath): Promise<{ project: EditorProject; revision: string; content: string }> {
   const path = normalizeProjectPath(requestedProjectPath);
   const files = useWorkspaceFiles(directory);
-  await ensureEditorFolders(files);
   const { content, revision } = await files.readVersionedText(path);
   const project = revision === "missing" ? createEmptyProject(path === projectPath ? "默认剪辑项目" : `剪辑工程 ${path.split("/").at(-1)!.slice(0, 8)}`) : parseEditorProject(JSON.parse(content));
-  const backups = await listEditorBackups(directory, path);
-  return { project, revision, content, backups };
+  return { project, revision, content };
 }
 
 export async function backupEditorContent(directory: string, content: string, requestedProjectPath = projectPath): Promise<string> {

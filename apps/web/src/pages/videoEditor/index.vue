@@ -178,7 +178,7 @@
     </template>
     <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
     <dialog v-if="directory && projectContext" ref="renderQueueDialog" class="renderQueueDialog" aria-label="后台渲染队列"><header class="renderDialogHeader"><strong>后台渲染</strong><button class="secondaryButton" type="button" @click="renderQueueDialog?.close()">关闭</button></header><editorRenderQueue :directory="directory" :projectPath="projectContext.projectPath" :revision="renderProjectRevision" :refreshKey="renderQueueRefreshKey" :disabled="!!sessionInvalidated" @completed="completeEditorRender" @useResult="useEditorRenderResult" /></dialog>
-    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
+    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="recoveryLoading || exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="recoveryLoading">正在读取备份…</span><span v-else-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || recoveryLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
     <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false">
       <div class="recoveryDialog editorProjectsDialog">
         <h2>剪辑工程</h2>
@@ -357,6 +357,8 @@ const redoStack = ref<string[]>([]);
 const missingAssetIds = ref<string[]>([]);
 const recoveryOpen = ref(false);
 const recoveryError = ref("");
+const recoveryLoading = ref(false);
+let recoveryRequestVersion = 0;
 const backups = ref<{ name: string; path: string }[]>([]);
 const selectedBackup = ref("");
 const draftAvailable = ref(false);
@@ -647,6 +649,13 @@ function clearEditor() {
   applyingProject = true;
   loadedDirectory.value = undefined;
   projectContext = undefined;
+  editorProjectOptions.value = [];
+  backups.value = [];
+  selectedBackup.value = "";
+  recoveryOpen.value = false;
+  recoveryError.value = "";
+  recoveryLoading.value = false;
+  recoveryRequestVersion++;
   projectLoading.value = !!directory.value;
   editorProjectName.value = activeEditorProjectPath.value === legacyEditorProjectPath ? "默认剪辑项目" : activeEditorProjectPath.value.split("/").at(-1)?.replace(/\.json$/, "") || "剪辑项目";
   pendingSave = undefined;
@@ -1729,37 +1738,41 @@ function rememberEditorProjectPath(projectDirectory: string, path: string) {
 }
 async function loadProject(path: string, editorPath = activeEditorProjectPath.value) {
   const version = projectVersion;
+  const userId = getSessionSnapshot().userId;
   projectLoading.value = true;
   try {
     const loaded = await loadEditorProject(path, editorPath);
-    if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || !mounted) return;
-    const draftKey = `omnistudioEditorDraft:${getSessionSnapshot().userId}:${path}:${editorPath}`;
+    if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || getSessionSnapshot().userId !== userId || !mounted) return;
+    const draftKey = `omnistudioEditorDraft:${userId}:${path}:${editorPath}`;
     projectContext = { directory: path, projectPath: editorPath, revision: loaded.revision, content: loaded.content, draftKey: `${draftKey}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
     applyProject(loaded.project);
-    backups.value = loaded.backups;
-    try { editorProjectOptions.value = isProductionEditor.value ? [{ path: editorPath, name: editorProjectName.value }] : await listEditorProjects(path); }
-    catch (error) { console.warn("剪辑工程列表读取失败", error); }
-    if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || !mounted) return;
     loadedDirectory.value = path;
     projectLoading.value = false;
     saveBlocked.value = false;
     saveError.value = "";
-    try {
-      const draftCandidates = Object.keys(localStorage).filter(key => key === draftKey || key.startsWith(`${draftKey}:`)).map(key => {
-        try {
-          const draft = JSON.parse(localStorage.getItem(key) ?? "null");
-          const draftProject = parseEditorProject(JSON.parse(draft.content));
-          if (JSON.stringify(draftProject) === JSON.stringify(loaded.project)) return undefined;
-          return { key, revision: String(draft.revision), content: draft.content as string, updatedAt: Number(draft.updatedAt) || 0 };
-        } catch { return undefined; }
-      }).filter(item => item !== undefined).sort((a, b) => b.updatedAt - a.updatedAt);
-      recoverableDraft.value = draftCandidates[0];
-      draftAvailable.value = !!recoverableDraft.value;
-    } catch { previewError.value = "本地草稿无法读取，工程文件保持完整。"; }
-    void checkMedia();
-    void restoreLastExport(projectContext);
+    const context = projectContext;
+    window.setTimeout(() => {
+      if (!mounted || version !== projectVersion || projectContext !== context || directory.value !== path || activeEditorProjectPath.value !== editorPath || getSessionSnapshot().userId !== userId) return;
+      try {
+        const currentContent = getProjectContent();
+        const loadedContent = JSON.stringify(loaded.project);
+        const draftCandidates = Object.keys(localStorage).filter(key => key === draftKey || key.startsWith(`${draftKey}:`)).map(key => {
+          try {
+            const draft = JSON.parse(localStorage.getItem(key) ?? "null");
+            const draftProject = parseEditorProject(JSON.parse(draft.content));
+            const draftContent = JSON.stringify(draftProject);
+            if (key === context.draftKey || draftContent === loadedContent || draftContent === currentContent) return undefined;
+            return { key, revision: String(draft.revision), content: draft.content as string, updatedAt: Number(draft.updatedAt) || 0 };
+          } catch { return undefined; }
+        }).filter(item => item !== undefined).sort((a, b) => b.updatedAt - a.updatedAt);
+        recoverableDraft.value = draftCandidates[0];
+        draftAvailable.value = !!recoverableDraft.value;
+      } catch { previewError.value = "本地草稿无法读取，工程文件保持完整。"; }
+      void checkMedia();
+      void restoreLastExport(context);
+    }, 0);
   } catch (error) {
-    if (version === projectVersion && directory.value === path) { saveError.value = errorMessage(error, "读取工程失败"); projectLoading.value = false; }
+    if (version === projectVersion && directory.value === path && activeEditorProjectPath.value === editorPath && getSessionSnapshot().userId === userId) { saveError.value = errorMessage(error, "读取工程失败"); projectLoading.value = false; }
   }
 }
 function scheduleSave() {
@@ -1833,10 +1846,26 @@ async function reloadProject() {
 }
 async function openRecovery() {
   if (!directory.value || exportRecordBusy.value || isProductionEditor.value && !boundProductionProjectPath.value) return;
+  const path = directory.value;
+  const editorPath = activeEditorProjectPath.value;
+  const version = projectVersion;
+  const userId = getSessionSnapshot().userId;
+  const requestVersion = ++recoveryRequestVersion;
   recoveryOpen.value = true;
   recoveryError.value = "";
-  try { backups.value = await listEditorBackups(directory.value, activeEditorProjectPath.value); selectedBackup.value = backups.value[0]?.path ?? ""; }
-  catch (error) { recoveryError.value = errorMessage(error, "读取备份失败"); }
+  recoveryLoading.value = true;
+  backups.value = [];
+  selectedBackup.value = "";
+  try {
+    const result = await listEditorBackups(path, editorPath);
+    if (requestVersion !== recoveryRequestVersion || !mounted || !recoveryOpen.value || version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || getSessionSnapshot().userId !== userId) return;
+    backups.value = result;
+    selectedBackup.value = result[0]?.path ?? "";
+  } catch (error) {
+    if (requestVersion === recoveryRequestVersion && mounted && recoveryOpen.value && version === projectVersion && directory.value === path && activeEditorProjectPath.value === editorPath && getSessionSnapshot().userId === userId) recoveryError.value = errorMessage(error, "读取备份失败");
+  } finally {
+    if (requestVersion === recoveryRequestVersion && mounted && recoveryOpen.value && version === projectVersion && directory.value === path && activeEditorProjectPath.value === editorPath && getSessionSnapshot().userId === userId) recoveryLoading.value = false;
+  }
 }
 async function restoreBackup() {
   const path = directory.value;

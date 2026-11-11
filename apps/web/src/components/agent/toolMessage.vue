@@ -26,7 +26,6 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onErrorCaptured, ref, shallowRef, watch, type Component } from "vue";
-import { loadToolComponent } from "@omnistudio-next/tools-scaffold/client";
 import { IconCopy, IconTool } from "@tabler/icons-vue";
 import { uiAlert, uiIconButton } from "@omnistudio-next/ui";
 import type { AgentToolCall } from "@omnistudio-next/server/agent/types";
@@ -44,6 +43,8 @@ watch(() => [tool.name, tool.question?.callId] as const, async ([name], _previou
   rendererError.value = "";
   if (name === "subAgent") return;
   try {
+    const { loadToolComponent } = await import("@omnistudio-next/tools-scaffold/client");
+    if (!active) return;
     const component = await loadToolComponent(name);
     if (active) {
       renderer.value = component;

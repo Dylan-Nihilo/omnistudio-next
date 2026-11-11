@@ -76,6 +76,8 @@
         :key="JSON.stringify(['nodeMenu', project?.directory, canvasId])"
         ref="nodeMenuRef"
         :remoteNodes="availableNodes"
+        :loadNode="loadNodeType"
+        :loadNodes="loadNodeComponents"
         :pasteNode="pasteClipboardNode"
         :uploadFiles="canvasId && project?.directory ? selectFiles : undefined"
         :canUndo="canUndo"
@@ -168,16 +170,6 @@ import { debounce } from "lodash-es";
 import { uiButton, uiIconButton, uiTooltip } from "@omnistudio-next/ui";
 import { storeToRefs } from "pinia";
 import { Icon3dCubeSphere, IconArrowBackUp, IconArrowForwardUp, IconFolders, IconHandTwoFingers, IconMovie, IconPhoto, IconPointer, IconPlus, IconScissors, IconScript, IconSparkles, IconUnlink, IconUpload, IconVideo } from "@tabler/icons-vue";
-import * as vueRuntime from "vue";
-import * as uiRuntime from "@omnistudio-next/ui";
-import * as modelIconsRuntime from "@omnistudio-next/model-icons";
-import * as tiptapRuntime from "@tiptap/core";
-import * as starterKitRuntime from "@tiptap/starter-kit";
-import * as vueFlowRuntime from "@vue-flow/core";
-import * as elementPlusRuntime from "element-plus";
-import { runAgentLoop } from "@earendil-works/pi-agent-core";
-import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
-import "element-plus/dist/index.css";
 import {
   VueFlow,
   PanOnScrollMode,
@@ -196,7 +188,6 @@ import {
 import { Background } from "@vue-flow/background";
 import { useCanvasTools } from "./useCanvasTools";
 import type { CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
-import { loadNodeComponent } from "./loadNodeComponent";
 import { useCanvasHistory } from "./useCanvasHistory";
 import { copyNodeToClipboard, nodeClipboardCommand, readClipboardNode } from "./nodeClipboard";
 import { readClipboardText } from "@/lib/clipboard";
@@ -258,12 +249,13 @@ const nodeOptions = ref<{ type: string; label: string }[]>([]);
 const nodeLoads = shallowReactive(new Map<string, Promise<void>>());
 const nodeReloads = new Set<string>();
 const nodeErrors = ref<Record<string, string>>({});
-const availableNodes = computed(() => nodeOptions.value.filter(node => nodeTypes.value[node.type] && !nodeErrors.value[node.type]));
+const availableNodes = computed(() => nodeOptions.value);
 const nodeListLoading = ref(true);
 const remoteNodeTypes = computed(() => [
   ...new Set((flowData.value as { type?: string }[]).map((item) => item.type).filter((type): type is string => !!type?.startsWith("remote-"))),
 ]);
 let loadRequest = 0;
+let nodeListRequest: Promise<void> | undefined;
 const snapEnabled = ref(false);
 const zoomKeyPressed = ref(false);
 const panKeyPressed = ref(false);
@@ -313,6 +305,7 @@ let canvasController = new AbortController();
 let workspaceController = new AbortController();
 const createCanvasContext = useCanvasTools({
   availableNodes,
+  loadNode: loadNodeType,
   flushSave: flushCanvasSave,
   menu() {
     if (!canvasMenuRef.value) throw new Error("画布菜单尚未就绪");
@@ -327,7 +320,9 @@ function getCanvasContext() {
 function getCanvasVersionValue() {
   return canvasId.value ? getCanvasVersion(toObject()) : "";
 }
-const canvasReady = computed(() => !!canvasId.value && !nodeListLoading.value && nodeLoads.size === 0);
+const canvasReady = computed(() => !!canvasId.value && !nodeListLoading.value && remoteNodeTypes.value.every(type =>
+  !nodeLoads.has(type) && (nodeTypes.value[type] || nodeErrors.value[type] || !nodeOptions.value.some(node => node.type === type))
+));
 const showCanvasGuide = computed(() => props.active && !props.settingsVisible && canvasReady.value && flow.nodes.value.length === 0);
 function startCanvasGuide(prompt: string) {
   const directory = project.value?.directory;
@@ -363,6 +358,9 @@ async function addEditorResult(input: { directory: string; canvasPath: string; r
   if (input.directory !== project.value?.directory || input.canvasPath !== canvasId.value) throw new Error("工作区或画布已切换，请重新打开后操作");
   if (!listing.entries.some(entry => entry.type === "file" && entry.path === input.resultPath)) throw new Error("剪辑成片文件不存在");
   const nodeId = `editorResult-${input.resultId}`;
+  await loadNodeType("remote-videoNode");
+  checkDocumentDirectory(input.directory);
+  if (!props.active || input.canvasPath !== canvasId.value) throw new Error("目标画布已切换，请重新打开后操作");
   const existingNode = findNode(nodeId);
   if (existingNode) {
     if (existingNode.data?.outputs?.video?.value?.url !== input.resultPath || existingNode.data?.editorProjectPath !== input.editorProjectPath) throw new Error("剪辑结果编号已被其他节点使用");
@@ -509,7 +507,7 @@ async function dropFiles(event: DragEvent) {
   const directory = project.value?.directory;
   if (!directory || !dragFilesOver(event)) return;
   try {
-    await canvasHistory.batch(() => dropCanvasFiles(event, { directory, availableNodes: availableNodes.value, signal: canvasController.signal, flow }));
+    await canvasHistory.batch(() => dropCanvasFiles(event, { directory, loadNode: loadNodeType, signal: canvasController.signal, flow }));
   } catch (error) {
     feedback.message({ tone: "error", message: error instanceof Error ? error.message : "文件导入失败" });
   }
@@ -518,7 +516,7 @@ async function dropFiles(event: DragEvent) {
 function selectFiles(position: { x: number; y: number }) {
   const directory = project.value?.directory;
   if (!props.active || props.settingsVisible || !canvasId.value || !directory) return;
-  const context = { directory, availableNodes: availableNodes.value, signal: canvasController.signal, flow };
+  const context = { directory, loadNode: loadNodeType, signal: canvasController.signal, flow };
   const input = document.createElement("input");
   input.type = "file";
   input.multiple = true;
@@ -776,7 +774,8 @@ async function pasteClipboardNode(position: { x: number; y: number }, command?: 
     const node = await readClipboardNode(command ?? (await readClipboardText()), directory);
     if (canvasSignal.aborted) return false;
     if (!node) throw new Error("剪贴板中没有可粘贴的节点命令");
-    if (!availableNodes.value.some((item) => item.type === node.type)) throw new Error("请先安装并启用对应的节点插件");
+    await loadNodeType(node.type);
+    canvasSignal.throwIfAborted();
     addNodes({ id: crypto.randomUUID(), type: node.type, data: node.data, position });
     return true;
   } catch (error) {
@@ -892,10 +891,10 @@ function resetCanvasKeys() {
 watch([() => props.settingsVisible, () => generalSettings.value.canvasShortcuts], resetCanvasKeys, { deep: true, flush: "sync" });
 
 function refreshInstalled(event: WindowEventMap["omnistudio-next:plugin-installed"]) {
-  if (event.detail.type === "node") void loadRemoteNodes(event.detail.name);
+  if (event.detail.type === "node") nodeListRequest = loadRemoteNodes(event.detail.name);
 }
 
-const refreshNodeConfig = () => { void loadRemoteNodes(); };
+const refreshNodeConfig = () => { nodeListRequest = loadRemoteNodes(); };
 
 onMounted(() => {
   // 在捕获阶段同步修饰键，避免节点编辑器截断 keydown/keyup 后缩放状态丢失或卡住。
@@ -905,7 +904,7 @@ onMounted(() => {
   window.addEventListener("omnistudio-next:plugin-installed", refreshInstalled);
   window.addEventListener("omnistudio-next:node-config-updated", refreshNodeConfig);
   document.addEventListener("paste", pasteNode);
-  void loadRemoteNodes();
+  nodeListRequest = loadRemoteNodes();
 });
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", updateCanvasKeys, true);
@@ -920,11 +919,6 @@ onBeforeUnmount(() => {
   loadRequest++;
 });
 
-const nodeWindow = window as typeof window & {
-  toonflowNodeHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; modelIcons: typeof modelIconsRuntime; tiptap: typeof tiptapRuntime; starterKit: typeof starterKitRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
-  toonflowNodes?: NodeTypesObject;
-};
-nodeWindow.toonflowNodeHost = { vue: vueRuntime, ui: uiRuntime, modelIcons: modelIconsRuntime, tiptap: tiptapRuntime, starterKit: starterKitRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
 provide("nodeConfig", (nodeType: string) => nodeConfigs.value[nodeType] ?? {});
 provide("workspaceFiles", () => {
   const directory = project.value?.directory;
@@ -965,7 +959,8 @@ async function loadNode(name: string, url: string, force = false): Promise<void>
     if (loading) return loading;
   }
   delete nodeErrors.value[nodeType];
-  const nodeLoad = loadNodeComponent(name, url, force)
+  const nodeLoad = import("./loadNodeComponent")
+    .then(({ loadNodeComponent }) => loadNodeComponent(name, url, force))
     .then((remoteNode) => {
       // 同类型节点共享组件，运行错误由每个节点自己的边界显示。
       nodeTypes.value = { ...nodeTypes.value, [nodeType]: markRaw(remoteNode) };
@@ -978,6 +973,28 @@ async function loadNode(name: string, url: string, force = false): Promise<void>
   nodeLoads.set(nodeType, nodeLoad);
   return nodeLoad;
 }
+
+async function loadNodeType(type: string) {
+  if (nodeListLoading.value) await nodeListRequest;
+  if (!nodeOptions.value.some(node => node.type === type)) throw new Error("节点类型未启用，请先安装并启用对应节点插件");
+  const name = type.replace(/^remote-/, "");
+  await loadNode(name, `/api/nodes/files?name=${name}`);
+  if (!nodeOptions.value.some(node => node.type === type)) throw new Error("节点类型已停用，请重新选择节点");
+}
+
+async function loadNodeComponents() {
+  if (nodeListLoading.value) await nodeListRequest;
+  await Promise.allSettled(nodeOptions.value.map(node => loadNodeType(node.type)));
+}
+
+watch([remoteNodeTypes, nodeOptions], ([types]) => {
+  // ACT: 只挂载画布已有的节点；新增菜单按需载入其余组件，保留后台节点实例。
+  for (const type of types) {
+    if (nodeOptions.value.some(node => node.type === type) && !nodeTypes.value[type] && !nodeErrors.value[type]) {
+      void loadNodeType(type).catch(error => console.error("加载画布节点失败", type, error));
+    }
+  }
+}, { flush: "post" });
 
 async function loadRemoteNodes(reloadName?: string) {
   if (reloadName) nodeReloads.add(reloadName);
@@ -1000,21 +1017,20 @@ async function loadRemoteNodes(reloadName?: string) {
     });
     nodeConfigs.value = Object.fromEntries(nodes.map(node => [`remote-${node.name}`, node.config ?? {}]));
     const enabledNodes = nodes.filter(node => node.enabled !== false);
-    // 节点各自加载完成后即可出现在菜单中，不等待其他节点的脚本。
+    // 元数据即可展示节点名称；组件仅在画布已有节点或使用新增入口时加载。
     nodeOptions.value = enabledNodes.map(node => ({ type: `remote-${node.name}`, label: node.displayName }))
       .sort((left, right) => left.type.localeCompare(right.type));
     // ACT: 安装事件合并到最新列表请求，避免连续更新不同节点时丢失较早的刷新名称。
     const reloadNames = new Set(nodeReloads);
     nodeReloads.clear();
     await Promise.all(
-      enabledNodes.map(async (node) => {
+      enabledNodes.filter(node => reloadNames.has(node.name)).map(async (node) => {
         const nodeType = `remote-${node.name}`;
         try {
-          if (nodeTypes.value[nodeType] && !nodeErrors.value[nodeType] && !reloadNames.has(node.name)) return;
-          await loadNode(node.name, node.url, reloadNames.has(node.name));
+          await loadNode(node.name, node.url, true);
         } catch (error) {
           console.error("加载远端节点失败", node, error);
-          // 保存拒绝时旧组件仍可用，不从节点菜单中移除；脚本加载错误仍排除。
+          // 保存拒绝时旧组件仍可用；脚本错误由节点边界显示，菜单保留重试入口。
           if (nodeTypes.value[nodeType] && !nodeErrors.value[nodeType]) {
             if (reloadNames.has(node.name) && !signal.aborted) feedback.message({ ...{
               message: `${node.displayName}已安装，但当前节点无法刷新。请等待任务结束后，点击节点右上角的刷新按钮。`,

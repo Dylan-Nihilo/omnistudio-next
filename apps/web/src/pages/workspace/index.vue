@@ -14,7 +14,7 @@
       <keep-alive :max="1"><documentPanel v-if="activePanel === 'document'" :key="workspaceStore.project?.directory" ref="documentPanelRef" :readNode="readDocumentNode" :saveNode="saveDocumentNode" /></keep-alive>
     </div>
     <floatingAgent v-model="agentVisible" :topOffset="headerHeight" @resize="agentWidth = $event" />
-    <settings v-model="settingsVisible" />
+    <settingsPanel v-if="settingsMounted" v-model="settingsVisible" />
     <workspaceTour />
     <celebrationModal />
   </main>
@@ -27,7 +27,6 @@ import axios from "axios";
 import { IconLayoutDashboard, IconFileText, IconMessageCircle } from "@tabler/icons-vue";
 import { uiRadioGroup, uiButton, useUiFeedback } from "@omnistudio-next/ui";
 import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
-import settings from "@/components/settings/index.vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";
 import anonymousData from "@/lib/anonymousData";
@@ -39,6 +38,7 @@ import { useOnboardingStore } from "@/stores/onboardingStore";
 const canvasPanel = defineAsyncComponent(() => import("./panels/canvas/canvasHost.vue"));
 const floatingAgent = defineAsyncComponent(() => import("./components/floatingAgent.vue"));
 const documentPanel = defineAsyncComponent(() => import("./panels/document/index.vue"));
+const settingsPanel = defineAsyncComponent(() => import("@/components/settings/index.vue"));
 
 const feedback = useUiFeedback();
 const route = useRoute();
@@ -52,6 +52,7 @@ watch(headerElement, (element, _previous, onCleanup) => {
   onCleanup(() => observer.disconnect());
 }, { flush: "post" });
 const activePanel = ref<"canvas" | "document">("canvas");
+const settingsMounted = ref(false);
 const onboardingStore = useOnboardingStore();
 onMounted(() => {
   anonymousData.track("workspace.canvas");
@@ -71,6 +72,7 @@ const panelOptions = [
 const agentVisible = ref(true);
 const agentWidth = ref(0);
 const settingsVisible = ref(false);
+watch(settingsVisible, visible => { if (visible) settingsMounted.value = true; }, { immediate: true });
 const canvasPanelRef = ref<InstanceType<typeof canvasPanel>>();
 const documentPanelRef = ref<InstanceType<typeof documentPanel>>();
 provide("canvas", () => canvasPanelRef.value?.getCanvasContext());
