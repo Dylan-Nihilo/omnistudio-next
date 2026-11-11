@@ -30,21 +30,18 @@
         <div class="composer">
           <uiTextarea ref="promptInput" v-model="prompt" class="promptInput" :rows="3" resize="none" :disabled="creating || opening" :placeholder="promptPlaceholder" aria-label="创作描述" />
           <div class="composerFooter">
-            <workspacePicker ref="promptWorkspacePicker" v-model="workspaceDirectory" :disabled="creating || opening" />
             <div class="sendActions">
               <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" class="modelSelect" :disabled="creating || opening" />
-              <uiButton v-if="!workspaceDirectory" :icon="IconFolder" :loading="creating" :disabled="creating || opening" @click="promptWorkspacePicker?.chooseDirectory()">选择工作目录</uiButton>
-              <uiIconButton v-else :icon="IconArrowUp" label="发送" variant="primary" :loading="creating" :disabled="creating || opening" @click="createProject()" />
+              <uiIconButton :icon="IconArrowUp" label="发送" variant="primary" :loading="creating" :disabled="creating || opening" @click="createProject()" />
             </div>
           </div>
         </div>
-        <p class="workspaceHint" role="status">{{ workspaceDirectory ? '画布与素材会保存在你选择的文件夹里。' : '选择工作目录后，可直接把创作描述交给画布 Agent。' }}</p>
       </section>
       <section class="canvasLibrary" aria-labelledby="canvasLibraryTitle">
           <header class="canvasLibraryHeader"><h2 id="canvasLibraryTitle">我的画布</h2></header>
           <div class="canvasCards">
             <button type="button" class="canvasCard newCanvasCard" :disabled="creating || opening" @click="() => createProject(false)"><span class="newCanvasMark">＋</span><strong>新建画布</strong><small>从空白画布开始编排</small></button>
-            <button v-for="canvasProject in canvasProjects" :key="canvasProject.directory" type="button" class="canvasCard" :class="{ selected: canvasProject.directory === project?.directory }" :disabled="creating || opening" @click="openCanvas(canvasProject)"><span class="canvasCardMark">◈</span><strong>{{ canvasProject.name }}</strong><small>{{ canvasProject.directory }}</small></button>
+            <button v-for="canvasProject in canvasProjects" :key="canvasProject.directory" type="button" class="canvasCard" :class="{ selected: canvasProject.directory === project?.directory }" :disabled="creating || opening" @click="openCanvas(canvasProject)"><span class="canvasCardMark">◈</span><strong>{{ canvasProject.name }}</strong><small>最近打开 {{ formatLastOpenedAt(canvasProject.lastOpenedAt) }}</small></button>
             <p v-if="!canvasProjects.length" class="canvasCardsEmpty">还没有已保存的画布，点击“新建画布”开始。</p>
           </div>
       </section>
@@ -86,7 +83,7 @@ import { useRouter } from "vue-router";
 import { uiButton, uiIconButton, uiBadge, uiTextarea, uiDialog, uiMediaPlayer, useUiFeedback, isUiCancelledError } from "@omnistudio-next/ui";
 import {
   IconSettings, IconUserCircle, IconUsersGroup, IconShieldLock,
-  IconArrowUp, IconArrowUpRight, IconLayoutDashboard, IconFolder,
+  IconArrowUp, IconArrowUpRight, IconLayoutDashboard,
   IconMovie,
   IconPlayerPlay,
   IconLogout,
@@ -95,9 +92,7 @@ import logoUrl from "@omnistudio-next/assets/omniStudioNextLogo.svg";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
-import useWorkspaceFiles from "@/lib/workspaceFiles";
 import settings from "@/components/settings/index.vue";
-import workspacePicker from "./workspacePicker.vue";
 import modelPopover from "@/components/modelPopover.vue";
 import homeTour from "@/components/onboarding/homeTour.vue";
 import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
@@ -111,7 +106,6 @@ const router = useRouter();
 const creating = ref(false);
 const opening = ref(false);
 const promptInput = ref<InstanceType<typeof uiTextarea>>();
-const promptWorkspacePicker = ref<InstanceType<typeof workspacePicker>>();
 const prompt = ref("");
 const selectedModel = ref("");
 const reasoningEffort = ref("");
@@ -141,6 +135,7 @@ async function handleSignOut() {
 
 onMounted(async () => {
   onboardingStore.checkHomeTrigger();
+  void workspaceStore.refreshProjectList().catch(error => showError(error instanceof Error ? error.message : "项目列表读取失败"));
   try {
     const { data } = await axios.get<{ code: number; data: Demo[]; message?: string }>("/api/demos/get");
     if (data.code !== 200) throw new Error(data.message || "Demo 读取失败");
@@ -174,13 +169,12 @@ async function openDemo(demo: Demo) {
     const { data } = await axios.post<{ code: number; data: { directory: string; name: string }; message?: string }>("/api/demos/open", { id: demo.id });
     if (data.code !== 200) throw new Error(data.message || "Demo 打开失败");
     await workspaceStore.openProject(data.data.directory);
-    workspaceStore.renameProject(data.data.directory, data.data.name);
+    await workspaceStore.renameProject(data.data.directory, data.data.name);
     await router.push("/workspace");
   } catch (error) {
     showError(axios.isAxiosError<{ message?: string }>(error) ? error.response?.data.message || "Demo 打开失败" : error instanceof Error ? error.message : "Demo 打开失败");
   } finally { opening.value = false; }
 }
-const workspaceDirectory = ref(project.value?.directory ?? "");
 watch(() => auth.user?.id, userId => {
   if (userId) workspaceStore.sanitizeProjectList(userId);
 }, { immediate: true });
@@ -191,27 +185,9 @@ async function createProject(fromPrompt = true) {
   if (creating.value || opening.value) return;
   creating.value = true;
   try {
-    let path = workspaceDirectory.value;
-    if (!path || !fromPrompt) {
-      path = await promptWorkspacePicker.value?.chooseDirectory() ?? "";
-      if (!path) return;
-    }
-    const { directory, entries } = await useWorkspaceFiles(path).list();
-    const systemFiles = new Set([".ds_store", "thumbs.db", "desktop.ini"]);
-    const userEntries = entries.filter(entry => !systemFiles.has(entry.name.toLowerCase()) && !entry.name.startsWith("._"));
-    const hasCanvas1 = entries.some(entry => entry.name === "画布1.json");
-    const isExistingProject = userEntries.some(entry => entry.name.endsWith(".json"))
-      || projectList.value.some(p => p.directory === directory)
-      || project.value?.directory === directory;
-
-    if (userEntries.length > 0 && !isExistingProject && !onboardingStore.homeTourActive) {
-      return feedback.message({ tone: "warning", message: "该文件夹不为空且不包含漫剧项目，请重新选择空文件夹或已有项目目录。" });
-    }
-
-    if (!hasCanvas1 && !isExistingProject) {
-      await useWorkspaceFiles(directory).writeJson("画布1.json", { toonflowCanvas: true, nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }, true);
-    }
-    await workspaceStore.openProject(directory);
+    const { data } = await axios.post<{ code: number; data: { directory: string; name: string }; message?: string }>("/api/workspaces/projects/create", {});
+    if (data.code !== 200) throw new Error(data.message || "创建项目失败");
+    await workspaceStore.openProject(data.data.directory);
     if (fromPrompt && prompt.value.trim()) workspaceStore.pendingAgentMessage = { directory: workspaceStore.project!.directory, prompt: prompt.value.trim(), model: selectedModel.value, reasoningEffort: reasoningEffort.value };
     onboardingStore.completeHomeTour();
     await router.push("/workspace");
@@ -222,6 +198,9 @@ async function createProject(fromPrompt = true) {
   } finally {
     creating.value = false;
   }
+}
+function formatLastOpenedAt(timestamp: number) {
+  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
 }
 function showError(message: string) { feedback.message({ tone: "error", message }); }
 async function openCanvas(canvasProject: { directory: string }) {
@@ -274,9 +253,8 @@ function focusProjects() { activeSection.value = "projects"; void router.push("/
       display: grid; gap: 38px; align-items: start;
       .canvasEntry { width: min(100%, 920px); margin-inline: auto; }
       .canvasEntry > h2 { margin: 0 0 16px; color: var(--uiTextMuted); font-size: 18px; font-weight: 500; text-align: center; }
-      .composer { padding: 17px 18px 13px; border: 1px solid var(--uiBorderDefault); border-radius: 16px; background: color-mix(in srgb, var(--uiSurfaceRaised) 76%, var(--uiBackgroundBase)); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:focus-within { border-color: var(--uiBorderFocus); } .promptInput { min-height: 128px; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 15px; outline: none; } .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); :deep(.workspaceButton) { max-width: min(280px, 100%); padding-inline: 0; color: var(--uiTextMuted); } .sendActions { display: flex; align-items: center; gap: 10px; margin-left: auto; .modelSelect { width: 280px; max-width: 100%; flex: 0 1 280px; } :deep(.uiIconButton) { width: 38px; height: 38px; border-radius: 50%; } } }
+      .composer { padding: 17px 18px 13px; border: 1px solid var(--uiBorderDefault); border-radius: 16px; background: color-mix(in srgb, var(--uiSurfaceRaised) 76%, var(--uiBackgroundBase)); transition: border-color var(--uiMotionDuration) var(--uiMotionEase); &:focus-within { border-color: var(--uiBorderFocus); } .promptInput { min-height: 128px; padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 15px; outline: none; } .composerFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); .sendActions { display: flex; align-items: center; gap: 10px; margin-left: auto; .modelSelect { width: 280px; max-width: 100%; flex: 0 1 280px; } :deep(.uiIconButton) { width: 38px; height: 38px; border-radius: 50%; } } }
       }
-      .workspaceHint { width: min(100%, 920px); margin: 10px auto 0; color: var(--uiTextMuted); font-size: 11px; text-align: right; }
       .canvasLibrary {
         width: min(100%, 920px); min-width: 0; margin-inline: auto;
         .canvasLibraryHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; h2 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: .5px; } .canvasLibraryActions { display: flex; gap: 8px; } }

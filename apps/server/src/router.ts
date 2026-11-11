@@ -200,7 +200,10 @@ import route197 from "./routes/workspaces/files/rename";
 import route198 from "./routes/workspaces/files/upload";
 import route199 from "./routes/workspaces/files/write";
 import route200 from "./routes/workspaces/list";
-import route201 from "./routes/workspaces/selectDirectory";
+import route201 from "./routes/workspaces/projects/create";
+import route202 from "./routes/workspaces/projects/list";
+import route203 from "./routes/workspaces/projects/rename";
+import route204 from "./routes/workspaces/selectDirectory";
 
 export default (app: Express) => {
   app.use("/api/account/teamAssets/copy", route1);
@@ -403,5 +406,8 @@ export default (app: Express) => {
   app.use("/api/workspaces/files/upload", route198);
   app.use("/api/workspaces/files/write", route199);
   app.use("/api/workspaces/list", route200);
-  app.use("/api/workspaces/selectDirectory", route201);
+  app.use("/api/workspaces/projects/create", route201);
+  app.use("/api/workspaces/projects/list", route202);
+  app.use("/api/workspaces/projects/rename", route203);
+  app.use("/api/workspaces/selectDirectory", route204);
 }

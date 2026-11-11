@@ -42,16 +42,18 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   }
 
   async function openProject(path: string, previousDirectory = path, signal?: AbortSignal, options: { addToProjectList?: boolean } = {}) {
-    const { data } = await axios.get<{ code: number; data?: { directory: string }; message?: string }>("/api/workspaces/check", {
+    const session = getSessionSnapshot();
+    const { data } = await axios.get<{ code: number; data?: { directory: string; name?: string }; message?: string }>("/api/workspaces/check", {
       params: { directory: path }, headers: { "x-omnistudio-next-workspace": "1" }, signal,
     });
+    session.signal.throwIfAborted();
     signal?.throwIfAborted();
     if (data.code !== 200 || !data.data?.directory) throw new Error(data.message || "工作目录校验失败");
     const checkedDirectory = data.data.directory;
     pendingAgentMessage.value = null;
     const existing = projectList.value.find(project => isSameDirectory(project.directory, previousDirectory))
       ?? projectList.value.find(project => isSameDirectory(project.directory, checkedDirectory));
-    project.value = { directory: checkedDirectory, name: existing?.name || checkedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || checkedDirectory, lastOpenedAt: Date.now() };
+    project.value = { directory: checkedDirectory, name: data.data.name || existing?.name || checkedDirectory.split(/[\\/]/).filter(Boolean).at(-1) || checkedDirectory, lastOpenedAt: Date.now() };
 
     const currentUserId = getSessionSnapshot().userId;
     const ownerUserId = getProjectOwnerUserId(checkedDirectory);
@@ -67,10 +69,25 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     ];
   }
 
-  function renameProject(path: string, name: string) {
+  async function refreshProjectList() {
+    const session = getSessionSnapshot();
+    const { data } = await axios.get<{ code: number; data?: Project[]; message?: string }>("/api/workspaces/projects/list");
+    session.signal.throwIfAborted();
+    if (data.code !== 200 || !data.data) throw new Error(data.message || "项目列表读取失败");
+    projectList.value = data.data.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+    sanitizeProjectList();
+    return projectList.value;
+  }
+
+  async function renameProject(path: string, name: string) {
     const trimmedName = name.trim();
     if (!trimmedName) return;
+    const session = getSessionSnapshot();
     const target = projectList.value.find(item => isSameDirectory(item.directory, path));
+    if (target) {
+      await axios.put("/api/workspaces/projects/rename", { directory: path, name: trimmedName });
+      session.signal.throwIfAborted();
+    }
     if (target) target.name = trimmedName;
     if (project.value && isSameDirectory(project.value.directory, path)) {
       project.value = target ?? { ...project.value, name: trimmedName };
@@ -94,7 +111,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     });
   }
 
-  return { project, projectList, pendingAgentMessage, sanitizeProjectList, openProject, renameProject, removeProject, resetWorkspace };
+  return { project, projectList, pendingAgentMessage, sanitizeProjectList, openProject, refreshProjectList, renameProject, removeProject, resetWorkspace };
 }, {
   persist: {
     key: "toonflow.projectList",

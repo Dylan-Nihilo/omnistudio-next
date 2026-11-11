@@ -23,19 +23,19 @@ const visible = computed({
 
 const steps = [
   {
-    target: ".composerFooter",
-    title: "1. 选择项目工作目录",
-    description: "万象点点以工作目录为单元管理画布、分镜与所有生成的素材文件。请首先点击选择或创建一个空文件夹作为你的首个漫剧工作区。",
-  },
-  {
     target: ".composer .promptInput",
-    title: "2. 输入漫剧创意灵感",
+    title: "1. 输入漫剧创意灵感",
     description: "在此写下你的故事或题材灵感，下方可挑选驱动创意的文本大模型。系统会自动为你备好初始提示词。",
   },
   {
+    target: ".composerFooter",
+    title: "2. 选择创作模型",
+    description: "选择文本模型与推理强度，模型设置会随创作请求一并使用。",
+  },
+  {
     target: ".composer .sendActions",
-    title: "3. 开辟漫剧创作空间",
-    description: "选定目录后点击发送按钮，系统将自动在本地/云端创建项目文件夹与空白画布，并直接带你进入核心工作台。",
+    title: "3. 开始画布创作",
+    description: "点击发送，系统会自动准备独立项目空间和空白画布，并带你进入工作台。",
   },
 ];
 
