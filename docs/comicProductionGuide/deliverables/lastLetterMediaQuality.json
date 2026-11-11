@@ -1,0 +1,81 @@
+{
+  "title": "最后一封信",
+  "file": "lastLetter.mp4",
+  "version": "V02",
+  "sourceExport": "edited1794280411002f1e5116a.mp4",
+  "sourceSha256": "F48EFE17FB1B7C4057F24551C5F8300BE379A8E457D8E14B5FDDF867F120F56B",
+  "fileSizeBytes": 2318970,
+  "technicalMedia": {
+    "container": "MP4",
+    "videoCodec": "H.264 High",
+    "width": 1920,
+    "height": 1080,
+    "aspectRatio": "16:9",
+    "frameRate": 30,
+    "decodedVideoFrames": 198,
+    "videoDurationSeconds": 6.6,
+    "audioCodec": "AAC-LC",
+    "audioSampleRateHz": 48000,
+    "audioChannels": 2,
+    "audioDurationSeconds": 6.6,
+    "formatDurationSeconds": 6.6,
+    "bitrateBitsPerSecond": 2810872
+  },
+  "editTimeline": [
+    {
+      "startSeconds": 0,
+      "endSeconds": 2.5,
+      "source": "镜头01 V01 approved",
+      "inPointSeconds": 0,
+      "outPointSeconds": 2.5,
+      "gainDb": 17.8,
+      "subtitle": "一封旧信，藏着未说出口的牵挂。"
+    },
+    {
+      "startSeconds": 2.5,
+      "endSeconds": 6.6,
+      "source": "镜头02 V02 approved",
+      "inPointSeconds": 0,
+      "outPointSeconds": 4.096,
+      "gainDb": 21.2,
+      "subtitle": "原来，你一直在等我。"
+    }
+  ],
+  "verification": {
+    "ffprobe": "valid MP4 with H.264 video and AAC stereo audio",
+    "fullDecode": "passed; FFmpeg decoded 198 video frames and the complete audio stream with -xerror; exit code 0",
+    "blackDetection": "no segments reported by blackdetect with d=0.05 and pix_th=0.1",
+    "subtitleVisualCheck": "both subtitle lines are visible and legible; the closing subtitle remains visible on the last decoded frame at 6.5667 seconds",
+    "sampledFramesSeconds": [0.5, 2.4, 2.5, 3.5, 6.3, 6.566667],
+    "contactSheet": "lastLetterContact.jpg",
+    "lastDecodedFrameSeconds": 6.566667,
+    "audioLoudness": {
+      "integratedLufs": -18.3,
+      "loudnessRangeLu": 2.4,
+      "truePeakDbfs": -1.2,
+      "method": "FFmpeg ebur128 with peak=true"
+    }
+  },
+  "technicalQualityStatus": "passed",
+  "approvalStatus": "pending project human review",
+  "deliveryStatus": "not delivered",
+  "findings": [],
+  "versionHistory": [
+    {
+      "version": "V01",
+      "sourceExport": "edited17942775188519d428e70.mp4",
+      "sourceSha256": "07C098ADD06B84F8F5A58D5ACA4EF98620BB02A983DABB451698292922FD09C3",
+      "integratedLufs": -37.9,
+      "truePeakDbfs": -19.0,
+      "finalSubtitleEndSeconds": 6.5,
+      "mediaEndSeconds": 6.6,
+      "status": "superseded; pending review history retained",
+      "findings": [
+        "The mix measured -37.9 LUFS integrated and -19.0 dBFS true peak.",
+        "The final subtitle ended at 6.50 seconds while the media ended at 6.60 seconds."
+      ]
+    }
+  ],
+  "releaseDecision": "pending project human review; V02 technical checks passed, not approved or delivered",
+  "reviewLimitations": "FFprobe, full decode, black-frame detection, sampled-frame subtitle checks, and EBU R128 loudness measurement were completed. Final subjective listening review and project approval are pending."
+}

@@ -34,14 +34,15 @@
                 <div class="optionPicker compactPicker episodePicker"><div class="episodeOptions"><button v-for="count in episodeOptions" :key="count" type="button" :class="{ selected: scriptEpisodeCount === count }" :aria-pressed="scriptEpisodeCount === count" @click="selectEpisodeCount(count)"><span class="episodeMarker" aria-hidden="true">{{ scriptEpisodeCount === count ? '✓' : '·' }}</span><span>{{ String(count).padStart(2, '0') }} 集</span></button></div><div class="episodeCustomRow" :class="{ selected: customEpisodeCount != null }"><uiNumberInput v-model="customEpisodeCount" class="episodeCustomInput" :min="1" :max="100" :precision="0" :controls="false" placeholder="自定义" aria-label="自定义集数" @keydown.enter="applyCustomEpisodeCount" /><span class="episodeCustomUnit">集</span><uiIconButton class="episodeApplyButton" size="small" :icon="IconCheck" label="应用自定义集数" :disabled="customEpisodeCount == null" @click="applyCustomEpisodeCount" /></div></div>
               </uiPopover>
             </div>
-            <uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || (!scriptIdea.trim() && !createReferenceFile)" @click="startDramaFlow">开始创作</uiButton>
+            <span class="entryQuoteSummary" role="status" aria-live="polite">{{ entryQuoteError ? '预估失败' : entryQuoting ? '预估中…' : entryQuoteCurrent ? `预计 ${formatCredits(entryQuote)} 积分` : '待预估' }}</span>
+            <uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || (!scriptIdea.trim() && !createReferenceFile) || entryQuoting || !entryQuoteCurrent" @click="startDramaFlow">开始创作</uiButton>
           </div>
         </div>
       </template>
       <template v-else-if="dramaMode === 'adapt'">
         <div class="scriptComposer">
           <div class="ideaInputShell" :class="{ dragging: dragTarget === 'adapt' }" @dragover.prevent="dragTarget = 'adapt'" @dragleave.prevent="dragTarget = ''" @drop.prevent="handleFileDrop($event, 'adapt')"><button type="button" class="uploadTile" aria-label="添加待改编剧本" @click="adaptFileInput?.click()"><icon-plus :size="24" aria-hidden="true" /></button><uiTextarea v-model="adaptRequest" :rows="5" resize="none" aria-label="剧本修改要求" placeholder="剧本修改要求：选择需要保留的主线、角色设定和希望调整的部分…" /><input ref="adaptFileInput" class="hiddenFileInput" type="file" accept=".txt,.md,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileInput($event, 'adapt')" /><div v-if="adaptFile" class="referenceFileChip"><icon-file-text :size="16" aria-hidden="true" /><span>{{ adaptFile.name }}</span><small>{{ formatFileSize(adaptFile.size) }}</small><uiIconButton size="small" :icon="IconX" :label="`移除 ${adaptFile.name}`" @click="clearFile('adapt')" /></div></div>
-          <div class="composerFooter"><div class="settingBar"><productionVisualPicker v-model="scriptStyle" v-model:favorites="favoriteStyles" v-model:recent="recentStyles" kind="style" /><uiPopover v-model:visible="adaptSettingsVisible" placement="top-start" :width="350" role="dialog" aria-label="改编设定"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs">{{ adaptTypeLabel }} · {{ adaptEpisodeCount }} 集<icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">改编设定</div><div class="adaptTypeOptions"><button v-for="option in adaptTypeOptions" :key="option.value" type="button" :class="{ selected: adaptType === option.value }" :aria-pressed="adaptType === option.value" @click="adaptType = option.value">{{ option.label }}</button></div><uiField label="目标集数"><template #default="{ id }"><uiNumberInput :id="id" v-model="adaptEpisodeCount" :min="1" :max="100" :precision="0" /></template></uiField></div></uiPopover><uiPopover v-model:visible="ratioVisible" placement="top-start" :width="292" role="dialog" aria-label="画面比例"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs"><span class="ratioGlyph" :class="`ratio${scriptAspectRatio.replace(':', '')}`" aria-hidden="true"></span><span>{{ scriptAspectRatio }}</span><icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">画面比例</div><div class="ratioOptions"><button v-for="option in aspectRatioOptions" :key="option.value" type="button" :class="{ selected: scriptAspectRatio === option.value }" @click="scriptAspectRatio = option.value; ratioVisible = false"><span class="ratioGlyph" :class="`ratio${option.value.replace(':', '')}`" aria-hidden="true"></span><span>{{ option.label }}</span></button></div></div></uiPopover></div><uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || !adaptFile" @click="startDramaFlow">开始改编</uiButton></div>
+          <div class="composerFooter"><div class="settingBar"><productionVisualPicker v-model="scriptStyle" v-model:favorites="favoriteStyles" v-model:recent="recentStyles" kind="style" /><uiPopover v-model:visible="adaptSettingsVisible" placement="top-start" :width="350" role="dialog" aria-label="改编设定"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs">{{ adaptTypeLabel }} · {{ adaptEpisodeCount }} 集<icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">改编设定</div><div class="adaptTypeOptions"><button v-for="option in adaptTypeOptions" :key="option.value" type="button" :class="{ selected: adaptType === option.value }" :aria-pressed="adaptType === option.value" @click="adaptType = option.value">{{ option.label }}</button></div><uiField label="目标集数"><template #default="{ id }"><uiNumberInput :id="id" v-model="adaptEpisodeCount" :min="1" :max="100" :precision="0" /></template></uiField></div></uiPopover><uiPopover v-model:visible="ratioVisible" placement="top-start" :width="292" role="dialog" aria-label="画面比例"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs"><span class="ratioGlyph" :class="`ratio${scriptAspectRatio.replace(':', '')}`" aria-hidden="true"></span><span>{{ scriptAspectRatio }}</span><icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">画面比例</div><div class="ratioOptions"><button v-for="option in aspectRatioOptions" :key="option.value" type="button" :class="{ selected: scriptAspectRatio === option.value }" @click="scriptAspectRatio = option.value; ratioVisible = false"><span class="ratioGlyph" :class="`ratio${option.value.replace(':', '')}`" aria-hidden="true"></span><span>{{ option.label }}</span></button></div></div></uiPopover></div><span class="entryQuoteSummary" role="status" aria-live="polite">{{ entryQuoteError ? '预估失败' : entryQuoting ? '预估中…' : entryQuoteCurrent ? `预计 ${formatCredits(entryQuote)} 积分` : '待预估' }}</span><uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || !adaptFile || entryQuoting || !entryQuoteCurrent" @click="startDramaFlow">开始改编</uiButton></div>
         </div>
       </template>
       <template v-else-if="dramaMode === 'produce'">
@@ -52,7 +53,7 @@
             <input ref="productionFileInput" class="hiddenFileInput" type="file" accept=".txt,.md,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileInput($event, 'produce')" />
             <div v-if="productionFile" class="referenceFileChip"><icon-file-text :size="16" aria-hidden="true" /><span>{{ productionFile.name }}</span><small>{{ formatFileSize(productionFile.size) }}</small><uiIconButton size="small" :icon="IconX" :label="`移除 ${productionFile.name}`" @click.stop="clearFile('produce')" /></div>
           </div>
-          <div class="composerFooter"><div class="settingBar"><productionVisualPicker v-model="scriptStyle" v-model:favorites="favoriteStyles" v-model:recent="recentStyles" kind="style" /><uiPopover v-model:visible="ratioVisible" placement="top-start" :width="292" role="dialog" aria-label="画面比例"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs"><span class="ratioGlyph" :class="`ratio${scriptAspectRatio.replace(':', '')}`" aria-hidden="true"></span><span>{{ scriptAspectRatio }}</span><icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">画面比例</div><div class="ratioOptions"><button v-for="option in aspectRatioOptions" :key="option.value" type="button" :class="{ selected: scriptAspectRatio === option.value }" @click="scriptAspectRatio = option.value; ratioVisible = false"><span class="ratioGlyph" :class="`ratio${option.value.replace(':', '')}`" aria-hidden="true"></span><span>{{ option.label }}</span></button></div></div></uiPopover><uiPopover v-model:visible="episodeVisible" placement="top-start" :width="280" role="dialog" aria-label="目标集数"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs">{{ scriptEpisodeCount }} 集<icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">目标集数</div><div class="episodeOptions"><button v-for="count in episodeOptions" :key="count" type="button" :class="{ selected: scriptEpisodeCount === count }" @click="scriptEpisodeCount = count; episodeVisible = false">{{ String(count).padStart(2, '0') }} 集</button></div></div></uiPopover></div><uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || (!productionBody.trim() && !productionFile)" @click="startDramaFlow">开始制作</uiButton></div>
+          <div class="composerFooter"><div class="settingBar"><productionVisualPicker v-model="scriptStyle" v-model:favorites="favoriteStyles" v-model:recent="recentStyles" kind="style" /><uiPopover v-model:visible="ratioVisible" placement="top-start" :width="292" role="dialog" aria-label="画面比例"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs"><span class="ratioGlyph" :class="`ratio${scriptAspectRatio.replace(':', '')}`" aria-hidden="true"></span><span>{{ scriptAspectRatio }}</span><icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">画面比例</div><div class="ratioOptions"><button v-for="option in aspectRatioOptions" :key="option.value" type="button" :class="{ selected: scriptAspectRatio === option.value }" @click="scriptAspectRatio = option.value; ratioVisible = false"><span class="ratioGlyph" :class="`ratio${option.value.replace(':', '')}`" aria-hidden="true"></span><span>{{ option.label }}</span></button></div></div></uiPopover><uiPopover v-model:visible="episodeVisible" placement="top-start" :width="280" role="dialog" aria-label="目标集数"><template #reference="{ triggerAttrs }"><button type="button" class="settingTrigger" v-bind="triggerAttrs">{{ scriptEpisodeCount }} 集<icon-chevron-down :size="14" aria-hidden="true" /></button></template><div class="optionPicker compactPicker"><div class="pickerTitle">目标集数</div><div class="episodeOptions"><button v-for="count in episodeOptions" :key="count" type="button" :class="{ selected: scriptEpisodeCount === count }" @click="scriptEpisodeCount = count; episodeVisible = false">{{ String(count).padStart(2, '0') }} 集</button></div></div></uiPopover></div><span class="entryQuoteSummary" role="status" aria-live="polite">{{ entryQuoteError ? '预估失败' : entryQuoting ? '预估中…' : entryQuoteCurrent ? `预计 ${formatCredits(entryQuote)} 积分` : '待预估' }}</span><uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || (!productionBody.trim() && !productionFile) || entryQuoting || !entryQuoteCurrent" @click="startDramaFlow">开始制作</uiButton></div>
         </div>
       </template>
       <template v-else>
@@ -62,22 +63,23 @@
           <div class="composerFooter"><span class="composerHint">原片会作为转绘输入。当前入口只创建项目草稿，尚未提交供应商任务。</span><uiButton :loading="creating" :disabled="creating || !auth.currentTeamId || !redrawFiles.length" @click="startDramaFlow">开始转绘</uiButton></div>
         </div>
       </template>
-      <span class="heroHint">当前团队：{{ currentTeam?.name ?? '未选择团队' }} · 剧本草稿阶段不调用供应商</span>
+      <p v-if="entryQuoteError && dramaMode !== 'redraw'" class="pageError" role="alert">{{ entryQuoteError }}</p>
+      <span class="heroHint">当前团队：{{ currentTeam?.name ?? '未选择团队' }} · 剧本创作按所选文本模型的实际用量结算</span>
     </section>
 
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <uiAlert v-if="!auth.currentTeamId" title="请先选择或创建团队" tone="warning">生产项目必须归属团队，前往团队空间创建团队后再开始。</uiAlert>
 
     <section class="featuredSection" aria-labelledby="featuredTitle">
-      <div class="sectionHeading"><div><span class="introKicker">Your production space</span><h3 id="featuredTitle">我的生产项目</h3></div><uiButton variant="ghost" :disabled="!auth.currentTeamId" @click="createVisible = true">新建空白项目</uiButton></div>
+      <div class="sectionHeading"><div><h3 id="featuredTitle">我的生产项目</h3></div><uiButton variant="ghost" :disabled="!auth.currentTeamId" @click="createVisible = true">新建空白项目</uiButton></div>
       <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
       <section class="projectGrid" aria-label="生产项目列表">
         <uiCard v-for="project in projects" :key="project.id" class="projectCard">
           <template #header>
-            <div class="cardHeading"><span class="projectMark">{{ project.title.slice(0, 1) }}</span><div><h3>{{ project.title }}</h3><span class="projectId">{{ project.id }}</span></div></div>
+            <div class="cardHeading"><span class="projectMark">{{ project.title.slice(0, 1) }}</span><div class="projectIdentity"><h3 :title="project.title">{{ project.title }}</h3><span class="projectId">{{ project.id }}</span></div></div>
           </template>
           <template #actions><uiTag :tone="statusTone(project.status)">{{ statusLabel(project.status) }}</uiTag></template>
-          <div class="projectStats"><div><span>项目预算</span><strong>{{ project.budgetCents }} 积分</strong></div><div><span>你的角色</span><strong>{{ roleLabel(project.role) }}</strong></div><div><span>最近更新</span><strong>{{ formatDate(project.updatedAt) }}</strong></div></div>
+          <div class="projectStats"><div><span>项目预算</span><strong :title="`${formatCredits(project.budgetCents)} 积分`">{{ formatCredits(project.budgetCents) }} 积分</strong></div><div><span>你的角色</span><strong>{{ roleLabel(project.role) }}</strong></div><div><span>最近更新</span><strong>{{ formatDate(project.updatedAt) }}</strong></div></div>
           <div class="cardFooter"><span class="muted">{{ project.status === 'draft' ? '等待剧本输入' : '继续生产' }}</span><uiButton size="small" @click="openProject(project.id)">进入项目</uiButton></div>
         </uiCard>
         <div v-if="!loading && !projects.length" class="emptyState"><span class="emptyGlyph">01</span><h3>还没有生产项目</h3><p>从上方输入创意或剧本开始第一部企业漫剧。</p><uiButton :disabled="!auth.currentTeamId" @click="createVisible = true">创建项目</uiButton></div>
@@ -97,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import { IconCheck, IconX } from "@tabler/icons-vue";
@@ -107,6 +109,9 @@ import productionVisualPicker from "@/components/account/productionVisualPicker.
 import { useAuthStore } from "@/stores/auth";
 import { saveProductionDraft, saveProductionDraftFile, setProductionDraftRevision, type ProductionDramaDraft, type ProductionDraftFileRef } from "@/lib/productionDraft";
 import { defaultProductionStyle } from "@/lib/productionStyles";
+import { usePlatformModelsStore } from "@/stores/platformModels";
+import { buildProductionScriptRequest, productionScriptTokenLimit, readProductionScriptReference, startProductionScriptGeneration } from "@/lib/productionScriptCreation";
+import { formatCredits } from "@/lib/creditFormat";
 
 type ProjectStatus = "draft" | "scripted" | "storyboarded" | "generating" | "editing" | "review" | "approved" | "delivered";
 type Project = { id: string; workspaceId: string; customerId: string | null; title: string; status: ProjectStatus; budgetCents: string; createdBy: string; role: string; createdAt: string; updatedAt: string; draftRevision?: number };
@@ -114,6 +119,7 @@ type ApiResponse<T> = { code: number; data: T; message: string };
 
 const router = useRouter();
 const auth = useAuthStore();
+const platformModels = usePlatformModelsStore();
 const projects = ref<Project[]>([]);
 const loading = ref(false);
 const creating = ref(false);
@@ -179,6 +185,47 @@ function applyCustomEpisodeCount() {
 const adaptRequest = ref("");
 const productionBody = ref("");
 const outputLanguage = ref("中文");
+const entryQuote = ref("");
+const entryQuoteError = ref("");
+const entryQuoting = ref(false);
+const entryQuoteSnapshot = ref("");
+let entryQuoteSequence = 0;
+let entryQuoteTimer: ReturnType<typeof setTimeout> | undefined;
+const entryTextModel = computed(() => platformModels.textModels.find(model => model.providerId === platformModels.defaultModels.text?.providerId && model.modelId === platformModels.defaultModels.text?.modelId) ?? platformModels.textModels[0]);
+const entryQuoteKey = computed(() => JSON.stringify([auth.user?.id, auth.currentTeamId, dramaMode.value, scriptIdea.value, adaptRequest.value, productionBody.value, scriptStyle.value, mainGenre.value, fusionGenres.value, scriptAspectRatio.value, scriptEpisodeCount.value, adaptEpisodeCount.value, adaptType.value, outputLanguage.value, entryTextModel.value, [createReferenceFile.value, adaptFile.value, productionFile.value].map(file => file && [file.name, file.size, file.lastModified])]));
+const entryQuoteCurrent = computed(() => Boolean(entryQuote.value && entryQuoteSnapshot.value === entryQuoteKey.value));
+function buildEntryDraft(): ProductionDramaDraft {
+  return { mode: dramaMode.value, instruction: dramaMode.value === "create" ? scriptIdea.value.trim() : dramaMode.value === "adapt" ? adaptRequest.value.trim() : "", pastedScript: dramaMode.value === "produce" ? productionBody.value.trim() : "", files: [], style: scriptStyle.value, genre: mainGenre.value, fusionGenres: [...fusionGenres.value], aspectRatio: scriptAspectRatio.value, episodeCount: dramaMode.value === "adapt" ? adaptEpisodeCount.value : scriptEpisodeCount.value, textModel: entryTextModel.value ? JSON.stringify([entryTextModel.value.providerId, entryTextModel.value.modelId]) : "", adaptType: adaptType.value, outputLanguage: outputLanguage.value };
+}
+async function quoteEntryScript() {
+  const sequence = ++entryQuoteSequence;
+  const key = entryQuoteKey.value;
+  const model = entryTextModel.value;
+  if (dramaMode.value === "redraw" || !model || !auth.currentTeamId) return;
+  const file = dramaMode.value === "create" ? createReferenceFile.value : dramaMode.value === "adapt" ? adaptFile.value : productionFile.value;
+  const draft = buildEntryDraft();
+  if (!draft.instruction && !draft.pastedScript && !file) return;
+  entryQuoting.value = true;
+  try {
+    if (draft.episodeCount > 12) throw new Error("单次模型创作最多支持 12 集，请调整目标集数");
+    const referenceText = file ? await readProductionScriptReference(file, file) : "";
+    const request = buildProductionScriptRequest(draft, referenceText, model);
+    const input = new TextEncoder().encode(JSON.stringify(request.context)).length + 512;
+    const { data } = await axios.post<ApiResponse<{ credits: string }>>("/api/billing/quote", { providerId: model.providerId, modelId: model.modelId, mediaType: "text", textBudget: { input, output: productionScriptTokenLimit(draft.episodeCount), estimation: "剧本提示词 UTF-8 字节预留 + 512 overhead；输出按 token 上限预留" } });
+    if (sequence !== entryQuoteSequence || key !== entryQuoteKey.value) return;
+    entryQuote.value = data.data.credits;
+    entryQuoteSnapshot.value = key;
+  } catch (error) { if (sequence === entryQuoteSequence) entryQuoteError.value = errorText(error); }
+  finally { if (sequence === entryQuoteSequence) entryQuoting.value = false; }
+}
+watch(entryQuoteKey, () => {
+  entryQuoteSequence++;
+  if (entryQuoteTimer) clearTimeout(entryQuoteTimer);
+  entryQuote.value = "";
+  entryQuoteError.value = "";
+  entryQuoting.value = false;
+  entryQuoteTimer = setTimeout(() => { entryQuoteTimer = undefined; void quoteEntryScript(); }, 300);
+});
 const languageOptions = [{ value: "中文", label: "中文" }, { value: "英文", label: "英文" }, { value: "日文", label: "日文" }];
 const statusLabels: Record<ProjectStatus, string> = { draft: "草稿", scripted: "已编剧", storyboarded: "已分镜", generating: "生成中", editing: "剪辑中", review: "待审片", approved: "已批准", delivered: "已交付" };
 
@@ -210,12 +257,13 @@ function handleFileDrop(event: DragEvent, mode: DramaMode) { for (const file of 
 function clearFile(mode: "create" | "adapt" | "produce") { if (mode === "create") createReferenceFile.value = undefined; else if (mode === "adapt") adaptFile.value = undefined; else productionFile.value = undefined; }
 function selectDramaMode(mode: DramaMode) { dramaMode.value = mode; errorMessage.value = ""; }
 async function startDramaFlow() {
-  if (!auth.currentTeamId) return;
+  if (creating.value || !auth.currentTeamId) return;
   const selectedFiles = dramaMode.value === "create" ? [createReferenceFile.value].filter((file): file is File => Boolean(file)) : dramaMode.value === "adapt" ? [adaptFile.value].filter((file): file is File => Boolean(file)) : dramaMode.value === "produce" ? [productionFile.value].filter((file): file is File => Boolean(file)) : redrawFiles.value;
   const instruction = dramaMode.value === "create" ? scriptIdea.value.trim() : dramaMode.value === "adapt" ? adaptRequest.value.trim() : "";
   const canContinue = Boolean(instruction || selectedFiles.length || (dramaMode.value === "produce" && productionBody.value.trim()));
   if (!canContinue) return;
-  const draft = { mode: dramaMode.value, instruction, pastedScript: dramaMode.value === "produce" ? productionBody.value.trim() : "", files: [], style: scriptStyle.value, genre: mainGenre.value, fusionGenres: fusionGenres.value, aspectRatio: scriptAspectRatio.value, episodeCount: dramaMode.value === "adapt" ? adaptEpisodeCount.value : scriptEpisodeCount.value, textModel: "", adaptType: adaptType.value, outputLanguage: outputLanguage.value } satisfies ProductionDramaDraft;
+  if (dramaMode.value !== "redraw" && !entryQuoteCurrent.value) return;
+  const draft = buildEntryDraft();
   await createFromScript(draft, selectedFiles);
 }
 async function createFromScript(draft: ProductionDramaDraft, files: File[]) {
@@ -241,7 +289,13 @@ async function createFromScript(draft: ProductionDramaDraft, files: File[]) {
       if (!pendingDraftProject.files[index]) pendingDraftProject.files[index] = await saveProductionDraftFile(projectId, userId, file);
       await saveProductionDraft(projectId, userId, { ...draft, files: pendingDraftProject.files });
     }
-    await router.push(`/productionProjects/${projectId}`);
+    if (draft.mode !== "redraw") {
+      const model = entryTextModel.value;
+      if (!model) throw new Error("暂无可用文本模型");
+      const referenceText = (await Promise.all(files.map(file => readProductionScriptReference(file, file)))).filter(Boolean).join("\n\n").slice(0, 120000);
+      startProductionScriptGeneration({ projectId, userId, draft: { ...draft, files: pendingDraftProject.files }, referenceText, model });
+    }
+    await router.push({ path: `/productionProjects/${projectId}`, query: { stage: "scripted" } });
     pendingDraftProject = undefined;
   } catch (error) { errorMessage.value = `${pendingDraftProject ? "项目已创建，草稿暂存未完成；保持输入重试会继续保存到同一项目。" : ""}${errorText(error)}`; }
   finally { creating.value = false; }
@@ -286,8 +340,9 @@ onMounted(async () => {
       sessionStorage.removeItem("productionScriptDraft");
     }
   }
-  await loadProjects();
+  await Promise.all([loadProjects(), platformModels.load()]);
 });
+onBeforeUnmount(() => { entryQuoteSequence++; if (entryQuoteTimer) clearTimeout(entryQuoteTimer); });
 </script>
 
 <style scoped lang="scss">
@@ -303,7 +358,7 @@ onMounted(async () => {
 .uploadPrompt { display: grid; align-content: center; align-self: stretch; gap: 8px; color: var(--uiTextBody); font-size: 13px; span { color: var(--uiTextMuted); font-size: 11px; line-height: 1.6; } }
 .referenceFileChip { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; min-width: 0; padding: 8px 10px; border: 1px solid var(--uiBorderDefault); border-radius: 8px; background: var(--uiBackgroundSubtle); svg { flex: 0 0 auto; color: var(--uiActionPrimary); } span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; } small { flex: 0 0 auto; color: var(--uiTextMuted); font-size: 10px; } :deep(.uiIconButton) { margin-left: auto; } }
 .referenceFileList { display: grid; gap: 6px; grid-column: 1 / -1; width: 100%; }
-.composerFooter { min-width: 0; }
+.composerFooter { min-width: 0; .settingBar { flex: 1; } .entryQuoteSummary { color: var(--uiTextMuted); white-space: nowrap; font-size: 11px; } }
 .settingBar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; }
 .settingTrigger { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; max-width: 100%; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; color: var(--uiTextBody); background: transparent; cursor: pointer; font-size: 12px; &:hover, &:focus-visible { border-color: var(--uiBorderDefault); background: var(--uiBackgroundSubtle); } > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 .settingGlyph, .ratioGlyph { flex: 0 0 auto; }
@@ -333,11 +388,11 @@ onMounted(async () => {
 .languageOptions { display: grid; gap: 4px; button { padding: 9px; border: 0; border-radius: 6px; color: var(--uiTextBody); background: transparent; text-align: left; cursor: pointer; &.selected { color: var(--uiActionPrimary); background: var(--uiBackgroundSubtle); } } }
 .composerHint { margin: 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.6; }.redrawSettings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .featuredSection { margin-top: 10px; }.sectionHeading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 18px; h3 { margin: 6px 0 0; font-size: 22px; } }
-.projectGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
-.projectCard { min-height: 210px; :deep(.cardHeader) { padding: 14px 18px; } :deep(.cardContent) { padding: 18px; } }
-.cardHeading { display: flex; align-items: center; gap: 12px; min-width: 0; .projectMark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--uiActionPrimary) 16%, transparent); color: var(--uiActionPrimary); font-weight: 700; } h3 { margin: 0 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectId { display: block; max-width: 210px; color: var(--uiTextMuted); font: 10px ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; }
+.projectGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 18px; }
+.projectCard { min-height: 210px; :deep(.cardHeader) { flex-wrap: nowrap; padding: 14px 18px; } :deep(.cardActions) { flex: 0 0 auto; } :deep(.cardContent) { padding: 18px; } }
+.cardHeading { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; .projectMark { display: grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--uiActionPrimary) 16%, transparent); color: var(--uiActionPrimary); font-weight: 700; } .projectIdentity { flex: 1; min-width: 0; } h3 { margin: 0 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .projectId { display: block; color: var(--uiTextMuted); font: 10px ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
-.projectStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; div { min-width: 0; } span { display: block; margin-bottom: 8px; color: var(--uiTextMuted); font-size: 11px; } strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; } }
+.projectStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; div { min-width: 0; } span { display: block; margin-bottom: 8px; color: var(--uiTextMuted); font-size: 11px; } strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-variant-numeric: tabular-nums; } }
 .cardFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--uiBorderDefault); .muted { color: var(--uiTextMuted); font-size: 11px; } }
 .emptyState { grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 70px 20px; border: 1px dashed var(--uiBorderDefault); border-radius: 18px; text-align: center; .emptyGlyph { color: var(--uiActionPrimary); font: 700 28px ui-monospace, monospace; } h3, p { margin: 0; } p { color: var(--uiTextMuted); } }
 .projectForm { display: grid; gap: 18px; .dialogActions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 8px; } }

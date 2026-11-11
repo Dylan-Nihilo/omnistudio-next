@@ -1,0 +1,92 @@
+{
+  "format": "omnistudio.production.cut.v1",
+  "cut": {
+    "id": "e256391b-b293-44f0-8965-15d86b40370f",
+    "projectId": "f8e5be54-e4bc-433c-ac4b-6ff076ccf7d1",
+    "episodeId": null,
+    "version": 2,
+    "title": "雨灯 · 教学样片 v2",
+    "status": "review",
+    "videoPath": "video.mp4",
+    "projectPath": "project.json",
+    "manifestPath": "manifest.json",
+    "fileHash": "9b71dc814b01ed23a9ced733e7c68c02520fac7950611dbceb3a3e62c7290c0d",
+    "fileSize": 1020052,
+    "durationMs": 5500,
+    "width": 608,
+    "height": 1080,
+    "frameRate": "24/1",
+    "mimeType": "video/mp4",
+    "metadata": {
+      "sourceDirectoryHash": "4dd8374dc87802f79b75f54c5f2a21ce9b39327cfd43c6289b2fb202b58956f9",
+      "sourceVideoPath": "assets/videoEditor/exports/edited1794202512639e5bb01f9.mp4",
+      "sourceProjectPath": "assets/videoEditor/timeline.json",
+      "sourceProjectRevision": "5b9340d74d6844851171768df762512d9eee84e3133fa08f2e3f93295a6db48d",
+      "sourceReferences": [
+        {
+          "type": "workspace",
+          "id": "assets/686f1d44-a0b6-460b-a420-39d75fe86406/video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4",
+          "label": "video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4"
+        },
+        {
+          "type": "workspace",
+          "id": "assets/5bb245b8-90b9-4873-8a35-bd7405d0c9b2/imageb1c0e84d-5672-4aac-848a-4aae29934693.png",
+          "label": "imageb1c0e84d-5672-4aac-848a-4aae29934693.png"
+        }
+      ],
+      "sourceSnapshots": [
+        {
+          "assetId": "d3d7a1db-934d-4132-8b49-5951c059da87",
+          "assetName": "video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4",
+          "assetPath": "assets/videoEditor/media/59ccedde-d950-449e-9ea2-fe3fad2b0375.mp4",
+          "assetHash": "cdc23f92e93cf693f4e6429a102f8e141401ec7f43cfeba0cd467ab1aff05117",
+          "verified": true,
+          "importedBy": "b8a8ab71-53f2-4dd8-be63-cea3919f4296",
+          "importedAt": "2026-11-09T05:06:46.951Z",
+          "source": {
+            "type": "workspace",
+            "path": "assets/686f1d44-a0b6-460b-a420-39d75fe86406/video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4",
+            "hash": "cdc23f92e93cf693f4e6429a102f8e141401ec7f43cfeba0cd467ab1aff05117",
+            "sourceDirectoryHash": "4dd8374dc87802f79b75f54c5f2a21ce9b39327cfd43c6289b2fb202b58956f9",
+            "importedAt": "2026-11-09T05:06:46.951Z",
+            "canvasPath": "画布1.json",
+            "revision": "2f95ea6aa183f8fe117d449e8a96e10f438fd80c7a3441cb9928eb61fdcaf678",
+            "nodeId": "686f1d44-a0b6-460b-a420-39d75fe86406",
+            "outputId": "video"
+          }
+        },
+        {
+          "assetId": "f80bf651-7779-42c0-a618-cf3c7ec0347f",
+          "assetName": "imageb1c0e84d-5672-4aac-848a-4aae29934693.png",
+          "assetPath": "assets/videoEditor/media/240b2816-3560-417c-9f24-61850e6ee24a.png",
+          "assetHash": "6c9b033cf178c30f0d35f2dd8600c7dab27b4bbeaaddb2a9b8e42d349d3a7cb1",
+          "verified": true,
+          "importedBy": "b8a8ab71-53f2-4dd8-be63-cea3919f4296",
+          "importedAt": "2026-11-09T05:11:14.873Z",
+          "source": {
+            "type": "workspace",
+            "path": "assets/5bb245b8-90b9-4873-8a35-bd7405d0c9b2/imageb1c0e84d-5672-4aac-848a-4aae29934693.png",
+            "hash": "6c9b033cf178c30f0d35f2dd8600c7dab27b4bbeaaddb2a9b8e42d349d3a7cb1",
+            "sourceDirectoryHash": "4dd8374dc87802f79b75f54c5f2a21ce9b39327cfd43c6289b2fb202b58956f9",
+            "importedAt": "2026-11-09T05:11:14.873Z"
+          }
+        },
+        {
+          "assetId": "efe52282-cc48-4501-a24f-b7903beda069",
+          "assetName": "rainyAmbience.wav",
+          "assetPath": "assets/videoEditor/media/efe52282-cc48-4501-a24f-b7903beda069-rainyAmbience.wav",
+          "assetHash": "7a93cb27ff073fb4cf568af6190f549b62a81728b023a36f2fbd7fa7645d9fba",
+          "verified": false
+        }
+      ]
+    },
+    "createdBy": "b8a8ab71-53f2-4dd8-be63-cea3919f4296",
+    "comment": null,
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "deliveredBy": null,
+    "deliveredAt": null,
+    "createdAt": "2026-11-09T05:35:57.468Z",
+    "updatedAt": "2026-11-09T05:35:57.468Z"
+  }
+}

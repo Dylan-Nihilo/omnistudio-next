@@ -1,7 +1,7 @@
 <template>
   <nodeSkeleton v-bind="nodeProps" v-model:bottomVisible="node.selected" :topVisible="node.selected" topWidth="max-content" :downloadUrl="downloadUrl" :downloadName="`${nodeProps.label || '文本'}.txt`" :bottomWidth="660" @fullscreen="fullscreen = true; editing = true">
     <div class="textContent" :class="{ empty: !hasText }"><div v-if="hasText" class="textPreview nopan nowheel" aria-label="文本内容">{{ outputs.text.value }}</div><uiButton class="editButton nodrag nopan" variant="ghost" size="small" :icon="IconEdit" :disabled="generating || !textReady" @dblclick.stop @click.stop="editing = true">编辑</uiButton></div>
-    <template #bottom><section class="promptCard"><div v-if="refList.length" class="promptHeader"><referenceItem v-model="refList" @preview="setReferencePreview" @remove="removeReference" /></div><promptInput v-model="promptModel" v-model:text="prompt" :references="referenceMentions" /><div class="promptFooter"><div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="visible => visible && loadModels()" /></div><uiIconButton :icon="IconArrowUp" variant="primary" :loading="generating" :disabled="!prompt.trim() || !selectedModel || generating || !textReady" label="生成" title="生成" @click="generateText" /></div></section></template>
+    <template #bottom><section class="promptCard"><div v-if="refList.length" class="promptHeader"><referenceItem v-model="refList" @preview="setReferencePreview" @remove="removeReference" /></div><promptInput v-model="promptModel" v-model:text="prompt" :references="referenceMentions" /><div class="promptFooter"><div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="model" :options="models.map(item => ({ label: getModelSelectionLabel(item), value: JSON.stringify([item.providerId, item.modelId]), icon: modelIcon, iconProps: { model: item.modelId, provider: item.providerId, size: 18 } }))" filterable :loading="modelsLoading" :disabled="generating" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="visible => visible && loadModels()" /></div><uiIconButton :icon="IconArrowUp" variant="primary" :loading="generating" :disabled="!prompt.trim() || !selectedModel || generating || !textReady" label="生成" title="生成" @click="generateText" /></div></section></template>
   </nodeSkeleton>
   <uiDialog v-model="editing" title="编辑文本" :width="860" :fullscreen="fullscreen" @closed="fullscreen = false"><uiTextarea class="textEditor" :class="{ fullscreen }" v-model="outputs.text.value" :rows="1" :disabled="generating" resize="none" aria-label="编辑文本内容" /></uiDialog>
 </template>
@@ -10,9 +10,10 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { uiButton, uiIconButton, uiSelect, uiDialog, uiTextarea, useUiFeedback } from "@omnistudio-next/ui";
 import { IconEdit, IconFileText, IconSparkles, IconArrowUp } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNode, useNodeReferences, z, type NodeAiModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import { nodeSkeleton, nodeTools, useNode, useNodeReferences, z, type NodeAiModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
+import { getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 
 type PromptModel = NonNullable<InstanceType<typeof promptInput>["$props"]["modelValue"]>;
 
@@ -58,7 +59,6 @@ watch(models, (items) => {
     model.value = preferred ? JSON.stringify([preferred.providerId, preferred.modelId]) : "";
   }
 }, { immediate: true });
-const modelGroups = computed(() => groupNodeModels(models.value));
 const textReady = ref(false);
 const textPath = `assets/${node.id}/content.md`;
 let textFiles: ReturnType<typeof files.getWorkspaceFiles>;

@@ -2,24 +2,25 @@
   <main class="videoEditor">
     <header class="editorHeader">
       <div class="headerProject">
-        <button class="iconButton backButton" type="button" aria-label="返回画布" @click="router.push('/workspace')"><icon-arrow-left :size="18" /></button>
-        <div class="projectTitle"><strong>剪辑台</strong><span>{{ workspaceStore.project?.name || "未命名项目" }}</span></div>
+        <button class="iconButton backButton" type="button" :aria-label="isProductionEditor ? '返回生产项目' : '返回画布'" @click="returnFromEditor"><icon-arrow-left :size="18" /></button>
+        <div class="projectTitle"><strong>剪辑台</strong><span>{{ isProductionEditor ? productionEditorTitle || "生产项目" : workspaceStore.project?.name || "未命名项目" }}</span></div>
       </div>
       <div class="headerActions">
-        <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
+        <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || isProductionEditor && !boundProductionProjectPath || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
-        <button class="secondaryButton" type="button" :disabled="projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
+        <button class="secondaryButton" type="button" :disabled="isProductionEditor && !boundProductionProjectPath || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
         <button class="secondaryButton" type="button" :disabled="!projectReady" @click="openRenderQueue">渲染队列</button>
         <button class="exportButton" type="button" :disabled="!canExport || exportBusy || exportRecordBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
       </div>
     </header>
-    <section v-if="!directory" class="noProject"><icon-movie :size="40" /><h1>请先打开项目</h1><button class="secondaryButton" @click="router.push('/workspace')">返回工作区</button></section>
+    <section v-if="!directory" class="noProject"><icon-movie :size="40" /><h1>{{ isProductionEditor ? "生产项目工作区尚未就绪" : "请先打开项目" }}</h1><button class="secondaryButton" @click="returnFromEditor">{{ isProductionEditor ? "返回生产项目" : "返回工作区" }}</button></section>
     <template v-else>
       <div v-if="draftAvailable" class="noticeBar" role="status"><span>发现尚未保存的本地草稿，恢复前会保留当前工程备份。</span><button :disabled="exportRecordBusy" @click="restoreDraft">恢复草稿</button><button :disabled="exportRecordBusy" @click="discardDraft">忽略草稿</button></div>
       <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy || exportRecordBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button></div>
       <div v-if="saveBlocked" class="noticeBar errorNotice" role="alert"><span>项目已被其他窗口修改。当前编辑保留为本地草稿，请重新读取后选择是否恢复。</span><button @click="reloadProject">重新读取项目</button></div>
       <div v-if="saveRetryable" class="noticeBar errorNotice" role="alert"><span>{{ saveError }}当前更改已保留为本地草稿。</span><button type="button" :disabled="saveBusy" @click="saveProject">重试保存</button></div>
-      <div v-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button :disabled="exportRecordBusy" @click="openRecovery">从备份恢复</button></div>
+      <div v-if="canvasProjectCandidates.length" class="noticeBar errorNotice" role="alert"><span>这张画布对应多个已有剪辑工程，请从剪辑工程列表中选择要继续的版本。</span><button type="button" @click="openEditorProjects">选择剪辑工程</button></div>
+      <div v-else-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button v-if="isProductionEditor && !boundProductionProjectPath" :disabled="exportRecordBusy" @click="reloadProject">重新读取项目</button><button v-else :disabled="exportRecordBusy" @click="openRecovery">从备份恢复</button></div>
       <div class="editorBody" :class="{ isUnavailable: !projectReady }">
         <aside class="mediaPanel" @dragover.prevent @drop.prevent="dropFiles">
           <nav class="sideNav" aria-label="剪辑工具">
@@ -178,7 +179,25 @@
     <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
     <dialog v-if="directory && projectContext" ref="renderQueueDialog" class="renderQueueDialog" aria-label="后台渲染队列"><header class="renderDialogHeader"><strong>后台渲染</strong><button class="secondaryButton" type="button" @click="renderQueueDialog?.close()">关闭</button></header><editorRenderQueue :directory="directory" :projectPath="projectContext.projectPath" :revision="renderProjectRevision" :refreshKey="renderQueueRefreshKey" :disabled="!!sessionInvalidated" @completed="completeEditorRender" @useResult="useEditorRenderResult" /></dialog>
     <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
-    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false"><div class="recoveryDialog editorProjectsDialog"><h2>剪辑工程</h2><p>每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。</p><label class="fieldLabel" for="newEditorProjectName">新建工程</label><div class="buttonRow"><input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" :disabled="exportRecordBusy" @keydown.enter.prevent="createEditorProjectFromDialog" /><button class="exportButton" :disabled="!newEditorProjectName || projectBusy || exportRecordBusy" @click="createEditorProjectFromDialog">新建</button></div><div v-if="editorProjectOptions.length" class="editorProjectList"><button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: item.path === activeEditorProjectPath }" :disabled="projectBusy || exportRecordBusy || item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)"><span><strong>{{ item.name }}</strong><small>{{ item.path }}</small></span><span>{{ item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span></button></div><p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="editorProjectsOpen = false">关闭</button></div></div></div>
+    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false">
+      <div class="recoveryDialog editorProjectsDialog">
+        <h2>剪辑工程</h2>
+        <p>{{ canvasProjectCandidates.length ? "这张画布关联了多个旧剪辑工程，请选择要继续的工程。" : "每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。" }}</p>
+        <label class="fieldLabel" for="newEditorProjectName">新建工程</label>
+        <div class="projectCreateRow">
+          <input id="newEditorProjectName" v-model.trim="newEditorProjectName" maxlength="120" placeholder="输入剪辑工程名称" :disabled="exportRecordBusy" @keydown.enter.prevent="createEditorProjectFromDialog" />
+          <button class="exportButton" :disabled="!newEditorProjectName || projectBusy || exportRecordBusy" @click="createEditorProjectFromDialog">新建</button>
+        </div>
+        <div v-if="editorProjectOptions.length" class="editorProjectList">
+          <button v-for="item in editorProjectOptions" :key="item.path" type="button" class="editorProjectChoice" :class="{ isCurrent: projectReady && item.path === activeEditorProjectPath }" :disabled="projectBusy || exportRecordBusy || projectReady && item.path === activeEditorProjectPath" @click="selectEditorProject(item.path)">
+            <span class="projectChoiceInfo"><strong :title="item.name">{{ item.name }}</strong><small :title="item.path">{{ item.path }}</small></span>
+            <span class="projectChoiceState">{{ projectReady && item.path === activeEditorProjectPath ? '当前工程' : '打开' }}</span>
+          </button>
+        </div>
+        <p v-if="projectError" class="exportError" role="alert">{{ projectError }}</p>
+        <div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="editorProjectsOpen = false">关闭</button></div>
+      </div>
+    </div>
     <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportSubmitting ? '正在提交后台渲染任务' : exportController?.signal.aborted ? '正在停止任务准备' : '正在准备渲染任务' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportSubmitting || exportController?.signal.aborted" @click="exportController?.abort()">取消准备</button></div></div>
   </main>
 </template>
@@ -186,12 +205,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import axios from "axios";
-import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
-import { useWorkspaceStore } from "@/stores/workspace";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from "vue-router";
+import { isSameDirectory, useWorkspaceStore } from "@/stores/workspace";
+import { useAuthStore } from "@/stores/auth";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
 import { getSessionSnapshot, sessionInvalidated } from "@/lib/sessionState";
 import { clipDuration, clipKeyframeValue, createDefaultTracks, crossfadeDuration, parseEditorProject, parseSubtitles, serializeSubtitles, sliceClipKeyframes, trackAudioEnabled, type EditorAsset, type EditorClip, type EditorKeyframe, type EditorKeyframeProperty, type EditorProject, type EditorTrack, type MediaKind, type TrackKind } from "./editorModel";
-import { backupEditorContent, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, saveEditorProject } from "./editorProject";
+import { backupEditorContent, bindCanvasEditorProject, bindProductionEditorProject, createEditorProject as createEditorProjectFile, ensureEditorFolders, loadEditorProject, listEditorBackups, listEditorProjects, pruneEditorBackups, readEditorBackup, resolveCanvasEditorProject, resolveProductionEditorProject, saveEditorProject } from "./editorProject";
 import { exportEditorProject, type EditorRenderJob } from "./editorExport";
 import { exportEdl, importEdl } from "./editorExchange";
 import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slipEditClip } from "./editorTimeline";
@@ -216,10 +236,17 @@ type EditorCacheEntry = { path: string; status: EditorCacheStatus };
 type CachedMedia = { proxyUrl?: string; thumbnailSprite?: { url: string; width: number; height: number; columns: number; rows: number; count: number; step: number; padding: number; margin: number }; waveform?: { duration: number; peaks: number[] } };
 type NumericField = "start" | "inPoint" | "outPoint" | "volume" | "gainDb" | "speed" | "x" | "y" | "scale" | "rotation" | "opacity" | "brightness" | "contrast" | "saturation" | "fadeIn" | "fadeOut" | "transitionIn" | "transitionOut" | "fontSize" | "textX" | "textY";
 type AudioLoudnessResult = { integratedLufs: number; truePeakDb: number; targetLufs: number; gainDb: number; expectedLufs: number; limited: boolean; hash: string };
+type ProductionEditorPayload = { project: { id: string; title: string }; episodes: { id: string; title: string }[] };
 const router = useRouter();
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
-const directory = computed(() => workspaceStore.project?.directory);
+const authStore = useAuthStore();
+const productionProjectId = computed(() => queryString(route.query.productionProjectId));
+const productionEpisodeId = computed(() => queryString(route.query.episodeId));
+const productionBindingKey = computed(() => JSON.stringify([route.query.productionProjectId !== undefined, route.query.episodeId !== undefined, route.query.productionProjectId, route.query.episodeId]));
+const isProductionEditor = computed(() => route.query.productionProjectId !== undefined || route.query.episodeId !== undefined);
+const directory = computed(() => isProductionEditor.value ? authStore.personalDirectory || undefined : workspaceStore.project?.directory);
+const productionEditorTitle = ref("");
 const legacyEditorProjectPath = "assets/videoEditor/timeline.json";
 const trackLabelWidth = 174;
 const panelTabs = [{ id: "media", label: "媒体", icon: IconPhotoVideo }, { id: "audio", label: "音频", icon: IconMusic }, { id: "text", label: "文字", icon: IconTextSize }, { id: "settings", label: "设置", icon: IconAdjustments }] as const;
@@ -280,6 +307,10 @@ const saveRetryable = ref(false);
 const projectLoading = ref(false);
 const loadedDirectory = ref<string>();
 const activeEditorProjectPath = ref(legacyEditorProjectPath);
+const activeCanvasPath = ref<string>();
+const boundCanvasProjectPath = ref<string>();
+const boundProductionProjectPath = ref<string>();
+const canvasProjectCandidates = ref<{ path: string; name: string }[]>([]);
 const editorProjectName = ref("默认剪辑项目");
 const editorProjectOptions = ref<{ path: string; name: string }[]>([]);
 const editorProjectsOpen = ref(false);
@@ -371,7 +402,7 @@ const projectReady = computed(() => !!directory.value && loadedDirectory.value =
 const renderProjectRevision = computed(() => projectReady.value && !saveBusy.value && !savePending.value && !saveError.value ? projectContext?.revision ?? "" : "");
 const canRegisterExport = computed(() => !!lastExport.value && projectReady.value && activeEditorProjectPath.value === lastExport.value.projectPath && !saveBlocked.value && !saveError.value && !saveBusy.value && !savePending.value && !exportBusy.value && !sourceImportBusy.value && getProjectContent() === exportedProjectContent.value);
 const exportedProjectContent = ref("");
-const returnCanvasPath = computed(() => assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
+const returnCanvasPath = computed(() => activeCanvasPath.value ?? assets.value.find(asset => asset.source?.canvasPath)?.source?.canvasPath);
 const canEdit = computed(() => projectReady.value && !importBusy.value && !sourceImportBusy.value && !projectBusy.value && !exportBusy.value && !exportRecordBusy.value);
 const selectedClip = computed(() => clips.value.find(clip => clip.id === selectedClipId.value));
 const selectedClipHasAudio = computed(() => {
@@ -456,9 +487,9 @@ const rulerTicks = computed(() => {
   return Array.from({ length: Math.min(1000, Math.ceil(end / step) + 1) }, (_, index) => index * step);
 });
 const sourceImportKey = computed(() => JSON.stringify([route.query.sourceDirectory, route.query.canvasPath, route.query.nodeIds, route.query.productionProjectId, route.query.episodeId, route.query.variantIds, route.query.variantId]));
+const sourceCanvasPath = computed(() => queryString(route.query.canvasPath) ?? queryString(route.query.editorCanvasPath));
 
-watch(directory, (next, previous) => {
-  if (next === previous) return;
+watch([directory, sourceCanvasPath, productionBindingKey], ([next, canvasPath, bindingKey]) => {
   if (pendingSave && !saveBlocked.value) void saveProject();
   importController.value?.abort();
   exportController.value?.abort();
@@ -471,7 +502,17 @@ watch(directory, (next, previous) => {
   projectVersion++;
   stopPlayback();
   clearEditor();
-  if (next) {
+  activeCanvasPath.value = canvasPath;
+  boundCanvasProjectPath.value = undefined;
+  boundProductionProjectPath.value = undefined;
+  productionEditorTitle.value = "";
+  canvasProjectCandidates.value = [];
+  if (canvasPath && isProductionEditor.value) {
+    saveError.value = "剪辑台不能同时绑定画布与生产项目，请从对应入口重新打开。";
+    projectLoading.value = false;
+  } else if (isProductionEditor.value) void openProductionEditorProject(next, bindingKey);
+  else if (canvasPath) void openCanvasEditorProject(next, canvasPath);
+  else if (next) {
     activeEditorProjectPath.value = selectedEditorProjectPath(next);
     void loadProject(next, activeEditorProjectPath.value);
   }
@@ -526,7 +567,15 @@ onMounted(() => {
   }, 20);
 });
 onBeforeRouteLeave(async () => {
-  if (importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value) return false;
+  if (importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value || projectBusy.value) return false;
+  stopPlayback();
+  return await saveProject();
+});
+onBeforeRouteUpdate(async to => {
+  const canvasPath = queryString(to.query.canvasPath) ?? queryString(to.query.editorCanvasPath);
+  const nextProductionBindingKey = JSON.stringify([to.query.productionProjectId !== undefined, to.query.episodeId !== undefined, to.query.productionProjectId, to.query.episodeId]);
+  if (canvasPath === activeCanvasPath.value && nextProductionBindingKey === productionBindingKey.value) return;
+  if (importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value || projectBusy.value) return false;
   stopPlayback();
   return await saveProject();
 });
@@ -1604,6 +1653,80 @@ function selectedEditorProjectPath(directory: string) {
     return value === legacyEditorProjectPath || /^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(value ?? "") ? value! : legacyEditorProjectPath;
   } catch { return legacyEditorProjectPath; }
 }
+function returnFromEditor() {
+  if (!isProductionEditor.value) { void router.push("/workspace"); return; }
+  const projectId = productionProjectId.value;
+  if (!projectId || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(projectId)) { void router.push("/productionProjects"); return; }
+  void router.push({ path: `/productionProjects/${projectId}`, query: { stage: "generating" } });
+}
+async function openProductionEditorProject(projectDirectory: string | undefined, bindingKey: string) {
+  const version = projectVersion;
+  projectLoading.value = true;
+  try {
+    const projectId = productionProjectId.value;
+    const episodeId = productionEpisodeId.value;
+    if (!projectId || !episodeId) throw new Error("从生产项目剪辑需要指定剧集");
+    if (!projectDirectory) throw new Error("当前账户的个人工作区尚未就绪，请重新打开生产项目");
+    if (sourceCanvasPath.value) throw new Error("剪辑台不能同时绑定画布与生产项目，请从对应入口重新打开。");
+    const { data } = await axios.get<ApiResponse<ProductionEditorPayload>>("/api/productionProjects/get", { params: { projectId } });
+    if (data.data.project.id.toLowerCase() !== projectId.toLowerCase()) throw new Error("生产项目编号与服务端返回不一致");
+    const episode = data.data.episodes.find(item => item.id.toLowerCase() === episodeId.toLowerCase());
+    if (!episode) throw new Error("所选剧集不属于当前生产项目");
+    if (version !== projectVersion || !isSameDirectory(directory.value, projectDirectory) || bindingKey !== productionBindingKey.value || !mounted) return;
+    const resolved = await resolveProductionEditorProject(
+      projectDirectory,
+      projectId,
+      episodeId,
+      data.data.project.title,
+      episode.title,
+    );
+    if (version !== projectVersion || !isSameDirectory(directory.value, projectDirectory) || bindingKey !== productionBindingKey.value || !mounted) return;
+    activeEditorProjectPath.value = resolved.path;
+    boundProductionProjectPath.value = resolved.path;
+    productionEditorTitle.value = `${data.data.project.title} · ${episode.title}`;
+    await loadProject(projectDirectory, resolved.path);
+  } catch (error) {
+    if (version === projectVersion && isSameDirectory(directory.value, projectDirectory) && bindingKey === productionBindingKey.value) {
+      saveError.value = errorMessage(error, "恢复生产项目剪辑工程失败");
+      projectLoading.value = false;
+    }
+  }
+}
+async function openCanvasEditorProject(projectDirectory: string | undefined, canvasPath: string) {
+  const version = projectVersion;
+  projectLoading.value = true;
+  try {
+    const sourceDirectory = queryString(route.query.sourceDirectory);
+    if (!sourceDirectory) throw new Error("缺少画布来源工作区，请从原画布重新打开剪辑台");
+    if (!isSameDirectory(sourceDirectory, projectDirectory)) {
+      await workspaceStore.openProject(sourceDirectory, sourceDirectory, getSessionSnapshot().signal);
+      return;
+    }
+    if (!projectDirectory) throw new Error("请先打开来源工作区");
+    const resolved = await resolveCanvasEditorProject(projectDirectory, canvasPath);
+    if (version !== projectVersion || directory.value !== projectDirectory || activeCanvasPath.value !== canvasPath || !mounted) return;
+    if (resolved.candidates) {
+      canvasProjectCandidates.value = resolved.candidates;
+      editorProjectOptions.value = resolved.candidates;
+      editorProjectsOpen.value = true;
+      projectLoading.value = false;
+      return;
+    }
+    activeEditorProjectPath.value = resolved.path;
+    boundCanvasProjectPath.value = resolved.path;
+    rememberEditorProjectPath(projectDirectory, resolved.path);
+    await loadProject(projectDirectory, resolved.path);
+  } catch (error) {
+    if (version === projectVersion && directory.value === projectDirectory && activeCanvasPath.value === canvasPath) {
+      saveError.value = errorMessage(error, "恢复画布剪辑工程失败");
+      projectLoading.value = false;
+    }
+  }
+}
+function rememberEditorProjectPath(projectDirectory: string, path: string) {
+  try { localStorage.setItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${projectDirectory}`, path); }
+  catch (error) { console.warn("当前剪辑工程无法记入本地偏好", error); }
+}
 async function loadProject(path: string, editorPath = activeEditorProjectPath.value) {
   const version = projectVersion;
   projectLoading.value = true;
@@ -1614,7 +1737,7 @@ async function loadProject(path: string, editorPath = activeEditorProjectPath.va
     projectContext = { directory: path, projectPath: editorPath, revision: loaded.revision, content: loaded.content, draftKey: `${draftKey}:${crypto.randomUUID()}`, sequence: 0, blocked: false };
     applyProject(loaded.project);
     backups.value = loaded.backups;
-    try { editorProjectOptions.value = await listEditorProjects(path); }
+    try { editorProjectOptions.value = isProductionEditor.value ? [{ path: editorPath, name: editorProjectName.value }] : await listEditorProjects(path); }
     catch (error) { console.warn("剪辑工程列表读取失败", error); }
     if (version !== projectVersion || directory.value !== path || activeEditorProjectPath.value !== editorPath || !mounted) return;
     loadedDirectory.value = path;
@@ -1700,10 +1823,16 @@ async function reloadProject() {
   stopPlayback();
   projectVersion++;
   clearEditor();
-  await loadProject(path);
+  if (isProductionEditor.value) {
+    boundProductionProjectPath.value = undefined;
+    productionEditorTitle.value = "";
+    await openProductionEditorProject(path, productionBindingKey.value);
+  }
+  else if (activeCanvasPath.value) await openCanvasEditorProject(path, activeCanvasPath.value);
+  else await loadProject(path);
 }
 async function openRecovery() {
-  if (!directory.value || exportRecordBusy.value) return;
+  if (!directory.value || exportRecordBusy.value || isProductionEditor.value && !boundProductionProjectPath.value) return;
   recoveryOpen.value = true;
   recoveryError.value = "";
   try { backups.value = await listEditorBackups(directory.value, activeEditorProjectPath.value); selectedBackup.value = backups.value[0]?.path ?? ""; }
@@ -1714,7 +1843,7 @@ async function restoreBackup() {
   const editorPath = activeEditorProjectPath.value;
   const backupPath = selectedBackup.value;
   const version = projectVersion;
-  if (!path || !backupPath || importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value) return;
+  if (!path || !backupPath || importBusy.value || sourceImportBusy.value || exportBusy.value || exportRecordBusy.value || isProductionEditor.value && editorPath !== boundProductionProjectPath.value) return;
   projectLoading.value = true;
   try {
     if (!saveBlocked.value && pendingSave && !await saveProject()) throw new Error("当前工程保存失败，请先解决保存问题");
@@ -1740,28 +1869,52 @@ async function restoreBackup() {
   finally { if (version === projectVersion) projectLoading.value = false; }
 }
 async function openEditorProjects() {
-  if (!directory.value || projectBusy.value || exportRecordBusy.value) return;
+  if (!directory.value || projectBusy.value || exportRecordBusy.value || isProductionEditor.value && !boundProductionProjectPath.value) return;
   projectError.value = "";
   newEditorProjectName.value = "";
-  try { editorProjectOptions.value = await listEditorProjects(directory.value); }
+  try {
+    if (isProductionEditor.value) {
+      if (!boundProductionProjectPath.value) throw new Error("当前生产项目尚未恢复绑定工程，无法切换工程");
+      const projects = await listEditorProjects(directory.value);
+      editorProjectOptions.value = projects.filter(item => item.path === boundProductionProjectPath.value);
+    } else editorProjectOptions.value = canvasProjectCandidates.value.length ? canvasProjectCandidates.value : await listEditorProjects(directory.value);
+  }
   catch (error) { projectError.value = errorMessage(error, "读取剪辑工程失败"); }
   editorProjectsOpen.value = true;
 }
 async function selectEditorProject(path: string, fromCreate = false) {
   const projectDirectory = directory.value;
-  if (!projectDirectory || sourceImportBusy.value || importBusy.value || exportBusy.value || exportRecordBusy.value || projectBusy.value && !fromCreate || path === activeEditorProjectPath.value) return;
+  if (!projectDirectory || sourceImportBusy.value || importBusy.value || exportBusy.value || exportRecordBusy.value || projectBusy.value && !fromCreate || path === activeEditorProjectPath.value && projectReady.value) return;
+  if (isProductionEditor.value && !fromCreate && path !== boundProductionProjectPath.value) {
+    projectError.value = "只能打开当前生产项目与剧集绑定的剪辑工程";
+    return;
+  }
   if (path !== legacyEditorProjectPath && !/^assets\/videoEditor\/projects\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}\.json$/.test(path)) {
     projectError.value = "剪辑工程路径无效";
     return;
   }
   projectBusy.value = true;
   projectError.value = "";
+  const canvasPath = activeCanvasPath.value;
+  const version = projectVersion;
   try {
     if (!saveBlocked.value && !await saveProject()) throw new Error("当前剪辑工程尚未保存，请先解决保存问题");
-    if (projectDirectory !== directory.value) throw new Error("工作区已切换，请重新选择剪辑工程");
+    if (projectDirectory !== directory.value || version !== projectVersion || !mounted) throw new Error("工作区已切换，请重新选择剪辑工程");
+    if (isProductionEditor.value) {
+      const projectId = productionProjectId.value;
+      const episodeId = productionEpisodeId.value;
+      if (!projectId || !episodeId) throw new Error("生产项目剪辑需要指定剧集");
+      await bindProductionEditorProject(projectDirectory, projectId, episodeId, path, boundProductionProjectPath.value);
+      if (projectDirectory !== directory.value || version !== projectVersion || !mounted) throw new Error("工作区已切换，请重新选择剪辑工程");
+      boundProductionProjectPath.value = path;
+    } else if (canvasPath) {
+      await bindCanvasEditorProject(projectDirectory, canvasPath, path, boundCanvasProjectPath.value);
+      if (projectDirectory !== directory.value || version !== projectVersion || !mounted) throw new Error("工作区已切换，请重新选择剪辑工程");
+      boundCanvasProjectPath.value = path;
+    }
     activeEditorProjectPath.value = path;
-    try { localStorage.setItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${projectDirectory}`, path); }
-    catch (error) { console.warn("当前剪辑工程无法记入本地偏好", error); }
+    if (!isProductionEditor.value) rememberEditorProjectPath(projectDirectory, path);
+    canvasProjectCandidates.value = [];
     projectVersion++;
     stopPlayback();
     clearEditor();
@@ -1774,15 +1927,16 @@ async function selectEditorProject(path: string, fromCreate = false) {
 async function createEditorProjectFromDialog() {
   const projectDirectory = directory.value;
   const name = newEditorProjectName.value.trim();
-  if (!projectDirectory || !name || projectBusy.value || exportRecordBusy.value) return;
+  if (!projectDirectory || !name || projectBusy.value || exportRecordBusy.value || isProductionEditor.value && !boundProductionProjectPath.value) return;
+  const version = projectVersion;
   projectBusy.value = true;
   projectError.value = "";
   try {
     if (!saveBlocked.value && !await saveProject()) throw new Error("当前剪辑工程尚未保存，请先解决保存问题");
-    if (directory.value !== projectDirectory) throw new Error("工作区已切换，请重试");
+    if (directory.value !== projectDirectory || version !== projectVersion) throw new Error("工作区已切换，请重试");
     const created = await createEditorProjectFile(projectDirectory, name);
     editorProjectOptions.value = await listEditorProjects(projectDirectory);
-    if (directory.value !== projectDirectory) throw new Error("工作区已切换，工程已保留在原工作区");
+    if (directory.value !== projectDirectory || version !== projectVersion) throw new Error("工作区已切换，工程已保留在原工作区");
     await selectEditorProject(created.path, true);
     newEditorProjectName.value = "";
   } catch (error) { projectError.value = errorMessage(error, "新建剪辑工程失败"); }
@@ -1876,6 +2030,7 @@ function queryIdList() {
 function clearSourceImportQuery() {
   const query = { ...route.query };
   for (const key of ["canvasPath", "nodeIds", "variantIds", "variantId"]) delete query[key];
+  if (activeCanvasPath.value) query.editorCanvasPath = activeCanvasPath.value;
   sourceImportError.value = "";
   retryPickedSource.value = undefined;
   pendingPickedAsset.value = undefined;
@@ -1926,7 +2081,7 @@ async function importEditorSources() {
   sourceImportError.value = "";
   sourceImportNotice.value = "";
   sourceImportLabel.value = "正在读取素材来源";
-  let version = projectVersion;
+  const version = projectVersion;
   const isCurrent = () => mounted && version === projectVersion && currentDirectory === directory.value && key === sourceImportKey.value;
   const canvasIncoming: EditorAsset[] = [];
   const productionIncoming: EditorAsset[] = [];
@@ -1936,7 +2091,7 @@ async function importEditorSources() {
     const projectId = queryString(route.query.productionProjectId);
     const variantIds = queryIdList();
     if (canvasPath) {
-      if (queryString(route.query.sourceDirectory) !== currentDirectory) throw new Error("画布与剪辑工程工作区不一致，请从原工作区重新打开剪辑台");
+      if (!isSameDirectory(queryString(route.query.sourceDirectory), currentDirectory)) throw new Error("画布与剪辑工程工作区不一致，请从原工作区重新打开剪辑台");
       workspaceRelativePath(canvasPath);
       if (!canvasPath.toLowerCase().endsWith(".json")) throw new Error("画布路径无效");
       const rawNodeIds = queryString(route.query.nodeIds);
@@ -1962,26 +2117,9 @@ async function importEditorSources() {
       });
       if (sources.length > 500) throw new Error("单次最多导入 500 个画布素材");
       if (!sources.length && !(projectId && variantIds.length)) {
-        if (!await saveProject()) throw new Error("原剪辑工程尚未保存，无法切换为空工程；请先解决保存问题");
+        if (!await saveProject()) throw new Error("原剪辑工程尚未保存，请先解决保存问题");
         if (!isCurrent()) return;
-        const created = await createEditorProjectFile(currentDirectory, `${canvasPath.replace(/\.json$/i, "").split("/").at(-1)} · 剪辑`.slice(0, 120));
-        if (!isCurrent()) return;
-        activeEditorProjectPath.value = created.path;
-        try { localStorage.setItem(`omnistudioEditorProject:${getSessionSnapshot().userId}:${currentDirectory}`, created.path); }
-        catch (error) { console.warn("当前剪辑工程无法记入本地偏好", error); }
-        projectVersion++;
-        version = projectVersion;
-        const emptyVersion = version;
-        stopPlayback();
-        clearEditor();
-        processedSourceImportKey.value = key;
-        sourceImportBusy.value = true;
-        await loadProject(currentDirectory, created.path);
-        if (emptyVersion !== projectVersion || currentDirectory !== directory.value || !mounted) return;
-        sourceImportBusy.value = false;
-        if (key !== sourceImportKey.value) return;
-        if (!projectReady.value) throw new Error(saveError.value || "空剪辑工程读取失败");
-        sourceImportNotice.value = "所选画布节点没有可导入的媒体，已打开空剪辑工程。";
+        sourceImportNotice.value = "所选画布节点没有可导入媒体，已保留当前剪辑工程内容。";
         clearSourceImportQuery();
         return;
       }
@@ -2001,6 +2139,8 @@ async function importEditorSources() {
         sourceImportLabel.value = `正在导入项目候选 ${index + 1}/${variantIds.length}`;
         const { data } = await axios.post<{ data: { asset: EditorAsset } }>("/api/productionProjects/cuts/importSource", { projectId, variantId, directory: currentDirectory });
         productionIncoming.push(data.data.asset);
+        const source = data.data.asset.source;
+        if (!source || source.type !== "production" || source.projectId?.toLowerCase() !== projectId.toLowerCase() || source.episodeId?.toLowerCase() !== productionEpisodeId.value?.toLowerCase()) throw new Error("候选素材不属于当前生产项目与剧集");
       }
     }
     if (!isCurrent()) { await removeImportedAssets([...canvasIncoming, ...productionIncoming], currentDirectory); return; }
@@ -2802,6 +2942,68 @@ async function exportTimeline() {
     padding: 16px;
     background: rgb(5 7 6 / 72%);
     .recoveryDialog { display: flex; flex-direction: column; gap: 10px; width: min(460px, 100%); max-height: calc(100dvh - 32px); padding: 22px; overflow-y: auto; border: 1px solid #465148; border-radius: 5px; color: #d8e0d9; background: #222723; box-shadow: 0 18px 70px rgb(0 0 0 / 42%); h2 { margin: 0; font-size: 16px; } p { margin: 0; color: #a6b2a9; font-size: 12px; line-height: 1.6; } > span { color: #95a399; font-size: 11px; } select { min-height: 34px; } .buttonRow { margin-top: 6px; } .exportError { color: #ffd0bb; } }
+    .editorProjectsDialog {
+      width: min(560px, 100%);
+      padding: 24px;
+      border-color: #536158;
+      border-radius: 8px;
+      background: #222b25;
+      h2 { color: #f2f6f3; font-size: 18px; line-height: 1.4; }
+      > p { color: #becbc2; line-height: 1.7; }
+      > .fieldLabel { margin-top: 12px; color: #e0e9e3; font-weight: 600; }
+      .projectCreateRow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        input { min-height: 38px; padding: 8px 11px; border-color: #617168; color: #f2f6f3; background: #171e19; &::placeholder { color: #a5b5ab; } }
+        .exportButton { min-width: 76px; min-height: 38px; &:disabled { opacity: 1; border-color: #45584c; color: #a9b9af; background: #30463a; } }
+      }
+      .editorProjectList {
+        display: grid;
+        gap: 8px;
+        min-height: 0;
+        max-height: min(360px, 44dvh);
+        margin-top: 8px;
+        padding: 3px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #71877a #19221c;
+        .editorProjectChoice {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          width: 100%;
+          min-width: 0;
+          min-height: 68px;
+          padding: 12px;
+          border: 1px solid #526158;
+          border-radius: 6px;
+          text-align: left;
+          color: #edf3ef;
+          background: #29352d;
+          &:hover:not(:disabled) { border-color: #95b6a2; background: #33463a; }
+          &:disabled { opacity: .7; }
+          .projectChoiceInfo {
+            display: grid;
+            gap: 5px;
+            min-width: 0;
+            strong, small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            strong { font-size: 14px; font-weight: 600; line-height: 1.4; }
+            small { color: #b7c8be; font-size: 11px; font-weight: 400; line-height: 1.5; }
+          }
+          .projectChoiceState { flex: 0 0 auto; padding: 5px 9px; border: 1px solid #63786b; border-radius: 4px; color: #d6e7dd; background: #34483b; font-size: 12px; line-height: 1.4; }
+          &.isCurrent {
+            opacity: 1;
+            border-color: #86b398;
+            background: #304c3c;
+            cursor: default;
+            .projectChoiceState { border-color: #8eb39b; color: #effbf3; background: #3e664e; }
+          }
+        }
+      }
+      > .buttonRow { margin-top: 10px; .secondaryButton { min-height: 38px; color: #e7efe9; border-color: #617168; background: #303d34; &:hover:not(:disabled) { background: #3e5044; } } }
+    }
     .exportDialog {
       display: flex;
       flex-direction: column;

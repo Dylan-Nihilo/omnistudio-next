@@ -3,7 +3,7 @@
     <uiPopover v-model:visible="visible" placement="top-start" :width="340" :offset="10" :disabled="disabled">
       <template #reference="{ triggerAttrs }">
         <uiButton class="modelButton" variant="ghost" size="small" :disabled="disabled" v-bind="triggerAttrs" aria-label="模型与推理设置">
-          <span class="modelName">{{ selectedModelChoice?.label ?? "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
+          <modelIcon v-if="selectedModelChoice" :model="selectedModelChoice.modelId" :provider="selectedModelChoice.providerId" :size="16" aria-hidden="true" /><span class="modelName">{{ selectedModelChoice ? getModelSelectionLabel(selectedModelChoice) : "选择模型" }}</span><span class="reasoningLabel">· {{ reasoningLabel }}</span><icon-chevron-down :size="12" aria-hidden="true" />
         </uiButton>
       </template>
       <div class="modelOptions">
@@ -18,6 +18,7 @@
 import { computed, ref, watch } from "vue";
 import { IconChevronDown } from "@tabler/icons-vue";
 import { uiButton, uiPopover, uiField, uiSelect, uiRadioGroup } from "@omnistudio-next/ui";
+import { getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 
 const selectedModel = defineModel<string>({ default: "" });
@@ -32,7 +33,7 @@ const reasoningOptions = [
 ];
 const platformModels = usePlatformModelsStore();
 const modelChoices = computed(() => platformModels.modelChoices);
-const modelOptions = computed(() => modelChoices.value.map(model => ({ value: model.value, label: model.label })));
+const modelOptions = computed(() => modelChoices.value.map(model => ({ value: model.value, label: getModelSelectionLabel(model), icon: modelIcon, iconProps: { model: model.modelId, provider: model.providerId, size: 18 } })));
 const selectedModelChoice = computed(() => modelChoices.value.find(item => item.value === selectedModel.value));
 const reasoningLabel = computed(() => reasoningOptions.find(item => item.value === reasoningEffort.value)?.label ?? "默认");
 watch(selectedModel, () => { reasoningEffort.value = ""; });

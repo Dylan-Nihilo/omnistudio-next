@@ -1,0 +1,8 @@
+TITLE: 剪辑功能练习
+FCM: NON-DROP FRAME
+001  AX       V     C        00:00:00:01 00:00:01:17 00:00:00:00 00:00:01:16
+* FROM CLIP NAME: assets/videoEditor/media/18bc2cbf-9f57-47f0-9410-7ffb471a1312-video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4
+* CLIP TITLE: video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4
+002  AX       V     C        00:00:01:16 00:00:03:00 00:00:01:16 00:00:03:00
+* FROM CLIP NAME: assets/videoEditor/media/18bc2cbf-9f57-47f0-9410-7ffb471a1312-video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4
+* CLIP TITLE: video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4（后段）

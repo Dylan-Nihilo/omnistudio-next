@@ -1,0 +1,327 @@
+{
+  "source": "本机平台 generationJobs 与 creditLedger 按 jobId 对账，仅 rainyLightGuide 工作区",
+  "queriedAt": "2026-11-09T05:54:54.024Z",
+  "timeNote": "recordedAt 为数据库无时区原始时间字符串",
+  "budgetCredits": "500.000000",
+  "publicCreditsPerCny": 10,
+  "totalCredits": "76.034483",
+  "approximateCny": 7.6034483,
+  "allLedgerAmountsMatch": true,
+  "jobs": [
+    {
+      "jobId": "a3c8cabe-ee6f-40ed-a5e1-34a460ff5682",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.006848",
+      "recordedAt": "2026-11-09 04:50:28",
+      "ledgerCredits": "0.006848"
+    },
+    {
+      "jobId": "69bea0aa-040b-4af9-9aa3-ecc150290e80",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.007400",
+      "recordedAt": "2026-11-09 04:50:29",
+      "ledgerCredits": "0.007400"
+    },
+    {
+      "jobId": "474b08d0-f20d-4e03-a5ef-4bff84dffbb3",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.020551",
+      "recordedAt": "2026-11-09 04:50:30",
+      "ledgerCredits": "0.020551"
+    },
+    {
+      "jobId": "027bb5ea-d1b6-4bff-bd60-079d4c438992",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.026485",
+      "recordedAt": "2026-11-09 04:50:33",
+      "ledgerCredits": "0.026485"
+    },
+    {
+      "jobId": "e3672de1-4613-4aeb-98f0-7c7ebbf5aa80",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.025136",
+      "recordedAt": "2026-11-09 04:50:56",
+      "ledgerCredits": "0.025136"
+    },
+    {
+      "jobId": "cd9329f7-c492-46c8-be3d-2efce5ccf2db",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.029803",
+      "recordedAt": "2026-11-09 04:50:58",
+      "ledgerCredits": "0.029803"
+    },
+    {
+      "jobId": "6095ee01-909c-420c-a047-5adc02409b91",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.029357",
+      "recordedAt": "2026-11-09 04:51:22",
+      "ledgerCredits": "0.029357"
+    },
+    {
+      "jobId": "fed85207-d54c-4d6f-8405-e94ecc200199",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.031313",
+      "recordedAt": "2026-11-09 04:51:29",
+      "ledgerCredits": "0.031313"
+    },
+    {
+      "jobId": "f485708a-a46d-4bee-b8a8-d89b6f93abc9",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.033025",
+      "recordedAt": "2026-11-09 04:51:37",
+      "ledgerCredits": "0.033025"
+    },
+    {
+      "jobId": "0f1e66a2-2747-4481-a42d-426bdf80b89a",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.033277",
+      "recordedAt": "2026-11-09 04:51:47",
+      "ledgerCredits": "0.033277"
+    },
+    {
+      "jobId": "653dc391-84a4-439a-9d1e-935fc0abcdba",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.034079",
+      "recordedAt": "2026-11-09 04:51:51",
+      "ledgerCredits": "0.034079"
+    },
+    {
+      "jobId": "f9de4ad5-b964-489f-82ea-a492f6556bde",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.034061",
+      "recordedAt": "2026-11-09 04:52:23",
+      "ledgerCredits": "0.034061"
+    },
+    {
+      "jobId": "d39e1f3e-30f9-4365-9710-c67e9e10ba12",
+      "mediaType": "image",
+      "modelId": "gpt-image-2",
+      "status": "succeeded",
+      "capturedCredits": "3.000000",
+      "recordedAt": "2026-11-09 04:52:24",
+      "ledgerCredits": "3.000000"
+    },
+    {
+      "jobId": "22086a74-25d0-489e-bb06-2f9e4fbb61a8",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.034131",
+      "recordedAt": "2026-11-09 04:53:00",
+      "ledgerCredits": "0.034131"
+    },
+    {
+      "jobId": "41d0c29e-6b44-49c7-852d-585fb7a2fd42",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.034684",
+      "recordedAt": "2026-11-09 04:53:02",
+      "ledgerCredits": "0.034684"
+    },
+    {
+      "jobId": "60ab0e7d-3360-4d1d-96f0-664cf780ed06",
+      "mediaType": "video",
+      "modelId": "doubao-seedance-2-0-260128",
+      "status": "failed",
+      "capturedCredits": "0.000000",
+      "recordedAt": "2026-11-09 04:53:05",
+      "ledgerCredits": "0.000000"
+    },
+    {
+      "jobId": "5c7d0972-47ce-4813-b914-5fc938f79310",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.034820",
+      "recordedAt": "2026-11-09 04:54:49",
+      "ledgerCredits": "0.034820"
+    },
+    {
+      "jobId": "86c63e13-399b-4a03-801f-7eb2edf64eb9",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.035469",
+      "recordedAt": "2026-11-09 04:54:53",
+      "ledgerCredits": "0.035469"
+    },
+    {
+      "jobId": "00188614-ae2b-4a85-9fab-9d8df50991c3",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.035973",
+      "recordedAt": "2026-11-09 04:54:59",
+      "ledgerCredits": "0.035973"
+    },
+    {
+      "jobId": "5eafab33-fb10-44b4-b378-b0a51e69d0c0",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.035797",
+      "recordedAt": "2026-11-09 04:55:06",
+      "ledgerCredits": "0.035797"
+    },
+    {
+      "jobId": "dda7fb42-7292-487b-b09e-4ae59c368e6f",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.035991",
+      "recordedAt": "2026-11-09 04:55:09",
+      "ledgerCredits": "0.035991"
+    },
+    {
+      "jobId": "5185056e-5780-46e4-abd6-3129634f88cc",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.036131",
+      "recordedAt": "2026-11-09 04:55:13",
+      "ledgerCredits": "0.036131"
+    },
+    {
+      "jobId": "dac546dc-0b43-45ca-afac-f5603cda9fd6",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.036695",
+      "recordedAt": "2026-11-09 04:55:17",
+      "ledgerCredits": "0.036695"
+    },
+    {
+      "jobId": "21650280-c55d-4885-8973-0e55ccf52cb5",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.036511",
+      "recordedAt": "2026-11-09 04:55:27",
+      "ledgerCredits": "0.036511"
+    },
+    {
+      "jobId": "072f4c74-4054-45fa-b8ae-81caee51a491",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.037596",
+      "recordedAt": "2026-11-09 04:55:29",
+      "ledgerCredits": "0.037596"
+    },
+    {
+      "jobId": "188bb4da-6192-4a35-b241-e7303be431f7",
+      "mediaType": "video",
+      "modelId": "doubao-seedance-2-0-260128",
+      "status": "failed",
+      "capturedCredits": "0.000000",
+      "recordedAt": "2026-11-09 04:55:34",
+      "ledgerCredits": "0.000000"
+    },
+    {
+      "jobId": "a87f9231-ca53-4cff-8b9c-751e3c783799",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.038010",
+      "recordedAt": "2026-11-09 04:57:01",
+      "ledgerCredits": "0.038010"
+    },
+    {
+      "jobId": "7d345e33-52a1-44a9-bed0-4dc193e831a9",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.037962",
+      "recordedAt": "2026-11-09 04:58:10",
+      "ledgerCredits": "0.037962"
+    },
+    {
+      "jobId": "c225fa01-e7ac-43c4-8280-4617d3496df9",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.040577",
+      "recordedAt": "2026-11-09 04:58:13",
+      "ledgerCredits": "0.040577"
+    },
+    {
+      "jobId": "56c377bf-6b14-4fc7-8bc0-d60948df832d",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.042285",
+      "recordedAt": "2026-11-09 04:58:27",
+      "ledgerCredits": "0.042285"
+    },
+    {
+      "jobId": "3a9ce491-cc5e-44b5-af5c-0877c3f34c53",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.042218",
+      "recordedAt": "2026-11-09 04:58:39",
+      "ledgerCredits": "0.042218"
+    },
+    {
+      "jobId": "a54d88ea-1067-410e-bd00-035dcfed86e2",
+      "mediaType": "video",
+      "modelId": "doubao-seedance-2-0-260128",
+      "status": "succeeded",
+      "capturedCredits": "72.000000",
+      "recordedAt": "2026-11-09 04:58:41",
+      "ledgerCredits": "72.000000"
+    },
+    {
+      "jobId": "97bea6d5-e600-42ed-84df-f41188dac8c5",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.042509",
+      "recordedAt": "2026-11-09 05:04:32",
+      "ledgerCredits": "0.042509"
+    },
+    {
+      "jobId": "fb9c5195-ff30-44d8-ba63-12bb21de9cba",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.042565",
+      "recordedAt": "2026-11-09 05:04:36",
+      "ledgerCredits": "0.042565"
+    },
+    {
+      "jobId": "fbc74fa9-d1d1-47ee-92a7-3f945f1d9a12",
+      "mediaType": "text",
+      "modelId": "text/deepseek-v4.1-flash",
+      "status": "succeeded",
+      "capturedCredits": "0.043224",
+      "recordedAt": "2026-11-09 05:04:39",
+      "ledgerCredits": "0.043224"
+    }
+  ]
+}

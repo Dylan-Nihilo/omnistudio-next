@@ -1,0 +1,2229 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>万象点点 · 漫剧制作与剪辑台操作指南</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f5f2;
+        --surface: #fff;
+        --ink: #202724;
+        --muted: #64706a;
+        --line: #d9dfda;
+        --forest: #355d4f;
+        --forest-light: #e7efea;
+        --orange: #d5683d;
+        --orange-light: #f8ebe4;
+        --blue: #44677b;
+        --shadow: 0 18px 52px rgba(27, 40, 34, 0.09);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+        line-height: 1.72;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      a {
+        color: inherit;
+      }
+      .shell {
+        min-height: 100vh;
+      }
+      .masthead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 18px clamp(18px, 4vw, 62px);
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.76);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+      .brandMark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--orange);
+        color: white;
+        font-size: 17px;
+      }
+      .mastMeta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .topActions {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .action:hover {
+        border-color: var(--forest);
+        color: var(--forest);
+      }
+      .actionPrimary {
+        border-color: var(--forest);
+        background: var(--forest);
+        color: white;
+      }
+      .actionPrimary:hover {
+        background: #284a3e;
+        color: white;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 252px minmax(0, 1fr);
+        max-width: 1540px;
+        margin: 0 auto;
+      }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        height: calc(100vh - 1px);
+        overflow-y: auto;
+        padding: 27px 19px 34px;
+        border-right: 1px solid var(--line);
+        background: #f8f9f7;
+      }
+      .sidebarTitle {
+        margin: 0 0 14px 9px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      .search {
+        width: 100%;
+        height: 39px;
+        margin-bottom: 19px;
+        padding: 0 11px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        outline: none;
+        background: white;
+        color: var(--ink);
+      }
+      .search:focus {
+        border-color: var(--forest);
+        box-shadow: 0 0 0 3px rgba(53, 93, 79, 0.12);
+      }
+      .navGroup {
+        margin: 20px 0 8px 9px;
+        color: #819087;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .navLink {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 34px;
+        margin: 2px 0;
+        padding: 6px 9px;
+        border-radius: 5px;
+        color: #46534c;
+        text-decoration: none;
+        font-size: 12px;
+      }
+      .navLink:hover,
+      .navLink.active {
+        background: var(--forest-light);
+        color: var(--forest);
+      }
+      .navNumber {
+        width: 23px;
+        color: #89958f;
+        font-variant-numeric: tabular-nums;
+      }
+      .content {
+        min-width: 0;
+        padding: 34px clamp(20px, 5vw, 76px) 90px;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: clamp(27px, 5vw, 60px);
+        border: 1px solid #d8e0da;
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+      .heroEyebrow {
+        margin: 0 0 17px;
+        color: var(--forest);
+        font-size: 12px;
+        font-weight: 900;
+      }
+      h1 {
+        max-width: 780px;
+        margin: 0;
+        font-family: "Georgia", "Noto Serif CJK SC", serif;
+        font-size: clamp(31px, 4vw, 48px);
+        line-height: 1.25;
+      }
+      .heroLead {
+        max-width: 740px;
+        margin: 18px 0 0;
+        color: #505d56;
+        font-size: 16px;
+      }
+      .heroFacts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        margin-top: 36px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .fact {
+        min-height: 76px;
+        padding: 14px 17px;
+        background: #fbfcfa;
+      }
+      .fact small {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .fact strong {
+        font-size: 14px;
+      }
+      .notice {
+        display: grid;
+        grid-template-columns: 5px 1fr;
+        gap: 14px;
+        margin: 24px 0 36px;
+        padding: 16px 19px;
+        border: 1px solid #e9d8cb;
+        border-radius: 6px;
+        background: #fffaf6;
+        color: #51463f;
+        font-size: 13px;
+      }
+      .notice::before {
+        content: "";
+        border-radius: 3px;
+        background: var(--orange);
+      }
+      .sectionHead {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 54px 0 17px;
+        padding-bottom: 13px;
+        border-bottom: 1px solid var(--line);
+      }
+      .sectionHead h2 {
+        margin: 0;
+        font-family: "Georgia", "Noto Serif CJK SC", serif;
+        font-size: 27px;
+        line-height: 1.35;
+      }
+      .sectionHead p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 43%);
+        gap: 24px;
+        align-items: start;
+        margin: 17px 0;
+        padding: 23px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 4px 16px rgba(27, 40, 34, 0.035);
+      }
+      .stepCopy {
+        min-width: 0;
+      }
+      .stepLabel {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 9px;
+        color: var(--forest);
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .stepLabel b {
+        display: grid;
+        width: 31px;
+        height: 31px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--forest-light);
+        font-size: 12px;
+      }
+      .step h3 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+      .step p {
+        margin: 9px 0;
+        color: #4d5952;
+        font-size: 13px;
+      }
+      .step dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 6px 12px;
+        margin: 15px 0 0;
+        font-size: 12px;
+      }
+      .step dt {
+        color: #819087;
+        font-weight: 700;
+      }
+      .step dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .check {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-left: 3px solid var(--forest);
+        background: #f4f8f5;
+        color: #365346;
+        font-size: 12px;
+      }
+      .caution {
+        border-left-color: var(--orange);
+        background: var(--orange-light);
+        color: #70432e;
+      }
+      figure {
+        min-width: 0;
+        margin: 0;
+      }
+      .shot {
+        display: block;
+        width: 100%;
+        max-height: 340px;
+        object-fit: contain;
+        border: 1px solid #252b28;
+        border-radius: 5px;
+        background: #171b19;
+        cursor: zoom-in;
+      }
+      .shot:focus-visible {
+        outline: 3px solid var(--orange);
+        outline-offset: 3px;
+      }
+      figcaption {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .prompt {
+        display: block;
+        overflow-x: auto;
+        margin-top: 12px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #f8faf8;
+        color: #36443c;
+        font:
+          12px/1.8 Consolas,
+          monospace;
+        white-space: pre-wrap;
+      }
+      .placeholder {
+        display: grid;
+        min-height: 145px;
+        place-items: center;
+        margin: 14px 0;
+        padding: 24px;
+        border: 1px dashed #a9b6ae;
+        border-radius: 7px;
+        background: #f8faf8;
+        color: #657269;
+        text-align: center;
+        font-size: 13px;
+      }
+      .featureLink {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 17px 0 32px;
+        padding: 18px 20px;
+        border: 1px solid #c9d7cd;
+        border-radius: 7px;
+        background: var(--forest-light);
+        text-decoration: none;
+      }
+      .featureLink strong {
+        display: block;
+        color: #294a3d;
+        font-size: 14px;
+      }
+      .featureLink span {
+        display: block;
+        margin-top: 3px;
+        color: #58675e;
+        font-size: 12px;
+      }
+      .featureLink i {
+        color: var(--forest);
+        font-size: 22px;
+        font-style: normal;
+      }
+      .previewPanel {
+        margin: 20px 0;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+      }
+      .previewPanel h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      .previewPanel p {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .sampleVideo {
+        display: block;
+        width: 100%;
+        max-height: 560px;
+        margin: 17px 0;
+        border-radius: 5px;
+        background: #111713;
+      }
+      .finalFacts {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr);
+        gap: 8px 14px;
+        font-size: 12px;
+      }
+      .finalFacts dt {
+        color: var(--muted);
+      }
+      .finalFacts dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .downloadActions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+      }
+      .footer {
+        margin-top: 55px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .lightbox {
+        position: fixed;
+        z-index: 10;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: rgba(16, 22, 19, 0.92);
+      }
+      .lightbox.open {
+        display: flex;
+      }
+      .lightbox img {
+        max-width: min(96vw, 1500px);
+        max-height: 90vh;
+        object-fit: contain;
+        box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+      }
+      .lightbox button {
+        position: absolute;
+        top: 20px;
+        right: 24px;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        background: transparent;
+        color: white;
+        font-size: 22px;
+        cursor: pointer;
+      }
+      .emptySearch {
+        display: none;
+        padding: 22px;
+        color: var(--muted);
+        text-align: center;
+      }
+      @media (max-width: 920px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: relative;
+          height: auto;
+          padding: 16px 20px;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .sidebar nav {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 2px 8px;
+          max-height: 210px;
+          overflow: auto;
+        }
+        .navGroup {
+          grid-column: 1/-1;
+          margin-top: 10px;
+        }
+        .content {
+          padding-top: 20px;
+        }
+      }
+      @media (max-width: 650px) {
+        .masthead {
+          align-items: flex-start;
+          padding: 13px 16px;
+        }
+        .mastMeta {
+          display: none;
+        }
+        .topActions {
+          gap: 5px;
+        }
+        .action {
+          min-height: 34px;
+          padding: 0 9px;
+          font-size: 11px;
+        }
+        .heroFacts {
+          grid-template-columns: 1fr;
+        }
+        .fact {
+          min-height: 0;
+        }
+        .step {
+          grid-template-columns: 1fr;
+          padding: 17px;
+        }
+        .shot {
+          max-height: 54vh;
+        }
+        .sectionHead {
+          display: block;
+        }
+        .sectionHead p {
+          margin-top: 5px;
+        }
+        .lightbox {
+          padding: 12px;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        .masthead,
+        .sidebar,
+        .topActions,
+        .featureLink,
+        .lightbox {
+          display: none !important;
+        }
+        .layout {
+          display: block;
+          max-width: none;
+        }
+        .content {
+          padding: 0;
+        }
+        .hero,
+        .step {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        .step {
+          grid-template-columns: 1fr 42%;
+        }
+        .shot {
+          max-height: 230px;
+        }
+        a {
+          text-decoration: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead">
+        <div>
+          <div class="brand">
+            <span class="brandMark">万</span>
+            <span>万象点点 · 制作手册</span>
+          </div>
+          <div class="mastMeta">操作指南 / 漫剧创作与剪辑工作流</div>
+        </div>
+        <div class="topActions">
+          <a class="action" href="features.html">功能参考</a>
+          <button class="action" id="printButton" type="button">打印 / 保存 PDF</button>
+        </div>
+      </header>
+      <div class="layout">
+        <aside class="sidebar">
+          <p class="sidebarTitle">本页导航</p>
+          <input class="search" id="searchInput" type="search" placeholder="搜索步骤、功能或参数" aria-label="搜索指南" />
+          <nav id="contentsNav">
+            <div class="navGroup">开始制作</div>
+            <a class="navLink" href="#step02">
+              <span class="navNumber">02</span>
+              创建演示工作区
+            </a>
+            <a class="navLink" href="#step03">
+              <span class="navNumber">03</span>
+              打开空白画布
+            </a>
+            <a class="navLink" href="#step04">
+              <span class="navNumber">04</span>
+              输入原创故事
+            </a>
+            <a class="navLink" href="#step05">
+              <span class="navNumber">05</span>
+              检查分镜草案
+            </a>
+            <div class="navGroup">生成画面与视频</div>
+            <a class="navLink" href="#step06">
+              <span class="navNumber">06</span>
+              核对费用报价
+            </a>
+            <a class="navLink" href="#step07">
+              <span class="navNumber">07</span>
+              等待生成任务
+            </a>
+            <a class="navLink" href="#step08">
+              <span class="navNumber">08</span>
+              审看关键画面
+            </a>
+            <a class="navLink" href="#step09">
+              <span class="navNumber">09</span>
+              识别首次失败
+            </a>
+            <a class="navLink" href="#step10">
+              <span class="navNumber">10</span>
+              建立制作项目
+            </a>
+            <a class="navLink" href="#step11">
+              <span class="navNumber">11</span>
+              查看视频生成结果
+            </a>
+            <a class="navLink" href="#step12">
+              <span class="navNumber">12</span>
+              确认画布资产
+            </a>
+            <div class="navGroup">进入剪辑台</div>
+            <a class="navLink" href="#step13">
+              <span class="navNumber">13</span>
+              选择视频节点
+            </a>
+            <a class="navLink" href="#step14">
+              <span class="navNumber">14</span>
+              冻结导入媒体
+            </a>
+            <a class="navLink" href="#step15">
+              <span class="navNumber">15</span>
+              设定输出规格
+            </a>
+            <a class="navLink" href="#step16">
+              <span class="navNumber">16</span>
+              源监视器选区
+            </a>
+            <a class="navLink" href="#step17">
+              <span class="navNumber">17</span>
+              查看帧缩略图
+            </a>
+            <a class="navLink" href="#step18">
+              <span class="navNumber">18</span>
+              联动导入关键图
+            </a>
+            <div class="navGroup">主样片剪辑与初次导出</div>
+            <a class="navLink" href="#step19">
+              <span class="navNumber">19</span>
+              添加片尾静帧
+            </a>
+            <a class="navLink" href="#step20">
+              <span class="navNumber">20</span>
+              分割视频片段
+            </a>
+            <a class="navLink" href="#step21">
+              <span class="navNumber">21</span>
+              添加片名
+            </a>
+            <a class="navLink" href="#step22">
+              <span class="navNumber">22</span>
+              导入字幕文件
+            </a>
+            <a class="navLink" href="#step23">
+              <span class="navNumber">23</span>
+              设置画面关键帧
+            </a>
+            <a class="navLink" href="#step24">
+              <span class="navNumber">24</span>
+              测量片段响度
+            </a>
+            <a class="navLink" href="#step25">
+              <span class="navNumber">25</span>
+              独听检查峰值
+            </a>
+            <a class="navLink" href="#step26">
+              <span class="navNumber">26</span>
+              整理独立环境音
+            </a>
+            <a class="navLink" href="#step27">
+              <span class="navNumber">27</span>
+              设置交叉淡化
+            </a>
+            <a class="navLink" href="#step28">
+              <span class="navNumber">28</span>
+              渲染教学样片 v1
+            </a>
+            <a class="navLink" href="#step29">
+              <span class="navNumber">29</span>
+              登记教学样片
+            </a>
+            <a class="navLink" href="#step30">
+              <span class="navNumber">30</span>
+              复核项目预算
+            </a>
+            <div class="navGroup">独立剪辑功能练习</div>
+            <a class="navLink" href="#step31">
+              <span class="navNumber">31</span>
+              波纹修剪
+            </a>
+            <a class="navLink" href="#step32">
+              <span class="navNumber">32</span>
+              滚动修剪
+            </a>
+            <a class="navLink" href="#step33">
+              <span class="navNumber">33</span>
+              滑移源素材
+            </a>
+            <a class="navLink" href="#step34">
+              <span class="navNumber">34</span>
+              恒定速度
+            </a>
+            <a class="navLink" href="#step35">
+              <span class="navNumber">35</span>
+              复制与删除片段
+            </a>
+            <a class="navLink" href="#step36">
+              <span class="navNumber">36</span>
+              波纹删除
+            </a>
+            <a class="navLink" href="#step37">
+              <span class="navNumber">37</span>
+              锁定轨道
+            </a>
+            <a class="navLink" href="#step38">
+              <span class="navNumber">38</span>
+              EDL 往返
+            </a>
+            <a class="navLink" href="#step39">
+              <span class="navNumber">39</span>
+              恢复工程备份
+            </a>
+            <a class="navLink" href="#step40">
+              <span class="navNumber">40</span>
+              轨道名称与显隐
+            </a>
+            <a class="navLink" href="#step41">
+              <span class="navNumber">41</span>
+              重新链接素材
+            </a>
+            <div class="navGroup">剪辑、导出与交付</div>
+            <a class="navLink" href="#editing">
+              <span class="navNumber">—</span>
+              剪辑操作实跑
+            </a>
+            <a class="navLink" href="#step42">
+              <span class="navNumber">42</span>
+              V2 修正与审看
+            </a>
+            <a class="navLink" href="#step43">
+              <span class="navNumber">43</span>
+              批准并确认交付
+            </a>
+            <a class="navLink" href="#step44">
+              <span class="navNumber">44</span>
+              成片回写画布
+            </a>
+            <a class="navLink" href="#step45">
+              <span class="navNumber">45</span>
+              逐任务核对账单
+            </a>
+            <a class="navLink" href="#delivery">
+              <span class="navNumber">—</span>
+              导出与验收
+            </a>
+          </nav>
+        </aside>
+        <main class="content">
+          <section class="hero" id="top">
+            <p class="heroEyebrow">漫剧创作 / 实际操作记录</p>
+            <h1>《万象点点 · 漫剧制作与剪辑台操作指南》</h1>
+            <p class="heroLead">
+              用原创《雨灯》从空白画布开始，完成剧本、分镜、关键画面与视频生成，再送入剪辑台制作 5.5 秒教学短样片。本文记录真实剪辑、V2
+              审看、批准交付与画布回写；每步配实际截图，可点图查看原尺寸。
+            </p>
+            <div class="heroFacts">
+              <div class="fact">
+                <small>演示作品</small>
+                <strong>《雨灯》 · 9:16 竖屏</strong>
+              </div>
+              <div class="fact">
+                <small>最终教学短样片</small>
+                <strong>5.5 秒 · V2 已交付</strong>
+              </div>
+              <div class="fact">
+                <small>实际扣款 / 本轮授权</small>
+                <strong>约 ¥7.60 / 上限 ¥50</strong>
+              </div>
+            </div>
+          </section>
+          <div class="notice">
+            <div>
+              <strong>阅读说明：</strong>
+              本轮完成的是 5.5 秒教学短样片，不是完整剧集或长篇漫剧。步骤 02–30 记录《雨灯》制作与 v1 导出，31–41 使用独立“剪辑功能练习”工程，42–45
+              记录 V2 修正、审片交付、回写和账单对账。V2 已把片名移到独立文字轨，在 3.5–4 秒可同时显示标题和第二条字幕。源视频为 496×864，导出为
+              608×1080 / 24 fps；综合响度约 -23.3 LUFS。本机平台按 jobId 核对 35 条生成任务和积分流水，实际合计 76.034483 积分，按 10 积分/元约
+              ¥7.60，低于 ¥50 上限。
+            </div>
+          </div>
+
+          <section id="production">
+            <div class="sectionHead">
+              <h2>01 / 从故事到画布资产</h2>
+              <p>步骤 02–12 · 原创漫剧短样片</p>
+            </div>
+
+            <article class="step" id="step02" data-search="新建文件夹 工作区 rainyLightGuide 项目">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>02</b>
+                  创建演示工作区
+                </div>
+                <h3>新建独立工作目录</h3>
+                <p>
+                  在画布入口选择服务器工作目录，新建文件夹并输入
+                  <code>rainyLightGuide</code>
+                  。此工作区专用于《雨灯》演示，避免混入其他项目素材。
+                </p>
+                <dl>
+                  <dt>操作入口</dt>
+                  <dd>新建画布 → 选择工作目录 → 新建文件夹</dd>
+                  <dt>本步输入</dt>
+                  <dd>目录名：rainyLightGuide</dd>
+                </dl>
+                <div class="check">成功判断：进入工作区后，顶部项目名显示 rainyLightGuide，画布文件可保存在该目录。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step02NewFolder.jpg" alt="新建 rainyLightGuide 工作区文件夹" loading="lazy" />
+                <figcaption>图 02 · 在工作目录中创建独立演示文件夹。点击图片查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step03" data-search="空白画布 新建画布 节点">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>03</b>
+                  打开空白画布
+                </div>
+                <h3>确认从空状态开始</h3>
+                <p>
+                  新建画布后，先确认画布区没有旧节点，再从对话助手或画布快捷操作开始创作。该演示画布文件为
+                  <code>画布1.json</code>
+                  。
+                </p>
+                <dl>
+                  <dt>操作入口</dt>
+                  <dd>工作区 → 新建画布 → 画布 1</dd>
+                  <dt>本步状态</dt>
+                  <dd>初始无节点；右侧为新对话面板</dd>
+                </dl>
+                <div class="check">成功判断：中央出现空画布提示，顶部项目名与刚创建的工作区一致。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step03EmptyCanvas.jpg" alt="rainyLightGuide 中的空白画布" loading="lazy" />
+                <figcaption>图 03 · 空白画布与对话面板。点击图片查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step04" data-search="提示词 故事 创作模型 输入文本">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>04</b>
+                  输入原创故事
+                </div>
+                <h3>提交《雨灯》的短片创作要求</h3>
+                <p>
+                  在对话框输入故事目标，让助手先拆解剧本、角色和镜头。下方展示本次原始提示词；补拍时关闭了模型浮层，便于看清输入内容。首次制作在空白画布提交，此处为原工作区完成后的输入步骤复现，未再次发送或生成。
+                </p>
+                <dl>
+                  <dt>操作入口</dt>
+                  <dd>右侧新对话 → 输入创作要求 → 发送</dd>
+                  <dt>故事方向</dt>
+                  <dd>老城雨夜，一台胸前带暖灯的小巡夜机器人发现迷路的小猫，用灯光陪它回到屋檐，随后继续巡夜。</dd>
+                  <dt>风格</dt>
+                  <dd>原创、克制、冷蓝雨夜配暖黄灯光、无对白、9:16 竖屏。</dd>
+                </dl>
+                <div class="check caution">
+                  本次原始提示词：请在当前画布建立一部原创竖屏短漫剧《雨灯》。故事：雨夜的小机器人在巷口发现迷路的小猫，用胸前的暖灯为它照路，最后猫咪回到屋檐下，机器人继续巡夜。请先建立简短剧本和2个镜头的分镜文本节点，再生成1张关键画面和1段约4秒的动态漫剧视频；优先使用当前已配置的可用模型和最低成本设置，所有输出写入当前工作区并保留来源关系。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step04PromptReady.jpg" alt="复现原始雨灯提示词的无遮挡输入框，未再次发送" loading="lazy" />
+                <figcaption>图 04 · 原始提示词输入步骤复现；已关闭遮挡浮层，未再次发送。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step05" data-search="剧本 编辑文本 分镜 storyboard 镜头">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>05</b>
+                  检查故事与分镜草案
+                </div>
+                <h3>确认角色、场景与两个镜头</h3>
+                <p>
+                  剧本编辑弹窗中，核对画幅、角色外观、情绪基调与镜头时长。当前是约 4 秒的概念短片，两个镜头各约 2 秒；生成结果后续仍须逐镜核对连贯性。
+                </p>
+                <dl>
+                  <dt>镜头 1</dt>
+                  <dd>00:00–00:02 · 老巷口建立场景；机器人发现湿透的小猫。</dd>
+                  <dt>镜头 2</dt>
+                  <dd>00:02–00:04 · 屋檐下，小猫回头望向机器人，机器人继续巡夜。</dd>
+                  <dt>对白</dt>
+                  <dd>无对白；雨声、屋檐滴水与轻微电子声为声音方向。</dd>
+                </dl>
+                <div class="check">成功判断：分镜说明能读出镜头时长、机位/景别和主要动作；正式发布前应按实际视频逐镜审看。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step05StoryboardCanvas.jpg" alt="雨灯剧本编辑器中的角色、场景和动作说明" loading="lazy" />
+                <figcaption>图 05 · 实际画面为“编辑文本”剧本弹窗，不是分镜卡片总览。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step06" data-search="生成 报价 积分 预算 关键画面 视频 Seedance">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>06</b>
+                  核对费用报价
+                </div>
+                <h3>先看任务构成和总价，再提交</h3>
+                <p>
+                  本次计划生成一张关键画面和一段短视频。画布助手展示合计预计 75 积分，包含关键画面约 3 积分、视频约 72 积分。按平台页面显示的换算（10
+                  积分约 ¥1），预计约 ¥7.50，低于已授权的 ¥50 上限。
+                </p>
+                <dl>
+                  <dt>图像</dt>
+                  <dd>GPT Image 2，1K，竖屏 9:16；预计 3 积分。</dd>
+                  <dt>视频</dt>
+                  <dd>Seedance 2.0，480p，9:16，4 秒，开启原生音频；预计 72 积分。</dd>
+                  <dt>提交前</dt>
+                  <dd>检查数量、模型、时长、画幅、总积分，以及失败重试的额外成本。</dd>
+                </dl>
+                <div class="check">成功判断：费用确认界面显示总计 75 积分，并且不超过本轮 500 积分费用授权。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step06GenerationQuote.jpg" alt="助手展示一张关键图和一段四秒视频的生成方案" loading="lazy" />
+                <figcaption>图 06 · 报价与提交确认。最终费用以账户流水结算为准。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step07" data-search="任务队列 生成中 视频生成 状态">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>07</b>
+                  等待生成任务
+                </div>
+                <h3>先出关键画面，再提交动态片段</h3>
+                <p>
+                  关键画面生成完成后，将其作为参考资产提交视频任务。生成中可观察画布节点和任务状态；只有成功的结果才继续进入剪辑，不要把“已开始”当成“已完成”。
+                </p>
+                <dl>
+                  <dt>视频参数</dt>
+                  <dd>Seedance 2.0 · 480p · 9:16 · 4 秒 · 原生音频开启。</dd>
+                  <dt>参考输入</dt>
+                  <dd>关键画面 + 两镜头描述；原生环境音，无对白。</dd>
+                </dl>
+                <div class="check">成功判断：任务状态变为完成，视频节点可预览；失败时先查看错误细节，不盲目重试。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step07GeneratingImage.jpg" alt="关键图已生成，画布视频任务处于生成中" loading="lazy" />
+                <figcaption>图 07 · 关键画面已就绪，视频生成任务仍在处理中。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step08" data-search="关键画面 图像 检查 预览 审看">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>08</b>
+                  审看关键画面
+                </div>
+                <h3>检查主体、灯光与竖屏构图</h3>
+                <p>打开图像节点预览，确认机器人、猫和雨巷关系清楚，暖灯成为视觉焦点。该图作为视频参考资产，并不能替代对生成视频的逐帧检查。</p>
+                <dl>
+                  <dt>画面方向</dt>
+                  <dd>9:16 竖屏；冷蓝雨夜与暖黄胸灯形成色温对比。</dd>
+                  <dt>素材路径</dt>
+                  <dd><code>assets/5bb245b8-90b9-4873-8a35-bd7405d0c9b2/imageb1c0e84d-5672-4aac-848a-4aae29934693.png</code></dd>
+                </dl>
+                <div class="check">成功判断：预览图能辨认角色与环境，图像节点状态为成功，可供后续引用。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step08KeyframeResult.jpg" alt="雨夜巷口机器人和小猫的竖屏关键画面" loading="lazy" />
+                <figcaption>图 08 · 实际生成的关键画面预览。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step09" data-search="失败 错误 HTTP 400 Seedance 首帧 尾帧 重试">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>09</b>
+                  识别首次视频生成失败
+                </div>
+                <h3>按错误信息修正参考图角色</h3>
+                <p>
+                  首次两次视频提交返回 HTTP 400，错误指出“last frame image cannot be mixed with first frame or reference
+                  image”。这属于输入能力组合不兼容，不是生成中断，也没有形成视频成片。按供应商能力，应使用单首帧、双首尾帧或混合参考，不要同时混入不兼容的尾帧和参考图。
+                </p>
+                <dl>
+                  <dt>失败请求</dt>
+                  <dd>
+                    <code>0217942000888226a861da7d15ce34477456226ae15cbba931b7a</code>
+                    、
+                    <code>021794200220552006c460d0b2d36d003716bcb3522c0d132d4c2</code>
+                  </dd>
+                  <dt>处理方式</dt>
+                  <dd>按错误提示修正输入组合，再提交；本轮实际扣款复核见步骤 45。</dd>
+                </dl>
+                <div class="check caution">
+                  截图保留了两条错误通知。两次失败视频请求在任务与积分流水对账中均为 0 积分；本次后续视频使用完整混合参考数组重提成功。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step09VideoFailure.jpg" alt="两条视频生成失败通知，提示首尾帧与参考图不能混用" loading="lazy" />
+                <figcaption>图 09 · 首次提交错误详情。保留错误 ID 供排查，点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step10" data-search="制作项目 名称 预算 生产项目 500 积分">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>10</b>
+                  建立制作项目
+                </div>
+                <h3>单独建项目归档这次演示</h3>
+                <p>
+                  在“我的生产项目”新建项目，名称为“雨灯 · 操作指南演示”。项目预算是制作管理额度，和本次实际生成费用不是一回事。实际项目设置的预算为
+                  500 积分（¥50）。新建表单默认预算为 1600 积分，需要手动改成 500；新截图复现了正确的名称和预算输入，拍摄后取消，没有重复创建项目。
+                </p>
+                <dl>
+                  <dt>项目名称</dt>
+                  <dd>雨灯 · 操作指南演示</dd>
+                  <dt>预算上限</dt>
+                  <dd>500 积分（约 ¥50）</dd>
+                  <dt>使用范围</dt>
+                  <dd>素材与成片审片登记；本短样片无需关联剧集。</dd>
+                </dl>
+                <div class="check caution">
+                  成功判断：表单预算为 500 积分，创建后在项目详情再次核对。图 10 是输入步骤复现；实际已保存的项目与预算见步骤 30，最终费用见步骤 45。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step10ProductionProject.jpg" alt="新建雨灯操作指南演示制作项目时的预算输入框" loading="lazy" />
+                <figcaption>图 10 · 复现项目名称与 500 积分预算的输入；拍摄后取消，未重复创建。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step11" data-search="视频生成完成 Seedance 视频节点 成功 环境音">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>11</b>
+                  查看视频生成结果
+                </div>
+                <h3>记录成功视频的模型和费用</h3>
+                <p>
+                  修正参考输入后，Seedance 2.0 视频任务完成。本步骤生成的源片段约 4 秒，源文件约 1.4 MB，模型输出为 480p
+                  档位竖屏并带原生雨声环境音；最终剪辑成片另见步骤 42。
+                </p>
+                <dl>
+                  <dt>成功参数</dt>
+                  <dd>Seedance 2.0 · 4 秒 · 480p · 9:16 · 混合参考模式 · 原生音频开启。</dd>
+                  <dt>任务状态</dt>
+                  <dd>1 次成功；另有 2 次输入不合法的请求错误。</dd>
+                  <dt>费用记录</dt>
+                  <dd>助手生成时记录关键图 3 积分、视频 72 积分；最终核对账单见交付验收章。</dd>
+                </dl>
+                <div class="check">成功判断：画布出现可播放的视频节点，节点记录模型、分辨率、时长和生成费用。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step11VideoGenerated.jpg" alt="画布助手记录成功生成的四秒视频与费用" loading="lazy" />
+                <figcaption>图 11 · 成功结果与生成记录。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step12" data-search="画布视频播放 审核末帧 预览 资产节点">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>12</b>
+                  确认画布资产
+                </div>
+                <h3>在节点上检查视频并保留来源</h3>
+                <p>
+                  回到画布确认视频节点可以播放，画布仍保留剧本、两张分镜说明、关键画面和生成视频的关系。视频素材的相对路径为
+                  <code>assets/686f1d44-a0b6-460b-a420-39d75fe86406/video1e82992a-9952-4a97-9acc-60c84fe3bfe5.mp4</code>
+                  。
+                </p>
+                <dl>
+                  <dt>视频节点</dt>
+                  <dd><code>686f1d44-a0b6-460b-a420-39d75fe86406</code></dd>
+                  <dt>核对内容</dt>
+                  <dd>视频已加载，可见画面与原生环境音；保留画布路径与生成记录。</dd>
+                </dl>
+                <div class="check caution">短片只有约 4 秒，无法证明两个镜头都严格按分镜落点。面向发布时还要完整播放并逐镜验收。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step12VideoReviewed.jpg" alt="画布中可播放的雨灯短视频节点和生成参数" loading="lazy" />
+                <figcaption>图 12 · 画布节点展示成功视频、参数和生成账目。点击查看原图。</figcaption>
+              </figure>
+            </article>
+          </section>
+
+          <section id="editor">
+            <div class="sectionHead">
+              <h2>02 / 把画布素材送入剪辑台</h2>
+              <p>步骤 13–18 · 截图止于素材导入与时间线初始状态</p>
+            </div>
+            <article class="step" id="step13" data-search="视频节点 选择 剪刀 智能剪辑 进入剪辑台">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>13</b>
+                  选择视频节点
+                </div>
+                <h3>由画布节点进入剪辑台</h3>
+                <p>
+                  在
+                  <code>画布1.json</code>
+                  选中视频生成节点，再使用左侧剪辑入口。URL 会携带工作区、画布文件与所选节点，剪辑台因此能显示来源画布。
+                </p>
+                <dl>
+                  <dt>来源节点</dt>
+                  <dd><code>686f1d44-a0b6-460b-a420-39d75fe86406</code></dd>
+                  <dt>来源文件</dt>
+                  <dd>
+                    <code>画布1.json</code>
+                    · 工作区
+                    <code>rainyLightGuide</code>
+                  </dd>
+                  <dt>预期联动</dt>
+                  <dd>剪辑台的导入素材标注画布来源；返回画布可继续编辑原节点。</dd>
+                </dl>
+                <div class="check">成功判断：剪辑台左侧媒体列表出现该 MP4，并显示画布名及来源摘要。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step13SelectVideo.jpg" alt="在画布中选择雨灯视频节点并准备送入剪辑台" loading="lazy" />
+                <figcaption>图 13 · 送入剪辑台前选中的视频节点。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step14" data-search="导入 素材 冻结 快照 hash 来源 工作区 画布">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>14</b>
+                  冻结导入视频素材
+                </div>
+                <h3>确认来源标识和固定副本</h3>
+                <p>
+                  首次进入后，剪辑台把所选视频固定为工程中的素材快照。界面显示“已从画布冻结导入 1 个媒体素材”和来源画布及内容摘要
+                  <code>cdc23f92</code>
+                  。初始工程时间线尚无片段，这是正常状态。
+                </p>
+                <dl>
+                  <dt>导入结果</dt>
+                  <dd>媒体列表 1 个视频素材；时长约 4.02 秒，大小约 1.4 MB。</dd>
+                  <dt>来源摘要</dt>
+                  <dd>
+                    画布 · 画布1.json ·
+                    <code>cdc23f92</code>
+                  </dd>
+                  <dt>初始时间线</dt>
+                  <dd>0 个片段；还未添加到轨道。</dd>
+                </dl>
+                <div class="check">成功判断：素材列表可预览源文件、来源标签可见，工程状态显示已保存。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step14CanvasMediaImported.jpg" alt="画布视频被固定导入剪辑工程，但尚未加入时间线" loading="lazy" />
+                <figcaption>图 14 · 画布素材冻结导入后的空时间线状态。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step15" data-search="项目输出 MP4 H264 AAC 9:16 24fps 1080p 质量 标准">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>15</b>
+                  设定输出规格
+                </div>
+                <h3>选择竖屏交付参数</h3>
+                <p>
+                  打开左侧“设置”，设定编辑工程输出参数。这里选择 9:16、24 fps、1080p、标准质量；这只是剪辑导出设置，源视频仍然是
+                  480p，放大设置不会增加源素材真实细节。
+                </p>
+                <dl>
+                  <dt>封装/编码</dt>
+                  <dd>MP4 · H.264 / AAC</dd>
+                  <dt>画幅与帧率</dt>
+                  <dd>9:16 · 24 fps</dd>
+                  <dt>输出高度</dt>
+                  <dd>1080p</dd>
+                  <dt>质量</dt>
+                  <dd>标准</dd>
+                </dl>
+                <div class="check">成功判断：预览状态显示 9:16 · 24 fps；设置面板保留所选导出规格。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step15OutputSettings.jpg" alt="剪辑台输出设置为9比16、24帧每秒、1080p标准质量" loading="lazy" />
+                <figcaption>图 15 · 实际设置界面；输出规格不等于原始生成视频分辨率。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step16" data-search="双监视器 源素材 入点 出点 I O 选区 加入选区">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>16</b>
+                  在源监视器标记选区
+                </div>
+                <h3>双监视器查看视频并设置入出点</h3>
+                <p>
+                  切换“双监视器”，左侧为素材源、右侧为成片监视器。此时源监视器已加载视频；用 I/O 或入点、出点控件确定使用范围。本次将源出点由约 4.083
+                  秒修为 4.0 秒，覆盖整段约 4 秒素材，再点“加入选区”。
+                </p>
+                <dl>
+                  <dt>模式</dt>
+                  <dd>双监视器</dd>
+                  <dt>入点 / 出点</dt>
+                  <dd>0 秒 / 4 秒</dd>
+                  <dt>选区时长</dt>
+                  <dd>00:00:04:00（24 fps 时间码）</dd>
+                  <dt>快捷键</dt>
+                  <dd>I 标记入点，O 标记出点，空格播放。</dd>
+                </dl>
+                <div class="check">成功判断：选区时长变为 4 秒，加入选区后成片监视器总时长为 4 秒。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step16SourceMonitor.jpg" alt="剪辑台双监视器源素材入点零秒出点四秒" loading="lazy" />
+                <figcaption>图 16 · 左源右成片的监视器与 4 秒选区。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step17" data-search="帧缩略图 逐帧 缓存 filmstrip 精灵图 采样">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>17</b>
+                  检查时间线帧缩略图
+                </div>
+                <h3>生成缓存并确认素材可逐帧定位</h3>
+                <p>
+                  “加入选区”后，视频片段出现在视频轨道，原生声音随视频保留在同一片段中。生成代理与缩略图缓存后，片段以采样帧缩略图显示，支持逐帧定位与时间线预览。
+                </p>
+                <dl>
+                  <dt>时间线</dt>
+                  <dd>视频轨 1 个片段；入点 0、出点 4 秒、起点 0。</dd>
+                  <dt>缓存状态</dt>
+                  <dd>代理与逐帧缓存就绪。</dd>
+                  <dt>帧条说明</dt>
+                  <dd>缩略图按缩放比例采样，不是每一个编码帧都铺成独立图片格。</dd>
+                </dl>
+                <div class="check">成功判断：片段显示连续时间刻度和可识别的帧缩略图，播放头能移动预览画面。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step17FilmstripCache.jpg" alt="四秒视频片段已添加到视频轨并显示帧缩略图" loading="lazy" />
+                <figcaption>图 17 · 视频缩略帧条、缓存状态及片段属性。点击查看原图。</figcaption>
+              </figure>
+            </article>
+
+            <article class="step" id="step18" data-search="项目共享素材 工作区 图片 导入 关键画面 联动">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>18</b>
+                  从工作区导入关键图
+                </div>
+                <h3>用项目素材选择器联动图片</h3>
+                <p>
+                  点击“项目 / 共享素材”，在工作区依次进入
+                  <code>assets</code>
+                  → 关键图节点 ID 文件夹，点选 PNG。剪辑台将其固定到当前剪辑工程的媒体列表；截图为选图窗口，导入完成后界面确认“已固定”并显示图片文件。
+                </p>
+                <dl>
+                  <dt>导入素材</dt>
+                  <dd><code>imageb1c0e84d-5672-4aac-848a-4aae29934693.png</code></dd>
+                  <dt>工作区位置</dt>
+                  <dd><code>assets/5bb245b8-90b9-4873-8a35-bd7405d0c9b2/</code></dd>
+                  <dt>结果</dt>
+                  <dd>媒体列表增加图片快照；本步骤完成导入，步骤 19 再把它加入片尾。</dd>
+                </dl>
+                <div class="check">成功判断：剪辑台提示图片已固定到当前工程，媒体列表从 1 个文件增至 2 个文件。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step18AssetPicker.jpg" alt="从工作区 assets 目录选择雨灯关键图导入剪辑台" loading="lazy" />
+                <figcaption>图 18 · 工作区素材选择器中的关键图。点击查看原图。</figcaption>
+              </figure>
+            </article>
+          </section>
+
+          <section id="editing">
+            <div class="sectionHead">
+              <h2>03 / 完成主样片 v1 剪辑</h2>
+              <p>步骤 19–30 · 9:16 / 24 fps · 约 5.5 秒</p>
+            </div>
+            <article class="step" id="step19" data-search="关键图 静帧 片尾 start4 out2 fadeOut0.4 brightness1.05">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>19</b>
+                  将关键图作为片尾静帧
+                </div>
+                <h3>在素材尾部接入 2 秒静帧</h3>
+                <p>
+                  把已导入的关键图加入视频轨，放到 4 秒视频后面。把静帧的时间线起点设为 4 秒、出点设为 2 秒，并设置 0.4 秒淡出；基础亮度调至 1.05。
+                </p>
+                <dl>
+                  <dt>片段位置</dt>
+                  <dd>start 4 秒 · 时长 2 秒。</dd>
+                  <dt>画面处理</dt>
+                  <dd>淡出 0.4 秒 · 亮度 1.05。</dd>
+                </dl>
+                <div class="check">成功判断：时间线依次出现 0–4 秒视频和 4–6 秒图片片段；图片在片尾监视器可见。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step19TitleCard.jpg" alt="关键图位于视频尾部，片段起点四秒并调整亮度" loading="lazy" />
+                <figcaption>图 19 · 关键图片尾卡设置。画面预览可能随播放头位置变化；点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step20" data-search="分割 S 视频片段 2秒 0-4">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>20</b>
+                  在 2 秒处分割视频
+                </div>
+                <h3>把 4 秒视频拆成前后两段</h3>
+                <p>选中视频片段，把播放头停在 2 秒并执行分割。后续可对第二段单独设置画面关键帧；本步骤只改变剪辑片段结构，不修改源文件。</p>
+                <dl>
+                  <dt>原片段</dt>
+                  <dd>源入点 0 秒、出点 4 秒。</dd>
+                  <dt>分割位置</dt>
+                  <dd>时间线 2 秒。</dd>
+                  <dt>结果</dt>
+                  <dd>两个连续视频片段，后接 2 秒关键图片尾卡；总时长仍为 6 秒。</dd>
+                </dl>
+                <div class="check">成功判断：视频轨显示两个片段边界，播放头停在 2 秒切点。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step20Split.jpg" alt="视频在两秒处分割为前后两段" loading="lazy" />
+                <figcaption>图 20 · 2 秒切点和分割后的时间线。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step21" data-search="文字 标题 雨灯 字号7 垂直48 起点4秒">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>21</b>
+                  添加片名《雨灯》
+                </div>
+                <h3>创建两秒标题文字片段</h3>
+                <p>
+                  在文字面板输入“雨灯”，添加到文字轨；片段起点 4 秒、时长 2 秒，字号/画幅百分比设为 7，垂直位置设为
+                  48%。这张截图记录标题的初始位置；步骤 27 再把标题提前到 3.5 秒，与片尾交叉淡化对齐。
+                </p>
+                <dl>
+                  <dt>文字内容</dt>
+                  <dd>雨灯</dd>
+                  <dt>起点 / 时长</dt>
+                  <dd>4 秒 / 2 秒。</dd>
+                  <dt>字号 / 垂直位置</dt>
+                  <dd>7 / 48%。</dd>
+                </dl>
+                <div class="check">成功判断：成片监视器出现标题，文字片段出现在文字轨且时长正确。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step21TextTitle.jpg" alt="雨灯标题文字属性和文字轨片段" loading="lazy" />
+                <figcaption>图 21 · 标题文本与片段的初始属性。最终位置调整见图 27。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step22" data-search="SRT VTT 字幕 导入 导出 deliverables rainyLight.srt">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>22</b>
+                  导入并往返导出 SRT/VTT
+                </div>
+                <h3>把两段叙事字幕放入文字轨</h3>
+                <p>
+                  本步骤首次导入时，
+                  <code>rainyLight.srt</code>
+                  只含两条叙事字幕：0–2 秒“雨夜，总有一束光。”，2–4 秒“照亮回家的路。”；再分别导出 SRT 与
+                  VTT，验证字幕交换入口。交付包中的同名文件现已更新为 V2 导出侧车，还包含第三条 3.5–5.5
+                  秒片名“雨灯”；若要重做两条字幕导入，先按下方说明删除第 3 条并另存。
+                </p>
+                <dl>
+                  <dt>叙事字幕</dt>
+                  <dd>00:00–00:02、00:02–00:04，共两条。</dd>
+                  <dt>导出侧车</dt>
+                  <dd>
+                    <code>deliverables/rainyLight.srt</code>
+                    与
+                    <code>deliverables/rainyLight.vtt</code>
+                    ；两份各含 3 条，其中第 3 条是片名。
+                  </dd>
+                  <dt>格式</dt>
+                  <dd>SRT 与 VTT 均已实际导出。</dd>
+                </dl>
+                <div class="check caution">
+                  V1 验收发现片名和字幕同轨时发生覆盖。V2
+                  把片名移至独立文字轨后解决画面显示覆盖，但字幕导出仍包含标题片段。若只需两句对白/字幕，需手动删除第三条片名并另存纯字幕文件。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step22SubtitleImport.jpg" alt="导入字幕后的文字字幕面板和时间线" loading="lazy" />
+                <figcaption>图 22 · 两条叙事字幕已进入文字轨。导出的 SRT/VTT 侧车还包含片名第三条。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step23" data-search="动画关键帧 水平位置 X 后段 0% 1% 1.9583">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>23</b>
+                  给后段画面添加位置关键帧
+                </div>
+                <h3>设置轻微横向移动</h3>
+                <p>
+                  选中 2–4 秒视频后段，在“动画关键帧”中选择水平位置 X。片段局部时间 1 秒处添加 0% 点，局部 1.9583 秒处添加 1%
+                  点，形成短促轻微的横向位移。
+                </p>
+                <dl>
+                  <dt>属性</dt>
+                  <dd>水平位置 X。</dd>
+                  <dt>关键帧 1</dt>
+                  <dd>片段局部 1.000 秒 · 0%。</dd>
+                  <dt>关键帧 2</dt>
+                  <dd>片段局部 1.9583 秒 · 1%。</dd>
+                </dl>
+                <div class="check">成功判断：关键帧列表显示两个 X 点，时间和数值分别为 1 秒/0% 与 1.9583 秒/1%。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step23Keyframes.jpg" alt="后段视频的水平位置X关键帧列表" loading="lazy" />
+                <figcaption>图 23 · X 位置两点关键帧与预览画面。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step24" data-search="响度 LUFS 真峰值 dBTP -30.1 -10.5 +9.49 -20.6 -16">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>24</b>
+                  测量并校准视频片段响度
+                </div>
+                <h3>根据响度与真峰值约束设置增益</h3>
+                <p>
+                  对源视频选区测量：原始综合响度约 -30.1 LUFS，真峰值约 -10.5 dBTP。输入约 +9.49 dB 恒定增益后，预计响度约 -20.6
+                  LUFS，仍未达到网络视频 -16 LUFS 目标，因为校准受到 -1 dBTP 真峰值上限约束。
+                </p>
+                <dl>
+                  <dt>测量值</dt>
+                  <dd>-30.1 LUFS · -10.5 dBTP。</dd>
+                  <dt>片段增益</dt>
+                  <dd>+9.49 dB。</dd>
+                  <dt>预计结果</dt>
+                  <dd>约 -20.6 LUFS；未达 -16 LUFS 目标。</dd>
+                </dl>
+                <div class="check caution">
+                  这是恒定增益与峰值保护，不是整片动态响度标准化。源素材保持完整；不能因选择目标 -16 LUFS 就宣称已达到该响度。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step24Loudness.jpg" alt="响度测量显示原始响度和真峰值并设置9.49分贝增益" loading="lazy" />
+                <figcaption>图 24 · 目标响度、增益和真峰值约束结果。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step25" data-search="独听 音频混音 峰值 输出电平 播放">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>25</b>
+                  独听检查与输出峰值观察
+                </div>
+                <h3>单独监听片段，确认峰值会受增益影响</h3>
+                <p>
+                  在音频控制区对视频素材执行独听播放，并查看输出电平峰值指示。本次实际观察到独听时峰值上升，确认片段增益会影响监听电平；这属于人工监听，不构成完整节目响度验收。
+                </p>
+                <dl>
+                  <dt>监听方式</dt>
+                  <dd>视频素材独听。</dd>
+                  <dt>检查内容</dt>
+                  <dd>播放时观察输出电平/峰值显示，留意过载与突变。</dd>
+                </dl>
+                <div class="check caution">操作前后应对照监听；没有基于单次峰值观察声称全片真峰值或响度合规。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step25AudioMixer.jpg" alt="音轨混音器显示视频和音频的独听及电平控制" loading="lazy" />
+                <figcaption>图 25 · 音频面板中的独听、静音和输出电平区域。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step26" data-search="rainyAmbience.wav FFmpeg 环境音 本地导入 静音视频 音量关键帧 波形">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>26</b>
+                  导入独立雨声音轨
+                </div>
+                <h3>从源视频抽取音频并在剪辑台混合</h3>
+                <p>
+                  本次先使用 FFmpeg 从源 MP4 分离出
+                  <code>rainyAmbience.wav</code>
+                  ，再通过本地导入加入独立音频轨。此音频抽取发生在应用外部，不是剪辑台内置分离按钮。为避免原声重复，把含原声的视频轨静音，独立音轨设置增益
+                  +9.49 dB、淡入 0.2 秒、淡出 0.4 秒，并做音量关键帧。
+                </p>
+                <dl>
+                  <dt>音频文件</dt>
+                  <dd>
+                    <code>rainyAmbience.wav</code>
+                    ，来自本次源视频。
+                  </dd>
+                  <dt>轨道设置</dt>
+                  <dd>视频轨静音；独立音轨 gain +9.49 dB。</dd>
+                  <dt>关键帧</dt>
+                  <dd>0 秒 0.85×，2 秒 1×。</dd>
+                  <dt>淡变</dt>
+                  <dd>淡入 0.2 秒、淡出 0.4 秒。</dd>
+                  <dt>缓存</dt>
+                  <dd>音频波形缓存就绪。</dd>
+                </dl>
+                <div class="check">成功判断：音频轨出现独立波形，视频轨静音状态可见，音频关键帧与淡入淡出设置可读取。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step26AudioWaveform.jpg" alt="独立雨声音频轨波形、音量关键帧和视频轨静音状态" loading="lazy" />
+                <figcaption>图 26 · 独立音轨、波形、视频静音与音量关键帧。音频源由 FFmpeg 外部分离。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step27" data-search="交叉淡化 crossfade 0.5 片尾 标题 start3.5 字幕 覆盖 同轨">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>27</b>
+                  设置片尾交叉淡化并调整标题
+                </div>
+                <h3>重叠 0.5 秒，令片名在片尾过渡时出现</h3>
+                <p>
+                  选中尾部关键图与前一段，应用 0.5 秒交叉淡化；系统将尾片起点提前至 3.5 秒形成重叠。随后把《雨灯》标题也移至 3.5 秒，与片尾卡对齐。
+                </p>
+                <dl>
+                  <dt>转场</dt>
+                  <dd>片尾关键图进入交叉淡化 0.5 秒。</dd>
+                  <dt>片尾起点</dt>
+                  <dd>系统重叠后自动调整为 3.5 秒。</dd>
+                  <dt>标题起点</dt>
+                  <dd>最终调整为 3.5 秒。</dd>
+                </dl>
+                <div class="check caution">
+                  v1 导出 QA 发现标题与字幕占用同一文字轨时发生重叠/覆盖。最终 V2
+                  已把标题移至空白的独立文字轨，并重新导出复核；修正后的同时显示结果见步骤 42。
+                </div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step27Crossfade.jpg" alt="片尾图片的0.5秒交叉淡化和标题预览" loading="lazy" />
+                <figcaption>图 27 · 交叉淡化参数与片尾预览；文字轨重叠问题在 v1 QA 中发现。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step28" data-search="MP4 H264 AAC 渲染队列 完成 608x1080 24fps 5.5秒">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>28</b>
+                  提交队列并渲染教学样片 v1
+                </div>
+                <h3>等待后台任务明确显示完成</h3>
+                <p>
+                  由导出 MP4 提交后台渲染，并在渲染队列中等待任务状态完成。队列截图拍到 1 个完成任务；最终输出记录约 5.5 秒、608×1080、24 fps。成片由
+                  480p 源视频放大输出，分辨率标记不代表新增了源画面的真实细节。
+                </p>
+                <dl>
+                  <dt>队列</dt>
+                  <dd>1 个任务已完成。</dd>
+                  <dt>容器 / 编码</dt>
+                  <dd>MP4 · H.264 / AAC。</dd>
+                  <dt>文件参数</dt>
+                  <dd>约 5.5 秒 · 608×1080 · 24 fps。</dd>
+                  <dt>版本</dt>
+                  <dd>教学样片 v1；仅归档审看，不代表已批准。</dd>
+                </dl>
+                <div class="check">成功判断：队列显示已完成并提供 MP4 下载；成片参数需以实际媒体探测结果为准。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step28RenderQueue.jpg" alt="后台渲染队列显示一个MP4任务已完成" loading="lazy" />
+                <figcaption>图 28 · 后台队列任务已完成。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step29" data-search="登记 制作项目 成片名称 雨灯 教学样片 v1 审批">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>29</b>
+                  把 v1 登记到制作项目
+                </div>
+                <h3>归档可审阅的教学样片</h3>
+                <p>
+                  在成片登记区选择“雨灯 · 操作指南演示”项目，成片命名为“雨灯 · 教学样片 v1”，未关联剧集。此动作将样片归档用于审片；v1
+                  尚未获批准，也不代表审核流程或项目交付闭环完成。
+                </p>
+                <dl>
+                  <dt>项目</dt>
+                  <dd>雨灯 · 操作指南演示。</dd>
+                  <dt>成片名称</dt>
+                  <dd>雨灯 · 教学样片 v1。</dd>
+                  <dt>剧集</dt>
+                  <dd>不关联剧集。</dd>
+                  <dt>状态</dt>
+                  <dd>本步骤为 v1 登记；V2 审片与最终交付见步骤 42–44。</dd>
+                </dl>
+                <div class="check caution">图中保留了登记与回写入口；不要将“已登记”或“已下载”解释成“已批准/已交付”。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step29RegisterCut.jpg" alt="将雨灯教学样片v1登记到演示制作项目" loading="lazy" />
+                <figcaption>图 29 · 成片登记信息与项目选择。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step30" data-search="制作项目 500积分 预算 项目详情 f8e5be54">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>30</b>
+                  复核制作项目预算
+                </div>
+                <h3>确认项目实际配置为 500 积分</h3>
+                <p>
+                  打开“雨灯 · 操作指南演示”项目详情页，顶部显示项目编号、所有者和预算 500.000000
+                  积分。本轮实际费用仍须单独从账户流水核算；项目预算是上限配置，并非已消费金额。
+                </p>
+                <dl>
+                  <dt>项目编号</dt>
+                  <dd><code>f8e5be54-e4bc-433c-ac4b-6ff076ccf7d1</code></dd>
+                  <dt>项目预算</dt>
+                  <dd>500 积分（本轮费用授权上限 ¥50）。</dd>
+                  <dt>项目状态</dt>
+                  <dd>草稿。</dd>
+                </dl>
+                <div class="check">成功判断：项目详情明确显示预算 500 积分，和初始创建表单中默认 1600 积分区分。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step30ProjectBudget.jpg" alt="雨灯操作指南演示项目详情显示500积分预算" loading="lazy" />
+                <figcaption>图 30 · 项目详情中可见 500 积分预算及项目编号。点击查看原图。</figcaption>
+              </figure>
+            </article>
+          </section>
+
+          <section id="practice">
+            <div class="sectionHead">
+              <h2>04 / 在独立工程练习时间线工具</h2>
+              <p>步骤 31–41 · “剪辑功能练习” / 16:9 / 30 fps</p>
+            </div>
+            <div class="notice">
+              <div>
+                以下步骤使用独立的“剪辑功能练习”工程和同一源视频，避免修改《雨灯》主样片。源素材入点 0、出点 3 秒；在 1.5
+                秒处分割为两个片段。完成每项操作后按步骤说明撤销或保留，使练习结果可核对。
+              </div>
+            </div>
+            <article class="step" id="step31" data-search="波纹修剪 B +1帧 1.5333 总长3.0333 撤销">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>31</b>
+                  用波纹修剪延长出点
+                </div>
+                <h3>+1 帧并观察后续片段顺移</h3>
+                <p>
+                  在练习工程选中前段，精确剪辑模式选“波纹出点”，偏移 +1 帧并应用。30 fps 下出点变为 1.5333 秒，后段随之向后顺移，总时长增加到 3.0333
+                  秒；随后撤销回到原状态。
+                </p>
+                <dl>
+                  <dt>工程设置</dt>
+                  <dd>16:9 · 30 fps。</dd>
+                  <dt>修剪结果</dt>
+                  <dd>前段出点 1.5333 秒 · 总长 3.0333 秒。</dd>
+                  <dt>复原</dt>
+                  <dd>已执行撤销。</dd>
+                </dl>
+                <div class="check">成功判断：前段多 1 帧，后段整体后移，总长随之增加；撤销后返回 3 秒。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step31RippleTrim.jpg" alt="波纹出点增加一帧后的片段出点和总长" loading="lazy" />
+                <figcaption>图 31 · 波纹出点 +1 帧后的结果（截图位于撤销前）。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step32" data-search="滚动修剪 N +1帧 公共切点 两侧总长3秒">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>32</b>
+                  用滚动修剪移动公共切点
+                </div>
+                <h3>把一帧时长从后段移到前段</h3>
+                <p>选择“滚动右切点”，偏移 +1 帧并应用。切点移动一帧，前段增加 1 帧、后段减少 1 帧，两段仍首尾相接且总时长保持 3 秒。</p>
+                <dl>
+                  <dt>操作模式</dt>
+                  <dd>滚动 N。</dd>
+                  <dt>偏移</dt>
+                  <dd>+1 帧。</dd>
+                  <dt>结果</dt>
+                  <dd>前段约 1.5333 秒、后段约 1.4667 秒；总长 3 秒。</dd>
+                </dl>
+                <div class="check">成功判断：公共切点移动，而总时长不变。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step32RollTrim.jpg" alt="滚动修剪一帧后首尾片段长度变化但总长不变" loading="lazy" />
+                <figcaption>图 32 · 滚动修剪后的切点与 3 秒总长。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step33" data-search="滑移 Y +1帧 in0.0333 out1.5667 时间线位置长度不变">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>33</b>
+                  用滑移修剪改变源素材范围
+                </div>
+                <h3>保留片段在时间线的位置和时长</h3>
+                <p>选择“滑移源素材”，偏移 +1 帧并应用。片段在原视频中的入点与出点各向后移一帧，时间线起点和持续时长保持不变。</p>
+                <dl>
+                  <dt>操作模式</dt>
+                  <dd>滑移 Y。</dd>
+                  <dt>源入点 / 出点</dt>
+                  <dd>0.0333 秒 / 1.5667 秒。</dd>
+                  <dt>时间线</dt>
+                  <dd>位置、长度不变，显示后续源画面。</dd>
+                </dl>
+                <div class="check">成功判断：源入出点都偏移一帧，时间线上的片段边界不动。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step33SlipTrim.jpg" alt="滑移后源素材入点出点变化而片段时间线位置保持" loading="lazy" />
+                <figcaption>图 33 · 滑移后的源素材入出点。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step34" data-search="恒定速度 2x 0.7667 撤销 重做">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>34</b>
+                  设置恒定 2× 速度
+                </div>
+                <h3>验证速度改变片段时长</h3>
+                <p>将前段速度设为 2×，原约 1.5333 秒的片段变为约 0.7667 秒。练习中实际执行撤销、重做、再次撤销，以核对历史状态的正反向恢复。</p>
+                <dl>
+                  <dt>速度</dt>
+                  <dd>2× 恒定速度。</dd>
+                  <dt>片段时长</dt>
+                  <dd>约 0.7667 秒。</dd>
+                  <dt>历史操作</dt>
+                  <dd>撤销 → 重做 → 再撤销；最终回到正常速度。</dd>
+                </dl>
+                <div class="check">成功判断：2× 时长缩为一半，撤销/重做能返回相邻状态。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step34ConstantSpeed.jpg" alt="前段设置为两倍恒定播放速度" loading="lazy" />
+                <figcaption>图 34 · 2× 速度及缩短后的片段。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step35" data-search="复制片段 删除 重叠 duplicate">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>35</b>
+                  复制并删除时间线片段
+                </div>
+                <h3>检查复制命令后清理副本</h3>
+                <p>
+                  选中前段执行复制，时间线上生成同源副本；复制片段可能与原片段重叠，需检查位置与选中状态。本次将副本删除，练习工程不保留该复制结果。
+                </p>
+                <dl>
+                  <dt>操作</dt>
+                  <dd>复制片段 → 确认新片段 → 删除副本。</dd>
+                  <dt>注意</dt>
+                  <dd>重叠副本不一定扩展总时长，检查片段起点再继续编辑。</dd>
+                </dl>
+                <div class="check">成功判断：复制后片段数增加，删除副本后片段数恢复。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step35Duplicate.jpg" alt="复制视频片段后新副本被选中" loading="lazy" />
+                <figcaption>图 35 · 复制后副本出现在时间线并选中。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step36" data-search="波纹删除 Shift Delete 后段移至0 总时长1.4667 撤销">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>36</b>
+                  波纹删除前段
+                </div>
+                <h3>删除后段前空隙并同步前移</h3>
+                <p>在 1.5 秒练习切点附近选择前段，执行波纹删除。前段移除，后段移至时间线 0 秒，剩余时长约 1.4667 秒；再撤销恢复两段工程。</p>
+                <dl>
+                  <dt>命令</dt>
+                  <dd>波纹删除（Shift + Delete）。</dd>
+                  <dt>删除后</dt>
+                  <dd>后段起点 0 秒 · 总长 1.4667 秒。</dd>
+                  <dt>复原</dt>
+                  <dd>已撤销。</dd>
+                </dl>
+                <div class="check">成功判断：删除产生的空隙被消除，后续片段前移；撤销后片段返回原位。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step36RippleDelete.jpg" alt="波纹删除前段后仅剩后段并从时间线零秒开始" loading="lazy" />
+                <figcaption>图 36 · 波纹删除后的单段时间线结果（截图位于撤销前）。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step37" data-search="轨道锁定 禁用 编辑 属性 解锁">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>37</b>
+                  锁定轨道保护素材
+                </div>
+                <h3>检查锁定后编辑控件状态</h3>
+                <p>锁定视频轨后，片段属性与编辑按钮变为不可编辑；完成检查后解锁轨道继续操作。</p>
+                <dl>
+                  <dt>保护动作</dt>
+                  <dd>点击轨道锁定。</dd>
+                  <dt>验证</dt>
+                  <dd>片段编辑控件禁用，轨道属性显示已锁定。</dd>
+                  <dt>恢复</dt>
+                  <dd>解锁后继续编辑。</dd>
+                </dl>
+                <div class="check">成功判断：锁定和解锁状态均可见，解锁后操作能力恢复。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step37LockedTrack.jpg" alt="视频轨道锁定时片段属性控件禁用" loading="lazy" />
+                <figcaption>图 37 · 轨道已锁定，片段属性不能编辑。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step38" data-search="EDL 导出 导入 往返 纯画面 2片段3秒">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>38</b>
+                  往返验证纯画面 EDL
+                </div>
+                <h3>导出再导入两个视频片段</h3>
+                <p>
+                  在仅含纯画面片段、无文字音频效果的练习工程中导出 EDL 到
+                  <code>deliverables/practice.edl</code>
+                  ，再通过剪辑台导入该 EDL。导入后实际核对为 2 个视频片段、3 秒总长。
+                </p>
+                <dl>
+                  <dt>文件</dt>
+                  <dd>
+                    <code>deliverables/practice.edl</code>
+                    。
+                  </dd>
+                  <dt>导出条件</dt>
+                  <dd>纯画面顺序片段，无字幕、音频、变速或重叠。</dd>
+                  <dt>往返结果</dt>
+                  <dd>2 个片段 · 3 秒。</dd>
+                </dl>
+                <div class="check">成功判断：重新导入后片段数、次序和总时长符合原练习时间线。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step38EdlRoundTrip.jpg" alt="EDL导入导出按钮和两段纯视频的练习时间线" loading="lazy" />
+                <figcaption>图 38 · 纯画面时间线及 EDL 导入/导出入口。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step39" data-search="项目恢复 备份 历史快照 恢复所选备份">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>39</b>
+                  从历史备份恢复练习工程
+                </div>
+                <h3>确认选择备份并复核恢复状态</h3>
+                <p>
+                  打开“项目恢复”，选择最新历史备份并执行恢复。恢复前应用会先备份当前工程，素材文件不会删除。恢复完成后实际复核：原后段名称恢复，时间线上仍有
+                  2 个片段、总长 3 秒，工程状态为已保存。
+                </p>
+                <dl>
+                  <dt>恢复前保护</dt>
+                  <dd>当前剪辑工程另存备份；素材文件保留。</dd>
+                  <dt>恢复结果</dt>
+                  <dd>后段名称恢复 · 2 个片段 · 3 秒。</dd>
+                  <dt>截图说明</dt>
+                  <dd>截图展示项目恢复对话框和备份选择；操作完成后的状态由实跑复核。</dd>
+                </dl>
+                <div class="check">成功判断：恢复后的工程数据与所选备份一致，并显示已保存；素材文件仍可用。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step39BackupRestore.jpg" alt="项目恢复对话框显示历史备份和恢复所选备份按钮" loading="lazy" />
+                <figcaption>图 39 · 恢复对话框和所选历史备份；完成后已核对 2 段 / 3 秒。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step40" data-search="轨道 名称 rename 上移 下移 隐藏 显示 练习画面">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>40</b>
+                  练习轨道命名、排序与显隐
+                </div>
+                <h3>用轨道控件管理画面层次</h3>
+                <p>
+                  把练习工程的视频轨改名为“练习画面”，执行下移、上移来检查层次操作，再隐藏轨道并恢复显示。隐藏时监视器不呈现该轨画面，但时间线片段仍保留；图中记录隐藏状态，复原后继续下一步。
+                </p>
+                <dl>
+                  <dt>名称</dt>
+                  <dd>练习画面。</dd>
+                  <dt>排序</dt>
+                  <dd>下移一次，再上移恢复。</dd>
+                  <dt>显隐</dt>
+                  <dd>隐藏 → 恢复显示；素材和片段未删除。</dd>
+                </dl>
+                <div class="check">成功判断：轨道名称改变、层次按钮能调整顺序，隐藏时画面消失，恢复后素材重新显示。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step40TrackControls.jpg" alt="练习画面轨道名称与隐藏控件，片段仍留在时间线" loading="lazy" />
+                <figcaption>图 40 · 隐藏轨道时监视器变黑，时间线的两个片段仍然保留。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step41" data-search="重新链接 素材 relink 代理 缩略图 缓存 取消未验收">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>41</b>
+                  重新链接源视频并重建缓存
+                </div>
+                <h3>保持剪辑位置，替换素材链接</h3>
+                <p>
+                  在媒体素材上使用重新链接，选择本次同一个生成源视频。完成后核对时间线仍保留两个片段、总长 3
+                  秒，画面能预览；随后重新生成代理与缩略缓存并确认成功。
+                </p>
+                <dl>
+                  <dt>重新链接对象</dt>
+                  <dd>本次《雨灯》生成源 MP4。</dd>
+                  <dt>时间线核对</dt>
+                  <dd>2 个片段 · 3 秒，原有位置保留。</dd>
+                  <dt>缓存结果</dt>
+                  <dd>重新链接后实际生成代理缓存成功。</dd>
+                </dl>
+                <div class="check caution">本次缓存任务很快完成，未能实际验证“取消缓存任务”。该项不列为本轮通过。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step41Relink.jpg" alt="重新链接源视频后的练习工程，原有两个片段仍在" loading="lazy" />
+                <figcaption>图 41 · 重新链接完成后的时间线与媒体素材。缓存成功在随后操作中确认。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <div class="check caution">
+              本组没有覆盖完整特效库、速度曲线、EQ/降噪/自动闪避、多声道混音、协同编辑、长时 4K 压力或全平台部署验收。恒定 2×
+              速度与关键帧线性变化不等同于速度曲线或专业混音母带。
+            </div>
+          </section>
+          <section id="delivery">
+            <div class="sectionHead">
+              <h2>05 / V2 修正、审看与交付</h2>
+              <p>步骤 42–45 · 5.5 秒教学短样片</p>
+            </div>
+            <article class="step" id="step42" data-search="V2 审看 标题 字幕 分轨 SHA-256 608x1080 24fps 5.5秒">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>42</b>
+                  修正标题分轨并审看 V2
+                </div>
+                <h3>让标题与第二条字幕同时可见</h3>
+                <p>
+                  回到《雨灯》主样片工程，把《雨灯》片名移到空白的独立文字轨，再导出 V2。实际审看 3.5–4
+                  秒交叉淡化区间：片名与第二条字幕能同时显示，过渡正常。该成片仍然只有 5.5 秒，作为操作指南教学样片交付。
+                </p>
+                <dl>
+                  <dt>修正内容</dt>
+                  <dd>片名独立文字轨；字幕保留原时间段。</dd>
+                  <dt>导出规格</dt>
+                  <dd>5.50 秒 · 608×1080 · 24 fps · MP4 / H.264 / AAC。</dd>
+                  <dt>版本与校验</dt>
+                  <dd>V2；文件 SHA-256 与下方交付记录一致。</dd>
+                </dl>
+                <div class="check">成功判断：3.5–4 秒能同时看到片名和字幕，视频可完整播放，媒体参数与登记文件一致。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step42V2Review.jpg" alt="V2审片画面中片名与字幕同时显示，文件参数和SHA-256可见" loading="lazy" />
+                <figcaption>图 42 · V2 在交叉淡化区间的审看片段。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step43" data-search="审片 批准 确认交付 已交付 V02 V01退回修改 manifest review">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>43</b>
+                  批准 V2 并确认交付
+                </div>
+                <h3>保留版本历史与审片意见</h3>
+                <p>
+                  在制作项目“审片与交付”中选择 V02，记录标题已分轨、3.5–4 秒同显与交叉淡化正常的审片意见，批准后确认交付。本轮 V02 最终显示已交付，V01
+                  保留为退回修改；这标志本次教学样片流程完成，不代表完整剧集已经制作完成。
+                </p>
+                <dl>
+                  <dt>最终状态</dt>
+                  <dd>V02 已交付；V01 退回修改。</dd>
+                  <dt>交付下载</dt>
+                  <dd>MP4、剪辑工程与 manifest。</dd>
+                  <dt>manifest 语义</dt>
+                  <dd>登记时的快照，其 status 为 review，不随后续审批自动更新；最新审批状态以项目版本记录为准。</dd>
+                </dl>
+                <div class="check">成功判断：项目中 V02 显示已交付，审片意见和文件校验记录可查，旧版修改记录保留。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step43ApprovedCut.jpg" alt="项目审片与交付区域显示V02已交付和V01退回修改" loading="lazy" />
+                <figcaption>图 43 · V02 已交付与 V01 退回修改的版本记录。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step44" data-search="回写 来源画布 editorResult 6节点 成片视频 画布1.json">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>44</b>
+                  把最终成片回写来源画布
+                </div>
+                <h3>在画布中继续使用剪辑结果</h3>
+                <p>
+                  从剪辑台最终成片区域选择“回写来源画布”。返回
+                  <code>画布1.json</code>
+                  后关闭对话面板并适应视图，右下出现完整成片视频节点。实际读取磁盘画布确认共 6 个节点，其中包含
+                  <code>editorResult</code>
+                  ，说明生成素材与剪辑成片已在同一画布联动。
+                </p>
+                <dl>
+                  <dt>来源画布</dt>
+                  <dd>
+                    <code>rainyLightGuide / 画布1.json</code>
+                    。
+                  </dd>
+                  <dt>写回结果</dt>
+                  <dd>新增可预览的成片视频节点。</dd>
+                  <dt>持久化核对</dt>
+                  <dd>共 6 个节点，包含 editorResult。</dd>
+                </dl>
+                <div class="check">成功判断：画布可见新成片节点，重新读取画布文件仍保留该节点。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step44CanvasWriteback.jpg" alt="来源画布右下完整显示新增的剪辑成片视频节点" loading="lazy" />
+                <figcaption>图 44 · 最终成片已回写来源画布，原有剧本、分镜与生成素材仍保留。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <article class="step" id="step45" data-search="账单 流水 对账 35任务 76.034483积分 7.60元 文本31 图片1 视频成功1 失败2">
+              <div class="stepCopy">
+                <div class="stepLabel">
+                  <b>45</b>
+                  逐任务核对费用账单
+                </div>
+                <h3>用工作区任务与实际流水确认总额</h3>
+                <p>
+                  本轮按
+                  <code>rainyLightGuide</code>
+                  工作区筛出 35 条生成任务，用 jobId 将
+                  <code>generationJobs</code>
+                  与
+                  <code>creditLedger</code>
+                  逐条匹配。所有扣款金额一致：文本 31 次合计 1.034483 积分、图片成功 1 次 3 积分、视频成功 1 次 72 积分、视频失败 2 次均为 0 积分。
+                </p>
+                <dl>
+                  <dt>实际合计</dt>
+                  <dd>76.034483 积分。</dd>
+                  <dt>换算金额</dt>
+                  <dd>按 10 积分/元约 ¥7.60，低于 500 积分 / ¥50 上限。</dd>
+                  <dt>核对证据</dt>
+                  <dd>
+                    <a href="deliverables/costRecord.json">costRecord.json 逐任务记录</a>
+                    。
+                  </dd>
+                  <dt>截图范围</dt>
+                  <dd>图中为账户近期流水的部分记录，金额保留两位；精确累计以 JSON 逐任务对账为准。</dd>
+                </dl>
+                <div class="check">成功判断：35 条任务的实扣金额与流水一致，失败视频没有实扣，实际总额未超过授权。</div>
+              </div>
+              <figure>
+                <img class="shot" src="images/step45CostLedger.jpg" alt="账户近期积分流水，包含文本与视频的生成扣款" loading="lazy" />
+                <figcaption>图 45 · 账户近期流水。截图只展示部分流水；精确 35 条任务与总额见 costRecord.json。点击查看原图。</figcaption>
+              </figure>
+            </article>
+            <section class="previewPanel" id="finalChecks">
+              <h3>本轮交付与技术记录</h3>
+              <p>完成范围是《雨灯》5.5 秒教学短样片及一组独立剪辑练习。可在下方播放最终 V2，并对照文件校验值识别版本。</p>
+              <video class="sampleVideo" controls preload="metadata" src="deliverables/rainyLight.mp4" aria-label="雨灯教学样片V2预览"></video>
+              <div class="downloadActions">
+                <a class="action actionPrimary" href="deliverables/rainyLight.mp4" download>下载 V2 MP4</a>
+                <a class="action" id="packageDownload" href="../comicProductionGuide.zip" download>离线完整 ZIP</a>
+                <a class="action" href="deliverables/rainyLightProject.json" download>剪辑工程快照</a>
+                <a class="action" href="deliverables/rainyLightManifest.json" download>登记 manifest 快照</a>
+                <a class="action" href="deliverables/deliveryReceipt.json">当前交付回执</a>
+                <a class="action" href="deliverables/costRecord.json">逐任务费用对账</a>
+                <a class="action" href="deliverables/rainyLight.srt" download>V2 字幕 SRT（含片名）</a>
+                <a class="action" href="deliverables/rainyLight.vtt" download>V2 字幕 VTT（含片名）</a>
+                <a class="action" href="deliverables/sourceAssets/assets/videoEditor/timeline.json" download>离线时间线</a>
+                <a class="action" href="deliverables/sourceAssets/assets/videoEditor/media/rainyVideo.mp4" download>离线视频源</a>
+                <a class="action" href="deliverables/sourceAssets/assets/videoEditor/media/rainyKeyframe.png" download>离线关键图</a>
+                <a class="action" href="deliverables/sourceAssets/assets/videoEditor/media/rainyAmbience.wav" download>离线环境音</a>
+                <a class="action" href="packageReadme.md" download>离线包使用说明</a>
+                <a class="action" href="deliverables/mediaQuality.json">媒体探测记录</a>
+                <a class="action" href="deliverables/audioQuality.txt">音频测量记录</a>
+              </div>
+              <dl class="finalFacts">
+                <dt>最终文件</dt>
+                <dd>
+                  <code>deliverables/rainyLight.mp4</code>
+                  · V2。
+                </dd>
+                <dt>SHA-256</dt>
+                <dd><code>9b71dc814b01ed23a9ced733e7c68c02520fac7950611dbceb3a3e62c7290c0d</code></dd>
+                <dt>画面</dt>
+                <dd>608×1080 · 24 fps · 5.5 秒。源生成视频 496×864，存在上采样，不是原生 1080p 生成。</dd>
+                <dt>音频</dt>
+                <dd>综合响度约 -23.3 LUFS；未达到网络视频 -16 LUFS 参考目标。片段恒定增益不能代替整片动态混音和母带处理。</dd>
+                <dt>字幕</dt>
+                <dd>
+                  归档的
+                  <a href="deliverables/rainyLight.srt">SRT</a>
+                  和
+                  <a href="deliverables/rainyLight.vtt">VTT</a>
+                  均含 3 条：两句叙事字幕与 3.5–5.5 秒的片名“雨灯”。V2
+                  已解决画面上片名与字幕同轨覆盖；如需仅叙事字幕，需删除第三条标题后另存纯字幕文件。
+                </dd>
+                <dt>工程 / manifest</dt>
+                <dd>
+                  剪辑工程快照与离线时间线/媒体可供后续恢复。manifest 是登记时快照，status 为 review，不随后续审批自动更新；V02 当前审批与交付状态见
+                  <a href="deliverables/deliveryReceipt.json">deliveryReceipt.json</a>
+                  （delivered）及项目版本记录。
+                </dd>
+                <dt>实际总费用</dt>
+                <dd>
+                  <strong>76.034483 积分，约 ¥7.60。</strong>
+                  已按 jobId 核对 35 条任务：31 次文本共 1.034483 积分、1 次图片 3 积分、1 次成功视频 72 积分、2 次失败视频 0
+                  积分，均与本机平台积分流水一致。低于本轮 ¥50 / 500 积分授权，证据见
+                  <a href="deliverables/costRecord.json">costRecord.json</a>
+                  ；图 45 只展示近期部分流水。
+                </dd>
+              </dl>
+              <div class="check caution">
+                本次通过的是短样片流程与文中列出的实际操作。未因此完成完整剧集、多镜头长篇一致性、长时 4K
+                压力、完整特效库、速度曲线、EQ/降噪/自动闪避、多声道、实时协作或干净目标机部署验收。缓存取消因任务快速结束未成功触发，不列为通过。
+              </div>
+            </section>
+            <a class="featureLink" href="features.html">
+              <div>
+                <strong>查看完整功能参考与限制</strong>
+                <span>已实现能力、使用入口、实际限制与尚未实现项。</span>
+              </div>
+              <i aria-hidden="true">→</i>
+            </a>
+          </section>
+          <footer class="footer">
+            操作指南：5.5 秒《雨灯》教学样片 V2 与独立剪辑功能练习。35 条生成任务已与本机积分流水对账，实际约
+            ¥7.60；所有未记录的能力不据此视为已验收。
+          </footer>
+          <div class="emptySearch" id="emptySearch">没有找到匹配步骤。</div>
+        </main>
+      </div>
+    </div>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="截图原图预览">
+      <button id="closeLightbox" type="button" aria-label="关闭原图">×</button>
+      <img id="lightboxImage" alt="截图原图" />
+    </div>
+    <script>
+      if (location.protocol === "file:") document.getElementById("packageDownload").style.display = "none";
+      const searchInput = document.getElementById("searchInput");
+      const steps = [...document.querySelectorAll(".step")];
+      const navLinks = [...document.querySelectorAll(".navLink")];
+      const emptySearch = document.getElementById("emptySearch");
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightboxImage");
+      let activeImage = null;
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLocaleLowerCase("zh-CN");
+        let visibleCount = 0;
+        steps.forEach((step) => {
+          const visible = `${step.innerText} ${step.dataset.search}`.toLocaleLowerCase("zh-CN").includes(query);
+          step.hidden = !visible;
+          if (visible) visibleCount += 1;
+        });
+        navLinks.forEach((link) => {
+          const target = document.querySelector(link.getAttribute("href"));
+          link.hidden = Boolean(target?.classList.contains("step") && target.hidden);
+        });
+        emptySearch.style.display = visibleCount ? "none" : "block";
+      });
+      document.getElementById("printButton").addEventListener("click", () => window.print());
+      document.querySelectorAll(".shot").forEach((image) => {
+        image.tabIndex = 0;
+        image.setAttribute("role", "button");
+        image.setAttribute("aria-label", `${image.alt}，点击放大`);
+        const openLightbox = () => {
+          activeImage = image;
+          lightboxImage.src = image.src;
+          lightboxImage.alt = image.alt;
+          lightbox.classList.add("open");
+          document.getElementById("closeLightbox").focus();
+        };
+        image.addEventListener("click", openLightbox);
+        image.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          openLightbox();
+        });
+      });
+      function closeLightbox() {
+        lightbox.classList.remove("open");
+        lightboxImage.removeAttribute("src");
+        activeImage?.focus();
+      }
+      document.getElementById("closeLightbox").addEventListener("click", closeLightbox);
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) closeLightbox();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeLightbox();
+      });
+      const observer = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            navLinks.forEach((link) => link.classList.toggle("active", link.hash === `#${entry.target.id}`));
+          }),
+        { rootMargin: "-15% 0px -75% 0px" },
+      );
+      steps.forEach((step) => observer.observe(step));
+    </script>
+  </body>
+</html>

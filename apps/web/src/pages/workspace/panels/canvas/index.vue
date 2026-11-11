@@ -170,6 +170,7 @@ import { storeToRefs } from "pinia";
 import { Icon3dCubeSphere, IconArrowBackUp, IconArrowForwardUp, IconFolders, IconHandTwoFingers, IconMovie, IconPhoto, IconPointer, IconPlus, IconScissors, IconScript, IconSparkles, IconUnlink, IconUpload, IconVideo } from "@tabler/icons-vue";
 import * as vueRuntime from "vue";
 import * as uiRuntime from "@omnistudio-next/ui";
+import * as modelIconsRuntime from "@omnistudio-next/model-icons";
 import * as tiptapRuntime from "@tiptap/core";
 import * as starterKitRuntime from "@tiptap/starter-kit";
 import * as vueFlowRuntime from "@vue-flow/core";
@@ -920,10 +921,10 @@ onBeforeUnmount(() => {
 });
 
 const nodeWindow = window as typeof window & {
-  toonflowNodeHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; tiptap: typeof tiptapRuntime; starterKit: typeof starterKitRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
+  toonflowNodeHost?: { vue: typeof vueRuntime; ui: typeof uiRuntime; modelIcons: typeof modelIconsRuntime; tiptap: typeof tiptapRuntime; starterKit: typeof starterKitRuntime; vueFlow: typeof vueFlowRuntime; elementPlus: typeof elementPlusRuntime; ai: { runAgentLoop: typeof runAgentLoop; createAssistantMessageEventStream: typeof createAssistantMessageEventStream } };
   toonflowNodes?: NodeTypesObject;
 };
-nodeWindow.toonflowNodeHost = { vue: vueRuntime, ui: uiRuntime, tiptap: tiptapRuntime, starterKit: starterKitRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
+nodeWindow.toonflowNodeHost = { vue: vueRuntime, ui: uiRuntime, modelIcons: modelIconsRuntime, tiptap: tiptapRuntime, starterKit: starterKitRuntime, vueFlow: vueFlowRuntime, elementPlus: elementPlusRuntime, ai: { runAgentLoop, createAssistantMessageEventStream } };
 provide("nodeConfig", (nodeType: string) => nodeConfigs.value[nodeType] ?? {});
 provide("workspaceFiles", () => {
   const directory = project.value?.directory;

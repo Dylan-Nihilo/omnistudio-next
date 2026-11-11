@@ -32,7 +32,7 @@
     <footer class="chatFooter">
       <div class="inputContent"><slot name="input" /></div>
       <div class="inputActions">
-        <uiSelect :modelValue="model" class="modelSelect" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" size="small" :loading="modelsLoading" filterable placeholder="选择模型" aria-label="生成模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="$event && emit('loadModels')" />
+        <uiSelect :modelValue="model" class="modelSelect" :options="props.models.map(item => ({ label: getModelSelectionLabel(item), value: JSON.stringify([item.providerId, item.modelId]), icon: modelIcon, iconProps: { model: item.modelId, provider: item.providerId, size: 18 } }))" size="small" :loading="modelsLoading" filterable placeholder="选择模型" aria-label="生成模型" @update:modelValue="value => typeof value === 'string' && (model = value)" @visibleChange="$event && emit('loadModels')" />
         <uiButton class="sendButton" :icon="IconSparkles" :disabled="initializing || !prompt.trim() || !model" aria-label="生成动画" @click="sendInstruction">
           生成方案
         </uiButton>
@@ -42,10 +42,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { uiIconButton, uiSelect, uiButton } from "@omnistudio-next/ui";
 import { IconLoader2, IconSparkles, IconMovie, IconCheck, IconAlertCircle, IconArrowBackUp } from "@tabler/icons-vue";
-import { groupNodeModels, type NodeAiModel } from "@omnistudio-next/nodes-scaffold/runtime";
+import type { NodeAiModel } from "@omnistudio-next/nodes-scaffold/runtime";
+import { getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 
 import type { DirectorPlan, DirectorPlanItem, DirectorGeneration } from "./sceneAnimation";
 
@@ -53,7 +53,6 @@ const props = defineProps<{ result?: DirectorPlan; referenceCount: number; initi
 const emit = defineEmits<{ editInstruction: [value: string]; selectPlan: [id: string]; send: []; loadModels: [] }>();
 const prompt = defineModel<string>("prompt", { default: "" });
 const model = defineModel<string>("model", { default: "" });
-const modelGroups = computed(() => groupNodeModels(props.models));
 function sendInstruction() {
   if (props.initializing || !prompt.value.trim() || !model.value) return;
   emit("send");

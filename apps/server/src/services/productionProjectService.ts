@@ -7,6 +7,7 @@ import { requireAccount } from "@/utils/accountContext";
 import { roleAllows, type ProductionProjectAction, type ProductionProjectRole } from "@/utils/productionProject/permissions";
 import { generateMedia, getVideoBillingKind } from "@/utils/media/generation";
 import { quoteCredits } from "@/services/billingService";
+import type { ProductionScriptDocument } from "@/utils/productionProject/scriptDocument";
 import u from "@/utils";
 
 export type ProductionProjectStatus = "draft" | "scripted" | "storyboarded" | "generating" | "editing" | "review" | "approved" | "delivered";
@@ -183,8 +184,36 @@ export async function removeProductionProjectMember(input: { projectId: string; 
   });
 }
 
+async function recoverProductionProjectAssetReferences(project: Pick<typeof productionProjects.$inferSelect, "id" | "workspaceId">) {
+  const account = requireAccount();
+  await getDatabase().transaction(async tx => {
+    const assets = await tx.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.projectId, project.id), eq(productionProjectAssets.referenceStatus, "generating"))).for("update");
+    if (!assets.length) return;
+    const jobs = await tx.select().from(generationJobs).where(and(eq(generationJobs.projectId, project.id), eq(generationJobs.mediaType, "image"))).orderBy(desc(generationJobs.createdAt));
+    for (const asset of assets) {
+      // ACT: 仅旧版生成中记录需要按快照找回任务；新版状态与任务 ID 在预留事务中一起提交。
+      const job = jobs.find(job => job.id === asset.referenceGenerationJobId) ?? jobs.find(job => {
+        if (job.createdAt.getTime() < asset.updatedAt.getTime()) return false;
+        const snapshot = job.requestSnapshot as { request?: { request?: { prompt?: string; outputDirectory?: string } } } | null;
+        return snapshot?.request?.request?.prompt === asset.referencePrompt && snapshot.request.request.outputDirectory === `assets/production/${project.id}`;
+      });
+      if (job && (job.status === "reserved" || job.status === "running")) {
+        if (asset.referenceGenerationJobId !== job.id) await tx.update(productionProjectAssets).set({ referenceGenerationJobId: job.id }).where(eq(productionProjectAssets.id, asset.id));
+        continue;
+      }
+      const files = job?.status === "succeeded" ? (job.resultSnapshot as { files?: unknown } | null)?.files : undefined;
+      const file = Array.isArray(files) ? files.find((file): file is GeneratedMedia => file && typeof file === "object" && typeof file.path === "string" && file.path.trim() && file.mediaType === "image" && typeof file.mimeType === "string" && file.mimeType.startsWith("image/")) : undefined;
+      const referenceStatus = file || (asset.referencePath && asset.referenceMimeType?.startsWith("image/")) ? "succeeded" as const : "failed" as const;
+      const now = new Date();
+      await tx.update(productionProjectAssets).set({ referenceStatus, referenceGenerationJobId: job?.id ?? null, ...(file ? { referencePath: file.path, referenceMimeType: file.mimeType } : {}), updatedAt: now }).where(eq(productionProjectAssets.id, asset.id));
+      await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionAsset.referenceImageRecovered", metadata: { projectId: project.id, assetId: asset.id, generationJobId: job?.id ?? null, attemptNumber: asset.referenceRevision, referenceStatus, jobStatus: job?.status ?? null, reason: job ? "根据已结算的真实任务恢复参考图状态" : "未找到对应的预留任务，恢复为可重试状态" }, createdAt: now, updatedAt: now });
+    }
+  });
+}
+
 export async function getProductionProject(projectId: string) {
   const { project } = await requireProjectAccess(projectId, "read");
+  await recoverProductionProjectAssetReferences(project);
   const database = getDatabase();
   const members = await database.select({ id: productionProjectMembers.id, userId: productionProjectMembers.userId, email: users.email, displayName: users.displayName, role: productionProjectMembers.role, status: productionProjectMembers.status }).from(productionProjectMembers).innerJoin(users, eq(users.id, productionProjectMembers.userId)).where(eq(productionProjectMembers.projectId, projectId)).orderBy(asc(productionProjectMembers.createdAt));
   const seasons = await database.select().from(productionSeasons).where(eq(productionSeasons.projectId, projectId)).orderBy(asc(productionSeasons.seasonNumber));
@@ -201,25 +230,18 @@ export async function getProductionProject(projectId: string) {
   const approvals = variantIds.length ? await database.select().from(productionApprovals).where(inArray(productionApprovals.variantId, variantIds)).orderBy(desc(productionApprovals.createdAt)) : [];
   const deliveries = await database.select().from(productionDeliveries).where(eq(productionDeliveries.projectId, projectId)).orderBy(desc(productionDeliveries.createdAt));
   const assets = await database.select().from(productionProjectAssets).where(eq(productionProjectAssets.projectId, projectId)).orderBy(asc(productionProjectAssets.createdAt));
-  const referenceJobIds = assets.map(asset => asset.referenceGenerationJobId).filter((id): id is string => Boolean(id));
-  const referenceJobs = referenceJobIds.length ? await database.select({ id: generationJobs.id, status: generationJobs.status }).from(generationJobs).where(inArray(generationJobs.id, referenceJobIds)) : [];
-  const referenceJobStatus = new Map(referenceJobs.map(job => [job.id, job.status]));
   return {
     project,
     members,
     seasons,
     episodes,
     scenes,
-    shots,
+    shots: shots.map(shot => ({ ...shot, characterAssetIds: shot.characterAssetIds ?? [], propAssetIds: shot.propAssetIds ?? [] })),
     variants,
     reviews,
     approvals,
     deliveries,
-    assets: assets.map(asset => {
-      const jobStatus = asset.referenceGenerationJobId ? referenceJobStatus.get(asset.referenceGenerationJobId) : undefined;
-      const referenceStatus = asset.referenceStatus === "generating" && jobStatus === "succeeded" ? "succeeded" : asset.referenceStatus === "generating" && jobStatus === "failed" ? "failed" : asset.referenceStatus;
-      return { ...asset, referenceStatus, description: asset.description ?? "", visualDescription: asset.visualDescription ?? "", episodeIds: asset.episodeIds ?? [] };
-    }),
+    assets: assets.map(asset => ({ ...asset, description: asset.description ?? "", visualDescription: asset.visualDescription ?? "", episodeIds: asset.episodeIds ?? [] })),
   };
 }
 
@@ -231,7 +253,65 @@ export async function getProductionScriptDraft(projectId: string) {
 
 export async function getProductionScriptHistory(projectId: string) {
   await requireProjectAccess(projectId, "read");
-  return getDatabase().select().from(productionScriptRecords).where(eq(productionScriptRecords.projectId, projectId)).orderBy(asc(productionScriptRecords.revision));
+  const records = await getDatabase().select().from(productionScriptRecords).where(eq(productionScriptRecords.projectId, projectId)).orderBy(desc(productionScriptRecords.revision));
+  return records.map(record => {
+    const { document, source, restoredFromRevision } = u.productionScriptDocument.readScriptDocumentSnapshot(record.confirmedSnapshot);
+    return { id: record.id, revision: record.revision, createdAt: record.createdAt, source, episodeCount: document.episodes.length, ...(restoredFromRevision ? { restoredFromRevision } : {}) };
+  });
+}
+
+async function currentScriptStructure(database: Pick<ProductionTransaction, "select">, projectId: string) {
+  const episodes = await database.select({ id: productionEpisodes.id, episodeNumber: productionEpisodes.episodeNumber, title: productionEpisodes.title }).from(productionEpisodes).innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId)).where(eq(productionSeasons.projectId, projectId)).orderBy(asc(productionSeasons.seasonNumber), asc(productionEpisodes.episodeNumber));
+  const episodeIds = episodes.map(episode => episode.id);
+  const scenes = episodeIds.length ? await database.select().from(productionScenes).where(inArray(productionScenes.episodeId, episodeIds)).orderBy(asc(productionScenes.sceneNumber)) : [];
+  const sceneIds = scenes.map(scene => scene.id);
+  const shots = sceneIds.length ? await database.select().from(productionShots).where(inArray(productionShots.sceneId, sceneIds)).orderBy(asc(productionShots.shotNumber)) : [];
+  return { episodes: episodes.map(episode => ({ ...episode, scenes: scenes.filter(scene => scene.episodeId === episode.id).map(scene => ({ ...scene, shots: shots.filter(shot => shot.sceneId === scene.id) })) })) };
+}
+
+export async function getProductionScriptDocument(projectId: string, revision?: number) {
+  const { project } = await requireProjectAccess(projectId, "read");
+  const database = getDatabase();
+  const [record] = await database.select().from(productionScriptRecords).where(revision === undefined ? eq(productionScriptRecords.projectId, projectId) : and(eq(productionScriptRecords.projectId, projectId), eq(productionScriptRecords.revision, revision))).orderBy(desc(productionScriptRecords.revision)).limit(1);
+  if (record) return { ...u.productionScriptDocument.readScriptDocumentSnapshot(record.confirmedSnapshot), revision: record.revision, createdAt: record.createdAt };
+  if (revision !== undefined) invalid("指定剧本版本不存在", 404);
+  return { document: u.productionScriptDocument.buildDerivedScriptDocument(await currentScriptStructure(database, projectId)), revision: 0, source: "derived" as const, createdAt: project.createdAt };
+}
+
+type ScriptDocumentVersionInput = { projectId: string; expectedRevision: number } & ({ document: ProductionScriptDocument; revision?: never } | { document?: never; revision: number });
+
+export async function saveProductionScriptDocument(input: ScriptDocumentVersionInput) {
+  const account = requireAccount();
+  await requireProjectAccess(input.projectId, "create");
+  return getDatabase().transaction(async tx => {
+    const [project] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+    if (!project) invalid("生产项目不存在", 404);
+    assertPreProductionEditable(project.status);
+    const [latest] = await tx.select().from(productionScriptRecords).where(eq(productionScriptRecords.projectId, input.projectId)).orderBy(desc(productionScriptRecords.revision)).limit(1);
+    if ((latest?.revision ?? 0) !== input.expectedRevision) invalid("剧本已被其他会话更新，请加载最新版本后再保存；本次修改未覆盖服务器内容", 409);
+    let previous = latest;
+    if (input.revision !== undefined) {
+      const [target] = await tx.select().from(productionScriptRecords).where(and(eq(productionScriptRecords.projectId, input.projectId), eq(productionScriptRecords.revision, input.revision))).limit(1);
+      if (!target) invalid("指定剧本版本不存在", 404);
+      previous = target;
+    }
+    const previousSnapshot = previous?.confirmedSnapshot ?? await currentScriptStructure(tx, input.projectId);
+    const previousDocument = u.productionScriptDocument.readScriptDocumentSnapshot(previousSnapshot).document;
+    const document = input.document ?? previousDocument;
+    if (input.document) {
+      const previousNumbers = previousDocument.episodes.map(episode => episode.episodeNumber);
+      const documentNumbers = document.episodes.map(episode => episode.episodeNumber);
+      if (previousNumbers.length !== documentNumbers.length || previousNumbers.some((number, index) => number !== documentNumbers[index])) invalid("保存正文不能增删剧集或修改分集编号，请保留当前剧集结构", 422);
+    }
+    const now = new Date();
+    const revision = (latest?.revision ?? 0) + 1;
+    const restoredFromRevision = input.revision;
+    const confirmedSnapshot = { ...previousSnapshot, scriptDocument: document, scriptSource: "edited", restoredFromRevision: restoredFromRevision ?? null };
+    await tx.insert(productionScriptRecords).values({ id: randomUUID(), projectId: input.projectId, revision, generationData: previous?.generationData ?? {}, confirmedSnapshot, createdBy: account.userId, createdAt: now, updatedAt: now });
+    await tx.update(productionProjects).set({ updatedAt: now }).where(eq(productionProjects.id, input.projectId));
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: restoredFromRevision === undefined ? "productionScript.documentSaved" : "productionScript.documentRestored", metadata: { projectId: input.projectId, revision, previousRevision: latest?.revision ?? 0, ...(restoredFromRevision ? { restoredFromRevision } : {}) }, createdAt: now, updatedAt: now });
+    return { document, revision, source: "edited" as const, createdAt: now, ...(restoredFromRevision ? { restoredFromRevision } : {}) };
+  });
 }
 
 export async function saveProductionScriptDraft(input: { projectId: string; expectedRevision: number; draft: Record<string, unknown>; generationData?: Record<string, unknown> | null }) {
@@ -294,6 +374,17 @@ export async function updateProductionProjectAsset(input: { projectId: string; a
     await assertAssetEpisodesBelongToProject(tx, input.projectId, input.episodeIds);
     const [current] = await tx.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.projectId, input.projectId))).limit(1).for("update");
     if (!current) invalid("主体资产不属于当前项目", 404);
+    const shotReferences = await tx.select({ characterAssetIds: productionShots.characterAssetIds, propAssetIds: productionShots.propAssetIds, episodeId: productionEpisodes.id }).from(productionShots)
+      .innerJoin(productionScenes, eq(productionScenes.id, productionShots.sceneId))
+      .innerJoin(productionEpisodes, eq(productionEpisodes.id, productionScenes.episodeId))
+      .innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId))
+      .where(eq(productionSeasons.projectId, input.projectId));
+    for (const reference of shotReferences) {
+      const usedAsCharacter = reference.characterAssetIds?.includes(input.assetId) ?? false;
+      const usedAsProp = reference.propAssetIds?.includes(input.assetId) ?? false;
+      if ((usedAsCharacter && input.assetType !== "character") || (usedAsProp && input.assetType !== "prop")) invalid("资产已被分镜引用，不能修改为不匹配的类型", 409);
+      if ((usedAsCharacter || usedAsProp) && input.episodeIds.length && !input.episodeIds.includes(reference.episodeId)) invalid("资产已被分镜引用，不能移出相关剧集", 409);
+    }
     updatedAsset = { ...current, assetType: input.assetType, name: input.name.trim(), description: input.description.trim(), visualDescription: input.visualDescription.trim(), episodeIds: input.episodeIds, updatedAt: now };
     await tx.update(productionProjectAssets).set({ assetType: updatedAsset.assetType, name: updatedAsset.name, description: updatedAsset.description, visualDescription: updatedAsset.visualDescription, episodeIds: updatedAsset.episodeIds, updatedAt: now }).where(eq(productionProjectAssets.id, input.assetId));
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionProjectAsset.update", metadata: { projectId: input.projectId, assetId: input.assetId, before: { assetType: current.assetType, name: current.name, description: current.description, visualDescription: current.visualDescription, episodeIds: current.episodeIds }, after: { assetType: updatedAsset.assetType, name: updatedAsset.name, description: updatedAsset.description, visualDescription: updatedAsset.visualDescription, episodeIds: updatedAsset.episodeIds } }, createdAt: now, updatedAt: now });
@@ -304,18 +395,11 @@ export async function updateProductionProjectAsset(input: { projectId: string; a
 export async function generateProductionProjectAsset(input: { projectId: string; assetId: string; cwd: string; request: MediaGenerationRequest; idempotencyKey: string }) {
   const account = requireAccount();
   const { project } = await requireProjectAccess(input.projectId, "generate");
+  await recoverProductionProjectAssetReferences(project);
   const database = getDatabase();
   const [currentRow] = await database.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.projectId, input.projectId))).limit(1);
   const current = currentRow ? { ...currentRow } : undefined;
   if (!current) invalid("主体资产不属于当前项目", 404);
-  if (current.referenceStatus === "generating" && current.referenceGenerationJobId) {
-    const [referenceJob] = await database.select({ status: generationJobs.status }).from(generationJobs).where(eq(generationJobs.id, current.referenceGenerationJobId)).limit(1);
-    if (referenceJob?.status === "succeeded" || referenceJob?.status === "failed") {
-      const nextStatus = referenceJob.status === "succeeded" ? "succeeded" : "failed";
-      await database.update(productionProjectAssets).set({ referenceStatus: nextStatus, updatedAt: new Date() }).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.referenceStatus, "generating")));
-      current.referenceStatus = nextStatus;
-    }
-  }
   const creativeSettings = project.creativeSettings;
   const prompt = [
     creativeSettings?.genre ? `题材方向：${creativeSettings.genre}` : "",
@@ -336,22 +420,23 @@ export async function generateProductionProjectAsset(input: { projectId: string;
   const jobIdRef: { id?: string } = {};
   const now = new Date();
   let attemptNumber = 0;
-  let lockedProject: typeof project;
-  await database.transaction(async tx => {
-    const [locked] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
-    if (!locked) invalid("生产项目不存在", 404);
-    assertPreProductionEditable(locked.status);
-    const [asset] = await tx.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.projectId, input.projectId))).limit(1).for("update");
-    if (!asset) invalid("主体资产不属于当前项目", 404);
-    if (asset.referenceStatus === "generating") invalid("该主体资产正在生成参考图，请稍候", 409);
-    await assertProjectBudget(tx, input.projectId, locked.budgetCents, quote.credits);
-    attemptNumber = asset.referenceRevision + 1;
-    await tx.update(productionProjectAssets).set({ referenceStatus: "generating", referenceRevision: attemptNumber, referencePrompt: prompt, updatedAt: now }).where(eq(productionProjectAssets.id, input.assetId));
-    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: locked.workspaceId, action: "productionAsset.referenceImageGenerationStarted", metadata: { projectId: input.projectId, assetId: input.assetId, attemptNumber, quotedCredits: quote.credits }, createdAt: now, updatedAt: now });
-    lockedProject = locked;
-  });
   try {
-    const files = await generateMedia(input.cwd, "image", request, undefined, { userId: account.userId, idempotencyKey: input.idempotencyKey, projectId: input.projectId, estimatedCostCents: quote.credits, jobIdRef });
+    const files = await generateMedia(input.cwd, "image", request, undefined, {
+      userId: account.userId, idempotencyKey: input.idempotencyKey, projectId: input.projectId, estimatedCostCents: quote.credits, jobIdRef,
+      onReserved: async (tx, generationJobId) => {
+        const [locked] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+        if (!locked) invalid("生产项目不存在", 404);
+        assertPreProductionEditable(locked.status);
+        const [asset] = await tx.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.projectId, input.projectId))).limit(1).for("update");
+        if (!asset) invalid("主体资产不属于当前项目", 404);
+        if (asset.referenceStatus === "generating") invalid("该主体资产正在生成参考图，请稍候", 409);
+        // 当前任务已在本事务预留，预算检查只计入一次。
+        await assertProjectBudget(tx, input.projectId, locked.budgetCents, "0");
+        attemptNumber = asset.referenceRevision + 1;
+        await tx.update(productionProjectAssets).set({ referenceStatus: "generating", referenceGenerationJobId: generationJobId, referenceRevision: attemptNumber, referencePrompt: prompt, updatedAt: now }).where(eq(productionProjectAssets.id, input.assetId));
+        await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: locked.workspaceId, action: "productionAsset.referenceImageGenerationStarted", metadata: { projectId: input.projectId, assetId: input.assetId, generationJobId, attemptNumber, quotedCredits: quote.credits }, createdAt: now, updatedAt: now });
+      },
+    });
     if (!jobIdRef.id || !files.length) invalid("生成任务没有返回可用的参考图", 502);
     const file = files[0] as GeneratedMedia;
     const [job] = await database.select({ status: generationJobs.status }).from(generationJobs).where(eq(generationJobs.id, jobIdRef.id)).limit(1);
@@ -359,14 +444,15 @@ export async function generateProductionProjectAsset(input: { projectId: string;
     const updated = await database.transaction(async tx => {
       const [asset] = await tx.select().from(productionProjectAssets).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.projectId, input.projectId))).limit(1).for("update");
       if (!asset) invalid("主体资产不属于当前项目", 404);
+      if (asset.referenceGenerationJobId !== jobIdRef.id) invalid("主体资产已有更新的生成任务，本次结果已保留在原任务记录中", 409);
       const next = { referencePath: file.path, referenceMimeType: file.mimeType, referenceGenerationJobId: jobIdRef.id ?? null, referenceStatus: "succeeded" as const, updatedAt: new Date() };
       await tx.update(productionProjectAssets).set(next).where(eq(productionProjectAssets.id, input.assetId));
-      await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: lockedProject.workspaceId, action: "productionAsset.referenceImageGenerated", metadata: { projectId: input.projectId, assetId: input.assetId, generationJobId: jobIdRef.id, attemptNumber, filePath: file.path, quotedCredits: quote.credits }, createdAt: new Date(), updatedAt: new Date() });
+      await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionAsset.referenceImageGenerated", metadata: { projectId: input.projectId, assetId: input.assetId, generationJobId: jobIdRef.id, attemptNumber, filePath: file.path, quotedCredits: quote.credits }, createdAt: new Date(), updatedAt: new Date() });
       return { ...asset, ...next };
     });
     return { asset: updated, file, quotedCredits: quote.credits, generationJobId: jobIdRef.id };
   } catch (error) {
-    await database.update(productionProjectAssets).set({ referenceStatus: current.referencePath ? "succeeded" : "failed", updatedAt: new Date() }).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.referenceStatus, "generating")));
+    if (jobIdRef.id) await database.update(productionProjectAssets).set({ referenceStatus: current.referencePath ? "succeeded" : "failed", updatedAt: new Date() }).where(and(eq(productionProjectAssets.id, input.assetId), eq(productionProjectAssets.referenceStatus, "generating"), eq(productionProjectAssets.referenceGenerationJobId, jobIdRef.id)));
     throw error;
   }
 }
@@ -425,7 +511,35 @@ async function getEpisodeInProject(projectId: string, episodeId: string) {
   return row;
 }
 
-export async function createProductionShot(input: { projectId: string; episodeId: string; sceneNumber: number; sceneTitle: string; continuityNotes?: string; shotNumber: number; durationMs?: number; shotType?: string; camera?: string; lighting?: string; dialogue?: string; narration?: string; prompt?: string }) {
+async function validateShotAssetReferences(tx: ProductionTransaction, projectId: string, episodeId: string, characterAssetIds: string[], propAssetIds: string[]) {
+  const assetIds = [...characterAssetIds, ...propAssetIds];
+  if (!assetIds.length) return;
+  if (new Set(assetIds).size !== assetIds.length) invalid("镜头关联资产不能重复", 422);
+  const assets = await tx.select({ id: productionProjectAssets.id, assetType: productionProjectAssets.assetType, episodeIds: productionProjectAssets.episodeIds }).from(productionProjectAssets)
+    .where(and(eq(productionProjectAssets.projectId, projectId), inArray(productionProjectAssets.id, assetIds)));
+  if (assets.length !== assetIds.length) invalid("镜头关联资产不属于当前项目", 422);
+  for (const asset of assets) {
+    const expectedType = characterAssetIds.includes(asset.id) ? "character" : "prop";
+    if (asset.assetType !== expectedType) invalid("镜头关联资产类型不匹配", 422);
+    if (asset.episodeIds?.length && !asset.episodeIds.includes(episodeId)) invalid("镜头关联资产不适用于当前剧集", 422);
+  }
+}
+
+function normalizeImportedAssetName(name: string) {
+  return name.replace(/\s/gu, "");
+}
+
+function resolveImportedAssetNames(assets: { id: string; assetType: "character" | "scene" | "prop"; name: string }[], assetType: "character" | "prop", names: string[] = []) {
+  return names.map(name => {
+    const normalizedName = normalizeImportedAssetName(name);
+    const matches = assets.filter(asset => asset.assetType === assetType && normalizeImportedAssetName(asset.name) === normalizedName);
+    if (matches.length === 0) invalid(`剧本引用的${assetType === "character" ? "角色" : "道具"}资产不存在：${name}`, 422);
+    if (matches.length > 1) invalid(`剧本引用的${assetType === "character" ? "角色" : "道具"}资产名称重复，无法确定：${name}`, 422);
+    return matches[0]!.id;
+  });
+}
+
+export async function createProductionShot(input: { projectId: string; episodeId: string; sceneNumber: number; sceneTitle: string; continuityNotes?: string; shotNumber: number; durationMs?: number; shotType?: string; camera?: string; lighting?: string; characterAssetIds?: string[]; propAssetIds?: string[]; soundEffects?: string | null; dialogue?: string; narration?: string; prompt?: string }) {
   const account = requireAccount();
   await requireProjectAccess(input.projectId, "create");
   const { episode, season } = await getEpisodeInProject(input.projectId, input.episodeId);
@@ -437,6 +551,9 @@ export async function createProductionShot(input: { projectId: string; episodeId
     const [project] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
     if (!project) invalid("生产项目不存在", 404);
     assertPreProductionEditable(project.status);
+    const characterAssetIds = input.characterAssetIds ?? [];
+    const propAssetIds = input.propAssetIds ?? [];
+    await validateShotAssetReferences(tx, input.projectId, episode.id, characterAssetIds, propAssetIds);
     let [scene] = await tx.select().from(productionScenes).where(and(eq(productionScenes.episodeId, episode.id), eq(productionScenes.sceneNumber, input.sceneNumber))).limit(1);
     if (!scene) {
       scene = { id: randomUUID(), episodeId: episode.id, sceneNumber: input.sceneNumber, title: input.sceneTitle.trim(), continuityNotes: input.continuityNotes?.trim() || null, createdAt: now, updatedAt: now };
@@ -444,7 +561,7 @@ export async function createProductionShot(input: { projectId: string; episodeId
     }
     const [existing] = await tx.select().from(productionShots).where(and(eq(productionShots.sceneId, scene.id), eq(productionShots.shotNumber, input.shotNumber))).limit(1);
     if (existing) invalid("该场景镜头编号已存在", 409);
-    const shot = { id: randomUUID(), sceneId: scene.id, shotNumber: input.shotNumber, durationMs: input.durationMs ?? 0, shotType: input.shotType?.trim() || null, camera: input.camera?.trim() || null, lighting: input.lighting?.trim() || null, dialogue: input.dialogue?.trim() || null, narration: input.narration?.trim() || null, prompt: input.prompt?.trim() || null, status: "draft" as const, revision: 1, createdAt: now, updatedAt: now };
+    const shot = { id: randomUUID(), sceneId: scene.id, shotNumber: input.shotNumber, durationMs: input.durationMs ?? 0, shotType: input.shotType?.trim() || null, camera: input.camera?.trim() || null, lighting: input.lighting?.trim() || null, characterAssetIds, propAssetIds, soundEffects: input.soundEffects?.trim() || null, dialogue: input.dialogue?.trim() || null, narration: input.narration?.trim() || null, prompt: input.prompt?.trim() || null, status: "draft" as const, revision: 1, createdAt: now, updatedAt: now };
     await tx.insert(productionShots).values(shot);
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionShot.create", metadata: { projectId: input.projectId, seasonId: season.id, episodeId: episode.id, sceneId: scene.id, shotId: shot.id }, createdAt: now, updatedAt: now });
     return { season, episode, scene, shot };
@@ -455,6 +572,7 @@ export type ProductionScriptStructureInput = {
   projectId: string;
   logline: string;
   sourceGeneration: Record<string, unknown>;
+  scriptDocument?: ProductionScriptDocument;
   generation: { providerId: string; modelId: string; genre: string; fusionGenres: string[]; style: string; aspectRatio: string; stylePrompt?: string; styleNegativePrompt?: string };
   assets: { assetType: "character" | "scene" | "prop"; name: string; description: string; visualDescription: string }[];
   episodes: {
@@ -465,7 +583,7 @@ export type ProductionScriptStructureInput = {
       sceneNumber: number;
       title: string;
       continuityNotes: string;
-      shots: { shotNumber: number; durationMs: number; shotType: string; camera: string; lighting: string; prompt: string; dialogue: string; narration: string }[];
+      shots: { shotNumber: number; durationMs: number; shotType: string; camera: string; lighting: string; characterAssetIds?: string[]; propAssetIds?: string[]; characterNames?: string[]; propNames?: string[]; soundEffects?: string | null; prompt: string; dialogue: string; narration: string }[];
     }[];
   }[];
 };
@@ -480,8 +598,13 @@ export async function createProductionScriptStructure(input: ProductionScriptStr
     const [project] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
     if (!project) invalid("生产项目不存在", 404);
     if (project.status !== "draft") invalid("当前项目已离开剧本创作阶段，无法再次写入生成草案", 409);
+    const [draft] = await tx.select().from(productionScriptDrafts).where(eq(productionScriptDrafts.projectId, input.projectId)).limit(1).for("update");
     const existing = await tx.select({ id: productionEpisodes.id }).from(productionEpisodes).innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId)).where(eq(productionSeasons.projectId, input.projectId)).limit(1);
     if (existing.length) invalid("项目已存在剧集，请刷新后继续编辑", 409);
+
+    const importedAssets = input.assets.map(assetData => ({ id: randomUUID(), projectId: input.projectId, assetType: assetData.assetType, name: assetData.name.trim(), description: assetData.description.trim(), visualDescription: assetData.visualDescription.trim(), episodeIds: [] as string[], createdBy: account.userId, createdAt: now, updatedAt: now }));
+    for (const asset of importedAssets) await tx.insert(productionProjectAssets).values(asset);
+    created.assets = importedAssets.length;
 
     const season = { id: randomUUID(), projectId: input.projectId, seasonNumber: 1, title: "第一季", status: "draft" as const, createdAt: now, updatedAt: now };
     await tx.insert(productionSeasons).values(season);
@@ -494,24 +617,32 @@ export async function createProductionScriptStructure(input: ProductionScriptStr
         await tx.insert(productionScenes).values(scene);
         created.scenes += 1;
         for (const shotData of sceneData.shots) {
-          const shot = { id: randomUUID(), sceneId: scene.id, shotNumber: shotData.shotNumber, durationMs: shotData.durationMs, shotType: shotData.shotType.trim(), camera: shotData.camera.trim() || null, lighting: shotData.lighting.trim() || null, dialogue: shotData.dialogue.trim() || null, narration: shotData.narration.trim() || null, prompt: shotData.prompt.trim(), status: "draft" as const, revision: 1, createdAt: now, updatedAt: now };
+          const characterAssetIds = [...new Set([...(shotData.characterAssetIds ?? []), ...resolveImportedAssetNames(importedAssets, "character", shotData.characterNames)])];
+          const propAssetIds = [...new Set([...(shotData.propAssetIds ?? []), ...resolveImportedAssetNames(importedAssets, "prop", shotData.propNames)])];
+          await validateShotAssetReferences(tx, input.projectId, episode.id, characterAssetIds, propAssetIds);
+          const shot = { id: randomUUID(), sceneId: scene.id, shotNumber: shotData.shotNumber, durationMs: shotData.durationMs, shotType: shotData.shotType.trim(), camera: shotData.camera.trim() || null, lighting: shotData.lighting.trim() || null, characterAssetIds, propAssetIds, soundEffects: shotData.soundEffects?.trim() || null, dialogue: shotData.dialogue.trim() || null, narration: shotData.narration.trim() || null, prompt: shotData.prompt.trim(), status: "draft" as const, revision: 1, createdAt: now, updatedAt: now };
           await tx.insert(productionShots).values(shot);
           created.shots += 1;
         }
       }
     }
-    for (const assetData of input.assets) {
-      const asset = { id: randomUUID(), projectId: input.projectId, assetType: assetData.assetType, name: assetData.name.trim(), description: assetData.description.trim(), visualDescription: assetData.visualDescription.trim(), episodeIds: [], createdBy: account.userId, createdAt: now, updatedAt: now };
-      await tx.insert(productionProjectAssets).values(asset);
-      created.assets += 1;
-    }
     await tx.update(productionProjects).set({ status: "scripted", creativeSettings: input.generation, updatedAt: now }).where(eq(productionProjects.id, input.projectId));
+    const scriptInput = {
+      mode: typeof draft?.draftData.mode === "string" ? draft.draftData.mode : "create",
+      instruction: typeof draft?.draftData.instruction === "string" ? draft.draftData.instruction : "",
+      pastedScript: typeof draft?.draftData.pastedScript === "string" ? draft.draftData.pastedScript : "",
+    };
+    const generatedDocument = input.scriptDocument ?? u.productionScriptDocument.buildDerivedScriptDocument(input);
+    const scriptDocument = {
+      ...generatedDocument,
+      sourceText: input.scriptDocument ? input.scriptDocument.sourceText : scriptInput.pastedScript || generatedDocument.sourceText,
+    };
     await tx.insert(productionScriptRecords).values({
       id: randomUUID(),
       projectId: input.projectId,
       revision: 1,
       generationData: input.sourceGeneration,
-      confirmedSnapshot: { logline: input.logline, generation: input.generation, assets: input.assets, episodes: input.episodes },
+      confirmedSnapshot: { logline: input.logline, generation: input.generation, assets: input.assets, episodes: input.episodes, scriptDocument, scriptSource: input.scriptDocument ? (scriptInput.mode === "create" ? "generated" : "imported") : "derived", scriptInput },
       createdBy: account.userId,
       createdAt: now,
       updatedAt: now,
@@ -522,7 +653,7 @@ export async function createProductionScriptStructure(input: ProductionScriptStr
   return created;
 }
 
-export async function updateProductionShot(input: { projectId: string; shotId: string; durationMs?: number; shotType?: string | null; camera?: string | null; lighting?: string | null; dialogue?: string | null; narration?: string | null; prompt?: string | null; status?: "draft" | "ready" }) {
+export async function updateProductionShot(input: { projectId: string; shotId: string; durationMs?: number; shotType?: string | null; camera?: string | null; lighting?: string | null; characterAssetIds?: string[]; propAssetIds?: string[]; soundEffects?: string | null; dialogue?: string | null; narration?: string | null; prompt?: string | null; status?: "draft" | "ready" }) {
   const account = requireAccount();
   await requireProjectAccess(input.projectId, "edit");
   if (input.durationMs !== undefined && (!Number.isSafeInteger(input.durationMs) || input.durationMs < 0)) invalid("镜头时长无效", 422);
@@ -534,11 +665,14 @@ export async function updateProductionShot(input: { projectId: string; shotId: s
     const [row] = await tx.select({ shot: productionShots, scene: productionScenes, episode: productionEpisodes }).from(productionShots).innerJoin(productionScenes, eq(productionScenes.id, productionShots.sceneId)).innerJoin(productionEpisodes, eq(productionEpisodes.id, productionScenes.episodeId)).innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId)).where(and(eq(productionShots.id, input.shotId), eq(productionSeasons.projectId, input.projectId))).limit(1).for("update");
     if (!row) invalid("镜头不属于当前项目", 404);
     if (row.shot.status === "approved") invalid("已批准镜头不能直接修改", 409);
-    const patch = { ...(input.durationMs !== undefined ? { durationMs: input.durationMs } : {}), ...(input.shotType !== undefined ? { shotType: input.shotType?.trim() || null } : {}), ...(input.camera !== undefined ? { camera: input.camera?.trim() || null } : {}), ...(input.lighting !== undefined ? { lighting: input.lighting?.trim() || null } : {}), ...(input.dialogue !== undefined ? { dialogue: input.dialogue?.trim() || null } : {}), ...(input.narration !== undefined ? { narration: input.narration?.trim() || null } : {}), ...(input.prompt !== undefined ? { prompt: input.prompt?.trim() || null } : {}), ...(input.status ? { status: input.status } : {}), revision: row.shot.revision + 1, updatedAt: now };
+    const characterAssetIds = input.characterAssetIds ?? row.shot.characterAssetIds ?? [];
+    const propAssetIds = input.propAssetIds ?? row.shot.propAssetIds ?? [];
+    await validateShotAssetReferences(tx, input.projectId, row.episode.id, characterAssetIds, propAssetIds);
+    const patch = { ...(input.durationMs !== undefined ? { durationMs: input.durationMs } : {}), ...(input.shotType !== undefined ? { shotType: input.shotType?.trim() || null } : {}), ...(input.camera !== undefined ? { camera: input.camera?.trim() || null } : {}), ...(input.lighting !== undefined ? { lighting: input.lighting?.trim() || null } : {}), ...(input.characterAssetIds !== undefined ? { characterAssetIds } : {}), ...(input.propAssetIds !== undefined ? { propAssetIds } : {}), ...(input.soundEffects !== undefined ? { soundEffects: input.soundEffects?.trim() || null } : {}), ...(input.dialogue !== undefined ? { dialogue: input.dialogue?.trim() || null } : {}), ...(input.narration !== undefined ? { narration: input.narration?.trim() || null } : {}), ...(input.prompt !== undefined ? { prompt: input.prompt?.trim() || null } : {}), ...(input.status ? { status: input.status } : {}), revision: row.shot.revision + 1, updatedAt: now };
     if (Object.keys(patch).length === 2) invalid("没有可保存的镜头字段", 422);
     await tx.update(productionShots).set(patch).where(eq(productionShots.id, input.shotId));
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionShot.update", metadata: { projectId: input.projectId, shotId: input.shotId, revision: patch.revision }, createdAt: now, updatedAt: now });
-    return { ...row.shot, ...patch };
+    return { ...row.shot, ...patch, characterAssetIds, propAssetIds };
   });
 }
 
@@ -548,6 +682,7 @@ function costMicro(value: string) {
 
 type ProductionCreativeSettings = NonNullable<(typeof productionProjects.$inferSelect)["creativeSettings"]>;
 type ProductionPromptAsset = Pick<(typeof productionProjectAssets.$inferSelect), "assetType" | "name" | "description" | "visualDescription" | "episodeIds">;
+type ProductionVideoReferenceAsset = Pick<(typeof productionProjectAssets.$inferSelect), "id" | "assetType" | "name" | "episodeIds" | "referencePath" | "referenceMimeType" | "referenceStatus">;
 
 function buildProductionMediaRequest(input: {
   request: MediaGenerationRequest;
@@ -558,18 +693,84 @@ function buildProductionMediaRequest(input: {
 }): MediaGenerationRequest {
   const { request, creativeSettings, scene, episodeId, assets } = input;
   const episodeAssets = assets.filter(asset => !asset.episodeIds?.length || asset.episodeIds.includes(episodeId));
+  const aspectRatio = request.ratio ?? creativeSettings?.aspectRatio;
   const prompt = [
     creativeSettings?.genre ? `题材方向：${creativeSettings.genre}${creativeSettings.fusionGenres.length ? `；融合题材：${creativeSettings.fusionGenres.join("、")}` : ""}` : "",
     creativeSettings?.style ? `统一视觉风格：${creativeSettings.style}` : "",
     creativeSettings?.stylePrompt ? `风格提示：${creativeSettings.stylePrompt}` : "",
     creativeSettings?.styleNegativePrompt ? `风格排除：${creativeSettings.styleNegativePrompt}` : "",
-    creativeSettings?.aspectRatio ? `画幅比例：${creativeSettings.aspectRatio}` : "",
+    aspectRatio ? `画幅比例：${aspectRatio}` : "",
     `场景连续性：${scene.title}${scene.continuityNotes ? `；${scene.continuityNotes}` : ""}`,
     ...episodeAssets.map(asset => `主体资产（${asset.assetType === "character" ? "角色" : asset.assetType === "scene" ? "场景" : "道具"}：${asset.name}）：${[asset.description, asset.visualDescription].filter(Boolean).join("；")}`),
     `本镜头画面与动作：${request.prompt}`,
   ].filter(Boolean).join("\n\n");
   if (prompt.length > 100000) invalid("题材、风格和主体资产提示词合计超过模型限制，请精简设定后重试", 422);
-  return { ...request, prompt, ...(creativeSettings?.aspectRatio ? { ratio: creativeSettings.aspectRatio } : {}) };
+  return { ...request, prompt, ...(aspectRatio ? { ratio: aspectRatio } : {}) };
+}
+
+function videoImageReferenceLimit(mode: unknown) {
+  if (!Array.isArray(mode)) return 0;
+  const imageReferenceLimits = mode.flatMap(item => Array.isArray(item) ? item : []).flatMap(item => {
+    if (typeof item !== "string") return [];
+    const match = /^imageReference:([1-9]\d{0,2})$/.exec(item);
+    return match ? [Number(match[1])] : [];
+  });
+  return Math.max(mode.includes("singleImage") ? 1 : 0, ...imageReferenceLimits);
+}
+
+async function addProductionShotVideoReferences(input: {
+  request: MediaGenerationRequest;
+  shot: Pick<(typeof productionShots.$inferSelect), "characterAssetIds" | "propAssetIds">;
+  episodeId: string;
+  assets: ProductionVideoReferenceAsset[];
+}) {
+  const { request, shot, episodeId, assets } = input;
+  const characterAssetIds = shot.characterAssetIds ?? [];
+  const propAssetIds = shot.propAssetIds ?? [];
+  const assetById = new Map(assets.map(asset => [asset.id, asset]));
+  const linkedAssets = [
+    ...characterAssetIds.map(id => ({ id, assetType: "character" as const })),
+    ...propAssetIds.map(id => ({ id, assetType: "prop" as const })),
+  ].map(reference => {
+    const asset = assetById.get(reference.id);
+    if (!asset || asset.assetType !== reference.assetType || (asset.episodeIds?.length && !asset.episodeIds.includes(episodeId))) invalid("镜头关联主体资产无效，请重新保存分镜", 409);
+    return asset;
+  });
+  const assetByReferencePath = new Map(assets.filter(asset => asset.referencePath).map(asset => [asset.referencePath!, asset]));
+  const requiredAssets = new Map<string, ProductionVideoReferenceAsset>();
+  for (const asset of linkedAssets) requiredAssets.set(asset.id, asset);
+  for (const image of request.images ?? []) {
+    const asset = assetByReferencePath.get(image.path);
+    if (asset) requiredAssets.set(asset.id, asset);
+  }
+  const missingAssets = [...requiredAssets.values()].filter(asset => asset.referenceStatus !== "succeeded" || !asset.referencePath || !asset.referenceMimeType?.startsWith("image/"));
+  if (missingAssets.length) invalid(`请先为以下主体资产生成成功的参考图：${missingAssets.map(asset => asset.name).join("、")}`, 409);
+
+  const imagesByPath = new Map<string, NonNullable<MediaGenerationRequest["images"]>[number]>();
+  for (const image of request.images ?? []) {
+    if (!image.mimeType.startsWith("image/")) invalid("视频参考素材必须是图片", 422);
+    const asset = assetByReferencePath.get(image.path);
+    imagesByPath.set(image.path, asset?.referenceStatus === "succeeded" && asset.referenceMimeType?.startsWith("image/") ? { path: asset.referencePath!, mimeType: asset.referenceMimeType } : image);
+  }
+  for (const asset of linkedAssets) imagesByPath.set(asset.referencePath!, { path: asset.referencePath!, mimeType: asset.referenceMimeType! });
+  const images = [...imagesByPath.values()];
+  if (images.length) {
+    if (request.firstFrame || request.lastFrame) invalid("主体资产图片参考不能与首尾帧同时使用，请选择一种输入方式", 422);
+    const models = await u.mediaGeneration.listMediaModels();
+    const model = models.find(item => item.type === "video" && item.providerId === request.providerId && item.modelId === request.modelId);
+    if (!model) invalid("所选视频模型不存在或未启用", 400);
+    const imageReferenceLimit = videoImageReferenceLimit(model.mode);
+    if (!imageReferenceLimit) invalid("所选视频模型不支持图片参考，请切换支持图片参考的模型", 422);
+    if (images.length > imageReferenceLimit) invalid(`所选视频模型最多支持 ${imageReferenceLimit} 张图片参考，当前有 ${images.length} 张`, 422);
+    const modes = Array.isArray(model.mode) ? model.mode : [];
+    const referenceMode = modes.find((mode): mode is (`${"image" | "video" | "audio"}Reference:${number}`)[] => Array.isArray(mode)
+      && mode.every(item => typeof item === "string" && /^(image|video|audio)Reference:[1-9]\d{0,2}$/.test(item))
+      && videoImageReferenceLimit([mode]) >= images.length);
+    const mode: MediaGenerationRequest["mode"] = referenceMode ?? (images.length === 1 && modes.includes("singleImage") ? "singleImage" : undefined);
+    if (!mode) invalid("所选视频模型没有兼容的图片引用模式，请切换模型", 422);
+    return { ...request, images, mode };
+  }
+  return { ...request, ...(images.length ? { images } : {}) };
 }
 
 async function assertProjectBudget(tx: ProductionTransaction, projectId: string, budgetCents: string, quoteCents: string) {
@@ -583,11 +784,13 @@ async function assertProjectBudget(tx: ProductionTransaction, projectId: string,
 export async function generateProductionShot(input: { projectId: string; shotId: string; cwd: string; mediaType: "image" | "video" | "audio"; request: MediaGenerationRequest; idempotencyKey: string }) {
   const account = requireAccount();
   const { project } = await requireProjectAccess(input.projectId, "generate");
+  await recoverProductionProjectAssetReferences(project);
   const database = getDatabase();
-  const [mediaContext] = await database.select({ scene: productionScenes, episode: productionEpisodes }).from(productionShots).innerJoin(productionScenes, eq(productionScenes.id, productionShots.sceneId)).innerJoin(productionEpisodes, eq(productionEpisodes.id, productionScenes.episodeId)).innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId)).where(and(eq(productionShots.id, input.shotId), eq(productionSeasons.projectId, input.projectId))).limit(1);
+  const [mediaContext] = await database.select({ scene: productionScenes, episode: productionEpisodes, characterAssetIds: productionShots.characterAssetIds, propAssetIds: productionShots.propAssetIds }).from(productionShots).innerJoin(productionScenes, eq(productionScenes.id, productionShots.sceneId)).innerJoin(productionEpisodes, eq(productionEpisodes.id, productionScenes.episodeId)).innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId)).where(and(eq(productionShots.id, input.shotId), eq(productionSeasons.projectId, input.projectId))).limit(1);
   if (!mediaContext) invalid("镜头不属于当前项目", 404);
-  const assets = await database.select({ assetType: productionProjectAssets.assetType, name: productionProjectAssets.name, description: productionProjectAssets.description, visualDescription: productionProjectAssets.visualDescription, episodeIds: productionProjectAssets.episodeIds }).from(productionProjectAssets).where(eq(productionProjectAssets.projectId, input.projectId));
-  const request = buildProductionMediaRequest({ request: input.request, creativeSettings: project.creativeSettings, scene: mediaContext.scene, episodeId: mediaContext.episode.id, assets });
+  const assets = await database.select({ id: productionProjectAssets.id, assetType: productionProjectAssets.assetType, name: productionProjectAssets.name, description: productionProjectAssets.description, visualDescription: productionProjectAssets.visualDescription, episodeIds: productionProjectAssets.episodeIds, referencePath: productionProjectAssets.referencePath, referenceMimeType: productionProjectAssets.referenceMimeType, referenceStatus: productionProjectAssets.referenceStatus }).from(productionProjectAssets).where(eq(productionProjectAssets.projectId, input.projectId));
+  const mediaRequest = buildProductionMediaRequest({ request: input.request, creativeSettings: project.creativeSettings, scene: mediaContext.scene, episodeId: mediaContext.episode.id, assets });
+  const request = input.mediaType === "video" ? await addProductionShotVideoReferences({ request: mediaRequest, shot: mediaContext, episodeId: mediaContext.episode.id, assets }) : mediaRequest;
   const units = input.mediaType === "video" ? Math.max(1, request.duration ?? 1) : input.mediaType === "audio" ? Math.max(1, request.prompt.length / 1000) : 1;
   const quote = await quoteCredits(request.providerId, request.modelId, input.mediaType, units, undefined, input.mediaType === "image" ? request.size : input.mediaType === "video" ? request.resolution : undefined, undefined, input.mediaType === "video" ? getVideoBillingKind(request) : undefined);
   const jobIdRef: { id?: string } = {};

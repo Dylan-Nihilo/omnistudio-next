@@ -5,7 +5,7 @@ import { validateFields } from "@/lib/middleware";
 import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
 import { formatAgentError } from "@/agent/runtime/errors";
-import { requireProjectAccess } from "@/services/productionProjectService";
+import { getProductionScriptDocument, requireProjectAccess } from "@/services/productionProjectService";
 
 const textPart = z.object({ type: z.literal("text"), text: z.string(), textSignature: z.string().optional() });
 const imagePart = z.object({ type: z.literal("image"), data: z.string(), mimeType: z.string().startsWith("image/") });
@@ -57,17 +57,29 @@ const inputSchema = z.object({
   providerId: z.string().min(1), modelId: z.string().min(1),
   context: contextSchema,
   projectId: z.uuid().optional(),
+  purpose: z.literal("scriptRevision").optional(),
+  expectedRevision: z.number().int().nonnegative().optional(),
   maxTokens: z.number().int().min(256).max(32768).optional(),
   directory: z.string().min(1).max(4096).optional(),
   references: z.array(u.ai.aiReferenceSchema).max(32).optional(),
+}).superRefine((input, context) => {
+  if ((input.purpose === undefined) !== (input.expectedRevision === undefined)) context.addIssue({ code: "custom", path: ["expectedRevision"], message: "正文修订用途与版本号必须同时提供" });
+  if (input.purpose === "scriptRevision" && !input.projectId) context.addIssue({ code: "custom", path: ["projectId"], message: "正文修订必须关联生产项目" });
 });
 
-export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema.shape), async (req, res) => {
+export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema), async (req, res) => {
   const input = inputSchema.parse(req.body);
   const configured = await u.ai.getConfiguredModel(input.providerId, input.modelId);
   if (input.projectId) {
     const { project } = await requireProjectAccess(input.projectId, "create");
-    if (project.status !== "draft") throw Object.assign(new Error("剧本只能在尚未创建剧集的项目草稿中生成"), { status: 409 });
+    if (input.purpose === "scriptRevision") {
+      if (!["draft", "scripted", "storyboarded"].includes(project.status)) throw Object.assign(new Error("项目已进入视频生产阶段，不能继续使用 AI 修订剧本"), { status: 409 });
+      const currentScript = await getProductionScriptDocument(input.projectId);
+      if (currentScript.revision !== input.expectedRevision) throw Object.assign(new Error("剧本已被其他会话更新，请加载最新版本后再修订"), { status: 409 });
+      if (!currentScript.document.episodes.length || currentScript.document.episodes.some(episode => !episode.title.trim() || !episode.body.trim())) throw Object.assign(new Error("当前剧本缺少完整分集正文，不能开始 AI 修订"), { status: 409 });
+    } else if (project.status !== "draft") {
+      throw Object.assign(new Error("剧本只能在尚未创建剧集的项目草稿中生成"), { status: 409 });
+    }
   }
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });

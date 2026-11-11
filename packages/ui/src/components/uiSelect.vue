@@ -1,8 +1,9 @@
 <template>
   <div class="uiSelectRoot" :class="[$attrs.class, { isInline: inline }]" :style="$attrs.style as StyleValue">
-  <uiPopover ref="popover" v-model:visible="visible" trigger="manual" role="listbox" :block="!inline" matchWidth :disabled="disabled" @hide="query = ''">
+  <uiPopover ref="popover" v-model:visible="visible" trigger="manual" role="listbox" :block="!inline" :matchWidth="!options.some(option => option.description)" :width="options.some(option => option.description) ? 360 : undefined" :disabled="disabled" @hide="query = ''">
     <template #reference="{ panelId, open, toggle }">
       <div class="uiSelect" :class="[sizeClass, { isDisabled: disabled, isError: error }]">
+        <span v-if="selectedOption?.icon && !(visible && filterable)" class="selectedIcon" aria-hidden="true" @click="open"><component :is="selectedOption.icon" v-bind="selectedOption.iconProps" /></span>
         <input ref="input" @keydown.capture="handleCompositionKey" @keyup.capture="handleCompositionKey" v-bind="{ ...$attrs, class: undefined, style: undefined }" v-model="inputValue" role="combobox" aria-autocomplete="list" :aria-expanded="visible" :aria-controls="panelId" :aria-activedescendant="activeIndex >= 0 && visible ? panelId + '-option-' + activeIndex : undefined" :aria-invalid="error || undefined" :aria-busy="loading || undefined" :placeholder="placeholder" :readonly="!filterable" :disabled="disabled" @focus="filterable && input?.select()" @click="open" @keydown="handleKeydown" />
         <button v-if="clearable && hasValue" type="button" class="clearButton" :disabled="disabled" aria-label="清空选择" @click.stop="clear">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -16,8 +17,8 @@
       <div v-if="loading" class="selectLoading" role="status"><span class="loadingIndicator" aria-hidden="true" /></div>
       <template v-for="(option, index) in filteredOptions" :key="valueKey(option.value)">
         <div v-if="option.group && (index === 0 || option.group !== filteredOptions[index - 1]?.group)" class="optionGroup" role="presentation">{{ option.group }}</div>
-        <div :id="popover?.panel?.id + '-option-' + index" class="selectOption" :class="{ isActive: index === activeIndex, isSelected: isSelected(option.value), isDisabled: option.disabled }" role="option" :aria-selected="isSelected(option.value)" :aria-disabled="option.disabled || undefined" @pointermove="!option.disabled && (activeIndex = index)" @mousedown.prevent @click="choose(option)">
-          <span class="optionLabel"><component v-if="option.icon" :is="option.icon" v-bind="option.iconProps" aria-hidden="true" /><span>{{ option.label }}</span></span><span v-if="isSelected(option.value)" aria-hidden="true">✓</span>
+        <div :id="popover?.panel?.id + '-option-' + index" class="selectOption" :class="{ isActive: activeIndex === index, isSelected: isSelected(option.value), isDisabled: option.disabled, hasDescription: option.description }" role="option" :aria-selected="isSelected(option.value)" :aria-disabled="option.disabled || undefined" @pointermove="!option.disabled && (activeIndex = index)" @mousedown.prevent @click="choose(option)">
+          <span class="optionContent"><span class="optionLabel"><component v-if="option.icon" :is="option.icon" v-bind="option.iconProps" aria-hidden="true" /><span>{{ option.label }}</span></span><span v-if="option.description" class="optionDescription">{{ option.description }}</span></span><span v-if="isSelected(option.value)" class="selectedMark" aria-hidden="true">✓</span>
         </div>
       </template>
       <button v-if="canCreate" class="createOption" type="button" @mousedown.prevent @click="create">{{ query.trim() }}</button>
@@ -46,6 +47,7 @@ const query = ref("");
 const activeIndex = ref(-1);
 const values = computed(() => Array.isArray(props.modelValue) ? props.modelValue : props.modelValue == null ? [] : [props.modelValue]);
 const hasValue = computed(() => values.value.some(value => value !== "" || props.options.some(option => option.value === "")));
+const selectedOption = computed(() => !props.multiple && values.value.length === 1 ? props.options.find(option => option.value === values.value[0]) : undefined);
 const selectedLabel = computed(() => values.value.map(value => {
   const match = props.options.find(option => option.value === value);
   if (match) return match.label;
@@ -120,6 +122,7 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
   &.sizeLarge { --controlHeight: var(--uiControlLarge); }
   &:focus-within { outline: 2px solid var(--uiBorderFocus); outline-offset: 2px; }
   &.isError { border-color: var(--uiStatusError); }
+  .selectedIcon { display: inline-flex; align-items: center; flex: none; margin-right: 8px; cursor: pointer; }
   input { width: 100%; min-width: 0; min-height: calc(var(--controlHeight) - 2px); padding: 0; border: 0; outline: 0; color: var(--uiTextPrimary); background: transparent; font-size: var(--uiFontControl); &::placeholder { color: var(--uiTextMuted); } &[readonly] { cursor: pointer; } }
   button {
     display: inline-flex;
@@ -152,12 +155,16 @@ defineExpose({ focus: () => input.value?.focus(), blur: () => input.value?.blur(
       transform: rotate(180deg);
     }
   }
-  &:has(input:disabled) { background: var(--uiStateDisabled); border-color: var(--uiBorderDefault); input, button { color: var(--uiStateDisabledText); cursor: not-allowed; } }
+  &:has(input:disabled) { background: var(--uiStateDisabled); border-color: var(--uiBorderDefault); input, button { color: var(--uiStateDisabledText); cursor: not-allowed; } .selectedIcon { opacity: .5; cursor: not-allowed; } }
 }
 .selectOption {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--uiRadiusControl); cursor: pointer; font-size: var(--uiFontControl);
+  &.hasDescription { align-items: flex-start; }
+  .optionContent { display: grid; min-width: 0; gap: 3px; }
   .optionLabel { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
   .optionLabel > :last-child { min-width: 0; }
+  .optionDescription { padding-left: 26px; color: var(--uiTextMuted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+  .selectedMark { flex: none; padding-top: 1px; }
   &.isActive:not(.isDisabled) { background: var(--uiSurfaceHover); }
   &.isSelected { background: var(--uiActionSoft); color: var(--uiTextPrimary); }
   &.isDisabled { color: var(--uiStateDisabledText); cursor: not-allowed; }

@@ -1,6 +1,8 @@
+type FrameInfo = { imageUrl: string; duration: number };
+
 type PendingFrame = {
   key: string;
-  promise: Promise<string>;
+  promise: Promise<FrameInfo>;
   controller: AbortController;
   waiters: number;
   state: "queued" | "running" | "settled";
@@ -48,7 +50,7 @@ function waitForVideoEvent(video: HTMLVideoElement, eventName: "loadedmetadata" 
 }
 
 export function createTimelineThumbnailGenerator() {
-  const cache = new Map<string, string>();
+  const cache = new Map<string, FrameInfo>();
   const pending = new Map<string, PendingFrame>();
   let video: HTMLVideoElement | undefined;
   let canvas: HTMLCanvasElement | undefined;
@@ -78,7 +80,7 @@ export function createTimelineThumbnailGenerator() {
     return canvasContext;
   }
 
-  function cacheFrame(key: string, frame: string) {
+  function cacheFrame(key: string, frame: FrameInfo) {
     cache.delete(key);
     cache.set(key, frame);
     if (cache.size > cacheLimit) {
@@ -140,13 +142,13 @@ export function createTimelineThumbnailGenerator() {
     const context = getCanvasContext();
     context.drawImage(currentVideo, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, thumbnailWidth, thumbnailHeight);
     throwIfAborted(signal);
-    return canvas!.toDataURL("image/jpeg", 0.76);
+    return { imageUrl: canvas!.toDataURL("image/jpeg", 0.76), duration: currentVideo.duration };
   }
 
   function createPendingFrame(key: string, source: string, time: number): PendingFrame {
     const record: PendingFrame = {
       key,
-      promise: Promise.resolve(""),
+      promise: Promise.resolve({ imageUrl: "", duration: 0 }),
       controller: new AbortController(),
       waiters: 0,
       state: "queued",
@@ -172,9 +174,9 @@ export function createTimelineThumbnailGenerator() {
   function waitForCaller(record: PendingFrame, signal?: AbortSignal) {
     if (signal?.aborted) return Promise.reject(createAbortError());
     record.waiters++;
-    return waitWithSignal(record.promise, signal).then(frame => {
+    return waitWithSignal(record.promise, signal).then(frameInfo => {
       if (disposed) throw createAbortError();
-      return frame;
+      return frameInfo;
     }).finally(() => {
       record.waiters--;
       if (!disposed && record.waiters === 0 && record.state === "queued") {
@@ -212,7 +214,7 @@ export function createTimelineThumbnailGenerator() {
     });
   }
 
-  function getFrame(source: string, time: number, signal?: AbortSignal): Promise<string> {
+  function getFrameInfo(source: string, time: number, signal?: AbortSignal): Promise<FrameInfo> {
     if (disposed || signal?.aborted) return Promise.reject(createAbortError());
     if (typeof source !== "string" || !source.trim()) return Promise.reject(new Error("视频地址不能为空"));
     if (!Number.isFinite(time) || time < 0) return Promise.reject(new Error("视频时间点无效"));
@@ -225,19 +227,23 @@ export function createTimelineThumbnailGenerator() {
     }
     const normalizedTime = Number(time.toFixed(3));
     const key = `${normalizedSource}\u0000${normalizedTime.toFixed(3)}`;
-    const cachedFrame = cache.get(key);
-    if (cachedFrame) {
+    const cachedFrameInfo = cache.get(key);
+    if (cachedFrameInfo) {
       cache.delete(key);
-      cache.set(key, cachedFrame);
-      return waitWithSignal(Promise.resolve(cachedFrame), signal).then(frame => {
+      cache.set(key, cachedFrameInfo);
+      return waitWithSignal(Promise.resolve(cachedFrameInfo), signal).then(frameInfo => {
         if (disposed) throw createAbortError();
-        return frame;
+        return frameInfo;
       });
     }
 
     let record = pending.get(key);
     if (!record || record.controller.signal.aborted) record = createPendingFrame(key, normalizedSource, normalizedTime);
     return waitForCaller(record, signal);
+  }
+
+  function getFrame(source: string, time: number, signal?: AbortSignal): Promise<string> {
+    return getFrameInfo(source, time, signal).then(frameInfo => frameInfo.imageUrl);
   }
 
   function dispose() {
@@ -263,5 +269,5 @@ export function createTimelineThumbnailGenerator() {
     queue = Promise.resolve();
   }
 
-  return { getFrame, dispose };
+  return { getFrame, getFrameInfo, dispose };
 }

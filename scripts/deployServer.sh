@@ -282,7 +282,8 @@ for (( drainAttempt=0; drainAttempt<drainSeconds; drainAttempt+=2 )); do
   sleep 2
 done
 if (( quietSamples < 3 )); then
-  echo "Drain wait completed after ${drainSeconds}s (activeRequests=$activeRequests activeJobs=$activeJobs). Proceeding with graceful container shutdown." >&2
+  echo "Drain timed out after ${drainSeconds}s (activeRequests=$activeRequests activeJobs=$activeJobs). Deployment cancelled; existing application retained." >&2
+  false
 fi
 echo 'All tracked requests and generation jobs drained.'
 previousRevision=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$appContainer")

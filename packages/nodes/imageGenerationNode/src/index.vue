@@ -37,7 +37,7 @@
           @remove="removeReference" />
         <promptInput v-model="data.promptModel" v-model:text="data.prompt" :references="referenceMentions" />
         <div class="promptFooter">
-          <div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="data.model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating || deleting" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加图片模型" @update:modelValue="value => typeof value === 'string' && (data.model = value)" @visibleChange="visible => visible && loadModels().catch(error => showNodeError(error, '模型读取失败'))" /></div>
+          <div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="data.model" :options="models.map(item => ({ label: getModelSelectionLabel(item), description: getMediaModelCapabilities(item), value: JSON.stringify([item.providerId, item.modelId]), icon: modelIcon, iconProps: { model: item.modelId, provider: item.providerId, size: 18 } }))" filterable :loading="modelsLoading" :disabled="generating || deleting" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加图片模型" @update:modelValue="value => typeof value === 'string' && (data.model = value)" @visibleChange="visible => visible && loadModels().catch(error => showNodeError(error, '模型读取失败'))" /></div>
           <generationSettings
             v-model:size="data.size"
             v-model:ratio="data.ratio"
@@ -63,11 +63,12 @@
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
 import { uiIconButton, uiSelect, uiLoading, uiImageViewer } from "@omnistudio-next/ui";
 import { IconPhotoAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import { nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
 import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
 import mediaHistory from "@omnistudio-next/nodes-scaffold/mediaHistory";
 import generationSettings from "./components/generationSettings.vue";
+import { getMediaModelCapabilities, getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 
 defineOptions({
   inheritAttrs: false,
@@ -123,7 +124,6 @@ watch(models, (items) => {
     data.value.model = first ? JSON.stringify([first.providerId, first.modelId]) : "";
   }
 }, { immediate: true });
-const modelGroups = computed(() => groupNodeModels(models.value));
 const generationPrompt = computed(() =>
   [
     data.value.prompt.trim(),

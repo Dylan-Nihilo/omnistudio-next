@@ -11,6 +11,7 @@ import { recordGenerationUsage } from "@/services/usageService";
 
 export type GenerationMediaType = "text" | "image" | "video" | "audio";
 export type TextBudget = { input: number; output: number; estimation: string };
+export type GenerationReservationHandler = (tx: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0], jobId: string) => Promise<void>;
 
 const imageSizePricingSchema = z.object({ sizeTiers: z.partialRecord(z.enum(["1K", "2K", "4K"]), z.string()).refine(value => Object.keys(value).length > 0, "至少配置一个图片尺寸价格") });
 
@@ -157,7 +158,7 @@ export async function estimateMediaCredits(providerId: string, modelId: string, 
   }
 }
 
-export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown; projectId?: string; enforceProjectBudget?: boolean; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string }) {
+export async function reserveGeneration(input: { userId: string; providerId: string; modelId: string; mediaType: GenerationMediaType; units: number; size?: string; textBudget?: TextBudget; videoBillingKind?: VideoBillingKind; idempotencyKey: string; requestSnapshot: unknown; projectId?: string; enforceProjectBudget?: boolean; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string; onReserved?: GenerationReservationHandler }) {
   const account = requireAccount();
   if (input.userId !== account.userId) invalid("生成任务只能使用调用者自己的积分", 403);
   const key = requestKey(input.idempotencyKey, "generation");
@@ -197,6 +198,7 @@ export async function reserveGeneration(input: { userId: string; providerId: str
       await tx.update(wallets).set({ balance: wallet.balance, frozen: frozenAfter, updatedAt: now }).where(eq(wallets.id, wallet.id));
       await tx.insert(generationJobs).values(job);
       await tx.insert(creditLedger).values({ id: randomUUID(), walletId: wallet.id, userId: account.userId, actorUserId: account.userId, jobId: job.id, kind: "reserve", amount: "0.000000", balanceAfter: wallet.balance, frozenAfter, idempotencyKey: `${job.id}:reserve`, reason: `生成预留：${input.modelId}`, metadata: { modelId: input.modelId, mediaType: input.mediaType, quote }, createdAt: now, updatedAt: now });
+      await input.onReserved?.(tx, job.id);
       return { job, quote };
     });
   } catch (error) {

@@ -21,32 +21,42 @@
       </div>
 
       <div v-if="errorMessage" class="pickerError" role="alert">{{ errorMessage }}</div>
-      <div class="pickerList" :aria-busy="loading">
+      <div ref="pickerList" class="pickerList" :aria-busy="loading">
         <div v-if="loading" class="pickerState" role="status">正在读取素材…</div>
         <div v-else-if="visibleEntries.length === 0" class="pickerState">{{ searchQuery ? '没有匹配的素材' : '当前目录没有可导入的素材' }}</div>
-        <button
+        <div
           v-for="entry in visibleEntries"
           v-else
           :key="entry.path"
-          type="button"
           class="pickerEntry"
-          :class="{ isDisabled: !canSelect(entry) }"
-          :disabled="!canSelect(entry) || disabled"
-          :title="entry.type === 'directory' ? `打开文件夹 ${entry.name}` : entry.status === 'Processing' ? '素材仍在处理中' : entry.status && entry.status !== 'Active' ? '素材不可用' : `导入 ${entry.name}`"
-          @click="selectEntry(entry)">
-          <span class="entryIcon">
-            <icon-folder v-if="entry.type === 'directory'" :size="18" aria-hidden="true" />
-            <icon-music v-else-if="mediaKind(entry) === 'audio'" :size="18" aria-hidden="true" />
-            <icon-photo v-else-if="mediaKind(entry) === 'image'" :size="18" aria-hidden="true" />
-            <icon-video v-else :size="18" aria-hidden="true" />
-          </span>
-          <span class="entryName">{{ entry.name }}</span>
-          <span v-if="entry.type === 'directory'" class="entryMeta">文件夹</span>
-          <span v-else-if="entry.status === 'Processing'" class="entryMeta">处理中</span>
-          <span v-else-if="entry.status && entry.status !== 'Active'" class="entryMeta">不可用</span>
-          <icon-chevron-right v-if="entry.type === 'directory'" class="entryChevron" :size="16" aria-hidden="true" />
-          <span v-else class="entryMeta">{{ mediaKind(entry) === 'video' ? '视频' : mediaKind(entry) === 'audio' ? '音频' : '图片' }}</span>
-        </button>
+          :class="{ isDisabled: !canSelect(entry) || disabled }"
+          :title="entry.type === 'directory' ? `打开文件夹 ${entry.name}` : undefined"
+          @click="previewEntry(entry)">
+          <button v-if="entry.type === 'directory'" class="entryFolder" type="button" :disabled="!canNavigate" @click.stop="selectEntry(entry)">
+            <span class="entryIcon"><icon-folder :size="18" aria-hidden="true" /></span>
+            <span class="entryName">{{ entry.name }}</span>
+            <span class="entryMeta">文件夹</span>
+            <icon-chevron-right class="entryChevron" :size="16" aria-hidden="true" />
+          </button>
+          <template v-else>
+            <button class="entryPreview" type="button" :disabled="!canPreviewMedia(entry) || disabled" :aria-label="`预览 ${entry.name}`" @click.stop="previewEntry(entry)">
+              <uiImage v-if="mediaKind(entry) === 'image' && canPreviewMedia(entry)" class="entryThumbnail" :src="entryPreviewUrl(entry)" :alt="entry.name" fit="cover" loading="lazy">
+                <template #error><span class="thumbnailFallback"><icon-photo :size="20" aria-hidden="true" /></span></template>
+              </uiImage>
+              <span v-else-if="mediaKind(entry) === 'video'" class="entryThumbnail videoThumbnail" :data-video-thumbnail-path="canPreviewMedia(entry) ? entry.path : undefined">
+                <img v-if="videoThumbnailFrames[entry.path]" :src="videoThumbnailFrames[entry.path]" alt="" loading="lazy" />
+                <span v-else class="thumbnailFallback"><icon-video :size="20" aria-hidden="true" /></span>
+                <span class="videoPlayMark" aria-hidden="true"><icon-video :size="14" /></span>
+              </span>
+              <span v-else class="entryThumbnail entryIcon"><icon-music v-if="mediaKind(entry) === 'audio'" :size="20" aria-hidden="true" /><icon-photo v-else :size="20" aria-hidden="true" /></span>
+              <span class="entryDetails">
+                <span class="entryName">{{ entry.name }}</span>
+                <span class="entryMeta">{{ entry.status === 'Processing' ? '处理中' : entry.status && entry.status !== 'Active' ? '不可用' : mediaKind(entry) === 'video' ? '视频 · 点击预览' : mediaKind(entry) === 'audio' ? '音频 · 点击试听' : '图片 · 点击预览' }}</span>
+              </span>
+            </button>
+            <button class="entryImport" type="button" :disabled="!canSelect(entry) || disabled" :aria-label="`导入 ${entry.name}`" :title="entry.status === 'Processing' ? '素材仍在处理中' : entry.status && entry.status !== 'Active' ? '素材不可用' : `导入 ${entry.name}`" @click.stop="selectEntry(entry)">导入</button>
+          </template>
+        </div>
       </div>
 
       <footer class="pickerFooter">
@@ -55,14 +65,21 @@
       </footer>
     </section>
   </uiDialog>
+  <uiImageViewer v-model="imagePreviewVisible" :urls="previewItem?.kind === 'image' ? [previewItem.url] : []" :title="previewItem?.name || '图片预览'" />
+  <uiDialog v-model="mediaPreviewVisible" :title="previewItem?.name || '素材预览'" width="min(900px, 92vw)" showFullscreen destroyOnClose>
+    <uiMediaPlayer v-if="mediaPreviewVisible && previewItem" :src="previewItem.url" :kind="previewItem.kind === 'audio' ? 'audio' : 'video'" :poster="previewItem.poster" :label="previewItem.name" @error="previewError = '无法预览此素材，请检查文件是否可用，以及当前浏览器是否支持该媒体编码。'" />
+    <p v-if="previewError" class="previewError" role="alert">{{ previewError }}</p>
+  </uiDialog>
 </template>
 
 <script setup lang="ts">
 import axios from "axios";
 import { computed, ref, watch } from "vue";
-import { uiDialog } from "@omnistudio-next/ui";
+import { uiDialog, uiImage, uiImageViewer, uiMediaPlayer } from "@omnistudio-next/ui";
 import { IconArrowLeft, IconChevronRight, IconFolder, IconMusic, IconPhoto, IconSearch, IconVideo } from "@tabler/icons-vue";
 import useWorkspaceFiles from "@/lib/workspaceFiles";
+import { getSessionSnapshot } from "@/lib/sessionState";
+import { createTimelineThumbnailGenerator } from "./editorThumbnails";
 
 type MediaSource = { type: "workspace" | "library"; path: string };
 type MediaEntry = { name: string; path: string; type: "file" | "directory"; children?: MediaEntry[]; status?: string; mimeType?: string };
@@ -79,6 +96,12 @@ const workspaceEntries = ref<MediaEntry[]>([]);
 const libraryEntries = ref<MediaEntry[]>([]);
 const loading = ref(false);
 const errorMessage = ref("");
+const pickerList = ref<HTMLElement>();
+const videoThumbnailFrames = ref<Record<string, string>>({});
+const imagePreviewVisible = ref(false);
+const mediaPreviewVisible = ref(false);
+const previewItem = ref<{ name: string; url: string; kind: MediaKind; poster?: string } | null>(null);
+const previewError = ref("");
 let loadRequest = 0;
 
 const currentPath = computed(() => activeSource.value === "workspace" ? workspacePath.value : libraryPath.value);
@@ -101,10 +124,38 @@ watch(open, value => {
   } else loadRequest++;
 });
 watch([open, () => props.directory, activeSource, workspacePath, libraryPath], ([visible]) => {
+  imagePreviewVisible.value = false;
+  mediaPreviewVisible.value = false;
+  previewItem.value = null;
+  previewError.value = "";
   if (!visible) return;
   if (activeSource.value === "workspace") void loadWorkspaceEntries();
   else void loadLibraryEntries();
 }, { immediate: true, flush: "post" });
+
+watch([open, pickerList, visibleEntries, loading, () => props.directory, activeSource, () => props.disabled], (_value, _previous, onCleanup) => {
+  videoThumbnailFrames.value = {};
+  if (!open.value || loading.value || props.disabled || !pickerList.value) return;
+  const videoEntries = new Map(visibleEntries.value.filter(entry => mediaKind(entry) === "video" && canPreviewMedia(entry)).map(entry => [entry.path, entry]));
+  if (!videoEntries.size) return;
+  const generator = createTimelineThumbnailGenerator();
+  const controller = new AbortController();
+  const observer = new IntersectionObserver(entries => {
+    for (const observed of entries) {
+      if (!observed.isIntersecting || controller.signal.aborted) continue;
+      const entry = videoEntries.get((observed.target as HTMLElement).dataset.videoThumbnailPath ?? "");
+      if (!entry) continue;
+      observer.unobserve(observed.target);
+      void generator.getFrame(entryPreviewUrl(entry), 0, controller.signal).then(frame => {
+        if (!controller.signal.aborted) videoThumbnailFrames.value[entry.path] = frame;
+      }).catch(() => {
+        // ACT: 浏览器无法解码时保留视频图标，仍可点击预览查看错误原因。
+      });
+    }
+  }, { root: pickerList.value, rootMargin: "80px 0px" });
+  pickerList.value.querySelectorAll<HTMLElement>("[data-video-thumbnail-path]").forEach(element => observer.observe(element));
+  onCleanup(() => { observer.disconnect(); controller.abort(); generator.dispose(); });
+}, { flush: "post" });
 
 function safeRelativePath(path: string) {
   return !!path && !path.startsWith("/") && !path.includes("\\") && !/[\u0000-\u001f:<>"|?*]/.test(path)
@@ -182,6 +233,24 @@ function canSelect(entry: MediaEntry) {
   return !!mediaKind(entry) && (activeSource.value === "workspace" || entry.status === "Active");
 }
 
+function canPreviewMedia(entry: MediaEntry) {
+  return entry.type === "file" && canSelect(entry);
+}
+
+function entryPreviewUrl(entry: MediaEntry) {
+  if (activeSource.value === "workspace") return useWorkspaceFiles(props.directory).mediaUrl(entry.path);
+  return `/api/assets/read?path=${encodeURIComponent(entry.path)}&accountId=${encodeURIComponent(getSessionSnapshot().userId)}`;
+}
+
+function previewEntry(entry: MediaEntry) {
+  const kind = mediaKind(entry);
+  if (!canNavigate.value || !kind || !canPreviewMedia(entry) || !safeRelativePath(entry.path)) return;
+  previewItem.value = { name: entry.name, kind, url: entryPreviewUrl(entry), poster: kind === "video" ? videoThumbnailFrames.value[entry.path] : undefined };
+  previewError.value = "";
+  if (kind === "image") imagePreviewVisible.value = true;
+  else mediaPreviewVisible.value = true;
+}
+
 function selectEntry(entry: MediaEntry) {
   if (props.disabled || loading.value) return;
   if (entry.type === "directory") {
@@ -235,14 +304,76 @@ function selectEntry(entry: MediaEntry) {
 
   .pickerError { padding: 9px 10px; border: 1px solid #774b45; border-radius: 4px; color: #e9aaa0; background: #2b211f; line-height: 1.45; }
   .pickerList { display: flex; flex-direction: column; min-height: 240px; max-height: min(48vh, 420px); overflow: auto; border: 1px solid #343d36; border-radius: 5px; background: #1b201c; }
-  .pickerEntry { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 16px; align-items: center; gap: 9px; min-height: 42px; padding: 6px 10px; border: 0; border-bottom: 1px solid #2d352f; color: #dce3dc; text-align: left; background: transparent; }
-  .pickerEntry:last-child { border-bottom: 0; }
-  .pickerEntry:hover:not(:disabled) { background: #29312b; }
-  .pickerEntry.isDisabled { color: #78847b; }
-  .entryIcon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: #a0c2a8; background: #28322b; }
-  .entryName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .entryMeta { color: #849087; font-size: 10px; white-space: nowrap; }
-  .entryChevron { color: #8e9a91; }
+  .pickerEntry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 82px;
+    padding: 0 12px 0 0;
+    border-bottom: 1px solid #2d352f;
+    color: #dce3dc;
+    cursor: pointer;
+    &:last-child { border-bottom: 0; }
+    &:hover:not(.isDisabled) { background: #29312b; }
+    &.isDisabled { color: #78847b; cursor: not-allowed; }
+    &:has(.entryFolder) { min-height: 44px; padding: 0; }
+    .entryIcon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: #a0c2a8; background: #28322b; }
+    .entryFolder {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+      align-items: center;
+      gap: 9px;
+      min-height: 44px;
+      padding: 7px 12px;
+      border: 0;
+      color: inherit;
+      text-align: left;
+      background: transparent;
+    }
+    .entryPreview {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      min-height: 82px;
+      padding: 9px 0 9px 12px;
+      border: 0;
+      color: inherit;
+      text-align: left;
+      background: transparent;
+      .entryThumbnail {
+        position: relative;
+        display: block;
+        width: 84px;
+        height: 64px;
+        overflow: hidden;
+        border: 1px solid #46594b;
+        border-radius: 5px;
+        background: #111612;
+        .thumbnailFallback { display: grid; place-items: center; width: 100%; height: 100%; color: #8caa94; }
+        img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .videoPlayMark { position: absolute; right: 4px; bottom: 4px; display: grid; place-items: center; padding: 3px; border-radius: 3px; color: #fff; background: rgb(0 0 0 / 65%); }
+        &.entryIcon { display: grid; place-items: center; }
+      }
+      .entryDetails { display: grid; gap: 7px; min-width: 0; }
+      &:hover:not(:disabled) .entryThumbnail { border-color: #a1d0ad; }
+    }
+    .entryImport {
+      padding: 6px 10px;
+      border: 1px solid #516759;
+      border-radius: 4px;
+      color: #dcebdd;
+      background: #304337;
+      font-size: 12px;
+      &:hover:not(:disabled) { border-color: #88b297; background: #3c5746; }
+    }
+    .entryName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .entryMeta { color: #9ca99f; font-size: 11px; white-space: nowrap; }
+    .entryChevron { color: #8e9a91; }
+  }
   .pickerState { display: grid; flex: 1; place-items: center; min-height: 180px; padding: 24px; color: #89958d; text-align: center; }
 
   .pickerFooter { display: flex; justify-content: space-between; gap: 10px; }
@@ -255,4 +386,5 @@ function selectEntry(entry: MediaEntry) {
     .pickerBreadcrumbs { grid-row: 2; }
   }
 }
+.previewError { margin: 12px 0 0; color: var(--uiDanger, #e9aaa0); line-height: 1.6; }
 </style>

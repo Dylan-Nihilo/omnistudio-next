@@ -12,6 +12,11 @@ const shotSchema = z.strictObject({
   shotType: z.string().trim().min(1).max(80),
   camera: z.string().max(500),
   lighting: z.string().max(500),
+  characterAssetIds: z.array(z.uuid()).max(24).optional(),
+  propAssetIds: z.array(z.uuid()).max(24).optional(),
+  characterNames: z.array(z.string().trim().min(1).max(200)).max(24).optional(),
+  propNames: z.array(z.string().trim().min(1).max(200)).max(24).optional(),
+  soundEffects: z.string().max(10000).nullable().optional(),
   prompt: z.string().trim().min(1).max(5000),
   dialogue: z.string().max(3000),
   narration: z.string().max(3000),
@@ -34,6 +39,7 @@ const episodeSchema = z.strictObject({
 const inputSchema = z.strictObject({
   projectId: z.uuid(),
   logline: z.string().trim().min(1).max(1000),
+  scriptDocument: u.productionScriptDocument.productionScriptDocumentSchema.optional(),
   sourceGeneration: u.productionScriptDraft.productionScriptGenerationSchema.refine(value => value.status === "parsed", "只能确认已解析的剧本生成记录"),
   generation: z.strictObject({
     providerId: z.string().min(1).max(100),
@@ -53,6 +59,11 @@ const inputSchema = z.strictObject({
   })).min(2).max(24),
   episodes: z.array(episodeSchema).min(1).max(12),
 }).superRefine((input, context) => {
+  if (input.scriptDocument) {
+    const documentNumbers = input.scriptDocument.episodes.map(episode => episode.episodeNumber);
+    const structureNumbers = input.episodes.map(episode => episode.episodeNumber);
+    if (documentNumbers.length !== structureNumbers.length || documentNumbers.some((number, index) => number !== structureNumbers[index])) context.addIssue({ code: "custom", path: ["scriptDocument", "episodes"], message: "剧本正文的分集编号和数量必须与生产剧集一致" });
+  }
   if (!input.assets.some(asset => asset.assetType === "character")) context.addIssue({ code: "custom", path: ["assets"], message: "至少需要一项角色资产" });
   if (!input.assets.some(asset => asset.assetType === "scene")) context.addIssue({ code: "custom", path: ["assets"], message: "至少需要一项场景资产" });
   input.episodes.forEach((episode, episodeIndex) => {

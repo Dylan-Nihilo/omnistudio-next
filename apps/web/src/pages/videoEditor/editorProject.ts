@@ -5,11 +5,197 @@ const projectPath = "assets/videoEditor/timeline.json";
 const editorDirectory = "assets/videoEditor";
 const projectsDirectory = `${editorDirectory}/projects`;
 const backupDirectory = `${editorDirectory}/backups`;
+const canvasProjectBindingsPath = `${editorDirectory}/canvasProjects.json`;
+const productionProjectBindingsPath = `${editorDirectory}/productionProjects.json`;
 const backupNamePattern = /^backup\d{17}[\da-f]{32}\.json$/;
 const projectPathPattern = /^assets\/videoEditor\/projects\/([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})\.json$/;
 
 type EditorBackup = { name: string; path: string };
 type EditorProjectEntry = { path: string; name: string };
+type CanvasProjectBindings = { version: 1; bindings: Record<string, string> };
+type ProductionProjectBindings = { version: 1; bindings: Record<string, string> };
+
+function productionBindingKey(projectId: string, episodeId: string) {
+  if (![projectId, episodeId].every(value => /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value))) throw new Error("生产项目或剧集编号无效");
+  return `${projectId.toLowerCase()}:${episodeId.toLowerCase()}`;
+}
+
+function parseProductionProjectBindings(value: unknown): ProductionProjectBindings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("生产项目剪辑工程绑定文件格式无效");
+  const item = value as { version?: unknown; bindings?: unknown };
+  if (item.version !== 1 || !item.bindings || typeof item.bindings !== "object" || Array.isArray(item.bindings)) throw new Error("生产项目剪辑工程绑定文件格式无效");
+  const bindings: Record<string, string> = {};
+  for (const [key, editorPath] of Object.entries(item.bindings)) {
+    if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}:[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(key) || typeof editorPath !== "string") throw new Error("生产项目剪辑工程绑定路径无效");
+    bindings[key.toLowerCase()] = normalizeProjectPath(editorPath);
+  }
+  return { version: 1, bindings };
+}
+
+async function readProductionProjectBindings(directory: string) {
+  const files = useWorkspaceFiles(directory);
+  const result = await files.readVersionedText(productionProjectBindingsPath);
+  if (result.revision === "missing") return { files, revision: result.revision, value: { version: 1 as const, bindings: {} } };
+  let parsed: unknown;
+  try { parsed = JSON.parse(result.content); }
+  catch { throw new Error("生产项目剪辑工程绑定文件无法解析，已停止自动恢复以保护现有工程"); }
+  return { files, revision: result.revision, value: parseProductionProjectBindings(parsed) };
+}
+
+export async function bindProductionEditorProject(directory: string, projectId: string, episodeId: string, requestedEditorPath: string, expectedPath?: string): Promise<void> {
+  const key = productionBindingKey(projectId, episodeId);
+  const editorPath = normalizeProjectPath(requestedEditorPath);
+  if (!await readExistingEditorProject(directory, editorPath)) throw new Error(`剪辑工程「${editorPath}」不存在，已阻止绑定空工程`);
+  const binding = await readProductionProjectBindings(directory);
+  const currentPath = binding.value.bindings[key];
+  if (currentPath === editorPath) return;
+  if (currentPath !== expectedPath) throw new Error("生产项目绑定的剪辑工程已被其他窗口修改，请重新读取后重试");
+  const next: ProductionProjectBindings = { version: 1, bindings: { ...binding.value.bindings, [key]: editorPath } };
+  await binding.files.writeVersionedText(productionProjectBindingsPath, `${JSON.stringify(next, null, 2)}\n`, binding.revision);
+}
+
+export async function resolveProductionEditorProject(directory: string, projectId: string, episodeId: string, projectTitle: string, episodeTitle: string) {
+  const key = productionBindingKey(projectId, episodeId);
+  await ensureEditorFolders(useWorkspaceFiles(directory));
+  const binding = await readProductionProjectBindings(directory);
+  const boundPath = binding.value.bindings[key];
+  if (boundPath) {
+    if (!await readExistingEditorProject(directory, boundPath)) throw new Error(`生产项目绑定的剪辑工程「${boundPath}」不存在，已阻止创建空工程遮蔽原工程`);
+    return { path: boundPath };
+  }
+
+  const name = `${projectTitle.trim()} · ${episodeTitle.trim()} · 剪辑`.replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 120).trim() || "生产项目剪辑";
+  const created = await createEditorProject(directory, name);
+  try {
+    const next: ProductionProjectBindings = { version: 1, bindings: { ...binding.value.bindings, [key]: created.path } };
+    await binding.files.writeVersionedText(productionProjectBindingsPath, `${JSON.stringify(next, null, 2)}\n`, binding.revision);
+    return { path: created.path };
+  } catch (error) {
+    const latest = await readProductionProjectBindings(directory);
+    const concurrentPath = latest.value.bindings[key];
+    if (concurrentPath && await readExistingEditorProject(directory, concurrentPath)) return { path: concurrentPath };
+    throw error;
+  }
+}
+
+function normalizeCanvasPath(path: string) {
+  if (typeof path !== "string" || !path.trim() || !path.toLowerCase().endsWith(".json") || /^[a-z][a-z\d+.-]*:/i.test(path) || /[\\:<>&"|?*\u0000-\u001f]/.test(path) || path.startsWith("/") || path.split("/").some(part => !part || part === "." || part === ".." || part.endsWith(".") || part.endsWith(" "))) throw new Error("画布路径无效");
+  return path;
+}
+
+function parseCanvasProjectBindings(value: unknown): CanvasProjectBindings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("画布剪辑工程绑定文件格式无效");
+  const item = value as { version?: unknown; bindings?: unknown };
+  if (item.version !== 1 || !item.bindings || typeof item.bindings !== "object" || Array.isArray(item.bindings)) throw new Error("画布剪辑工程绑定文件格式无效");
+  const bindings: Record<string, string> = {};
+  for (const [canvasPath, editorPath] of Object.entries(item.bindings)) {
+    normalizeCanvasPath(canvasPath);
+    if (typeof editorPath !== "string") throw new Error("画布剪辑工程绑定路径无效");
+    bindings[canvasPath] = normalizeProjectPath(editorPath);
+  }
+  return { version: 1, bindings };
+}
+
+async function readCanvasProjectBindings(directory: string) {
+  const files = useWorkspaceFiles(directory);
+  const result = await files.readVersionedText(canvasProjectBindingsPath);
+  if (result.revision === "missing") return { files, revision: result.revision, value: { version: 1 as const, bindings: {} } };
+  let parsed: unknown;
+  try { parsed = JSON.parse(result.content); }
+  catch { throw new Error("画布剪辑工程绑定文件无法解析，已停止自动恢复以保护现有工程"); }
+  return { files, revision: result.revision, value: parseCanvasProjectBindings(parsed) };
+}
+
+async function readExistingEditorProject(directory: string, path: string) {
+  const editorPath = normalizeProjectPath(path);
+  const { content, revision } = await useWorkspaceFiles(directory).readVersionedText(editorPath);
+  if (revision === "missing") return undefined;
+  let project: EditorProject;
+  try { project = parseEditorProject(JSON.parse(content)); }
+  catch { throw new Error(`剪辑工程「${editorPath}」无法读取或格式无效，已停止自动恢复以保护工程内容`); }
+  return { path: editorPath, name: readProjectName(project, editorPath === projectPath ? "默认剪辑项目" : `剪辑工程 ${editorPath.split("/").at(-1)!.slice(0, 8)}`), project };
+}
+
+async function listExistingEditorProjects(directory: string) {
+  const files = useWorkspaceFiles(directory);
+  await ensureEditorFolders(files);
+  const editor = await files.list(editorDirectory);
+  const projects = await files.list(projectsDirectory);
+  const paths = [
+    ...(editor.entries.some(entry => entry.type === "file" && entry.path === projectPath) ? [projectPath] : []),
+    ...projects.entries.filter(entry => entry.type === "file" && projectPathPattern.test(entry.path) && entry.path === `${projectsDirectory}/${entry.name}`).map(entry => entry.path),
+  ];
+  const result = [];
+  for (const path of paths) {
+    const project = await readExistingEditorProject(directory, path);
+    if (!project) throw new Error(`剪辑工程「${path}」在扫描期间消失，已停止自动恢复以保护现有工程`);
+    result.push(project);
+  }
+  return result;
+}
+
+export async function bindCanvasEditorProject(directory: string, requestedCanvasPath: string, requestedEditorPath: string, expectedPath?: string): Promise<void> {
+  const canvasPath = normalizeCanvasPath(requestedCanvasPath);
+  const editorPath = normalizeProjectPath(requestedEditorPath);
+  const project = await readExistingEditorProject(directory, editorPath);
+  if (!project) throw new Error(`剪辑工程「${editorPath}」不存在，已阻止绑定空工程`);
+  const binding = await readCanvasProjectBindings(directory);
+  const currentPath = binding.value.bindings[canvasPath];
+  if (currentPath === editorPath) return;
+  if (currentPath !== expectedPath) throw new Error("画布绑定的剪辑工程已被其他窗口修改，请重新读取后重试");
+  const next: CanvasProjectBindings = { version: 1, bindings: { ...binding.value.bindings, [canvasPath]: editorPath } };
+  await binding.files.writeVersionedText(canvasProjectBindingsPath, `${JSON.stringify(next, null, 2)}\n`, binding.revision);
+}
+
+export async function resolveCanvasEditorProject(directory: string, requestedCanvasPath: string): Promise<{ path: string; candidates?: never } | { path?: never; candidates: EditorProjectEntry[] }> {
+  const canvasPath = normalizeCanvasPath(requestedCanvasPath);
+  const files = useWorkspaceFiles(directory);
+  await ensureEditorFolders(files);
+  const canvas = await files.readJson<{ toonflowCanvas?: boolean; nodes?: { id?: unknown; data?: { editorProjectPath?: unknown } }[] }>(canvasPath);
+  if (!canvas || canvas.toonflowCanvas !== true || !Array.isArray(canvas.nodes) || canvas.nodes.length > 10000 || canvas.nodes.some(node => !node || typeof node !== "object" || Array.isArray(node) || typeof node.id !== "string" || !node.id.trim() || node.data !== undefined && (!node.data || typeof node.data !== "object" || Array.isArray(node.data)))) throw new Error("画布文件格式无效，已停止自动恢复以保护现有剪辑工程");
+
+  const binding = await readCanvasProjectBindings(directory);
+  const boundPath = binding.value.bindings[canvasPath];
+  if (boundPath) {
+    if (!await readExistingEditorProject(directory, boundPath)) throw new Error(`画布绑定的剪辑工程「${boundPath}」不存在，已阻止创建空工程遮蔽原工程`);
+    return { path: boundPath };
+  }
+
+  const projects = await listExistingEditorProjects(directory);
+  const projectByPath = new Map(projects.map(project => [project.path, project]));
+  const nodePaths = new Set<string>();
+  for (const node of canvas.nodes) {
+    const candidate = node?.data?.editorProjectPath;
+    if (typeof candidate !== "string") continue;
+    try { nodePaths.add(normalizeProjectPath(candidate)); }
+    catch { continue; }
+  }
+  const missingNodePaths = [...nodePaths].filter(path => !projectByPath.has(path));
+  if (missingNodePaths.length) throw new Error(`画布仍引用已不存在的剪辑工程「${missingNodePaths[0]}」，已阻止创建空工程遮蔽原工程`);
+  const referencedProjects = [...nodePaths].map(path => projectByPath.get(path)).filter((project): project is NonNullable<typeof project> => !!project);
+  const populatedNodeProjects = referencedProjects.filter(project => project.project.clips.length > 0);
+  const nodeProjects = populatedNodeProjects.length ? populatedNodeProjects : referencedProjects;
+  if (nodeProjects.length === 1) {
+    await bindCanvasEditorProject(directory, canvasPath, nodeProjects[0]!.path);
+    return { path: nodeProjects[0]!.path };
+  }
+  if (nodeProjects.length > 1) return { candidates: nodeProjects.map(({ path, name }) => ({ path, name })) };
+
+  const sourceProjects = projects.filter(project => project.project.assets.some(asset => asset.source?.canvasPath === canvasPath));
+  const populatedSourceProjects = sourceProjects.filter(project => project.project.clips.length > 0);
+  if (populatedSourceProjects.length > 1) return { candidates: populatedSourceProjects.map(({ path, name }) => ({ path, name })) };
+  const sourceProject = populatedSourceProjects[0] ?? (sourceProjects.length === 1 ? sourceProjects[0] : undefined);
+  if (sourceProject) {
+    await bindCanvasEditorProject(directory, canvasPath, sourceProject.path);
+    return { path: sourceProject.path };
+  }
+  if (sourceProjects.length > 1) return { candidates: sourceProjects.map(({ path, name }) => ({ path, name })) };
+
+  const name = `${canvasPath.split("/").at(-1)!.replace(/\.json$/i, "")} · 剪辑`.slice(0, 120);
+  const created = await createEditorProject(directory, name || "画布剪辑");
+  await bindCanvasEditorProject(directory, canvasPath, created.path);
+  return { path: created.path };
+}
 
 function normalizeProjectPath(path = projectPath): string {
   if (path === projectPath || projectPathPattern.test(path)) return path;

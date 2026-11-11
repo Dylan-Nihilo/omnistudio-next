@@ -5,7 +5,7 @@
       <uiField v-if="modes.length" label="生成模式"><uiSelect :modelValue="mode" :options="modes" :disabled="disabled" aria-label="视频生成模式" @update:modelValue="value => typeof value === 'string' && (mode = value)" /></uiField>
       <div v-if="durations.length || resolutions.length" class="outputOptions"><uiField v-if="durations.length" label="时长"><uiSelect :modelValue="duration" :options="durations.map(value => ({ value, label: `${value}秒` }))" :disabled="disabled" aria-label="视频时长" @update:modelValue="value => typeof value === 'number' && (duration = value)" /></uiField><uiField v-if="resolutions.length" label="分辨率"><uiSelect :modelValue="resolution" :options="resolutions.map(value => ({ value, label: value }))" :disabled="disabled" aria-label="视频分辨率" @update:modelValue="value => typeof value === 'string' && (resolution = value)" /></uiField></div>
       <uiField label="通用比例"><div class="ratioOptions" role="group" aria-label="视频比例"><uiButton v-for="item in ratios" :key="item" class="ratioButton" variant="secondary" :disabled="disabled" :aria-label="`比例 ${item}`" :aria-pressed="ratio === item" @click="ratio = item"><span class="ratioContent"><span class="ratioShape" :style="ratioStyle(item)" aria-hidden="true" /><span>{{ item }}</span></span></uiButton></div></uiField>
-      <div v-if="model?.audio === 'optional'" class="audioOption"><span>生成音频</span><uiSwitch v-model="generateAudio" :disabled="disabled" aria-label="生成音频" /></div>
+      <div class="audioOption"><span>生成音频</span><uiSwitch v-model="generateAudio" :disabled="disabled || model?.audio !== 'optional'" aria-label="生成音频" /></div>
     </div>
   </uiPopover>
 </template>

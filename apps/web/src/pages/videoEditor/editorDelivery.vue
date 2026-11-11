@@ -220,7 +220,7 @@ async function submitCut() {
 
 function openProjectReview(projectId: string) {
   if (props.disabled || sessionChanged.value) return;
-  void router.push({ path: `/productionProjects/${projectId}`, query: { stage: "review" } });
+  void router.push({ path: `/productionProjects/${projectId}`, query: { stage: "generating", cutReview: "1" } });
 }
 
 function handleAccountChanged() {

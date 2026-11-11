@@ -38,7 +38,7 @@
         </div>
         <promptInput v-model="data.promptModel" v-model:text="data.prompt" :references="referenceMentions" />
         <div class="promptFooter">
-          <div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="data.model" :options="modelGroups.flatMap(provider => provider.models.map(item => ({ group: provider.label, label: item.label, value: JSON.stringify([item.providerId, item.modelId]) })))" filterable :loading="modelsLoading" :disabled="generating || deleting" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加视频模型" @update:modelValue="value => typeof value === 'string' && (data.model = value)" @visibleChange="visible => visible && loadModels().catch(error => showNodeError(error, '模型读取失败'))" /></div>
+          <div class="modelChoice"><icon-sparkles :size="17" /><uiSelect :modelValue="data.model" :options="models.map(item => ({ label: getModelSelectionLabel(item), description: getMediaModelCapabilities(item), value: JSON.stringify([item.providerId, item.modelId]), icon: modelIcon, iconProps: { model: item.modelId, provider: item.providerId, size: 18 } }))" filterable :loading="modelsLoading" :disabled="generating || deleting" placeholder="选择模型" aria-label="生成模型" noDataText="请先在设置中添加视频模型" @update:modelValue="value => typeof value === 'string' && (data.model = value)" @visibleChange="visible => visible && loadModels().catch(error => showNodeError(error, '模型读取失败'))" /></div>
           <generationSettings
             v-model:duration="data.duration"
             v-model:resolution="data.resolution"
@@ -66,12 +66,13 @@
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
 import { uiIconButton, uiSelect, uiLoading } from "@omnistudio-next/ui";
 import { IconCameraAi, IconSparkles, IconArrowUp, IconPlayerStop, IconTransfer } from "@tabler/icons-vue";
-import { groupNodeModels, invalidateNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
+import { invalidateNodeModels, nodeSkeleton, nodeTools, useNodeError, useNode, useNodeGeneration, useNodeReferences, z, type NodeMediaModel, type NodeVideoRequest, type NodeHandle } from "@omnistudio-next/nodes-scaffold/runtime";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
 import videoPlayer from "@omnistudio-next/nodes-scaffold/videoPlayer";
 import referenceItem from "@omnistudio-next/nodes-scaffold/referenceItem";
 import mediaHistory from "@omnistudio-next/nodes-scaffold/mediaHistory";
 import generationSettings from "./components/generationSettings.vue";
+import { getMediaModelCapabilities, getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 
 defineOptions({
   inheritAttrs: false,
@@ -167,9 +168,12 @@ watch([selectedModel, () => data.value.duration], ([choice]) => {
   const resolutions = getResolutions(choice, data.value.duration);
   if (resolutions.length > 0 && !resolutions.includes(data.value.resolution)) data.value.resolution = resolutions[0] ?? "";
   if (!ratioOptions.includes(data.value.ratio)) data.value.ratio = "9:16";
-  if (choice.audio !== undefined && choice.audio !== "optional") data.value.generateAudio = choice.audio === true;
 }, { flush: "sync" });
-const modelGroups = computed(() => groupNodeModels(models.value));
+watch(selectedModel, (choice, previousChoice) => {
+  if (!choice) return;
+  if (choice.audio !== "optional") data.value.generateAudio = choice.audio === true;
+  else if (!previousChoice || choice.providerId !== previousChoice.providerId || choice.modelId !== previousChoice.modelId || previousChoice.audio !== "optional") data.value.generateAudio = true;
+}, { flush: "sync" });
 const generationPrompt = computed(() =>
   [
     data.value.prompt.trim(),
@@ -386,7 +390,7 @@ nodeTools.register({
     if (args.resolution !== undefined && resolutions.length > 0 && !resolutions.includes(args.resolution)) throw new Error(`当前时长不支持分辨率 ${args.resolution}，可选：${resolutions.join("、")}`);
     const resolution = args.resolution ?? (resolutions.includes(data.value.resolution) ? data.value.resolution : resolutions[0] ?? "");
     if (args.mode !== undefined && !getMatchingModes(choice).some((item) => JSON.stringify(item) === JSON.stringify(args.mode))) throw new Error("所选模式不受当前模型支持或不适用于当前引用，请根据模型能力及已连接素材选择");
-    if (args.generateAudio !== undefined && choice.audio !== undefined && choice.audio !== "optional" && args.generateAudio !== (choice.audio === true)) throw new Error("当前模型不支持切换声音，请查看 getConfig 返回的 audio 能力");
+    if (args.generateAudio !== undefined && choice.audio !== "optional" && args.generateAudio !== (choice.audio === true)) throw new Error("当前模型不支持切换声音，请查看 getConfig 返回的 audio 能力");
     data.value.model = JSON.stringify([choice.providerId, choice.modelId]);
     data.value.duration = duration;
     data.value.resolution = resolution;

@@ -12,7 +12,8 @@
     "vue": "^3.5.42",
     "@vue-flow/core": "^1.48.2",
     "element-plus": "^2.14.5",
-    "@omnistudio-next/ui": "workspace:*"
+    "@omnistudio-next/ui": "workspace:*",
+    "@omnistudio-next/model-icons": "workspace:*"
   },
   "dependencies": {
     "@tabler/icons-vue": "^3.46.0",
@@ -23,6 +24,7 @@
     "vue-draggable-plus": "^0.6.1"
   },
   "devDependencies": {
+    "@omnistudio-next/model-icons": "workspace:*",
     "@omnistudio-next/nodes-scaffold": "workspace:*",
     "@types/three": "0.184.0",
     "typescript": "~6.0.3",

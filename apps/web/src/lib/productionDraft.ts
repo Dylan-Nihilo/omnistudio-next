@@ -149,7 +149,7 @@ export async function readProductionDraft(projectId: string, userId: string): Pr
   const key = draftScopeKey(projectId, userId);
   await draftSaveQueues.get(key)?.catch(() => {});
   const { data } = await authClient.get<ApiResponse<{ draft: unknown; generationData: unknown; revision: number }>>("/api/productionProjects/scriptDraft/get", { params: { projectId } });
-  draftRevisions.set(key, data.data.revision);
+  draftRevisions.set(key, Math.max(draftRevisions.get(key) ?? 0, data.data.revision));
   const draft = normalizedDraft(data.data.draft);
   if (draft) {
     const generationData = data.data.generationData && typeof data.data.generationData === "object" ? data.data.generationData as ProductionDraftGeneration : null;

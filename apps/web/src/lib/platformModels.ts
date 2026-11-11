@@ -21,6 +21,11 @@ export type PlatformModel = {
   type?: "text" | "image" | "video" | "audio";
   mediaType?: "text" | "image" | "video" | "audio";
   capabilities?: unknown;
+  mode?: unknown;
+  imageSizes?: string[];
+  imageRatios?: string[];
+  durationResolutionMap?: { duration: number[]; resolution: string[] }[];
+  audio?: boolean | "optional" | "required" | "none";
   videoInput?: VideoInputCapability;
 };
 

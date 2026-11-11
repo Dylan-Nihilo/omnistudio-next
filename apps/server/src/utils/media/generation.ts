@@ -5,6 +5,7 @@ import { getMediaProvider, listMediaProviders, loadMediaProviderSource } from "@
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { getPlatformMediaModel, getPlatformProviderRuntimeConfig, listPlatformModels } from "@/services/modelService";
 import { getActivePricingItems, estimateMediaCredits, reserveGeneration, settleGeneration } from "@/services/billingService";
+import type { GenerationReservationHandler } from "@/services/billingService";
 import { authorizeProjectDirectory } from "@/services/accountService";
 import { nextGenerationKey, requireAccount } from "@/utils/accountContext";
 import { referenceForBytes, workspaceSourceUrl } from "@/utils/assets";
@@ -24,7 +25,7 @@ const mediaExtensions: Record<string, string> = {
   "audio/flac": "flac", "audio/aac": "aac", "audio/mp4": "m4a", "audio/opus": "opus", "audio/pcm": "pcm",
 };
 
-export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void; publicOrigin?: string; projectId?: string; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string; jobIdRef?: { id?: string } };
+export type GenerationBillingContext = { userId: string; idempotencyKey?: string; concurrencyRelease?: () => void; publicOrigin?: string; projectId?: string; seasonId?: string; episodeId?: string; sceneId?: string; shotId?: string; attemptNumber?: number; estimatedCostCents?: string; jobIdRef?: { id?: string }; onReserved?: GenerationReservationHandler };
 
 export function getVideoBillingKind(request: Pick<MediaGenerationRequest, "images" | "videos" | "firstFrame" | "lastFrame">): VideoBillingKind {
   return request.videos && request.videos.length > 0 ? "videoToVideo" : "textImageToVideo";
@@ -210,6 +211,7 @@ export async function generateMedia(
     ...(billing?.shotId ? { shotId: billing.shotId } : {}),
     ...(billing?.attemptNumber !== undefined ? { attemptNumber: billing.attemptNumber } : {}),
     ...(billing?.estimatedCostCents ? { estimatedCostCents: billing.estimatedCostCents } : {}),
+    onReserved: billing?.onReserved,
   });
   if (billing?.jobIdRef) billing.jobIdRef.id = reserved.job.id;
   const written: string[] = [];

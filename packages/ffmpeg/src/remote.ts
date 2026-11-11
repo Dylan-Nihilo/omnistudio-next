@@ -11,7 +11,7 @@ import type { FfmpegCommand, FfmpegFactory, FfprobeData } from "./types";
 const chainNames = new Set<string>(chainMethods);
 const queryNames = new Set<string>(queryMethods);
 const runNames = new Set<string>(runMethods);
-const safeFilters = new Set(["color", "trim", "setpts", "format", "fps", "scale", "setsar", "lutrgb", "colorchannelmixer", "geq", "null", "pad", "rotate", "fade", "overlay", "atrim", "asetpts", "atempo", "aresample", "aformat", "apad", "volume", "afade", "adelay", "amix", "alimiter", "anullsrc"]);
+const safeFilters = new Set(["color", "trim", "setpts", "format", "fps", "tpad", "scale", "setsar", "lutrgb", "colorchannelmixer", "geq", "null", "pad", "rotate", "fade", "overlay", "atrim", "asetpts", "atempo", "aresample", "aformat", "apad", "volume", "afade", "adelay", "amix", "alimiter", "anullsrc"]);
 const mediaFormats = "mov,matroska,webm,mp3,wav,aac,ogg,flac,image2,png_pipe,jpeg_pipe,webp_pipe";
 type RemoteCommand = FfmpegCommand & {
   _getArguments(): string[];

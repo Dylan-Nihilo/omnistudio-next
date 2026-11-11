@@ -65,7 +65,9 @@ export async function exportEditorProject(
       const stream = data.streams.find(item => item.codec_type === requiredStream);
       if (!stream) throw new Error(`素材「${asset.name}」缺少${requiredStream === "video" ? "画面" : "音频"}流`);
       if (asset.kind !== "image") {
-        const actualDuration = Number(stream.duration ?? data.format.duration);
+        // 容器与浏览器以最长音视频流计时；AAC 尾部可能略长于画面，不能因此拒绝完整素材。
+        const formatDuration = Number(data.format.duration);
+        const actualDuration = Number.isFinite(formatDuration) && formatDuration > 0 ? formatDuration : Number(stream.duration);
         if (!Number.isFinite(actualDuration) || actualDuration <= 0) throw new Error(`无法确认素材「${asset.name}」的有效时长`);
         for (const clip of snapshot.clips.filter(item => item.assetId === asset.id)) {
           if (clip.outPoint > actualDuration + Math.max(0.05, 1 / snapshot.frameRate)) {
@@ -111,7 +113,8 @@ export async function exportEditorProject(
         const angle = (clip.rotation ?? 0) * Math.PI / 180;
         const asset = usedAssets.find(item => item.id === clip.assetId)!;
         const sourceStart = asset.kind === "image" ? 0 : clip.inPoint;
-        graph.push(`[${input}:v]trim=start=${sourceStart}:duration=${clip.outPoint - clip.inPoint},setpts=(PTS-STARTPTS)/${speed},fps=${snapshot.frameRate},scale=${scaledWidth}:${scaledHeight}:force_original_aspect_ratio=decrease,setsar=1,format=rgba,${colorFilters(clip)},pad=${scaledWidth}:${scaledHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0,rotate=${angle}:ow=rotw(${angle}):oh=roth(${angle}):c=black@0${alphaFilters(clip, crossfadeOut)},setpts=PTS+${clip.start}/TB[${label}]`);
+        const sourceTail = asset.kind === "video" ? `tpad=stop_mode=clone:stop_duration=${clip.outPoint},` : "";
+        graph.push(`[${input}:v]${sourceTail}trim=start=${sourceStart}:duration=${clip.outPoint - clip.inPoint},setpts=(PTS-STARTPTS)/${speed},fps=${snapshot.frameRate},scale=${scaledWidth}:${scaledHeight}:force_original_aspect_ratio=decrease,setsar=1,format=rgba,${colorFilters(clip)},pad=${scaledWidth}:${scaledHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0,rotate=${angle}:ow=rotw(${angle}):oh=roth(${angle}):c=black@0${alphaFilters(clip, crossfadeOut)},setpts=PTS+${clip.start}/TB[${label}]`);
       }
       const xValue = clip.kind === "text" ? undefined : keyframeExpression(clip, "x", `(t-${clip.start})`);
       const yValue = clip.kind === "text" ? undefined : keyframeExpression(clip, "y", `(t-${clip.start})`);

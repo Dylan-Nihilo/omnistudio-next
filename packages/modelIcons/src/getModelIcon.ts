@@ -34,7 +34,8 @@ const aliases: Record<string, string[]> = {
   luma: ["ray", "dream-machine"],
   hailuo: ["minimax-hailuo", "海螺"],
   alibaba: ["wan", "wanx", "wanvideo", "wan-video", "万相", "通义万相"],
-  bytedance: ["seedance", "seedream", "seededit"],
+  bytedance: ["seedance", "seedream", "seededit", "doubao-seedance", "doubao-seedream", "doubao-seededit"],
+  baidu: ["baiduvideofire", "百度"],
   jimeng: ["即梦"],
   hunyuan: ["hunyuanvideo", "hunyuanimage", "混元"],
   cogvideo: ["cogvideox"],
@@ -56,11 +57,36 @@ for (const [brand, names] of Object.entries(aliases)) {
 modelNames.sort((left, right) => right.prefix.length - left.prefix.length);
 
 export function getModelIcon(model: string) {
-  // ACT: 无法凭任意名称可靠识别品牌；优先模型路径末段，未匹配再尝试服务商，最终由组件显示默认图标。
+  // ACT: 无法凭任意名称可靠识别品牌；优先模型路径末段，服务商回退由图标组件处理。
   const segments = model.trim().toLowerCase().replace(/[_.\s]+/g, "-").split("/").reverse();
   for (const name of segments) {
     const match = modelNames.find(({ prefix }) => name.startsWith(prefix)
       && (!name[prefix.length] || /[-:0-9]/.test(name[prefix.length]!)));
     if (match) return icons.get(match.brand);
   }
+}
+
+const providerNamePrefixes: Record<string, string[]> = {
+  openai: ["openai", "open ai"],
+  google: ["google", "谷歌"],
+  anthropic: ["anthropic"],
+  bytedance: ["bytedance", "字节跳动"],
+  baiduVideoFire: ["百度千帆视频", "百度千帆", "百度", "baidu"],
+};
+const legacyModelLabels: Record<string, string> = {
+  "text/deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
+  "text/qwen3.7-plus": "Qwen 3.7 Plus",
+  "text/glm-5": "GLM-5",
+  "text/gpt-5.6-sol": "GPT-5.6 Sol",
+  "text/claude-opus-5": "Claude Opus 5",
+};
+
+export function getModelSelectionLabel(model: { label: string; modelId: string; providerId: string }) {
+  const label = model.label.trim();
+  if (!label) return model.modelId;
+  if (/^(标准|通用|推理|高级|极致)模型$/.test(label)) return legacyModelLabels[model.modelId] ?? label;
+  // 仅剥离已确认的公司前缀，保留与供应商同名的模型家族（如 DeepSeek、Kling）。
+  const providerPrefix = providerNamePrefixes[model.providerId]?.find(prefix => label.toLowerCase().startsWith(prefix)
+    && (!label[prefix.length] || /[\s._:/|·：-]/.test(label[prefix.length]!)));
+  return providerPrefix ? label.slice(providerPrefix.length).replace(/^[\s._:/|·：-]+/, "") || model.modelId : label;
 }

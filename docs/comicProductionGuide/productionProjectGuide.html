@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>万象点点 · 生产项目操作手册</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f5f2;
+        --surface: #fff;
+        --ink: #202724;
+        --muted: #64706a;
+        --line: #d9dfda;
+        --forest: #355d4f;
+        --forestLight: #e7efea;
+        --orange: #d5683d;
+        --orangeLight: #f8ebe4;
+        --blue: #44677b;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+        line-height: 1.72;
+      }
+      button, input { font: inherit; }
+      a { color: inherit; }
+      .masthead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 16px clamp(18px, 4vw, 56px);
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+      }
+      .brand { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 800; }
+      .brandMark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: white; background: var(--orange); font-size: 17px; }
+      .mastMeta { margin-top: 2px; color: var(--muted); font-size: 11px; }
+      .topActions { display: flex; align-items: center; gap: 8px; }
+      .action { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: white; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; }
+      .action:hover { border-color: var(--forest); color: var(--forest); }
+      .layout { display: grid; grid-template-columns: 238px minmax(0, 1fr); max-width: 1500px; margin: 0 auto; }
+      .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 24px 16px 30px; border-right: 1px solid var(--line); background: #f8f9f7; }
+      .sidebarTitle { margin: 0 0 12px 8px; color: var(--muted); font-size: 11px; font-weight: 800; }
+      .search { width: 100%; height: 37px; margin-bottom: 15px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; outline: none; background: white; }
+      .search:focus { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(53, 93, 79, .12); }
+      .navLink { display: flex; align-items: center; gap: 9px; min-height: 35px; margin: 2px 0; padding: 6px 8px; border-radius: 4px; color: #46534c; font-size: 12px; text-decoration: none; }
+      .navLink:hover, .navLink.active { color: var(--forest); background: var(--forestLight); }
+      .navNumber { width: 22px; flex: 0 0 22px; color: #89958f; font-variant-numeric: tabular-nums; }
+      .content { min-width: 0; padding: 30px clamp(18px, 4vw, 58px) 72px; }
+      .hero { padding: clamp(24px, 4vw, 48px); border: 1px solid #d8e0da; border-radius: 9px; background: white; }
+      .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 11px; font-weight: 900; }
+      h1 { max-width: 800px; margin: 0; font-family: Georgia, "Noto Serif CJK SC", serif; font-size: clamp(28px, 3.3vw, 42px); line-height: 1.3; }
+      .heroLead { max-width: 780px; margin: 14px 0 0; color: #505d56; font-size: 14px; }
+      .heroFacts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 24px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--line); }
+      .fact { min-height: 68px; padding: 12px 14px; background: #fbfcfa; }
+      .fact small { display: block; color: var(--muted); font-size: 10px; }
+      .fact strong { font-size: 12px; }
+      .notice { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 12px; margin: 18px 0 30px; padding: 13px 15px; border: 1px solid #e9d8cb; border-radius: 5px; color: #51463f; background: #fffaf6; font-size: 12px; }
+      .notice::before { border-radius: 3px; background: var(--orange); content: ""; }
+      .sectionHead { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 36px 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+      .sectionHead h2 { margin: 0; font-family: Georgia, "Noto Serif CJK SC", serif; font-size: 22px; }
+      .sectionHead p { margin: 0; color: var(--muted); font-size: 11px; }
+      .step { margin: 16px 0; padding: 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); scroll-margin-top: 24px; }
+      .stepLabel { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; color: var(--forest); font-size: 11px; font-weight: 800; }
+      .stepLabel b { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 50%; color: var(--forest); background: var(--forestLight); font-size: 10px; }
+      .stepCopy h3 { margin: 0 0 7px; font-size: 16px; line-height: 1.5; }
+      .stepCopy p { margin: 0 0 10px; color: #505d56; font-size: 13px; }
+      .stepCopy ol { margin: 12px 0; padding-left: 22px; color: #39483f; font-size: 13px; }
+      .stepCopy li + li { margin-top: 7px; }
+      .stepCopy dl { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 6px 10px; margin: 14px 0; padding-top: 12px; border-top: 1px solid #edf0ed; font-size: 12px; }
+      .stepCopy dt { color: var(--muted); }
+      .stepCopy dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+      .check { padding: 10px 12px; border-left: 3px solid var(--forest); color: #304c40; background: #f0f6f2; font-size: 12px; }
+      .caution { border-left-color: var(--orange); color: #694326; background: var(--orangeLight); }
+      .promptDetail { margin: 12px 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 5px; background: #fafbf9; }
+      .promptDetail summary { color: var(--forest); font-size: 12px; font-weight: 700; cursor: pointer; }
+      .promptDetail p { margin: 10px 0 0; line-height: 1.85; }
+      figure { min-width: 0; margin: 18px 0 0; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: #f7f8f6; }
+      .shot { display: block; width: 100%; height: auto; object-fit: contain; border-radius: 3px; background: #202724; cursor: zoom-in; }
+      .shot:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+      figcaption { padding: 9px 3px 2px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      code { padding: 1px 4px; border-radius: 3px; color: #405248; background: #edf1ed; font-size: .95em; overflow-wrap: anywhere; }
+      .statusPanel { margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+      .statusPanel h2 { margin: 0 0 7px; font-size: 16px; }
+      .statusPanel p { margin: 0; color: #505d56; font-size: 12px; }
+      .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+      .emptySearch { display: none; padding: 35px 10px; color: var(--muted); text-align: center; }
+      .lightbox { position: fixed; z-index: 20; inset: 0; display: none; place-items: center; padding: 26px; background: rgba(18, 24, 21, .88); }
+      .lightbox.open { display: grid; }
+      .lightbox img { display: block; max-width: min(96vw, 1500px); max-height: 90vh; object-fit: contain; box-shadow: 0 14px 55px #0008; }
+      .lightbox button { position: fixed; top: 16px; right: 18px; width: 42px; height: 42px; border: 1px solid #ffffff66; border-radius: 50%; color: white; background: #111b; font-size: 25px; cursor: pointer; }
+      @media (max-width: 900px) {
+        .layout { display: block; }
+        .sidebar { position: relative; height: auto; max-height: 200px; border-right: 0; border-bottom: 1px solid var(--line); }
+        .sidebar nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 8px; }
+        .step { padding: 18px; }
+      }
+      @media (max-width: 650px) {
+        .masthead { align-items: flex-start; }
+        .mastMeta { max-width: 250px; }
+        .topActions { flex-direction: column; align-items: stretch; }
+        .heroFacts { grid-template-columns: 1fr; }
+        .sectionHead { align-items: flex-start; flex-direction: column; gap: 3px; }
+        .step { padding: 14px; }
+        .sidebar nav { grid-template-columns: 1fr 1fr; }
+        .content { padding-top: 18px; }
+      }
+      @media print {
+        body { background: white; }
+        .masthead, .sidebar, .topActions, .lightbox { display: none !important; }
+        .layout { display: block; max-width: none; }
+        .content { padding: 0; }
+        .hero, .step, .statusPanel { break-inside: avoid; }
+        .step { padding: 14px; }
+        .shot { width: auto; max-width: 100%; max-height: 480px; margin: 0 auto; }
+        .promptDetail { display: block; }
+        a { text-decoration: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead">
+        <div>
+          <div class="brand"><span class="brandMark">万</span><span>万象点点 · 生产项目手册</span></div>
+          <div class="mastMeta">从主页生产项目创建 · 剧本、主体资产、分镜与视频任务</div>
+        </div>
+        <div class="topActions"><button class="action" id="printButton" type="button">打印 / 保存 PDF</button></div>
+      </header>
+      <div class="layout">
+        <aside class="sidebar">
+          <p class="sidebarTitle">本页步骤</p>
+          <input class="search" id="searchInput" type="search" placeholder="搜索步骤、内容或参数" aria-label="搜索操作步骤" />
+          <nav id="contentsNav">
+            <a class="navLink" href="#step01"><span class="navNumber">01</span>从主页进入生产项目</a>
+            <a class="navLink" href="#step02"><span class="navNumber">02</span>进入创作工作台</a>
+            <a class="navLink" href="#step03"><span class="navNumber">03</span>创建项目与预算</a>
+            <a class="navLink" href="#step04"><span class="navNumber">04</span>填写创作要求并报价</a>
+            <a class="navLink" href="#step05"><span class="navNumber">05</span>检查剧本草案</a>
+            <a class="navLink" href="#step06"><span class="navNumber">06</span>确认剧集与文字资产</a>
+            <a class="navLink" href="#step07"><span class="navNumber">07</span>查看主体参考图报价</a>
+            <a class="navLink" href="#step08"><span class="navNumber">08</span>确认首张角色图结果</a>
+            <a class="navLink" href="#step09"><span class="navNumber">09</span>生成父亲角色参考图</a>
+            <a class="navLink" href="#step10"><span class="navNumber">10</span>生成雨夜邮局场景参考图</a>
+            <a class="navLink" href="#step11"><span class="navNumber">11</span>生成并确认红纸星星道具图</a>
+            <a class="navLink" href="#step12"><span class="navNumber">12</span>核对四项资产已就绪</a>
+            <a class="navLink" href="#step13"><span class="navNumber">13</span>检查分镜脚本</a>
+            <a class="navLink" href="#step14"><span class="navNumber">14</span>在提示词中引用主体资产</a>
+            <a class="navLink" href="#step15"><span class="navNumber">15</span>设置视频参数并检查提交门槛</a>
+            <a class="navLink" href="#step16"><span class="navNumber">16</span>获取首镜报价并提交视频任务</a>
+            <a class="navLink" href="#step17"><span class="navNumber">17</span>预览首镜生成结果</a>
+            <a class="navLink" href="#step18"><span class="navNumber">18</span>审片批准首镜可用部分</a>
+            <a class="navLink" href="#step19"><span class="navNumber">19</span>核对第二镜报价并提交</a>
+            <a class="navLink" href="#step20"><span class="navNumber">20</span>检查第二镜 V01 结果</a>
+            <a class="navLink" href="#step21"><span class="navNumber">21</span>填写意见并退回 V01</a>
+            <a class="navLink" href="#step22"><span class="navNumber">22</span>重写提示词并提交 V02</a>
+            <a class="navLink" href="#step23"><span class="navNumber">23</span>预览第二镜 V02</a>
+            <a class="navLink" href="#step24"><span class="navNumber">24</span>审片并批准 V02</a>
+            <a class="navLink" href="#step25"><span class="navNumber">25</span>核对两条批准候选</a>
+            <a class="navLink" href="#step26"><span class="navNumber">26</span>把批准候选导入剪辑台</a>
+            <a class="navLink" href="#step27"><span class="navNumber">27</span>按镜头顺序组接并修剪</a>
+            <a class="navLink" href="#step28"><span class="navNumber">28</span>加入两条叙事字幕</a>
+            <a class="navLink" href="#step29"><span class="navNumber">29</span>设置输出参数</a>
+            <a class="navLink" href="#step30"><span class="navNumber">30</span>完整预览并运行预检</a>
+            <a class="navLink" href="#step31"><span class="navNumber">31</span>重新打开工程核对自动保存</a>
+            <a class="navLink" href="#step32"><span class="navNumber">32</span>提交后台渲染</a>
+            <a class="navLink" href="#step33"><span class="navNumber">33</span>核对渲染队列</a>
+            <a class="navLink" href="#step34"><span class="navNumber">34</span>登记成片与剧集</a>
+            <a class="navLink" href="#step35"><span class="navNumber">35</span>确认成片进入待审片</a>
+            <a class="navLink" href="#step36"><span class="navNumber">36</span>校准两个片段的响度</a>
+            <a class="navLink" href="#step37"><span class="navNumber">37</span>预览最后有效帧与字幕</a>
+            <a class="navLink" href="#step38"><span class="navNumber">38</span>导出 V02 并检查队列</a>
+            <a class="navLink" href="#step39"><span class="navNumber">39</span>逐帧核对镜头与字幕</a>
+            <a class="navLink" href="#step40"><span class="navNumber">40</span>用 FFmpeg 验收媒体</a>
+            <a class="navLink" href="#step41"><span class="navNumber">41</span>登记 V02 并保留待审片状态</a>
+          </nav>
+        </aside>
+        <main class="content">
+          <section class="hero" id="top">
+            <p class="eyebrow">漫剧创作 / 实际生产项目操作记录</p>
+            <h1>《最后一封信 · 生产项目全流程手册》</h1>
+            <p class="heroLead">从产品主页点击“生产项目”，新建独立项目，生成并确认原创剧本与剧集，再制作主体参考图、确认分镜、逐镜生成和审片，最后进入剪辑台组接、调音、导出与媒体验收。当前记录 41 个实操步骤。V02 时长 6.60 秒，技术检查通过并登记为待项目人工审片；尚未批准或交付。V01 的低响度与字幕尾点问题保留在版本历史中。</p>
+            <div class="heroFacts">
+              <div class="fact"><small>生产项目</small><strong>最后一封信 · 生产项目全流程手册</strong></div>
+              <div class="fact"><small>项目预算</small><strong>500.00 积分 · 最终消费另按任务流水核对</strong></div>
+              <div class="fact"><small>本次创作规格</small><strong>原创 1 集 · 1 场 · 2 镜各 4 秒 · 16:9</strong></div>
+              <div class="fact"><small>当前成片状态</small><strong>V02 · 6.60 秒 · 技术检查通过 · 待人工审片</strong></div>
+            </div>
+          </section>
+          <div class="notice"><div><strong>使用说明：</strong>按编号操作，每步先读“操作入口”，再执行编号动作，最后核对“成功判断”。截图可点击或聚焦后按 Enter 放大，按 Esc 关闭；左侧可搜索步骤，右上角可打印。文字资产和分镜可以先整理；视频报价、提交前，当前镜头关联及通过 @ 引用的资产必须具有成功参考图。报价、token 用量和实际扣款含义不同，最终费用以任务流水为准。步骤 26–35 记录首次剪辑及 V01 问题；步骤 36–41 记录 V02 调音、逐帧检查、FFmpeg 验收和待审片登记。V02 技术检查通过仍需项目人工审片，未审批前不代表正式交付。</div></div>
+
+          <section aria-labelledby="productionStepsTitle">
+            <div class="sectionHead"><h2 id="productionStepsTitle">01 / 创建项目与剧本</h2><p>步骤 01–06 · 从产品主页到已保存的剧集与文字资产</p></div>
+
+            <article class="step" id="step01" data-search="主页 无限画布 生产项目 导航 团队">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>01</b>从主页进入生产项目</div>
+                <h3>点击顶部导航“生产项目”</h3>
+                <p>本轮从产品主页开始。图中当前高亮的是“无限画布”，本流程使用它右侧的“生产项目”入口。</p>
+                <dl><dt>操作入口</dt><dd>产品主页 → 顶部“生产项目”</dd><dt>本次路径</dt><dd>从生产项目创建并管理剧集，主页下方的“新建画布”不是本步要点。</dd></dl>
+                <ol><li>确认右上角已登录正确账号；需要切换团队时，先通过“团队空间”完成选择。</li><li>点击顶部导航中的<strong>“生产项目”</strong>。</li><li>等待进入“短剧创作大师”页面，并查看下方“我的生产项目”区域。</li></ol>
+                <div class="check">成功判断：下一页显示“短剧创作大师”、创作工作台及“我的生产项目”列表；与图 02 的页面结构一致。</div>
+              </div>
+              <figure><img class="shot" src="images/production01Home.jpg" alt="产品主页顶部的生产项目导航入口" loading="lazy" /><figcaption>图 01 · 操作前的产品主页。“生产项目”位于顶部“无限画布”右侧；本图不代表已经进入生产项目。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step02" data-search="创作工作台 剧本创作 短剧工作模式">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>02</b>进入创作工作台</div>
+                <h3>确认创作模式，再建立独立项目</h3>
+                <p>创作工作台提供“剧本创作、剧本改编、剧本制作、原片转绘”四个入口。本次采用原创故事，使用“剧本创作”。</p>
+                <dl><dt>操作入口</dt><dd>生产项目页 → 创作工作台“剧本创作”</dd><dt>本次选择</dt><dd>原创剧本创作；在下一步创建独立项目并设置预算。</dd></dl>
+                <ol><li>点击或确认已选中<strong>“剧本创作”</strong>，选中项显示橙色背景。</li><li>确认页面下方可以看到<strong>“我的生产项目”</strong>及右侧<strong>“新建空白项目”</strong>入口。</li><li>本次先通过“新建空白项目”设置项目名称与预算，再在项目详情填写完整创作要求。</li></ol>
+                <div class="check">成功判断：“剧本创作”已选中，“新建空白项目”可用。图中首页默认值仍显示 05 集，实际项目在步骤 04 调整为 1 集。</div>
+              </div>
+              <figure><img class="shot" src="images/production02Studio.jpg" alt="短剧创作大师的剧本创作模式与新建空白项目入口" loading="lazy" /><figcaption>图 02 · 生产项目入口页。图中为未调整前的首页设置，最终 1 集规格见图 04。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step03" data-search="新建空白项目 项目名称 预算 500 积分 最后一封信">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>03</b>创建项目与预算</div>
+                <h3>建立独立生产项目</h3>
+                <p>将本次演示建立为独立生产项目，后续剧集、资产、分镜与生成任务都归入该项目。</p>
+                <dl><dt>操作入口</dt><dd>“我的生产项目”区域 → “新建空白项目”</dd><dt>项目名称</dt><dd>最后一封信 · 生产项目全流程手册</dd><dt>本次项目编号</dt><dd><code>1f43d00d-084d-4e41-a6c8-5ed77db77dcc</code>（创建后由系统分配，无需手填）</dd><dt>项目预算</dt><dd>500.00 积分。预算是额度设置，不等于已经消费。</dd></dl>
+                <ol><li>点击<strong>“新建空白项目”</strong>，打开“新建生产项目”弹窗。</li><li>在“项目名称”填写上述名称；本次“客户 ID”留空。</li><li>将“项目预算（积分）”设为<strong>500</strong>，核对无误后点击<strong>“创建项目”</strong>。</li><li>进入新项目，核对名称和顶部预算为 500.00 积分，再继续创作。</li></ol>
+                <div class="check">成功判断：弹窗提交成功，新项目可以打开；项目详情中的名称、预算与本次填写一致。图 03 记录的是提交前表单。</div>
+              </div>
+              <figure><img class="shot" src="images/production03CreateBudget.jpg" alt="创建生产项目并设置 500 积分预算" loading="lazy" /><figcaption>图 03 · 创建项目时填写名称并设置 500 积分预算。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step04" data-search="创作要求 报价 文本费用 0.004886 积分">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>04</b>填写创作要求并报价</div>
+                <h3>写清 2 个镜头与 8 秒故事边界</h3>
+                <p>在项目创作区填写完整创作要求，明确角色、场景、道具、镜头数量和结尾，避免模型扩大制作规模。本次没有上传参考附件。</p>
+                <dl><dt>操作入口</dt><dd>新项目 → 分镜剧集 / 剧本创作区 → “创作要求”</dd><dt>创作规格</dt><dd>风格：现代赛璐璐日漫；题材：都市爽文逆袭；画面比例：16:9 横屏；目标集数：1。</dd><dt>文本模型</dt><dd>标准模型 · 百炼模型。</dd><dt>页面预估</dt><dd>0.004886 积分，为该次提交前预估上限；不等于最终结算。</dd></dl>
+                <ol><li>在“创作要求”输入下方完整故事要求；如自行改写，保留“两镜、各 4 秒、总 8 秒”的限制。</li><li>依次核对风格、题材、画面比例、目标集数与文本模型。</li><li>点击<strong>“获取费用预估”</strong>，等待确认按钮显示预估上限。</li><li>确认费用后点击<strong>“确认生成（预估上限 0.004886 积分）”</strong>，等待剧本草案返回；按钮金额以当次页面为准。</li></ol>
+                <details class="promptDetail"><summary>展开本次完整创作要求</summary><p>原创漫剧《最后一封信》，仅制作1集8秒的教学短样片，严格2个镜头，每镜4秒，同一个雨夜邮局场景。现代赛璐璐动画，温暖电影感，16:9。林檐：年轻男性邮递员，黑色短发，墨绿色雨披，胸前橙色圆徽章。父亲：六十岁灰发男性，米色风衣，透明雨伞。剧情：第一镜林檐在邮局屋檐下打开一封旧信，从信中取出一颗红纸星星；第二镜他抬头，看到街对面父亲在暖黄路灯下撑伞等他，两人相视微笑。以相视作为完整结尾，叙事简单直观。无对白、无旁白、无画面文字、无水印。只建立2名角色、1个场景和1个道具红纸星星。每镜必须填角色名称与道具名称关联。不要额外人物或场景，不要扩写，整集8秒。</p></details>
+                <div class="check">成功判断：页面显示可编辑的“模型生成草案”，并列出剧集、场景、镜头及资产数量。仅获得报价尚未生成，只有返回草案后才能进入步骤 05。</div>
+              </div>
+              <figure><img class="shot" src="images/production04ScriptQuote.jpg" alt="输入创作要求并查看文本生成报价" loading="lazy" /><figcaption>图 04 · 核对创作要求和提交前文本报价。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step05" data-search="剧本草案 2045 tokens 剧集 场景 镜头 资产">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>05</b>检查剧本草案</div>
+                <h3>逐项审阅可编辑草案</h3>
+                <p>草案返回后先检查文本与关联，再写入项目。图中第一镜为近景 4.00 秒，第二镜为中景 4.00 秒，人物与道具可在下拉框中核对。</p>
+                <dl><dt>操作入口</dt><dd>分镜剧集 → “模型生成草案 · 可编辑”</dd><dt>本次结构</dt><dd>1 集 · 1 场 · 2 镜 · 4 项资产；文本用量记录为 2,045 tokens，token 数不是积分。</dd><dt>检查重点</dt><dd>镜头一：林檐打开旧信取出红纸星星；镜头二：林檐抬头与父亲相视微笑；两镜同为雨夜邮局场景。</dd></dl>
+                <ol><li>检查剧集标题、目标时长和场景连续性，确认没有新增人物或场景。</li><li>展开并核对两镜：每镜时长均为<strong>4.00 秒</strong>，景别依次为近景、中景。</li><li>核对角色关联：第一镜为“林檐”，第二镜为“林檐、父亲”；道具均关联“红纸星星”。</li><li>检查画面提示、光影/机位、音效；本故事无对白、无旁白，对应字段留空。</li><li>有偏差时先在草案中修改；审阅无误后，滚动到草案底部点击<strong>“确认并进入主体资产”</strong>。</li></ol>
+                <div class="check">成功判断：草案确认写入后切换到“主体资产”，显示 2 个角色、1 个场景、1 个道具。草案预览可编辑不等于已经确认入库。</div>
+              </div>
+              <figure><img class="shot" src="images/production05ScriptDraft.jpg" alt="检查原创短剧的生成草案" loading="lazy" /><figcaption>图 05 · 核对剧本草案及生成结构。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step06" data-search="确认写入 主体资产 角色 林檐 父亲 雨夜邮局 红纸星星">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>06</b>确认剧集与文字资产</div>
+                <h3>核对 4 项资产已写入，区分文字与图片状态</h3>
+                <p>主体资产是后续镜头引用的一致性资料。文字设定保存后可以继续整理分镜；图片生成是独立操作，进入分镜并不代表已满足视频生成条件。</p>
+                <dl><dt>操作入口</dt><dd>项目顶部步骤“02 主体资产”</dd><dt>项目内容</dt><dd>角色：林檐、父亲；场景：雨夜邮局；道具：红纸星星。</dd><dt>图中状态</dt><dd>角色卡片显示“未生成 / 待生成”，文字已保存，参考图尚未生成。</dd></dl>
+                <ol><li>确认顶部计数为<strong>2 角色、1 场景、1 道具</strong>。</li><li>分别点击<strong>“角色”“场景”“道具”</strong>页签，检查 4 项资产名称和视觉设定；需要修正文案时点击对应卡片的<strong>“编辑”</strong>。</li><li>点击卡片主体可打开“主体资产参考图”详情，图片生成操作见步骤 07；点击“编辑”处理的是资产设定。</li><li>本手册推荐先执行步骤 07–12，准备齐两镜用到的 4 项参考图，再点击<strong>“下一步：分镜脚本”</strong>。文字资料完整时也允许先进入分镜整理，但视频报价与提交仍检查图片状态。</li></ol>
+                <div class="check">成功判断：4 项资产都有对应文字设定，名称与剧本一致。此时仅完成文字资料准备；参考图是否完成，须分别查看“已生成 / 已保存”和实际图片。</div>
+              </div>
+              <figure><img class="shot" src="images/production06AssetsText.jpg" alt="生产项目中已写入的主体资产文字设定" loading="lazy" /><figcaption>图 06 · 文字设定已写入项目，参考图状态另行核验。点击图片查看原图。</figcaption></figure>
+            </article>
+          </section>
+
+          <section aria-labelledby="assetStepsTitle">
+            <div class="sectionHead"><h2 id="assetStepsTitle">02 / 制作并核对主体参考图</h2><p>步骤 07–12 · 每项资产独立报价、生成并检查保存状态</p></div>
+
+            <article class="step" id="step07" data-search="图片生成报价 GPT Image 2 OpenHeap 1K 3 积分 林檐">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>07</b>查看主体参考图报价</div>
+                <h3>打开林檐详情，确认单张 3 积分报价</h3>
+                <p>回到“主体资产”，点击林檐卡片主体打开生成面板。面板会显示资产设定、最终提示词、图片模型、尺寸与参考图预览。</p>
+                <dl><dt>操作入口</dt><dd>“02 主体资产” → “角色” → 点击“林檐”卡片 → 向下滚动到生成设置</dd><dt>模型 / 尺寸</dt><dd>GPT Image 2 · OpenHeap 图片；1K · 标准。</dd><dt>补充提示词</dt><dd>生成一张用于漫剧全片一致性参考的主体设定图，主体清晰完整，背景简洁，避免文字和水印。</dd><dt>单张预估</dt><dd>3.000000 积分；最终扣款以对应任务流水为准。</dd></dl>
+                <ol><li>核对“主体类型”为<strong>角色</strong>、“主体名称”为<strong>林檐</strong>，以及黑色短发、墨绿色雨披、橙色圆徽章等特征。</li><li>选择上述图片模型和尺寸，确认“生成补充提示词”内容。</li><li>点击<strong>“获取积分预估”</strong>；获得报价后按钮变为“重新获取预估”。</li><li>确认页面出现<strong>“预计消耗 3.000000 积分”</strong>后，点击<strong>“确认生成参考图”</strong>，等待图片任务结束。</li></ol>
+                <div class="check">成功判断：报价先展示，点击确认后才提交图片任务。生成期间等待状态变化，完成后继续步骤 08 检查保存与画面。</div>
+              </div>
+              <figure><img class="shot" src="images/production09ImageQuote.jpg" alt="GPT Image 2 1K 主体参考图报价" loading="lazy" /><figcaption>图 07 · 查看单张参考图报价后再决定提交。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step08" data-search="林檐 参考图 已生成 成功 角色一致性 红纸星星">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>08</b>确认首张角色图结果</div>
+                <h3>检查“第 1 版参考图”和“已保存”</h3>
+                <p>任务完成后，林檐资产出现缩略图，右侧显示参考图与“已保存”。本次结果是角色设定图，包含正背面和面部变化，供视频保持人物外观一致。</p>
+                <dl><dt>操作入口</dt><dd>“主体资产参考图”弹窗 → 左侧“林檐” → 右侧“参考图预览”</dd><dt>本步结果</dt><dd>角色 · 第 1 版参考图；右上角“已保存”；下方显示项目工作区素材路径。</dd></dl>
+                <ol><li>确认左侧当前选中的是<strong>“林檐”</strong>，资产缩略图已出现。</li><li>检查右侧图片：黑色短发、墨绿色雨披和胸前橙色圆徽章与设定一致，无错误角色或明显生成缺陷。</li><li>核对右上角<strong>“已保存”</strong>与参考图版本；仅图片出现但任务仍未结束时，不急于切换生成流程。</li><li>保留满意结果；如需重做，重新核对报价后再点击“确认重新生成”，本轮没有为林檐重复生成。</li></ol>
+                <div class="check">成功判断：林檐第 1 版参考图已保存且可查看。该结果只证明这一项资产完成，其他被镜头引用的资产仍须逐项核对。</div>
+              </div>
+              <figure><img class="shot" src="images/production10CharacterReady.jpg" alt="林檐角色第1版参考图与已保存状态" loading="lazy" /><figcaption>图 08 · 林檐角色参考图实际成功，右侧为保存后的预览。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step09" data-search="父亲 角色 参考图 透明雨伞 米色风衣 灰发 已保存">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>09</b>生成父亲角色参考图</div>
+                <h3>切换资产后重新检查主体与报价</h3>
+                <p>在同一弹窗左侧点击“父亲”，为第二镜需要的角色建立参考图。切换资产后，应检查主体名称，避免将上一项资产的生成操作重复提交。</p>
+                <dl><dt>操作入口</dt><dd>“主体资产参考图”弹窗 → 左侧“父亲”</dd><dt>视觉重点</dt><dd>六十岁灰发男性、米色风衣、透明雨伞，站在暖黄路灯下，目光温和。</dd><dt>本步结果</dt><dd>父亲 · 第 1 版参考图；右侧“已保存”，左侧缩略图已出现。</dd></dl>
+                <ol><li>点击左侧<strong>“父亲”</strong>，核对中间标题与主体类型已经切换为父亲 / 角色。</li><li>核对视觉设定，滚动到图片设置，沿用步骤 07 的 GPT Image 2、1K 参数和主体设定图补充要求。</li><li>点击<strong>“获取积分预估”</strong>；仅在本项报价明确且预算可用时，点击<strong>“确认生成参考图”</strong>。</li><li>等待完成后检查人物灰发、米色风衣和透明雨伞，确认画风与林檐接近，并核对<strong>“已保存”</strong>。</li></ol>
+                <div class="check">成功判断：左侧父亲资产显示缩略图，右侧第 1 版参考图已保存。图 09 支持结果确认；提交前的父亲独立报价未在本图展示。</div>
+              </div>
+              <figure><img class="shot" src="images/production11FatherReady.jpg" alt="父亲角色的第1版参考图已保存，展示灰发米色风衣和透明雨伞" loading="lazy" /><figcaption>图 09 · 父亲角色参考图实际成功：资产名称、缩略图和右侧“已保存”状态一致。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step10" data-search="雨夜邮局 场景 参考图 暖黄 路灯 已保存">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>10</b>生成雨夜邮局场景参考图</div>
+                <h3>保持雨夜与冷暖灯光连续性</h3>
+                <p>再切换到“雨夜邮局”场景，检查视觉设定后生成场景参考图。图中的邮局与街道空间为后续镜头提供统一环境参考。</p>
+                <dl><dt>操作入口</dt><dd>“主体资产参考图”弹窗 → 左侧“雨夜邮局”</dd><dt>视觉重点</dt><dd>夜晚邮局屋檐下与街对面路灯、雨丝、湿润地面反光、温暖灯光。</dd><dt>本步结果</dt><dd>场景 · 第 1 版参考图；右侧“已保存”；林檐、父亲、雨夜邮局三项都有缩略图。</dd></dl>
+                <ol><li>点击左侧<strong>“雨夜邮局”</strong>，确认主体类型为<strong>“场景”</strong>，不是角色或道具。</li><li>检查邮局屋檐、暖黄灯光、夜雨和街道反光等设定，滚动到图片模型和尺寸设置。</li><li>核对 GPT Image 2、1K 参数，重新获取当前场景的积分预估，确认后提交生成。</li><li>任务完成后检查右侧场景图与<strong>“已保存”</strong>；核对没有混入人物设定图或其他资产。</li><li>接下来还需处理红纸星星道具；当前截图中该项仍显示“道”占位，不能据前三项成功推断全部素材已齐备。</li></ol>
+                <div class="check">成功判断：雨夜邮局第 1 版场景图已保存，项目已有两张角色图与一张场景图。继续步骤 11 处理镜头使用的红纸星星道具。</div>
+              </div>
+              <figure><img class="shot" src="images/production12SceneReady.jpg" alt="雨夜邮局场景第1版参考图已保存，展示夜间邮局和暖黄色街灯" loading="lazy" /><figcaption>图 10 · 雨夜邮局场景图实际成功。左侧红纸星星仍无缩略图，本图不证明道具生成完成。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step11" data-search="红纸星星 道具 图片模型 GPT Image 2 1K 3 积分 报价 已生成">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>11</b>生成并确认红纸星星道具图</div>
+                <h3>先核对 3 积分报价，再检查道具生成结果</h3>
+                <p>红纸星星是两镜关联的道具。本次在重新获得可用报价后提交图片任务，完成后道具卡片显示红纸星星缩略图与“已生成”。</p>
+                <dl><dt>操作入口</dt><dd>“02 主体资产” → “道具” → 点击“红纸星星” → 图片生成设置</dd><dt>本次模型 / 报价</dt><dd>GPT Image 2 · OpenHeap 图片；1K · 标准；预计消耗 3.000000 积分。</dd><dt>视觉重点</dt><dd>红色手工折纸星星，立体棱角分明，边缘略旧，背景简洁。</dd></dl>
+                <ol><li>打开红纸星星资产，核对主体名称与视觉设定；不要在前一项场景详情里误点重新生成。</li><li>选择 GPT Image 2、1K，点击<strong>“获取积分预估”</strong>，确认本项报价为 3.000000 积分。</li><li>点击<strong>“确认生成参考图”</strong>并等待任务结束。看到报价或开始加载时不能计作成功。</li><li>关闭弹窗回到“道具”页签，确认卡片出现红纸星星图片与<strong>“已生成”</strong>。</li><li>检查图片外观与剧情一致，接着核对整个项目的资产是否全部齐备。</li></ol>
+                <div class="check">成功判断：图 11A 为提交前真实报价，图 11B 为任务完成后的红纸星星卡片；本次四项参考图均已实际成功。</div>
+              </div>
+              <figure><img class="shot" src="images/production20PropQuote.jpg" alt="红纸星星道具生成前显示GPT Image 2和1K的3积分报价" loading="lazy" /><figcaption>图 11A · 红纸星星的真实提交前报价，右侧此时尚无参考图。</figcaption></figure>
+              <figure><img class="shot" src="images/production21PropSuccess.jpg" alt="道具页签显示红纸星星图片和已生成状态" loading="lazy" /><figcaption>图 11B · 红纸星星道具图实际生成成功，卡片显示“已生成”。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step12" data-search="四项资产 参考图 全部就绪 角色 场景 道具 视频估算 积分">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>12</b>核对四项资产已就绪</div>
+                <h3>从视频工作区检查缩略图与缺图提示</h3>
+                <p>生成完成后，打开“04 视频生成”检查当前镜头所需素材。图中左侧四项都有缩略图，缺失参考图提示已消失，底部显示“请先获取当前参数报价”。</p>
+                <dl><dt>操作入口</dt><dd>项目顶部“04 视频生成” → “生成” → 第 1 集</dd><dt>本次四项</dt><dd>林檐、父亲、雨夜邮局、红纸星星。</dd><dt>放行含义</dt><dd>参考图条件满足，可获取当前镜头的视频报价；此时尚无生成视频。</dd></dl>
+                <ol><li>确认左侧“角色”下林檐、父亲均有图片。</li><li>确认“场景”的雨夜邮局与“道具”的红纸星星均有图片。</li><li>选择当前镜头，确认提示词框中不再出现“请先生成镜头关联参考图”的缺失提示。</li><li>确认底部<strong>“估算积分”</strong>已可点击，但先到步骤 13 再核对分镜与当前镜头参数。</li></ol>
+                <div class="check">成功判断：四项缩略图可见，缺图提示解除，估算积分可用。参考图检查以当前镜头关联和 @ 引用项为准，无关资产不构成视频门槛。</div>
+              </div>
+              <figure><img class="shot" src="images/production22AssetsReady.jpg" alt="四项主体资产均有缩略图且当前镜头可获取视频报价" loading="lazy" /><figcaption>图 12 · 四图实际齐备后的工作区，当前没有视频结果；底部要求先获取参数报价。点击图片查看原图。</figcaption></figure>
+            </article>
+          </section>
+
+          <section aria-labelledby="videoStepsTitle">
+            <div class="sectionHead"><h2 id="videoStepsTitle">03 / 确认分镜与视频生成</h2><p>步骤 13–25 · 分镜、@ 引用、参数、两镜任务与审片</p></div>
+
+            <article class="step" id="step13" data-search="分镜脚本 镜头 8秒 4秒 画面描述 确认分镜并进入视频生成">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>13</b>检查分镜脚本</div>
+                <h3>核对两镜各 4 秒，确认后进入视频生成</h3>
+                <p>分镜表是视频生成的镜头清单。推荐先准备齐镜头所需角色、场景和道具参考图，再核对并确认分镜。文字资产与分镜也可提前整理保存；确认分镜本身不会提交付费视频任务。表格超出可视宽度时，使用底部横向滚动条查看右侧字段。</p>
+                <dl><dt>操作入口</dt><dd>项目顶部“03 分镜脚本” → 左侧第 1 集</dd><dt>本次内容</dt><dd>《最后一封信 · 雨夜相视》；1 场、2 镜；近景 4.00 秒、中景 4.00 秒，总目标 8 秒。</dd><dt>阶段含义</dt><dd>确认分镜保存制作结构，不会直接提交付费视频任务。</dd></dl>
+                <ol><li>选择左侧第 1 集，确认右上角统计显示<strong>2 个镜头、1 个场景</strong>。</li><li>检查“时长（秒）”列，两行均为<strong>4.00</strong>；确认顶部“目标时长”为<strong>8 秒</strong>。</li><li>横向滚动表格，核对角色、场景、道具、画面描述、光影/机位及声音信息，确保与步骤 05 一致。</li><li>点击<strong>“确认分镜并进入视频生成”</strong>，等待工作区切换到第四步。</li></ol>
+                <div class="check">成功判断：视频生成阶段打开，当前剧集仍为第 1 集。参考图不完整时可以整理提示词，但视频报价和生成仍会被拦截，见步骤 15。</div>
+              </div>
+              <figure><img class="shot" src="images/production16StoryboardEightSeconds.jpg" alt="当前分镜脚本显示两镜各4秒，总目标时长8秒" loading="lazy" /><figcaption>图 13 · 使用本轮补拍的当前分镜页面：两镜各 4.00 秒、目标 8 秒。图中“已开放”表示步骤可进入，视频提交还需检查关联参考图。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step14" data-search="视频生成 提示词 输入 @ 引用素材 缩略图 雨夜邮局 缺失资产">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>14</b>在提示词中引用主体资产</div>
+                <h3>使用 @ 选择素材，并确认缩略图进入提示词</h3>
+                <p>视频生成工作区把可引用资产显示在左侧。资产引用会以带名称和缩略图的标签插入提示词；镜头已关联的资产仍会自动检查。图 14 拍摄于道具图完成前，用于说明 @ 引用与缺图提示；四图完成后的首镜报价见步骤 16。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “生成” → 选择第 1 集与镜头 01 → 提示词框右上角 @</dd><dt>本图引用</dt><dd>场景“雨夜邮局”，提示词中的缩略图引用为 <code>@雨夜邮局</code>。</dd><dt>仍缺素材</dt><dd>红纸星星参考图；提示词区提示需要先生成镜头关联参考图。</dd></dl>
+                <ol><li>在“当前剧集”选择第 1 集，在提示词框镜头选择器选<strong>场01 · 镜01 · 4秒</strong>。</li><li>将光标放入提示词需要引用的位置，点击提示词框右上角<strong>@</strong>，或通过左侧资产卡片的 @ 控件选择素材。</li><li>选择“雨夜邮局”，确认提示词内出现带缩略图的 <strong>@雨夜邮局</strong> 标签。</li><li>读取下方缺失素材提示。@ 引用增加本次提示词素材，不会移除分镜原有角色和道具关联。</li><li>当前镜头关联及 @ 引用的资产都必须有成功参考图，才能获取视频报价和提交；普通文字名称不等同于素材引用。</li></ol>
+                <div class="check">成功判断：提示词中显示带图引用标签。图 14 的拍摄时点红纸星星图尚未完成，因此当时的报价 / 提交仍被禁用；该项后来已在步骤 11 实际生成。</div>
+              </div>
+              <figure><img class="shot" src="images/production17AssetMention.jpg" alt="视频提示词已插入带缩略图的雨夜邮局资产引用，并提示红纸星星图缺失" loading="lazy" /><figcaption>图 14 · @雨夜邮局已插入，提示词中可见缩略图；红纸星星仍缺图。此截图不代表视频已报价或提交。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step15" data-search="视频参数 时长 4秒 480p 16:9 同步音频 积分估算 禁用">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>15</b>设置视频参数并检查提交门槛</div>
+                <h3>选择 4 秒、480p、16:9 与同步生成音频</h3>
+                <p>参数面板展示本次镜头期望配置。选择参数不是报价或提交动作；素材不齐时，积分估算与提交按钮仍会禁用。</p>
+                <dl><dt>操作入口</dt><dd>生成提示词框 → 底部时长 / 分辨率控件</dd><dt>本次参数</dt><dd>Seedance 2.0；4 秒；480p；项目画幅 16:9；勾选“同步生成音频”。</dd><dt>截图时点</dt><dd>拍摄于道具生成前，当时红纸星星参考图缺失，视频任务未提交；四图就绪后的报价见步骤 16。</dd></dl>
+                <ol><li>点击底部参数控件，选择时长<strong>4s</strong>。</li><li>选择<strong>480p</strong>，确认项目画幅为<strong>16:9</strong>。</li><li>勾选<strong>“同步生成音频”</strong>，本次镜头希望保留雨声与信纸轻响。</li><li>查看参数菜单和提示词框下方的缺失素材提示。缺图时应返回“02 主体资产”补图，不要将按钮禁用误判为任务已开始。</li><li>补齐镜头关联及 @ 引用所需的资产图后，重新打开镜头核对提示词、参数，再获取报价；实际提交与生成结果待对应任务截图补充。</li></ol>
+                <div class="check caution">参数核对：本次使用 4 秒 / 480p / 16:9 / 同步生成音频。图 15 拍摄于道具图完成前，记录了缺图时估算与提交禁用的行为；四图就绪后的实际报价见步骤 16。</div>
+              </div>
+              <figure><img class="shot" src="images/production18VideoParameters.jpg" alt="已选择4秒480p16比9和同步生成音频，红纸星星缺图导致估算和提交受阻" loading="lazy" /><figcaption>图 15 · 视频参数已选择；该早期截图仍处于补道具图前，参数选择不代表视频已提交。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step16" data-search="首镜 视频报价 Seedance 2.0 72 积分 4秒 480p 16:9 原声 提交">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>16</b>获取首镜报价并提交视频任务</div>
+                <h3>确认 72.00 积分后点击橙色生成箭头</h3>
+                <p>本次首镜使用两项镜头关联图片：林檐角色、红纸星星道具；再通过 @ 手动引用雨夜邮局场景，共使用 3 张参考图。父亲属于第二镜，不作为第一镜的自动角色引用。</p>
+                <dl><dt>操作入口</dt><dd>视频生成 → 第 1 集 → 场01 · 镜01 · 4秒 → 底部“估算积分”</dd><dt>本次参数</dt><dd>Seedance 2.0 · 4 秒 · 480p · 16:9 · 同步生成音频。</dd><dt>本次报价</dt><dd>72.00 积分；此数值是当前请求报价，不等同于最终结算。</dd><dt>任务结果</dt><dd>任务 <code>9293dc2f…</code> 成功并结算 72 积分；视频文件 <code>assets/generated/video3d600e1e-9122-4199-bcd2-43cf0c6fa47c.mp4</code>。</dd></dl>
+                <ol><li>确认当前镜头为<strong>镜01</strong>，核对画面描述、雨声/信纸音效和 @雨夜邮局缩略图引用。</li><li>再次核对时长、分辨率、画幅与同步音频选项；若有改动，重新获取报价。</li><li>点击<strong>“估算积分”</strong>，等待按钮显示本次<strong>72.00</strong>。</li><li>确认预算可用后，点击右侧<strong>橙色向上箭头</strong>提交视频任务。</li><li>等待任务结束，再检查下方候选片段卡片与视频预览。运行中不反复提交，未收到结果前不计作视频成功。</li></ol>
+                <div class="check">成功判断：下方生成结果出现视频候选，候选状态为待审片；之后到“审片 / 重拍”检查播放并决定是否批准或退回。</div>
+              </div>
+              <figure><img class="shot" src="images/production23FirstVideoQuote.jpg" alt="第一镜视频报价72积分且橙色生成箭头已可用" loading="lazy" /><figcaption>图 16A · 首镜实际报价 72.00 积分，参考图门槛已解除；该报价截图是提交前证据。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step17" data-search="首镜视频 生成成功 视频预览 候选片段 播放 4秒">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>17</b>预览首镜生成结果</div>
+                <h3>确认视频候选出现并实际播放检查</h3>
+                <p>任务完成后，工作区显示 1 个已生成镜头和 1 个候选版本，预览可以播放到 4 秒结尾。候选生成成功不等同于已批准，也不表示整镜完全符合剧本。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “生成” → 镜头 01 → 下方“片段预览 / 生成结果候选片段”</dd><dt>本次文件</dt><dd><code>assets/generated/video3d600e1e-9122-4199-bcd2-43cf0c6fa47c.mp4</code>；H.264 + AAC，视频 864×496、24 fps，媒体时长约 4.096 秒。</dd><dt>页面状态</dt><dd>候选 1 · 待审片；可从播放器查看 0:00–0:04。</dd></dl>
+                <ol><li>等待任务从运行状态结束；确认生成列表出现“视频”候选卡片和播放预览。</li><li>播放整段，查看人物外观、镜头动作、场景和声音；拖动播放器进度条检查关键动作。</li><li>检查预览没有黑屏或无法解码；有不符合项时先记录发生的时间段，不要只凭首帧批准整段。</li><li>点击候选片段进入审片流程；镜头是否批准，由审片和后续剪辑决定。</li></ol>
+                <div class="check">成功判断：播放器实际播放到 0:04，候选文件可读，页面标记“待审片”。该状态是生成成功、尚未审片的中间状态。</div>
+              </div>
+              <figure><img class="shot" src="images/production24FirstVideoPreview.jpg" alt="首镜生成完成，页面展示候选视频和可播放的视频预览" loading="lazy" /><figcaption>图 17 · 首镜生成后的工作区与候选视频预览。可见成片关键画面；生成成功后仍需审片。点击图片查看原图。</figcaption></figure>
+              <figure><img class="shot" src="images/productionFirstContact.jpg" alt="使用FFmpeg从首镜源视频抽取的多时间点接触表，展示动作变化和后段人物服装偏差" loading="lazy" /><figcaption>图 17A · 辅助质检图：从源 MP4 使用 FFmpeg 抽取的帧接触表，不是应用截图。首段约 0–2.4/2.5 秒表现拆信取星动作；后段模型切成双人画面，老人出现绿色雨披，和父亲米色风衣设定不符。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step18" data-search="首镜 审片意见 候选片段 批准 审查 不符合 后段 剪辑">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>18</b>填写审片意见并批准候选</div>
+                <h3>批准可用素材，记录需要在剪辑中裁掉的部分</h3>
+                <p>本次审片弹窗记录了对候选的肯定意见，提交后候选状态变为 approved。后续源视频技术复核发现，动作在中段后偏离设定：父亲误穿绿色雨披，因此批准状态仅记录流程动作，不能替代成片级内容验收。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “审片 / 重拍” → 选择镜头 01 候选 → 点击候选卡片审片</dd><dt>本次审片意见</dt><dd>“人物服饰与胸前橙色徽章符合设定；镜头表现了拆信取出红纸星星的动作，暖黄灯光与雨夜环境连续，首轮审片通过。”</dd><dt>最终技术复核</dt><dd>约 0–2.4/2.5 秒的拆信取星段可用；后段模型自行切换为双人画面，老人穿绿色雨披，与父亲米色风衣不符。</dd></dl>
+                <ol><li>选择候选卡片，检查播放器和已有的镜头描述。</li><li>在意见框写明本次检查依据。提交前区分“画面片段已生成”与“全镜头内容完全符合”。</li><li>点击<strong>“批准候选”</strong>，在批准列表确认状态更新为 approved。</li><li>后续剪辑只将源片段约 0–2.4/2.5 秒放入时间线，裁掉服装错误及意外切换段；最终片长由剪辑和第二镜结果决定，不等于原分镜目标 8 秒。</li></ol>
+                <div class="check caution">状态说明：系统已保存本次批准和一条意见；技术抽帧复核仍发现后段服装不符。操作指南保留这段真实差异，剪辑时需裁掉不合规部分，不能将整段描述成通过内容验收。</div>
+              </div>
+              <figure><img class="shot" src="images/production25FirstReview.jpg" alt="首镜候选审片弹窗含视频、审片意见与批准候选按钮" loading="lazy" /><figcaption>图 18A · 审片弹窗展示候选文件、人工意见输入框和“批准候选”操作。该意见是当时人工记录。</figcaption></figure>
+              <figure><img class="shot" src="images/production26FirstApproved.jpg" alt="首镜候选已批准，页面显示1条审片意见" loading="lazy" /><figcaption>图 18B · 候选列表显示 approved 和 1 条审片意见；批准状态不抹去后续发现的内容偏差。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step19" data-search="第二镜 视频报价 Seedance 2.0 72 积分 4秒 480p 16:9 同步音频 提交">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>19</b>核对第二镜首版报价并提交 V01</div>
+                <h3>选择镜头 02，使用相同规格前先重取报价</h3>
+                <p>第二镜拍摄林檐抬头，与撑透明雨伞的父亲相视。切换镜头后提示词和人物关联会更新；虽然本次得到相同报价，仍需按当前镜头单独估价。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “生成” → 提示词框镜头选择器选“场01 · 镜02 · 4秒”</dd><dt>首版参数 / 报价</dt><dd>Seedance 2.0 · 4 秒 · 480p · 16:9 · 同步生成音频；报价 72.00 积分。</dd><dt>人物与素材</dt><dd>镜头描述包含林檐、父亲和 @雨夜邮局；角色图和场景图缩略图可见。</dd><dt>版本结果</dt><dd>V01 后续生成成功但经审片退回；72 积分已结算。重拍 V02 单独报价与结算，见步骤 22。</dd></dl>
+                <ol><li>在镜头选择器中选<strong>场01 · 镜02 · 4秒</strong>，检查第二镜提示词确实是林檐抬头、父亲撑伞等在街对面，两人相视微笑。</li><li>确认左侧四项资产缩略图齐备；检查提示词内的 @雨夜邮局缩略图引用。</li><li>核对 Seedance 2.0、4 秒、480p、项目画幅 16:9 和同步生成音频已开启。</li><li>点击<strong>“估算积分”</strong>，确认本镜报价 72.00 积分；不要沿用上一镜报价而跳过本步。</li><li>检查预算和余额后，点击橙色<strong>向上箭头</strong>提交；等待任务完成，不重复提交。</li></ol>
+                <div class="check caution">V01 已提交并生成，随后被审片退回，见步骤 20–21。退回不删除旧版本；重拍会产生新的生成任务和费用。</div>
+              </div>
+              <figure><img class="shot" src="images/production27SecondVideoQuote.jpg" alt="第二镜V01提示词、4秒480p16比9同步音频和72积分报价" loading="lazy" /><figcaption>图 19 · 第二镜 V01 单独估价为 72.00 积分并提交。该版本后来因画面转入室内而退回，步骤 20–25 记录其复核与重拍。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step20" data-search="第二镜 V01 预览 首版 待审片 接触表 视频生成 成功">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>20</b>预览第二镜 V01 并检查连续画面</div>
+                <h3>生成后播放完整 4 秒，再逐段检查场景</h3>
+                <p>第二镜 V01 生成成功后出现在待审片列表。不能只看一帧，需要完整播放并检查背景是否一直保持邮局屋檐外的雨夜街道。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “审片 / 重拍” → 选择镜头 02 的候选 1</dd><dt>本图状态</dt><dd>候选 1 · 待审片；镜头 02 的 V01 已生成。</dd><dt>检查重点</dt><dd>林檐抬头、父亲撑伞、红纸星星、外景连续性和人物服装。</dd></dl>
+                <ol><li>选择第二镜候选卡片，在审片弹窗中播放 0:00–0:04。</li><li>观察角色动作、服装和背景是否与提示词及分镜一致。</li><li>必要时用播放器进度条复查关键时间点；不因视频文件可播放就直接批准。</li><li>发现错误时点击候选卡片审片，写明问题与期望修正，提交“退回重拍”。</li></ol>
+                <div class="check">本次结果：V01 可播放，但前半段转入室内场景，与邮局屋檐外雨夜不符；因此未用作成片版本，退回时保留 V01 记录。</div>
+              </div>
+              <figure><img class="shot" src="images/production28SecondVideoPreview.jpg" alt="第二镜V01生成完成并显示待审片的视频预览" loading="lazy" /><figcaption>图 20 · 第二镜 V01 生成后的候选预览；当前候选状态为“待审片”。点击图片查看原图。</figcaption></figure>
+              <figure><img class="shot" src="images/productionSecondContact.jpg" alt="第二镜V01的FFmpeg抽帧接触表，展示视频画面由红纸星星近景切换到室内人物镜头" loading="lazy" /><figcaption>图 20A · 辅助质检图：从 V01 视频用 FFmpeg 抽帧组成的接触表，不是应用截图。抽帧显示前半段转成室内背景，与分镜指定的邮局外雨夜不一致。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step21" data-search="第二镜 V01 退回重拍 审片意见 changesRequested 保留版本">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>21</b>记录审片意见并退回 V01</div>
+                <h3>指出场景偏差，保留失败版本供追溯</h3>
+                <p>V01 审片意见明确前半段转为室内场景。提交“退回重拍”后，候选状态变为 changesRequested，V01 仍保留在候选列表，不被覆盖。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “审片 / 重拍” → 镜头 02 → 选择候选 1</dd><dt>本次意见要点</dt><dd>全段固定在邮局屋檐与街道；父亲只在街对面暖黄路灯下；米色风衣和透明雨伞；全程保持同一外景，不切换室内、不增加人物或场景。</dd><dt>退回结果</dt><dd>V01 状态为 changesRequested；批准候选数仍是 1（首镜）。</dd></dl>
+                <ol><li>在审片窗口播放器确认当前选中的是镜头 02 的<strong>候选 1 / V01</strong>。</li><li>在意见框写明具体时间段问题、期望镜头空间和需要保持的角色外观。</li><li>点击<strong>“退回重拍”</strong>，等待项目刷新。</li><li>在候选列表确认 V01 状态显示 <strong>changesRequested / 需重拍</strong>，并保留其候选记录。</li><li>返回“生成”页编辑同一镜头提示词，创建 V02；不要误以为退回已删除或修改了 V01 文件。</li></ol>
+                <div class="check caution">成功判断：第二镜 V01 被标记为需重拍，审片意见已保存，V01 仍可查看；该版本不作为第二镜批准素材。</div>
+              </div>
+              <figure><img class="shot" src="images/production29SecondReturnReview.jpg" alt="第二镜V01审片意见指出场景切入室内并填写重拍要求" loading="lazy" /><figcaption>图 21A · V01 审片意见弹窗：指出室内场景偏差并填写外景连续性要求；点击“退回重拍”前的记录。</figcaption></figure>
+              <figure><img class="shot" src="images/production30SecondReturned.jpg" alt="候选列表保留第二镜V01并显示changesRequested，首镜仍为approved" loading="lazy" /><figcaption>图 21B · 提交意见后 V01 保留并显示 changesRequested；首镜已批准候选仍在列表中。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step22" data-search="第二镜 V02 重写提示词 重新报价 72 积分 Seedance 4秒 480p 16:9 同步音频">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>22</b>按意见重写提示词并提交 V02</div>
+                <h3>强化全程外景约束，重新估价再提交</h3>
+                <p>退回后保持镜头 02 不变，重写生成描述，明确全程为邮局屋檐外雨夜街道，父亲在街对面暖黄路灯下等候，禁止切换室内场景。重拍需要重新报价并提交新的生成任务。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “生成” → 镜头选择器“场01 · 镜02 · 4秒”</dd><dt>生成参数</dt><dd>Seedance 2.0 · 4 秒 · 480p · 16:9 · 同步生成音频。</dd><dt>V02 报价</dt><dd>72.00 积分；V01 已结算，重拍 V02 为另一项生成任务。</dd><dt>新提示词要求</dt><dd>唯一场景为雨夜邮局屋檐外及街道；父亲在街对面路灯下，穿米色风衣并撑透明伞；保留林檐绿色雨披和红纸星星；全程同一外景，不切室内，不增人物/场景。</dd></dl>
+                <ol><li>选择镜头 02，修改画面描述，按审片意见写明“全程固定外景”“不切室内”等约束。</li><li>核对林檐、父亲及 @雨夜邮局素材引用，确认角色服装、红纸星星和透明伞描述保留。</li><li>再次确认 4 秒、480p、16:9、同步生成音频；参数更改后重新获取本次报价。</li><li>点击<strong>“估算积分”</strong>，确认显示 72.00 积分。</li><li>检查预算后点击橙色<strong>向上箭头</strong>提交 V02；等待任务完成，再检查新候选，不重复提交。</li></ol>
+                <div class="check">成功判断：镜头 02 新增 V02 候选，V01 继续保留为 changesRequested。当前项目 V02 已实际生成并进入审片。</div>
+              </div>
+              <figure><img class="shot" src="images/production31RetakeQuote.jpg" alt="重拍提示词明确邮局外连续场景，参数为4秒480p16比9同步音频且报价72积分" loading="lazy" /><figcaption>图 22 · 第二镜 V02 重写提示词后的 72.00 积分报价页面；报价需确认后才可提交。点击图片查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step23" data-search="第二镜 V02 生成 预览 待审片 连续外景 父亲米色风衣">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>23</b>预览第二镜 V02 重拍结果</div>
+                <h3>逐段确认外景连续与结尾动作</h3>
+                <p>V02 生成后先播放完整镜头。页面显示新候选可预览，抽帧接触表用于辅助核对从林檐持星到父亲撑伞出现、两人相视的连续画面。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “生成” → 镜头 02 → 新候选预览</dd><dt>页面状态</dt><dd>V02 · 待审片；V01 仍保留为 changesRequested。</dd><dt>抽帧检查</dt><dd>同一雨夜邮局外景、林檐绿色雨披和红纸星星、父亲米色风衣与透明雨伞。</dd></dl>
+                <ol><li>确认新候选序号为<strong>版本 2 / V02</strong>，不要误选 V01。</li><li>从头播放到 0:04，检查镜头有没有切换到室内或新增人物。</li><li>复查关键动作：林檐持红纸星星、抬头看向父亲，父亲站在暖黄路灯下撑透明伞。</li><li>出现可接受的构图差异时，先判断是否影响叙事；未批准前仍可退回并留存意见。</li><li>确认候选可继续送审后，打开该 V02 的审片窗口。</li></ol>
+                <div class="check">本次结果：V02 保持邮局外雨夜场景，人物服装、红纸星星与透明伞符合设定；随后审片批准。父亲站位比原分镜距离更远，此偏差在审片意见中留档。</div>
+              </div>
+              <figure><img class="shot" src="images/production32RetakeReady.jpg" alt="第二镜V02生成后显示邮局外雨夜、林檐与撑伞父亲的候选预览" loading="lazy" /><figcaption>图 23 · V02 已生成，预览显示林檐与街对面撑伞父亲。点击图片查看原图。</figcaption></figure>
+              <figure><img class="shot" src="images/productionRetakeContact.jpg" alt="第二镜V02的FFmpeg抽帧接触表，用于复核角色服装道具及外景连续性" loading="lazy" /><figcaption>图 23A · 辅助质检图：从 V02 视频用 FFmpeg 抽帧组成的接触表，不是应用截图；用于检查画面连续性和主要人物、道具。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step24" data-search="第二镜 V02 审片意见 批准候选 站位距离 偏差">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>24</b>审片 V02 并批准候选</div>
+                <h3>记录可接受偏差后选择 V02</h3>
+                <p>V02 画面连续性和角色服装符合要求，结尾相视动作可用。审片意见接受父亲站位比原分镜更远的差异，并明确选择 V02 用于剪辑；V01 继续作为退回版本保留。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “审片 / 重拍” → 镜头 02 → 选择候选 2 / V02</dd><dt>本次意见</dt><dd>V02 全段保持邮局外雨夜，人物服饰、红纸星星与透明伞保持一致，结尾相视可用。接受教学样片中父亲站位距离比原分镜远这一偏差；选择 V02 用于成片，V01 继续保留为退回版本。</dd><dt>批准后状态</dt><dd>候选 2 / V02 为 approved，第二镜可用版本已确定。</dd></dl>
+                <ol><li>确认弹窗标题指向<strong>镜头 2、候选 2</strong>，播放器加载的是 V02。</li><li>在审片意见框填写验收结果和已接受的构图偏差。</li><li>点击<strong>“批准候选”</strong>，等待页面刷新。</li><li>在批准列表确认镜头 02 使用 V02；V01 应仍显示 changesRequested，而不是被覆盖。</li></ol>
+                <div class="check">成功判断：V02 显示 approved，审片意见留存；V01 保留为需重拍版本。批准只确认视频候选，不表示已剪辑、导出或完成交付。</div>
+              </div>
+              <figure><img class="shot" src="images/production33RetakeReview.jpg" alt="第二镜V02审片意见说明外景服饰道具符合并填写父亲距离偏差后批准候选" loading="lazy" /><figcaption>图 24 · V02 的审片弹窗，意见写明可用结果、父亲站位偏差以及选择 V02；此图为提交批准前。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step25" data-search="两个批准候选 镜头01 镜头02 V02 approved changesRequested 剪辑入口">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>25</b>确认两个镜头各有批准候选</div>
+                <h3>检查批准列表并区分退回版与可用版</h3>
+                <p>批准列表应能同时追踪镜头 01 候选与镜头 02 的各次重拍结果。第二镜 V01 留档为 changesRequested；可用 V02 显示 approved。首镜也已有 approved 状态，但剪辑时需要处理其不符合设定的后段。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → “审片 / 重拍” 或“批准” → 生成候选列表</dd><dt>批准候选</dt><dd>镜头 01：V01 approved；镜头 02：V02 approved。</dd><dt>保留记录</dt><dd>镜头 02：V01 changesRequested，含场景转入室内的审片意见。</dd><dt>费用</dt><dd>本生产项目生成费用合计 228.001585 积分；含另一个演示项目后的本次授权累计 304.036068 积分，按 10 积分/元约人民币 30.40 元，低于 50 元上限。详见后续最终流水对账。</dd></dl>
+                <ol><li>在候选列表核对镜头 01 有一个 approved 候选。</li><li>核对镜头 02 的 V02 为 approved，V01 为 changesRequested。</li><li>保留版本与审片意见记录，不删除退回的 V01。</li><li>进入剪辑前，记下镜头 01 仅取约 0–2.4/2.5 秒可用段；镜头 02 使用批准的 V02，并按项目操作继续组接、复核和导出。</li></ol>
+                <div class="check caution">当前已完成视频候选生成与审片批准，尚未完成剪辑、渲染导出或最终交付。预算显示 500.00 积分；按流水汇总的授权累计目前约 30.40 元，仍需最终对账。</div>
+              </div>
+              <figure><img class="shot" src="images/production34ApprovedCandidates.jpg" alt="候选列表显示镜头02的V02 approved、V01 changesRequested和镜头01 approved" loading="lazy" /><figcaption>图 25 · 镜头 01、镜头 02 V02 两条批准候选与镜头 02 V01 退回记录并存。图中不代表剪辑或导出已完成。点击图片查看原图。</figcaption></figure>
+            </article>
+          </section>
+
+          <section aria-labelledby="editingStepsTitle">
+            <div class="sectionHead"><h2 id="editingStepsTitle">04 / 剪辑、导出与项目审片</h2><p>步骤 26–35 · 剪辑台时间线、后台渲染与成片登记</p></div>
+
+            <article class="step" id="step26" data-search="剪辑台 导入 候选 生产项目 镜头 01 02">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>26</b>把批准候选导入剪辑台</div>
+                <h3>在生产项目中按镜头顺序导入两个视频候选</h3>
+                <p>在剪辑前确认使用已批准的镜头候选，避免把镜头 02 的退回 V01 混入成片。剪辑台提示两个项目候选已按镜头顺序加入时间线。</p>
+                <dl><dt>操作入口</dt><dd>“04 视频生成” → 镜头候选 / 剪辑台 → 导入项目候选</dd><dt>使用版本</dt><dd>镜头 01 V01 approved；镜头 02 V02 approved。</dd><dt>媒体列表</dt><dd>2 个项目视频素材。</dd></dl>
+                <ol><li>在项目候选中核对镜头 01 为 approved。</li><li>核对镜头 02 选择 V02；不要选已退回的 V01。</li><li>点击剪辑台入口，等待项目素材固定导入。</li><li>核对时间线按 01 → 02 排列，左侧显示 2 个视频素材。</li></ol>
+                <div class="check">成功判断：剪辑台显示两个项目候选，来源标记指向本项目，时间线上已有两段视频。</div>
+              </div>
+              <figure><img class="shot" src="images/production35EditorImported.jpg" alt="剪辑台按镜头顺序导入镜头01和镜头02两个项目候选" loading="lazy" /><figcaption>图 26 · 生产项目两个候选已固定导入，时间线出现两段视频。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step27" data-search="时间线 组接 修剪 入点 出点 2.5秒 4.096">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>27</b>按镜头顺序组接并修剪</div>
+                <h3>首镜只取有效动作段，第二镜接在 2.5 秒处</h3>
+                <p>镜头 01 的生成后段不符合已设定服装，时间线上只保留前段可用动作；镜头 02 从 2.5 秒开始，保留到源素材出点。剪辑只改变时间线范围，不改写生成源文件。</p>
+                <dl><dt>首镜选区</dt><dd>0–2.5 秒。</dd><dt>第二镜位置</dt><dd>时间线起点 2.5 秒，源入点 0 秒、出点 4.096 秒。</dd><dt>工程设置</dt><dd>16:9 · 30 fps · 当前时间线目标约 6.596 秒。</dd></dl>
+                <ol><li>选中镜头 01，检查播放头和源监视器，裁到林檐取出红纸星星的可用段。</li><li>选中镜头 02，确认时间线起点为 2.5 秒。</li><li>核对两个片段首尾衔接且没有意外空隙或重叠。</li><li>重新运行导出预检；若当前版本仍提示源出点超出素材时长，先按提示修正再导出。</li></ol>
+                <div class="check caution">保存工程记录首段出点 2.5 秒、次段出点 4.096 秒。早期预检曾报告次段出点超限；导出校验随后改为优先读取容器时长并容忍尾差。后续 V02 已成功导出，最终媒体技术复验见步骤 36–41。</div>
+              </div>
+              <figure><img class="shot" src="images/production36TrimmedTimeline.jpg" alt="两段视频已按时间线组接，第二镜片段起点为2.5秒" loading="lazy" /><figcaption>图 27 · 时间线上可见首镜剪短、第二镜从 2.5 秒开始；右侧显示选中片段的入出点。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step28" data-search="字幕 SRT VTT 一封旧信 原来 一直在等我">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>28</b>加入两条叙事字幕</div>
+                <h3>检查字幕时段与镜头切点一致</h3>
+                <p>两条字幕使用 SRT 导入文字轨：第一句对应镜头 01，第二句覆盖镜头 02。检查字幕进入画面的高度、对比度和切换时点。</p>
+                <dl><dt>第一条</dt><dd>00:00.000–00:02.500 · 一封旧信，藏着未说出口的牵挂。</dd><dt>初版第二条</dt><dd>00:02.500–00:06.500 · 原来，你一直在等我。</dd><dt>最终字幕</dt><dd><a href="deliverables/lastLetterNarrative.srt">lastLetterNarrative.srt</a> 已同步 V02，第二句结束点为 6.600 秒。</dd></dl>
+                <ol><li>打开“文字与字幕”，点击“导入字幕”。</li><li>选择项目字幕文件，确认文字轨出现两段字幕。</li><li>分别预览切点前后画面，确认文字可读且不遮挡主要动作。</li><li>初版最后一句早于视频片尾 0.1 秒结束；后续步骤 37 已把 V02 结束点修齐至 6.600 秒。</li></ol>
+                <div class="check">成功判断：播放器可见对应字幕，时间线文字轨出现两段文字片段。</div>
+              </div>
+              <figure><img class="shot" src="images/production37Subtitles.jpg" alt="剪辑台中间监视器显示第二句字幕，时间线文字轨有两段字幕" loading="lazy" /><figcaption>图 28 · 第二句字幕在监视器中可见，文字轨包含两段字幕。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step29" data-search="输出设置 16:9 30fps 1080 标准 MP4 H264 AAC">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>29</b>设置输出参数</div>
+                <h3>选择横屏 16:9、30 fps 与 1080p 输出</h3>
+                <p>输出设置决定编码规格，不会提升 480p 生成素材的原生细节。以当前剪辑台设置导出 MP4 / H.264 / AAC。</p>
+                <dl><dt>封装与编码</dt><dd>MP4 · H.264 / AAC。</dd><dt>画幅 / 帧率</dt><dd>16:9 · 30 fps。</dd><dt>输出质量</dt><dd>1080p · 标准。</dd></dl>
+                <ol><li>打开左侧“设置”。</li><li>将画面比例设为 16:9、帧率设为 30 fps。</li><li>选择 1080p、标准质量。</li><li>重新确认当前工程没有误切换到其他画幅或工程。</li></ol>
+                <div class="check">成功判断：设置面板显示 16:9、30 fps、1080p、标准质量。</div>
+              </div>
+              <figure><img class="shot" src="images/production38ExportSettings.jpg" alt="剪辑台项目与输出参数设置为16比9、30帧、1080p标准" loading="lazy" /><figcaption>图 29 · 实际输出参数设置。素材源分辨率与导出分辨率是不同概念。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step30" data-search="预览 全片 预检 警告 音频 响度 outpoint 实际时长">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>30</b>完整预览并运行预检</div>
+                <h3>先播放整条时间线，再处理每条预检警告</h3>
+                <p>在播放头从起点到片尾的完整预览中核对叙事、字幕、切点和尾帧。随后按当前版本执行导出预检；存在红色警告时暂停导出验收。</p>
+                <dl><dt>早期预检</dt><dd>截图曾显示第二镜片段出点超过素材时长；导出逻辑随后调整容器时长与尾差判断，V02 已成功导出并通过技术复验。</dd><dt>V01 音量</dt><dd>V01 实测 -37.9 LUFS、true peak -19.0 dBFS，声音偏轻；后续步骤 36 修订增益。</dd><dt>V01 字幕</dt><dd>最后一句在 6.50 秒结束，视频流到 6.60 秒；后续步骤 37 修齐尾点。</dd></dl>
+                <ol><li>从 0 秒播放到片尾，检查镜头 01 的动作取舍和镜头 02 的相视结尾。</li><li>在切点前后检查字幕没有缺失或过早消失。</li><li>点“导出 MP4”前查看预检消息。若源片段出点超过实际时长，缩短出点并重新检查时间线总长。</li><li>选中两个有声音的视频片段，分别使用右侧“响度校准”测量；该工具只设置恒定增益，校准后仍需重导出和重测整片。</li><li>只有预检无未处理警告、字幕覆盖到预定片尾且整片声音复测合格后，才把新版本送审。</li></ol>
+                <div class="check caution">历史结果：V01 响度不合格，且字幕早于片尾约 0.10 秒。本次 V02 已修订增益与字幕、成功导出并完成媒体技术复验，结果见步骤 36–41；本图不作为当前失败证据。</div>
+              </div>
+              <figure><img class="shot" src="images/production40ExportPreflight.jpg" alt="早期剪辑台导出预检提示所选片段出点超过素材实际时长" loading="lazy" /><figcaption>图 30 · 早期运行记录中的出点超限预检提示。导出校验逻辑此后已调整；此图记录早期问题，后续 V02 已成功导出并完成技术复验。点击图片查看原图。</figcaption></figure>
+              <figure><img class="shot" src="images/production39FullPreview.jpg" alt="剪辑台播放头到时间线末尾时监视器画面变黑" loading="lazy" /><figcaption>图 30A · 播放头到当前时间线末尾时监视器为黑画面；结合预检和导出媒体逐项复核片尾，不将总时长数字当作画面有效的证明。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step31" data-search="重新打开 工程 时间线 自动保存 预览">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>31</b>重新打开工程核对自动保存</div>
+                <h3>重开工程后确认时间线和预览仍在</h3>
+                <p>本次截图只记录工程重新打开后仍可看到片段、字幕和预览，不足以证明曾从备份列表执行恢复。此步骤用于核对已保存工程是否可继续编辑。</p>
+                <dl><dt>操作入口</dt><dd>剪辑台项目列表 → 打开《最后一封信》剪辑工程。</dd><dt>复核内容</dt><dd>两段项目视频、两段字幕、16:9 / 30 fps。</dd></dl>
+                <ol><li>返回剪辑台项目列表，重新打开本工程。</li><li>等待工程载入，确认时间线显示两个镜头和两段字幕。</li><li>移动播放头并播放片段，确认预览可读。</li><li>重新检查镜头 02 的源出点和两段响度设置，再继续导出。</li></ol>
+                <div class="check">成功判断：工程重新打开后显示两个镜头与两段字幕，预览可读。截图没有记录备份恢复操作；该步骤不代表已执行恢复。</div>
+              </div>
+              <figure><img class="shot" src="images/production41RestoredProject.jpg" alt="重新打开的剪辑工程显示片段、字幕和实际预览画面" loading="lazy" /><figcaption>图 31 · 重开工程后可见视频预览与字幕。该截图证明工程可重新打开，不证明曾选择备份恢复。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step32" data-search="后台渲染 导出 MP4 任务">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>32</b>提交后台渲染</div>
+                <h3>点击“导出 MP4”并记录输出文件</h3>
+                <p>后台渲染允许离开页面后继续处理。截图显示本次工程已有实际渲染输出；该输出随后进入成片登记，仍待内容与媒体质量复核。</p>
+                <dl><dt>操作入口</dt><dd>剪辑台顶部“导出 MP4”。</dd><dt>渲染结果</dt><dd>生成带唯一名称的 MP4 输出文件。</dd><dt>注意</dt><dd>渲染成功只说明编码任务完成，不代表字幕、响度和源时长问题已通过。</dd></dl>
+                <ol><li>在完成预检修复和全片复核后点击“导出 MP4”。</li><li>确认弹窗内工程名、目标输出格式和任务说明。</li><li>提交后打开“渲染队列”，按工程名找到对应新任务。</li><li>等状态变为完成，再记录输出文件名。</li></ol>
+                <div class="check">成功判断：剪辑台输出区出现 MP4 文件名，后台队列任务完成。</div>
+              </div>
+              <figure><img class="shot" src="images/production42RenderFirstSuccess.jpg" alt="剪辑台显示后台渲染输出文件和导出记录" loading="lazy" /><figcaption>图 32 · 实际渲染输出与导出记录；不代表本次文件质量已经合格。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step33" data-search="渲染队列 完成 导出任务 MP4">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>33</b>核对渲染队列</div>
+                <h3>确认对应项目任务显示完成</h3>
+                <p>渲染队列记录项目工程的输出状态。截图中有两个完成任务，后续登记时要按输出文件名对应到实际版本。</p>
+                <dl><dt>队列状态</dt><dd>2 个任务已完成。</dd><dt>项目</dt><dd>最后一封信 · 生产项目全流程手册 · 最后一封信·雨夜相视 · 剪辑。</dd></dl>
+                <ol><li>打开“渲染队列”。</li><li>按完整工程名查找对应任务，不以“队列里有完成任务”代替当前工程核对。</li><li>记录输出文件名和任务时间。</li><li>播放该 MP4 并运行媒体技术检查，再送入项目审片。</li></ol>
+                <div class="check">成功判断：输出文件可定位，渲染任务状态为完成，文件完整可播放。</div>
+              </div>
+              <figure><img class="shot" src="images/production43RenderCompleted.jpg" alt="后台渲染队列列出两个已完成剪辑任务" loading="lazy" /><figcaption>图 33 · 两条渲染任务都显示完成。完成状态只表示渲染结束。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step34" data-search="成片登记 生产项目 剧集 输出文件 提交审片">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>34</b>登记成片与剧集</div>
+                <h3>把对应 MP4 登记到本项目第一集</h3>
+                <p>登记时绑定生产项目、剧集和成片名称，系统创建一个可审阅版本。登记动作不会自动批准成片。</p>
+                <dl><dt>输出文件</dt><dd><code>edited17942775188519d428e70.mp4</code>。</dd><dt>项目 / 剧集</dt><dd>最后一封信 · 生产项目全流程手册 / 第 1 集 · 最后一封信·雨夜相视。</dd><dt>成片名称</dt><dd>最后一封信_最终剪辑。</dd></dl>
+                <ol><li>确认剪辑台输出区选中的是刚核对过的 MP4。</li><li>在“制作项目”选择《最后一封信》项目。</li><li>选择第 1 集，填写成片名称。</li><li>点击“提交到项目审片”。</li></ol>
+                <div class="check">成功判断：项目审片面板出现 V01，且文件名、剧集与提交时间可核对。</div>
+              </div>
+              <figure><img class="shot" src="images/production44CutRegistration.jpg" alt="剪辑台输出文件已选择生产项目和剧集，准备提交项目审片" loading="lazy" /><figcaption>图 34 · 成片登记信息和项目 / 剧集选择。图中是点击“提交到项目审片”之前。点击查看原图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step35" data-search="成片审片 待审片 V01 SHA-256 1920 1080 30fps">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>35</b>确认成片进入待审片</div>
+                <h3>检查版本、规格、哈希和素材来源</h3>
+                <p>提交后在项目“成片审片与交付”中播放 V01，并核对技术信息及来源。当前实际登记状态为“待审片”，尚未审批或确认交付。</p>
+                <dl><dt>版本 / 时长</dt><dd>V01 · 6.60 秒。</dd><dt>画面</dt><dd>1920×1080 · 30 fps。</dd><dt>文件 SHA-256</dt><dd><code>07c098add06b84f8f5a58d5aca4ef98620bb02a983dabb451698292922fd09c3</code>。</dd><dt>来源核验</dt><dd>服务端核验 2/2 项。</dd></dl>
+                <ol><li>打开项目“剪辑台成片 / 审片与交付”。</li><li>播放 V01，确认预览可读，检查字幕和末帧。</li><li>核对页面列出的时长、分辨率、帧率、SHA-256 和来源项数。</li><li>查看 <a href="deliverables/lastLetterMediaQuality.json">质量报告</a> 中的 V01 历史记录；初版未通过音量与字幕验收，不批准。继续步骤 36–41 完成 V02。</li></ol>
+                <div class="check caution">历史状态：V01 待审片且未通过质量验收，响度 -37.9 LUFS / true peak -19.0 dBFS；字幕比视频流早约 0.10 秒结束。最新 V02 已修订并技术检查通过，项目人工审片仍待处理。</div>
+              </div>
+              <figure><img class="shot" src="images/production45CutPendingReview.jpg" alt="生产项目中登记的V01成片状态为待审片，并显示技术参数和来源核验" loading="lazy" /><figcaption>图 35 · V01 已登记并进入“待审片”；页面显示 6.60 秒、1920×1080、30 fps 和 2/2 项来源核验。待审片不等于已交付。点击查看原图。</figcaption></figure>
+            </article>
+          </section>
+
+          <section aria-labelledby="revisionStepsTitle">
+            <div class="sectionHead"><h2 id="revisionStepsTitle">05 / 调音修订、逐帧验收与 V02 登记</h2><p>步骤 36–41 · 修正 V01 问题，验证媒体并保留人工审片</p></div>
+
+            <article class="step" id="step36" data-search="响度校准 增益 17.8 21.2 LUFS 音量 V02">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>36</b>校准两个片段的响度</div>
+                <h3>逐段测量，并给峰值保留余量</h3>
+                <p>V01 的音轨存在但声音很轻。本次在剪辑台逐段使用响度校准，再调整恒定增益并重新导出测量。右侧目标 -16 LUFS 是片段校准选项，不等同于整片最终响度。</p>
+                <dl><dt>操作入口</dt><dd>选中视频片段 → 右侧“响度校准”。</dd><dt>最终增益</dt><dd>镜头 01：+17.8 dB；镜头 02：+21.2 dB。</dd><dt>整片复测</dt><dd>-18.3 LUFS · LRA 2.4 LU · true peak -1.2 dBFS。</dd></dl>
+                <ol><li>选中镜头 01 视频片段，展开右侧“响度校准”。</li><li>点击“测量并校准片段”，等测量结束；检查增益而非反复点击。</li><li>选中镜头 02 执行同样操作，核对本次增益为 +21.2 dB；首段最终设为 +17.8 dB。</li><li>预览切点附近的声音；随后重新导出并测量整片，不能仅凭右侧 -16 LUFS 选项判定达标。</li></ol>
+                <div class="check">成功判断：两个片段保存各自增益；V02 实测声音已提升，整片真峰值仍低于 -1 dBFS。本例未声称完成整片动态响度标准化。</div>
+              </div>
+              <figure><img class="shot" src="images/production47FinalGain.jpg" alt="剪辑台选中第二段视频，右侧片段增益显示21.2dB" loading="lazy" /><figcaption>图 36 · 第二段片段增益为 +21.2 dB。画面停在片段中部，该图用于核对调音参数，不作为全片已播放完的证据。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step37" data-search="字幕 片尾 最后一帧 6.6 4.1 预览 播放">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>37</b>预览最后有效帧与字幕</div>
+                <h3>把第二句字幕延长至 6.60 秒</h3>
+                <p>V01 第二句在 6.50 秒结束。修订时选中第二条文字片段，把源出点改为 4.10 秒；它从时间线 2.50 秒开始，因此尾点变为 6.60 秒。保存后重新预览切点与片尾。</p>
+                <dl><dt>操作入口</dt><dd>文字轨 → 第二条字幕 → 右侧“出点”。</dd><dt>最终范围</dt><dd>第一句 0–2.50 秒；第二句 2.50–6.60 秒。</dd><dt>帧数显示</dt><dd>30 fps 下 00:06.17 是 6 秒 17 帧，约 6.567 秒；总长 00:06.18 即 6.60 秒。</dd></dl>
+                <ol><li>点击文字轨第二条“原来，你一直在等我。”。</li><li>把出点设为 4.10 秒，保持时间线起点 2.50 秒。</li><li>等工程保存完成，从头预览两镜及字幕切换。</li><li>把播放头移到片尾前一帧，确认第二句仍可见；到达总时长后的空监视器不用于判断导出黑尾。</li></ol>
+                <div class="check">成功判断：最后有效帧可见第二句字幕，文字轨尾点对齐总长。配套 SRT 的结束点同步为 00:00:06,600。</div>
+              </div>
+              <figure><img class="shot" src="images/production49LastSubtitle.jpg" alt="播放头位于6秒17帧，最后画面仍显示原来你一直在等我字幕" loading="lazy" /><figcaption>图 37 · 片尾前一帧预览，第二句字幕仍在画面内；文字轨与视频轨末端对齐。时间码按“秒.帧”阅读。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step38" data-search="导出 V02 MP4 渲染队列 最新结果 版本 工程变更">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>38</b>导出 V02 并检查队列</div>
+                <h3>调音与字幕改动后重新渲染</h3>
+                <p>工程改动后，旧导出结果不会自动变化。重新点击“导出 MP4”，再在后台渲染队列中选取对应最新结果；标记为旧版本的结果只留作历史。</p>
+                <dl><dt>操作入口</dt><dd>右上角“导出 MP4” → “渲染队列”。</dd><dt>最终输出</dt><dd><code>edited1794280411002f1e5116a.mp4</code>。</dd><dt>归档结果</dt><dd>6.60 秒，2,318,970 字节。</dd></dl>
+                <ol><li>核对两段增益与第二字幕尾点，等待保存完成。</li><li>点击“导出 MP4”，提交新渲染任务并等待完成。</li><li>打开渲染队列，核对工程名与本次时间；不要选择标记“此结果来自旧版本”的任务。</li><li>使用最新完成任务的“用于审片 / 回写”，并核对输出文件名后继续登记。</li></ol>
+                <div class="check">成功判断：最新任务显示已完成，最终选择的文件名与 V02 技术报告一致。队列完成只表示渲染结束，仍需下一步验收。</div>
+              </div>
+              <figure><img class="shot" src="images/production46CalibratedExport.jpg" alt="后台渲染队列显示完成任务，最新结果可用于审片回写，旧任务标注来自旧版本" loading="lazy" /><figcaption>图 38 · 本轮调音修订过程中的队列：顶部任务可用于审片 / 回写，下方旧任务有旧版本提示。该图说明结果选择方法；最终文件名以本步列出的 V02 归档文件为准。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step39" data-search="逐帧 接触表 字幕 切点 首尾 V02 验收">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>39</b>逐帧核对镜头与字幕</div>
+                <h3>检查首镜动作、2.50 秒切点和最后有效帧</h3>
+                <p>先在剪辑台拖动播放头检查，再从最终 MP4 抽取关键帧交叉核对。抽帧图是媒体验收辅助图，不能冒充应用操作截图。</p>
+                <dl><dt>检查时间</dt><dd>0.50、2.40、2.50、3.50、6.30、6.567 秒。</dd><dt>检查重点</dt><dd>拆信取星、镜头衔接、父亲外观、第二句字幕与末帧。</dd></dl>
+                <ol><li>查看 0.50 秒与 2.40 秒，确认首镜保留取星动作且字幕可读。</li><li>检查 2.50 秒的切点，确认镜头转为雨夜双人画面且字幕同步切换。</li><li>检查 3.50 秒至片尾，确认父亲米色风衣、透明伞与雨夜场景。</li><li>核对最后解码帧约 6.567 秒仍有画面与第二句字幕。</li></ol>
+                <div class="check">成功判断：V02 抽样帧包含两个预定镜头，末帧字幕可见；无以空监视器截图替代实际成片检查的推断。</div>
+              </div>
+              <figure><img class="shot" src="images/production49LastSubtitle.jpg" alt="剪辑台最后有效帧显示双人雨夜场景和第二句字幕" loading="lazy" /><figcaption>图 39 · 剪辑台在末帧前的核对位置。下图来自同一最终 MP4 的抽帧检查。</figcaption></figure>
+              <figure><img class="shot" src="deliverables/lastLetterContact.jpg" alt="V02视频的六帧接触表，包含取星动作、切点和带字幕的最后一帧" loading="lazy" /><figcaption>图 39A · FFmpeg 辅助质检图，不是应用截图；从左到右、从上到下为 0.50、2.40、2.50、3.50、6.30、6.567 秒。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step40" data-search="FFmpeg FFprobe 解码 黑场 响度 SHA256 198 18.3 1.2 技术检查">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>40</b>用 FFmpeg 验收媒体</div>
+                <h3>对最终导出文件检查编码、解码、黑场与响度</h3>
+                <p>本步是制作验收操作：以最终输出文件执行 FFprobe，再对全片进行严格解码、黑场和 EBU R128 响度检测，并计算 SHA-256。只检查导出界面的完成状态不足以覆盖这些项目。</p>
+                <dl><dt>画面 / 音频</dt><dd>H.264 High · 1920×1080 · 30 fps · 198 帧；AAC-LC · 48 kHz · 双声道。</dd><dt>时长</dt><dd>视频流、音频流、容器均为 6.600 秒。</dd><dt>响度</dt><dd>-18.3 LUFS · LRA 2.4 LU · true peak -1.2 dBFS。</dd><dt>SHA-256</dt><dd><code>F48EFE17FB1B7C4057F24551C5F8300BE379A8E457D8E14B5FDDF867F120F56B</code>。</dd></dl>
+                <ol><li>对 <code>edited1794280411002f1e5116a.mp4</code> 执行 FFprobe，核对画面、音频、帧数和 6.60 秒时长。</li><li>使用 FFmpeg 严格完整解码：<code>-v error -xerror -i 视频文件 -f null NUL</code>；本次退出码为 0。</li><li>以 <code>blackdetect=d=0.05:pix_th=0.1</code> 检查黑场；本次未报告黑场区间。</li><li>以 <code>ebur128=peak=true</code> 测量整片，记录综合响度、LRA 和真峰值。</li><li>计算文件 SHA-256，与项目登记页面逐字符对应；读取 <a href="deliverables/lastLetterMediaQuality.json">V02 质量报告</a>。</li></ol>
+                <div class="check">成功判断：全片解码通过、无报告黑场、最后有效帧字幕可见、哈希匹配。技术检查已通过；主观听感、内容审批与项目正式交付仍需人工确认。</div>
+              </div>
+              <figure><img class="shot" src="deliverables/lastLetterContact.jpg" alt="最终V02媒体关键帧的检查图，末帧画面和字幕正常" loading="lazy" /><figcaption>图 40 · 最终 V02 的媒体验收辅助图。编码、响度、全片解码和哈希的实测值见本步及 JSON 报告；此图不冒充终端输出截图。</figcaption></figure>
+            </article>
+
+            <article class="step" id="step41" data-search="登记 V02 待审片 审片交付 版本 2 来源核验">
+              <div class="stepCopy">
+                <div class="stepLabel"><b>41</b>登记 V02 并保留待审片状态</div>
+                <h3>新版本与 V01 历史并存，等待项目人工审片</h3>
+                <p>选择经过技术检查的新文件提交到本项目第 1 集，系统生成 V02。本轮保留“待审片”，没有替项目负责人批准或确认交付。</p>
+                <dl><dt>操作入口</dt><dd>剪辑台最新导出 → 用于审片 / 回写 → 提交到项目审片。</dd><dt>项目 / 剧集</dt><dd>最后一封信 · 生产项目全流程手册 / 第 1 集 · 最后一封信·雨夜相视。</dd><dt>登记名称</dt><dd>最后一封信_最终剪辑_V02。</dd><dt>当前状态</dt><dd>2 个版本，V02 待审片，来源服务端核验 2/2 项。</dd></dl>
+                <ol><li>在最新输出的成片登记区选择本项目与第 1 集，填写 V02 名称。</li><li>点击“提交到项目审片”，等待登记成功。</li><li>打开“成片审片与交付”，选择左侧 V02，核对 6.60 秒、1920×1080、30 fps 与文件 SHA-256。</li><li>播放 V02 并把技术报告交给审片人；保留 V01 历史。</li><li>由项目审片人确认内容与听感后再审批、交付。本轮状态保持待审片。</li></ol>
+                <div class="check">实际结果：V02 已登记且来源核验 2/2；技术检查通过，项目人工审片待处理，未批准、未正式交付。</div>
+              </div>
+              <figure><img class="shot" src="images/production50PendingReview.jpg" alt="成片审片与交付面板显示V02和V01两个版本，V02待审片且列出媒体规格和SHA256" loading="lazy" /><figcaption>图 41 · V02 已登记为待审片，V01 历史仍在。页面显示 6.60 秒、1920×1080、30 fps、文件 SHA-256 与来源核验 2/2 项。</figcaption></figure>
+            </article>
+          </section>
+
+          <section class="statusPanel" aria-labelledby="currentStatusTitle"><h2 id="currentStatusTitle">本轮实际进度与验收状态</h2><p>从主页生产项目完成剧本、两镜分镜、角色 / 场景 / 道具参考图、两条批准候选、剪辑及 V02 登记。V02 时间线为 0–2.5 秒和 2.5–6.6 秒；两片段增益分别为 +17.8 dB 与 +21.2 dB。FFmpeg 全片解码、FFprobe、黑场检测、字幕抽帧和 EBU R128 检查通过；综合响度 -18.3 LUFS、LRA 2.4 LU、true peak -1.2 dBFS。视频 SHA-256 为 F48EFE17FB1B7C4057F24551C5F8300BE379A8E457D8E14B5FDDF867F120F56B，文件 2,318,970 字节。已登记为 V02“待审片”；项目人工审批未完成，尚未正式交付。V01 的低响度与片尾字幕提前结束作为历史保留。两次授权演示合计 304.036068 积分，约 ¥30.40，低于 ¥50 上限。</p></section>
+          <section class="statusPanel" aria-labelledby="deliverableTitle"><h2 id="deliverableTitle">V02 视频预览与媒体质检</h2><p>这是技术验收通过、等待项目人工审片的 V02；尚未批准或正式交付。</p><video controls preload="metadata" style="display:block;width:min(100%,960px);margin:14px auto;border:1px solid #dce3dd;border-radius:4px;background:#111" src="deliverables/lastLetter.mp4"></video><p><a href="deliverables/lastLetter.mp4">打开 V02 MP4</a> · <a href="deliverables/lastLetterNarrative.srt">SRT 字幕</a> · <a href="deliverables/lastLetterMediaQuality.json">V02 媒体质检报告</a> · <a href="lastLetterProductionRecord.md">完整制作与费用记录</a></p></section>
+          <footer class="footer">《最后一封信》生产项目操作手册 · 41 个实际步骤，每步附对应截图或媒体验收图。V02 技术检查通过，项目人工审片待处理，尚未正式交付。</footer>
+          <div class="emptySearch" id="emptySearch">没有找到匹配步骤。</div>
+        </main>
+      </div>
+    </div>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="截图原图预览">
+      <button id="closeLightbox" type="button" aria-label="关闭原图">×</button>
+      <img id="lightboxImage" alt="截图原图" />
+    </div>
+    <script>
+      const searchInput = document.getElementById("searchInput");
+      const steps = [...document.querySelectorAll(".step")];
+      const navLinks = [...document.querySelectorAll(".navLink")];
+      const emptySearch = document.getElementById("emptySearch");
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightboxImage");
+      let activeImage = null;
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLocaleLowerCase("zh-CN");
+        let visibleCount = 0;
+        steps.forEach((step) => {
+          const visible = `${step.innerText} ${step.dataset.search}`.toLocaleLowerCase("zh-CN").includes(query);
+          step.hidden = !visible;
+          if (visible) visibleCount += 1;
+        });
+        navLinks.forEach((link) => {
+          const target = document.querySelector(link.getAttribute("href"));
+          link.hidden = Boolean(target?.hidden);
+        });
+        emptySearch.style.display = visibleCount ? "none" : "block";
+      });
+      document.getElementById("printButton").addEventListener("click", () => window.print());
+      document.querySelectorAll(".shot").forEach((image) => {
+        image.tabIndex = 0;
+        image.setAttribute("role", "button");
+        image.setAttribute("aria-label", `${image.alt}，点击放大`);
+        const openLightbox = () => {
+          activeImage = image;
+          lightboxImage.src = image.src;
+          lightboxImage.alt = image.alt;
+          lightbox.classList.add("open");
+          document.getElementById("closeLightbox").focus();
+        };
+        image.addEventListener("click", openLightbox);
+        image.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          openLightbox();
+        });
+      });
+      function closeLightbox() {
+        lightbox.classList.remove("open");
+        lightboxImage.removeAttribute("src");
+        activeImage?.focus();
+      }
+      document.getElementById("closeLightbox").addEventListener("click", closeLightbox);
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) closeLightbox();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeLightbox();
+      });
+      const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
+        if (entry.isIntersecting) navLinks.forEach((link) => link.classList.toggle("active", link.hash === `#${entry.target.id}`));
+      }), { rootMargin: "-15% 0px -75% 0px" });
+      steps.forEach((step) => observer.observe(step));
+    </script>
+  </body>
+</html>

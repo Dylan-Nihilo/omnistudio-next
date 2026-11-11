@@ -1,2 +1,3 @@
 export { default as modelIcon } from "./modelIcon.vue";
-export { getModelIcon } from "./getModelIcon";
+export { getModelIcon, getModelSelectionLabel } from "./getModelIcon";
+export { getMediaModelCapabilities } from "./getMediaModelCapabilities";
