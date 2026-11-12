@@ -65,6 +65,12 @@ export const canvasSchemas = {
   arrangeCanvas: z.strictObject({}),
   fitCanvas: z.strictObject({ nodeIds: z.array(nodeId).optional() }),
   nodeTools: z.strictObject({ nodeId, name: z.templateLiteral(["node:", z.string().regex(/^[a-z][a-zA-Z0-9]{0,63}$/)]), args: z.record(z.string(), z.json()) }),
+  editorGetState: z.strictObject({}),
+  editorAddClip: z.strictObject({ assetId: nodeId, startAt: z.number().finite().min(0).max(86400).optional(), trackId: nodeId.optional() }),
+  editorSelectClip: z.strictObject({ clipId: nodeId }),
+  editorSeekTo: z.strictObject({ time: z.number().finite().min(0).max(86400) }),
+  editorSplitClip: z.strictObject({ clipId: nodeId, atTime: z.number().finite().min(0).max(86400) }),
+  editorUndo: z.strictObject({}),
 };
 
 export type CanvasOperationName = keyof typeof canvasSchemas;
@@ -91,4 +97,10 @@ export const canvasOperations = [
   { name: "arrangeCanvas", label: "整理画布", description: "根据节点实际尺寸和连线，将激活画布的全部顶层节点从左到右自动排列，并适应视图。子节点保持相对位置，不修改内容、连线或选择，不触发生成。返回 arrangedCount、最多 100 项 arrangedNodeIds、truncated 和 viewport；truncated 仅指 ID 回执缩略，不代表仅整理了部分节点。节点尺寸未就绪或存在不可移动节点时拒绝整理。仅在需要整理整幅画布时调用；局部调整使用 moveNodes，单纯查看使用 fitCanvas。", parameters: canvasSchemas.arrangeCanvas },
   { name: "fitCanvas", label: "适应画布", description: "调整激活画布视口以展示 nodeIds 指定的节点；省略 nodeIds 则展示全部节点。返回 fitted、viewport、nodeCount，传入 nodeIds 时另返回最多 100 项 nodeIds 和 truncated；截断只影响回执。", parameters: canvasSchemas.fitCanvas },
   { name: "nodeTools", label: "调用节点函数", description: "调用激活画布节点注册的 node:functionName。先通过 getNodeTools 读取该节点实际函数的完整 parameters，再按 schema 填写 args。新建节点可在同轮查询和调用；不要通过修改画布 JSON 代替节点函数。返回值由具体业务函数决定，五个画布读取工具的 64 KiB 限制不适用于此执行入口。", parameters: canvasSchemas.nodeTools },
+  { name: "editorGetState", label: "读取剪辑工程", description: "只在剪辑台读取当前工程的素材、轨道、片段和播放头摘要，不返回工作区路径。后续剪辑操作必须先读取状态并使用返回的 ID。", parameters: canvasSchemas.editorGetState },
+  { name: "editorAddClip", label: "添加素材到时间线", description: "将当前剪辑工程中已有素材加入匹配类型的轨道；可指定起点秒数和轨道 ID，省略起点时追加到目标轨道末尾。每次仅添加一个素材，完成后可用剪辑台撤销恢复。", parameters: canvasSchemas.editorAddClip },
+  { name: "editorSelectClip", label: "选择时间线片段", description: "按 editorGetState 返回的片段 ID 选择片段并定位到片段中点，不修改工程内容。", parameters: canvasSchemas.editorSelectClip },
+  { name: "editorSeekTo", label: "定位播放头", description: "将播放头定位到指定时间秒数，不修改工程内容。", parameters: canvasSchemas.editorSeekTo },
+  { name: "editorSplitClip", label: "分割时间线片段", description: "在指定时间秒数分割片段；分割点必须在片段内部且两侧至少各有一帧。使用 editorGetState 返回的片段 ID，操作可撤销。", parameters: canvasSchemas.editorSplitClip },
+  { name: "editorUndo", label: "撤销最近的 AI 剪辑", description: "仅撤销剪辑台中最近一次 AI 造成的修改；如果之后用户或其他操作改动了工程，此操作会拒绝执行。", parameters: canvasSchemas.editorUndo },
 ] as const;

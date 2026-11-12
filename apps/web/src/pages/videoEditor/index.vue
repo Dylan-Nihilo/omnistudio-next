@@ -1,5 +1,5 @@
 <template>
-  <main class="videoEditor">
+  <main ref="editorRoot" class="videoEditor" :class="{ isExpanded: previewExpanded, inspectorOpen }">
     <header class="editorHeader">
       <div class="headerProject">
         <button class="iconButton backButton" type="button" :aria-label="isProductionEditor ? '返回生产项目' : '返回画布'" @click="returnFromEditor"><icon-arrow-left :size="18" /></button>
@@ -10,6 +10,7 @@
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
         <button class="secondaryButton" type="button" :disabled="isProductionEditor && !boundProductionProjectPath || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
         <button class="secondaryButton" type="button" :disabled="!projectReady" @click="openRenderQueue">渲染队列</button>
+        <button v-if="lastExport" ref="deliveryButton" class="secondaryButton" type="button" @click="openDelivery">成片登记</button>
         <button class="exportButton" type="button" :disabled="!canExport || exportBusy || exportRecordBusy" @click="exportTimeline"><icon-download :size="16" />导出 MP4</button>
       </div>
     </header>
@@ -21,165 +22,182 @@
       <div v-if="saveRetryable" class="noticeBar errorNotice" role="alert"><span>{{ saveError }}当前更改已保留为本地草稿。</span><button type="button" :disabled="saveBusy" @click="saveProject">重试保存</button></div>
       <div v-if="canvasProjectCandidates.length" class="noticeBar errorNotice" role="alert"><span>这张画布对应多个已有剪辑工程，请从剪辑工程列表中选择要继续的版本。</span><button type="button" @click="openEditorProjects">选择剪辑工程</button></div>
       <div v-else-if="!projectReady && !projectLoading" class="noticeBar errorNotice" role="alert"><span>项目读取失败，已阻止覆盖原文件。{{ saveError }}</span><button v-if="isProductionEditor && !boundProductionProjectPath" :disabled="exportRecordBusy" @click="reloadProject">重新读取项目</button><button v-else :disabled="exportRecordBusy" @click="openRecovery">从备份恢复</button></div>
-      <div class="editorBody" :class="{ isUnavailable: !projectReady }">
-        <aside class="mediaPanel" @dragover.prevent @drop.prevent="dropFiles">
-          <nav class="sideNav" aria-label="剪辑工具">
-            <button v-for="item in panelTabs" :key="item.id" class="sideTab" :class="{ isActive: activeTab === item.id }" type="button" :aria-pressed="activeTab === item.id" @click="activeTab = item.id"><component :is="item.icon" :size="20" /><span>{{ item.label }}</span></button>
-          </nav>
-          <section v-if="activeTab === 'media' || activeTab === 'audio'" class="assetPanel">
-            <div class="panelHeading"><div><h2>{{ activeTab === 'audio' ? '音频素材' : '媒体素材' }}</h2><span>{{ assets.length }} 个文件</span></div><button class="tinyAction" aria-label="导入媒体" :disabled="!canEdit" @click="fileInput?.click()"><icon-plus :size="17" /></button></div>
-            <input ref="fileInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" multiple @change="importFiles" />
-            <input ref="relinkInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" @change="relinkFile" />
-            <div class="importActions"><button class="importButton" type="button" :disabled="!canEdit" @click="fileInput?.click()"><icon-upload :size="16" />本地导入</button><button class="importButton" type="button" :disabled="!canEdit" @click="mediaPickerOpen = true"><icon-link :size="16" />项目 / 共享素材</button></div>
-            <editorAudioMixer v-if="activeTab === 'audio'" :tracks="tracks" :disabled="!canEdit" :peakDb="audioPeakDb" :peakHoldDb="audioPeakHoldDb" @volume="changeTrackVolume" @toggle="toggleMixerTrack" />
-            <div v-if="importBusy" class="assetHint" role="status">{{ importLabel }} {{ importProgress }}% <button @click="importController?.abort()">取消</button></div>
-            <input v-model="assetSearch" class="assetSearch" type="search" aria-label="搜索素材" placeholder="搜索素材" />
-            <div v-if="activeTab === 'media'" class="assetFilters"><button v-for="filter in mediaFilters" :key="filter.id" :class="{ isActive: mediaFilter === filter.id }" @click="mediaFilter = filter.id">{{ filter.label }}</button></div>
-            <div class="assetList">
-              <div v-for="asset in visibleAssets" :key="asset.id" class="assetRow" :class="{ isMissing: missingAssetIds.includes(asset.id), isSelected: sourceAssetId === asset.id }" :draggable="canEdit" @dragstart="dragAsset($event, asset)" @click="openSourceAsset(asset)" @dblclick.stop="openSourceAsset(asset)">
-                <span class="assetIcon" :class="asset.kind"><icon-music v-if="asset.kind === 'audio'" :size="18" /><icon-photo v-else-if="asset.kind === 'image'" :size="18" /><icon-video v-else :size="18" /></span>
-                <div class="assetInfo"><strong :title="asset.name">{{ asset.name }}</strong><span>{{ missingAssetIds.includes(asset.id) ? '素材缺失' : `${formatTime(asset.duration)} · ${formatBytes(asset.size)}` }}</span><span v-if="asset.source" :title="asset.source.path">{{ asset.source.type === 'production' ? `项目镜头 · 候选 ${asset.source.attemptNumber || 1}` : asset.source.canvasPath ? `画布 · ${asset.source.canvasPath}` : asset.source.type === 'library' ? '共享素材快照' : '工作区素材快照' }} · {{ asset.source.hash.slice(0, 8) }}</span></div>
-                <button class="tinyAction" type="button" :aria-label="`预览源素材 ${asset.name}`" title="预览源素材，设置入出点" @click.stop="openSourceAsset(asset)"><icon-player-play :size="14" /></button>
-                <button class="tinyAction" type="button" :aria-label="`重新链接 ${asset.name}`" title="重新链接素材" :disabled="!canEdit" @click.stop="chooseRelink(asset)"><icon-link :size="14" /></button>
-                <button class="tinyAction" type="button" :aria-label="`添加 ${asset.name} 到时间线`" :disabled="!canEdit || missingAssetIds.includes(asset.id)" @click.stop="addAssetToTimeline(asset)"><icon-plus :size="15" /></button>
-                <div v-if="asset.kind === 'video' || asset.kind === 'audio'" class="cacheControls" @click.stop>
-                  <span class="cacheState" :class="{ hasError: cacheError(asset) }" :title="cacheStatusText(asset)">{{ cacheStatusText(asset) }}</span>
-                  <button type="button" class="cacheButton" :disabled="!canEdit || missingAssetIds.includes(asset.id) || cacheBusyIds.has(asset.id) || cacheStatus(asset)?.state === 'processing'" @click="toggleMediaCache(asset)">{{ cacheActionText(asset) }}</button>
-                  <button v-if="cachePreparingIds.has(asset.id)" type="button" class="cacheButton cancelCacheButton" @click="cancelMediaCache(asset)">取消</button>
+      <div v-if="exportRecordError && !lastExport" class="noticeBar errorNotice" role="alert"><span>{{ exportRecordError }}</span></div>
+      <div v-if="exportError" class="noticeBar errorNotice" role="alert"><span>{{ exportError }}</span><button type="button" @click="exportError = ''">关闭</button></div>
+      <div ref="editorWorkspace" class="editorWorkspace" :style="{ '--timelineHeight': `${timelineHeight}px` }">
+        <div class="editorBody" :class="{ isUnavailable: !projectReady }">
+          <aside class="mediaPanel" @dragover.prevent @drop.prevent="dropFiles">
+            <nav class="sideNav" role="tablist" aria-label="剪辑工具" aria-orientation="vertical">
+              <button v-for="(item, index) in panelTabs" :id="`${item.id}Tab`" :key="item.id" class="sideTab" :class="{ isActive: activeTab === item.id }" type="button" role="tab" :aria-selected="activeTab === item.id" aria-controls="editorAssetPanel" :tabindex="activeTab === item.id ? 0 : -1" @keydown="onPanelTabKeydown($event, index)" @click="activeTab = item.id"><component :is="item.icon" :size="20" /><span>{{ item.label }}</span></button>
+            </nav>
+            <section v-if="activeTab === 'media' || activeTab === 'audio'" id="editorAssetPanel" class="assetPanel" role="tabpanel" :aria-labelledby="`${activeTab}Tab`">
+              <div class="panelHeading"><div><h2>{{ activeTab === 'audio' ? '音频素材' : '媒体素材' }}</h2><span>{{ assets.length }} 个文件</span></div><button class="tinyAction" aria-label="导入媒体" :disabled="!canEdit" @click="fileInput?.click()"><icon-plus :size="17" /></button></div>
+              <input ref="fileInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" multiple @change="importFiles" />
+              <input ref="relinkInput" class="hiddenInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,image/webp" @change="relinkFile" />
+              <div class="importActions"><button class="importButton" type="button" :disabled="!canEdit" @click="fileInput?.click()"><icon-upload :size="16" />本地导入</button><button class="importButton" type="button" :disabled="!canEdit" @click="mediaPickerOpen = true"><icon-link :size="16" />项目 / 共享素材</button></div>
+              <editorAudioMixer v-if="activeTab === 'audio'" :tracks="tracks" :disabled="!canEdit" :peakDb="audioPeakDb" :peakHoldDb="audioPeakHoldDb" @volume="changeTrackVolume" @toggle="toggleMixerTrack" />
+              <div v-if="importBusy" class="assetHint" role="status">{{ importLabel }} {{ importProgress }}% <button @click="importController?.abort()">取消</button></div>
+              <input v-model="assetSearch" class="assetSearch" type="search" aria-label="搜索素材" placeholder="搜索素材" />
+              <div v-if="activeTab === 'media'" class="assetFilters"><button v-for="filter in mediaFilters" :key="filter.id" :class="{ isActive: mediaFilter === filter.id }" @click="mediaFilter = filter.id">{{ filter.label }}</button></div>
+              <div class="assetList">
+                <div v-for="asset in visibleAssets" :key="asset.id" class="assetRow" :class="{ isMissing: missingAssetIds.includes(asset.id), isSelected: sourceAssetId === asset.id }" :draggable="canEdit" @dragstart="dragAsset($event, asset)" @click="openSourceAsset(asset)" @dblclick.stop="openSourceAsset(asset)">
+                  <span class="assetIcon" :class="asset.kind"><icon-music v-if="asset.kind === 'audio'" :size="18" /><icon-photo v-else-if="asset.kind === 'image'" :size="18" /><icon-video v-else :size="18" /></span>
+                  <div class="assetInfo"><strong :title="asset.name">{{ asset.name }}</strong><span>{{ missingAssetIds.includes(asset.id) ? '素材缺失' : `${formatTime(asset.duration)} · ${formatBytes(asset.size)}` }}</span><span v-if="asset.source" :title="asset.source.path">{{ asset.source.type === 'production' ? `项目镜头 · 候选 ${asset.source.attemptNumber || 1}` : asset.source.canvasPath ? `画布 · ${asset.source.canvasPath}` : asset.source.type === 'library' ? '共享素材快照' : '工作区素材快照' }} · {{ asset.source.hash.slice(0, 8) }}</span></div>
+                  <button class="tinyAction" type="button" :aria-label="`预览源素材 ${asset.name}`" title="预览源素材，设置入出点" @click.stop="openSourceAsset(asset)"><icon-player-play :size="14" /></button>
+                  <button class="tinyAction" type="button" :aria-label="`重新链接 ${asset.name}`" title="重新链接素材" :disabled="!canEdit" @click.stop="chooseRelink(asset)"><icon-link :size="14" /></button>
+                  <button class="tinyAction" type="button" :aria-label="`添加 ${asset.name} 到时间线`" :disabled="!canEdit || missingAssetIds.includes(asset.id)" @click.stop="addAssetToTimeline(asset)"><icon-plus :size="15" /></button>
+                  <div v-if="asset.kind === 'video' || asset.kind === 'audio'" class="cacheControls" @click.stop>
+                    <span class="cacheState" :class="{ hasError: cacheError(asset) }" :title="cacheStatusText(asset)">{{ cacheStatusText(asset) }}</span>
+                    <button type="button" class="cacheButton" :disabled="!canEdit || missingAssetIds.includes(asset.id) || cacheBusyIds.has(asset.id) || cacheStatus(asset)?.state === 'processing'" @click="toggleMediaCache(asset)">{{ cacheActionText(asset) }}</button>
+                    <button v-if="cachePreparingIds.has(asset.id)" type="button" class="cacheButton cancelCacheButton" @click="cancelMediaCache(asset)">取消</button>
+                  </div>
                 </div>
               </div>
-            </div>
-            <button class="dropHint" :disabled="!canEdit" @click="fileInput?.click()">拖入视频 / 音频 / 图片 · 单文件最大 8 GiB</button>
-          </section>
-          <section v-else-if="activeTab === 'text'" class="assetPanel textPanel">
-            <div class="panelHeading"><div><h2>文字与字幕</h2><span>字幕支持 SRT / VTT</span></div></div>
-            <label class="fieldLabel" for="textDraft">文字内容</label><textarea id="textDraft" v-model="textDraft" rows="5"></textarea><button class="wideButton" :disabled="!canEdit || !textDraft.trim()" @click="addTextClip">添加到文字轨</button>
-            <input ref="subtitleInput" class="hiddenInput" type="file" accept=".srt,.vtt" @change="importSubtitles" />
-            <button class="secondaryButton" :disabled="!canEdit" @click="subtitleInput?.click()">导入字幕</button>
-            <div class="buttonRow"><button class="secondaryButton" :disabled="!clips.some(clip => clip.kind === 'text')" @click="exportSubtitles('srt')">导出 SRT</button><button class="secondaryButton" :disabled="!clips.some(clip => clip.kind === 'text')" @click="exportSubtitles('vtt')">导出 VTT</button></div>
-          </section>
-          <section v-else class="assetPanel settingsPanel">
-            <div class="panelHeading"><div><h2>项目与输出</h2><span>MP4 · H.264 / AAC</span></div></div>
-            <label class="fieldLabel" for="aspectRatio">画面比例</label><select id="aspectRatio" :value="aspectRatio" :disabled="!canEdit" @change="changeSetting('aspectRatio', $event)"><option v-for="ratio in ['16:9', '9:16', '1:1', '4:3']" :key="ratio">{{ ratio }}</option></select>
-            <label class="fieldLabel" for="frameRate">帧率</label><select id="frameRate" :value="frameRate" :disabled="!canEdit" @change="changeSetting('frameRate', $event)"><option v-for="fps in [24,25,30,60]" :key="fps" :value="fps">{{ fps }} fps</option></select>
-            <label class="fieldLabel" for="exportHeight">输出高度</label><select id="exportHeight" :value="exportHeight" :disabled="!canEdit" @change="changeSetting('exportHeight', $event)"><option :value="720">720p</option><option :value="1080">1080p</option><option :value="2160">2160p · 4K</option></select>
-            <label class="fieldLabel" for="exportQuality">输出质量</label><select id="exportQuality" :value="exportQuality" :disabled="!canEdit" @change="changeSetting('exportQuality', $event)"><option value="draft">快速预览</option><option value="standard">标准</option><option value="high">高质量</option></select>
-            <input ref="edlInput" class="hiddenInput" type="file" accept=".edl,.txt" @change="importEdlFile" />
-            <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canEdit" @click="edlInput?.click()">导入 EDL</button><button class="secondaryButton" type="button" :disabled="!clips.some(clip => clip.kind === 'video' || clip.kind === 'image')" @click="exportEdlFile">导出 EDL</button></div>
-            <p class="featureNote">画面等比适配。轨道从上到下对应画面上层到下层，空隙填充黑色。隐藏控制画面，静音控制声音。</p>
-          </section>
-        </aside>
-        <section class="previewArea" aria-label="视频预览">
-          <nav class="monitorModes" aria-label="监视器布局">
-            <button v-for="mode in monitorModes" :key="mode.id" type="button" :class="{ isActive: previewMode === mode.id }" :aria-pressed="previewMode === mode.id" :disabled="mode.id !== 'program' && !sourceAsset" @click="previewMode = mode.id">{{ mode.label }}</button>
-          </nav>
-          <div class="monitorGrid" :class="{ isDual: previewMode === 'dual' }">
-            <section v-if="previewMode !== 'source'" class="programMonitor" aria-label="成片监视器">
-              <div class="previewTopline"><div class="previewTitle"><span class="liveDot"></span><span>成片</span><span class="previewDimensions">{{ aspectRatio }} · {{ frameRate }} fps</span></div><span class="playheadReadout">{{ formatTime(currentTime) }} / {{ formatTime(timelineDuration) }}</span></div>
-              <div class="previewHost"><div ref="previewStage" class="previewStage" :style="stageStyle">
-                <template v-for="clip in activeVisualClips" :key="clip.id">
-                  <editorText v-if="clip.kind === 'text'" :clip="clip" :width="textRenderSize.width" :height="textRenderSize.height" :style="{ opacity: textOpacity(clip) }" />
-                  <img v-else-if="clip.kind === 'image'" class="previewVideo" :src="assetUrl(clip)" :style="visualStyle(clip)" alt="" @error="mediaFailed(clip)" />
-                  <video v-else :ref="element => setVideoElement(clip.id, element)" class="previewVideo" :src="previewAssetUrl(clip)" :style="visualStyle(clip)" muted playsinline preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></video>
-                </template>
-                <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="previewAssetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></audio>
-                <div v-if="!clips.length" class="previewEmpty"><icon-movie :size="38" /><span>将素材添加到时间线</span></div>
-              </div></div>
-              <div v-if="previewError" class="previewAlert" role="alert">{{ previewError }}<button aria-label="关闭提示" @click="previewError = ''">×</button></div>
-              <div class="transportBar">
-                <button class="transportButton" :aria-label="isPlaying ? '暂停' : '播放'" @click="togglePlayback"><icon-player-pause v-if="isPlaying" :size="21" /><icon-player-play v-else :size="21" /></button>
-                <button class="transportButton" aria-label="上一帧" @click="stepFrame(-1)"><icon-player-track-prev :size="16" /></button><button class="transportButton" aria-label="下一帧" @click="stepFrame(1)"><icon-player-track-next :size="16" /></button>
-                <input class="previewRange" type="range" min="0" :max="timelineDuration || 1" :step="1 / frameRate" :value="currentTime" aria-label="时间线播放位置" @input="seekFromRange" />
-                <span class="transportTime">{{ formatTime(currentTime) }} / {{ formatTime(timelineDuration) }}</span><button class="transportButton" aria-label="跳转到时间线开头" @click="seekTo(0)"><icon-player-skip-back :size="18" /></button>
-              </div>
+              <button class="dropHint" :disabled="!canEdit" @click="fileInput?.click()">拖入视频 / 音频 / 图片 · 单文件最大 8 GiB</button>
             </section>
-            <editorSource v-if="previewMode !== 'program' && sourceAsset" class="sourceMonitorPanel" :asset="sourceAsset" :url="sourceAssetUrl" :frameRate="frameRate" :disabled="!canEdit" @focusin="stopPlayback" @insert="insertSourceSelection" />
-          </div>
-          <details v-if="lastExport" class="exportDetails"><summary>成片登记与画布回写<span>{{ lastExport.name }}</span></summary><editorDelivery :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport || exportRecordBusy"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport || exportRecordBusy" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery></details>
-          <p v-if="exportRecordError" class="exportError" role="alert">{{ exportRecordError }}<button v-if="lastExport && !exportRecordSaved" class="secondaryButton" type="button" :disabled="exportRecordBusy || !canRegisterExport" @click="persistLastExport">{{ exportRecordBusy ? '正在保存记录…' : '重试保存导出记录' }}</button></p>
-          <p v-else-if="exportRecordBusy" class="exportStale" role="status">正在核验导出记录…</p>
-          <p v-else-if="lastExport && exportRecordSaved" class="exportStale" role="status">导出记录已保存，重新打开此工程后可继续登记与回写。</p>
-          <p v-if="lastExport && !canRegisterExport" class="exportStale" role="status">工程已变更或正在保存，请重新导出后登记与回写。</p>
-        </section>
-        <aside class="inspectorPanel">
-          <div class="panelHeading"><div><h2>片段属性</h2><span>{{ selectedClip?.title || '未选择片段' }}</span></div></div>
-          <template v-if="selectedClip">
-            <p v-if="isLocked(selectedClip)" class="featureNote">此轨道已锁定，解锁后可以编辑。</p>
-            <fieldset :disabled="!canEdit || isLocked(selectedClip)">
-              <label class="fieldLabel" for="clipTrack">所在轨道</label><select id="clipTrack" :value="selectedClip.track" @change="moveSelectedTrack"><option v-for="track in tracks.filter(track => track.kind === clipTrackKind(selectedClip!) && !track.locked)" :key="track.id" :value="track.id">{{ track.label }}</option></select>
-              <label class="fieldLabel" for="clipStart">时间线起点 <span>秒</span></label><input id="clipStart" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.start)" @change="updateSelectedClip('start', $event)" />
-              <label class="fieldLabel" for="clipIn">入点 <span>源素材秒</span></label><input id="clipIn" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.inPoint)" @change="updateSelectedClip('inPoint', $event)" />
-              <label class="fieldLabel" for="clipOut">出点 <span>源素材秒</span></label><input id="clipOut" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.outPoint)" @change="updateSelectedClip('outPoint', $event)" />
-              <details class="precisionPanel" open>
-                <summary>精确剪辑</summary>
-                <label class="fieldLabel" for="precisionOperation">操作</label><select id="precisionOperation" v-model="precisionOperation"><option value="rippleIn">波纹入点</option><option value="rippleOut">波纹出点</option><option value="roll">滚动右切点</option><option v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'" value="slip">滑移源素材</option></select>
-                <label class="fieldLabel" for="precisionFrames">偏移 <span>帧</span></label><input id="precisionFrames" v-model.number="precisionFrames" type="number" step="1" />
-                <div class="buttonRow"><button class="secondaryButton" type="button" @click="applyPrecisionEdit(-1)">−1 帧</button><button class="secondaryButton" type="button" @click="applyPrecisionEdit(1)">+1 帧</button><button class="secondaryButton" type="button" :disabled="!Number.isInteger(precisionFrames) || !precisionFrames" @click="applyPrecisionEdit(precisionFrames)">应用</button></div>
-                <p class="featureNote">{{ precisionDescription }}</p>
-              </details>
-              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">基础音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="2" step=".01" :value="selectedClip.volume" @change="updateSelectedClip('volume', $event)" /><span v-if="selectedClip.keyframes?.some(frame => frame.property === 'volume')" class="featureNote">音量关键帧已接管基础音量。</span></template>
-              <details v-if="selectedClipHasAudio" class="loudnessPanel" open>
-                <summary>响度校准</summary>
-                <label class="fieldLabel" for="clipGain">片段增益 <span>dB</span></label><input id="clipGain" type="number" min="-60" max="24" step=".1" :value="selectedClip.gainDb ?? 0" @change="updateSelectedClip('gainDb', $event)" />
-                <label class="fieldLabel" for="targetLoudness">目标响度</label><select id="targetLoudness" v-model.number="targetLoudness" :disabled="loudnessBusy"><option :value="-16">网络视频 · -16 LUFS</option><option :value="-14">音乐内容 · -14 LUFS</option><option :value="-23">广播参考 · -23 LUFS</option></select>
-                <button class="wideButton" type="button" :disabled="loudnessBusy || !canEdit || isLocked(selectedClip)" @click="analyzeSelectedAudio">{{ loudnessBusy ? '正在测量…' : '测量并校准片段' }}</button><button v-if="loudnessBusy" class="secondaryButton" type="button" @click="loudnessController?.abort()">取消测量</button>
-                <p class="featureNote">测量当前源选区，以恒定增益校准并限制真峰值至 -1 dBTP；原素材保持完整。</p>
-                <p v-if="loudnessNotice" class="featureNote" role="status">{{ loudnessNotice }}</p><p v-if="loudnessError" class="exportError" role="alert">{{ loudnessError }}</p>
-              </details>
-              <template v-if="selectedClip.kind === 'text'"><label class="fieldLabel" for="clipText">文字内容</label><textarea id="clipText" rows="4" :value="selectedClip.text" @change="updateSelectedText"></textarea><label class="fieldLabel" for="textColor">文字颜色</label><input id="textColor" type="color" :value="selectedClip.textColor ?? '#ffffff'" @change="updateTextColor" /><label v-for="field in textFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></template>
-              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><details open><summary>画面变换</summary><label v-for="field in transformFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details><details><summary>基础调色</summary><label v-for="field in colorFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details></template>
-              <label class="fieldLabel" for="clipOpacity">不透明度</label><input id="clipOpacity" type="range" min="0" max="1" step=".01" :value="selectedClip.opacity ?? 1" @change="updateSelectedClip('opacity', $event)" />
-              <details v-if="availableKeyframeProperties.length" class="keyframePanel" open>
-                <summary>动画关键帧</summary>
-                <label class="fieldLabel" for="keyframeProperty">关键帧属性</label><select id="keyframeProperty" v-model="keyframeProperty"><option v-for="item in availableKeyframeProperties" :key="item.id" :value="item.id">{{ item.label }}</option></select>
-                <label class="fieldLabel" for="keyframeValue">{{ keyframePropertySpec.label }} <span>{{ keyframePosition === undefined ? "播放头未在片段内" : formatTime(keyframePosition) }}</span></label>
-                <input id="keyframeValue" type="number" :min="keyframePropertySpec.min" :max="keyframePropertySpec.max" :step="keyframePropertySpec.step" :value="keyframeValueDraft" :disabled="keyframePosition === undefined" @input="updateKeyframeDraft" />
-                <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe" @click="writeKeyframe">{{ currentPropertyKeyframe ? "更新关键帧" : "添加关键帧" }}</button><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe || !currentPropertyKeyframe" @click="removeCurrentKeyframe">删除当前</button></div>
-                <div class="keyframeNavigation"><button type="button" aria-label="上一关键帧" :disabled="!keyframeFrames.length" @click="navigateKeyframe(-1)"><icon-player-track-prev :size="14" /></button><span>{{ keyframeFrames.length }} 个点</span><button type="button" aria-label="下一关键帧" :disabled="!keyframeFrames.length" @click="navigateKeyframe(1)"><icon-player-track-next :size="14" /></button></div>
-                <div v-if="keyframeFrames.length" class="keyframeList"><div v-for="frame in keyframeFrames" :key="`${frame.property}:${frame.time}`" class="keyframeRow"><button type="button" class="keyframeJump" @click="seekTo(selectedClip.start + frame.time)">{{ formatTime(frame.time) }}<span>{{ roundNumber(frame.value) }}{{ keyframePropertySpec.unit }}</span></button><button type="button" class="keyframeRemove" :aria-label="`删除 ${formatTime(frame.time)} 关键帧`" @click="removeKeyframe(frame)">×</button></div></div>
-              </details>
-              <label class="fieldLabel" for="fadeIn">淡入 <span>秒</span></label><input id="fadeIn" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeIn ?? 0" @change="updateSelectedClip('fadeIn', $event)" /><label class="fieldLabel" for="fadeOut">淡出 <span>秒</span></label><input id="fadeOut" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeOut ?? 0" @change="updateSelectedClip('fadeOut', $event)" />
-              <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><label class="fieldLabel" for="transitionIn">转场进入 <span>秒</span></label><input id="transitionIn" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionIn ?? 0" @change="updateSelectedClip('transitionIn', $event)" /><label class="fieldLabel" for="transitionOut">转场离开 <span>秒</span></label><input id="transitionOut" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionOut ?? 0" @change="updateSelectedClip('transitionOut', $event)" /><div class="buttonRow"><button class="secondaryButton" type="button" @click="applyCrossfade">应用交叉淡化</button><button class="secondaryButton" type="button" @click="clearCrossfade">清除转场</button></div></template>
-              <div class="inspectorFooter"><span>时间线时长</span><strong>{{ formatTime(clipDuration(selectedClip)) }}</strong></div><button class="removeButton" @click="deleteSelectedClip"><icon-trash :size="16" />删除片段</button>
-            </fieldset>
-          </template>
-          <div v-else class="inspectorEmpty"><icon-adjustments :size="27" /><span>选择片段查看属性</span></div><div v-if="exportError" class="exportError" role="alert">{{ exportError }}</div>
-        </aside>
-      </div>
-      <section class="timelinePanel" aria-label="多轨时间线">
-        <header class="timelineHeader"><div class="timelineActions">
-          <button class="timelineButton" aria-label="撤销" :disabled="!canEdit || !undoStack.length" @click="undo"><icon-arrow-back-up :size="17" /></button><button class="timelineButton" aria-label="重做" :disabled="!canEdit || !redoStack.length" @click="redo"><icon-arrow-forward-up :size="17" /></button>
-          <button class="timelineButton" aria-label="分割片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="splitSelectedClip"><icon-scissors :size="17" /></button><button class="timelineButton" aria-label="复制片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="duplicateSelectedClip"><icon-copy :size="17" /></button><button class="timelineButton" aria-label="删除片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="deleteSelectedClip"><icon-trash :size="17" /></button>
-          <button class="trackAdd" type="button" title="Shift + Delete" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="rippleDeleteSelected">波纹删除</button>
-          <select v-model="editMode" class="editMode" aria-label="时间线编辑模式"><option value="select">选择 V</option><option value="ripple">波纹修剪 B</option><option value="roll">滚动 N</option><option value="slip">滑移 Y</option></select>
-          <button class="timelineButton snapButton" :class="{ isActive: snapEnabled }" :aria-pressed="snapEnabled" @click="snapEnabled = !snapEnabled"><icon-magnet :size="16" />吸附</button><span class="headerDivider"></span>
-          <button v-for="kind in trackKinds" :key="kind.id" class="trackAdd" :disabled="!canEdit" @click="addTrack(kind.id)">+ {{ kind.label }}轨</button>
-        </div><div class="timelineZoom"><label>缩放 <input v-model.number="zoom" type="range" min=".2" max="100" step=".2" aria-label="时间线缩放" /></label><button class="trackAdd" @click="fitTimeline">适合全长</button></div></header>
-        <div v-if="editError" class="editNotice" role="alert"><span>{{ editError }}</span><button type="button" aria-label="关闭剪辑提示" @click="editError = ''">×</button></div>
-        <div ref="timelineViewport" class="timelineViewport" @scroll.passive="updateTimelineViewport"><div class="timelineCanvas" :style="{ width: `${timelineWidth}px` }">
-          <div class="timelineRuler" @pointerdown="seekTimeline"><div class="rulerLabel">时间</div><div class="rulerTicks"><span v-for="tick in rulerTicks" :key="tick" class="rulerTick" :style="{ left: `${tick * zoom}px` }">{{ formatTime(tick) }}</span></div></div>
-          <div v-for="(track, index) in tracks" :key="track.id" class="timelineTrack" :class="[track.kind, { isLocked: track.locked, isHidden: track.hidden }]" :data-track-id="track.id" @pointerdown="seekTimeline" @dragover.prevent @drop.prevent="dropOnTrack($event, track)">
-            <div class="trackLabel" @pointerdown.stop><div class="trackName"><input :value="track.label" :aria-label="`轨道名称 ${track.label}`" :disabled="!canEdit || track.locked" @change="renameTrack(track, $event)" /><small>{{ clips.filter(clip => clip.track === track.id).length }}</small></div><div class="trackControls">
-              <button :aria-label="`${track.locked ? '解锁' : '锁定'} ${track.label}`" :aria-pressed="track.locked" :disabled="!canEdit" @click="toggleTrack(track, 'locked')">{{ track.locked ? '锁' : '锁定' }}</button><button v-if="track.kind !== 'audio'" :aria-label="`${track.hidden ? '显示' : '隐藏'} ${track.label}`" :aria-pressed="track.hidden" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'hidden')">{{ track.hidden ? '显' : '隐藏' }}</button><button v-if="track.kind !== 'text'" :aria-label="`${track.muted ? '取消静音' : '静音'} ${track.label}`" :aria-pressed="track.muted" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'muted')">{{ track.muted ? '有声' : '静音' }}</button><button :aria-label="`上移 ${track.label}`" :disabled="!canEdit || track.locked || index === 0" @click="reorderTrack(index, -1)">↑</button><button :aria-label="`下移 ${track.label}`" :disabled="!canEdit || track.locked || index === tracks.length - 1" @click="reorderTrack(index, 1)">↓</button><button :aria-label="`删除轨道 ${track.label}`" :disabled="!canEdit || track.locked" @click="removeTrack(track)">×</button>
-            </div></div>
-            <div class="trackContent">
-              <button v-for="clip in clips.filter(item => item.track === track.id)" :key="clip.id" class="timelineClip" :class="[clip.kind, { isSelected: selectedClipId === clip.id }]" :style="clipStyle(clip)" :title="`${clip.title} · ${formatTime(clipDuration(clip))}`" :aria-label="`片段 ${clip.title}`" @pointerdown.stop="startClipDrag($event, clip)" @click.stop="selectClip(clip)">
-                <editorFilmstrip v-if="clip.kind === 'video' || clip.kind === 'image'" :source="assetUrl(clip)" :kind="clip.kind" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :frameRate="frameRate" :thumbnailSprite="cachedMediaById.get(clip.assetId ?? '')?.thumbnailSprite" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" :generator="thumbnailGenerator" />
-                <editorAudioWaveform v-if="(clip.kind === 'audio' || (clip.kind === 'video' && assets.find(asset => asset.id === clip.assetId)?.hasAudio)) && waveformForClip(clip)" :peaks="waveformForClip(clip)!.peaks" :duration="waveformForClip(clip)!.duration" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" />
-                <span class="clipTitle">{{ clip.title }}</span><span class="clipDuration">{{ formatTime(clipDuration(clip)) }}</span>
-                <span class="trimHandle leftHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'left')"></span><span class="trimHandle rightHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'right')"></span>
-              </button>
+            <section v-else-if="activeTab === 'text'" id="editorAssetPanel" class="assetPanel textPanel" role="tabpanel" aria-labelledby="textTab">
+              <div class="panelHeading"><div><h2>文字与字幕</h2><span>字幕支持 SRT / VTT</span></div></div>
+              <label class="fieldLabel" for="textDraft">文字内容</label><textarea id="textDraft" v-model="textDraft" rows="5"></textarea><button class="wideButton" :disabled="!canEdit || !textDraft.trim()" @click="addTextClip">添加到文字轨</button>
+              <input ref="subtitleInput" class="hiddenInput" type="file" accept=".srt,.vtt" @change="importSubtitles" />
+              <button class="secondaryButton" :disabled="!canEdit" @click="subtitleInput?.click()">导入字幕</button>
+              <div class="buttonRow"><button class="secondaryButton" :disabled="!clips.some(clip => clip.kind === 'text')" @click="exportSubtitles('srt')">导出 SRT</button><button class="secondaryButton" :disabled="!clips.some(clip => clip.kind === 'text')" @click="exportSubtitles('vtt')">导出 VTT</button></div>
+            </section>
+            <section v-else id="editorAssetPanel" class="assetPanel settingsPanel" role="tabpanel" aria-labelledby="settingsTab">
+              <div class="panelHeading"><div><h2>项目与输出</h2><span>MP4 · H.264 / AAC</span></div></div>
+              <label class="fieldLabel" for="aspectRatio">画面比例</label><select id="aspectRatio" :value="aspectRatio" :disabled="!canEdit" @change="changeSetting('aspectRatio', $event)"><option v-for="ratio in ['16:9', '9:16', '1:1', '4:3']" :key="ratio">{{ ratio }}</option></select>
+              <label class="fieldLabel" for="frameRate">帧率</label><select id="frameRate" :value="frameRate" :disabled="!canEdit" @change="changeSetting('frameRate', $event)"><option v-for="fps in [24,25,30,60]" :key="fps" :value="fps">{{ fps }} fps</option></select>
+              <label class="fieldLabel" for="exportHeight">输出高度</label><select id="exportHeight" :value="exportHeight" :disabled="!canEdit" @change="changeSetting('exportHeight', $event)"><option :value="720">720p</option><option :value="1080">1080p</option><option :value="2160">2160p · 4K</option></select>
+              <label class="fieldLabel" for="exportQuality">输出质量</label><select id="exportQuality" :value="exportQuality" :disabled="!canEdit" @change="changeSetting('exportQuality', $event)"><option value="draft">快速预览</option><option value="standard">标准</option><option value="high">高质量</option></select>
+              <input ref="edlInput" class="hiddenInput" type="file" accept=".edl,.txt" @change="importEdlFile" />
+              <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canEdit" @click="edlInput?.click()">导入 EDL</button><button class="secondaryButton" type="button" :disabled="!clips.some(clip => clip.kind === 'video' || clip.kind === 'image')" @click="exportEdlFile">导出 EDL</button></div>
+              <p class="featureNote">画面等比适配。轨道从上到下对应画面上层到下层，空隙填充黑色。隐藏控制画面，静音控制声音。</p>
+            </section>
+          </aside>
+          <section ref="previewArea" class="previewArea" aria-label="视频预览">
+            <header class="monitorHeader">
+              <span class="previewTitle">播放器</span>
+              <nav class="monitorModes" aria-label="监视器布局">
+                <button v-for="mode in monitorModes" :key="mode.id" type="button" :class="{ isActive: previewMode === mode.id }" :aria-pressed="previewMode === mode.id" :disabled="mode.id !== 'program' && !sourceAsset || mode.id === 'dual' && previewWidth < 720" @click="previewMode = mode.id">{{ mode.label }}</button>
+              </nav>
+              <button ref="inspectorButton" class="monitorAction inspectorToggle" type="button" :aria-expanded="inspectorOpen" aria-controls="editorInspector" @click="inspectorOpen = !inspectorOpen">属性</button>
+              <button class="monitorAction agentToggle" type="button" :aria-expanded="agentVisible" aria-controls="agentPanel" :disabled="!projectReady" aria-label="AI 剪辑助手" title="AI 剪辑助手" @click="agentVisible = !agentVisible"><icon-message-circle :size="15" /></button>
+              <button ref="expandButton" class="monitorAction" type="button" :aria-pressed="previewExpanded" @click="togglePreviewExpanded">{{ previewExpanded ? '恢复布局' : '放大预览' }}</button>
+            </header>
+            <div class="monitorGrid" :class="{ isDual: previewMode === 'dual' }">
+              <section v-show="previewMode !== 'source'" class="programMonitor" aria-label="成片监视器">
+                <div class="previewHost"><div ref="previewStage" class="previewStage" :style="stageStyle">
+                  <template v-for="clip in activeVisualClips" :key="clip.id">
+                    <editorText v-if="clip.kind === 'text'" :clip="clip" :width="textRenderSize.width" :height="textRenderSize.height" :style="{ opacity: textOpacity(clip) }" />
+                    <img v-else-if="clip.kind === 'image'" class="previewVideo" :src="assetUrl(clip)" :style="visualStyle(clip)" alt="" @error="mediaFailed(clip)" />
+                    <video v-else :ref="element => setVideoElement(clip.id, element)" class="previewVideo" :src="previewAssetUrl(clip)" :style="visualStyle(clip)" muted playsinline preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></video>
+                  </template>
+                  <audio v-for="clip in activeSoundClips" :key="clip.id" :ref="element => setAudioElement(clip.id, element)" class="hiddenAudio" :src="previewAssetUrl(clip)" preload="auto" @loadedmetadata="syncPlayers" @error="mediaFailed(clip)"></audio>
+                  <div v-if="!clips.length" class="previewEmpty"><icon-movie :size="38" /><span>将素材添加到时间线</span></div>
+                </div></div>
+                <div v-if="previewError" class="previewAlert" role="alert">{{ previewError }}<button aria-label="关闭提示" @click="previewError = ''">×</button></div>
+                <div class="transportBar">
+                  <span class="transportTime">{{ formatTime(currentTime) }} / {{ formatTime(timelineDuration) }}</span>
+                  <div class="transportButtons">
+                  <button class="transportButton" aria-label="跳转到时间线开头" @click="seekTo(0)"><icon-player-skip-back :size="18" /></button>
+                  <button class="transportButton" aria-label="上一帧" @click="stepFrame(-1)"><icon-player-track-prev :size="16" /></button>
+                  <button class="transportButton" :aria-label="isPlaying ? '暂停' : '播放'" @click="togglePlayback"><icon-player-pause v-if="isPlaying" :size="21" /><icon-player-play v-else :size="21" /></button>
+                  <button class="transportButton" aria-label="下一帧" @click="stepFrame(1)"><icon-player-track-next :size="16" /></button>
+                  </div>
+                  <select class="previewRatio" aria-label="画面比例" :value="aspectRatio" :disabled="!canEdit" @change="changeSetting('aspectRatio', $event)"><option v-for="ratio in ['16:9', '9:16', '1:1', '4:3']" :key="ratio">{{ ratio }}</option></select>
+                </div>
+              </section>
+              <editorSource v-if="sourceAsset" v-show="previewMode !== 'program'" class="sourceMonitorPanel" :asset="sourceAsset" :url="sourceAssetUrl" :frameRate="frameRate" :disabled="!canEdit" :active="previewMode !== 'program' && !isPlaying" @focusin="stopPlayback" @insert="insertSourceSelection" />
             </div>
-          </div>
-          <div class="playhead" :style="{ left: `${trackLabelWidth + currentTime * zoom}px` }" @pointerdown.stop="startPlayheadDrag"><span class="playheadCap"></span><span class="playheadLine"></span></div>
-        </div></div>
-        <footer class="timelineFooter"><span>{{ tracks.length }} 轨 · {{ clips.length }} 个片段</span><span class="timelineFooterNote">{{ editMode === 'select' ? 'V 选择 · B 波纹修剪 · N 滚动 · Y 滑移 · Shift Delete 波纹删除' : editMode === 'slip' ? '拖动片段整体滑移源范围，时间线位置保持不变 · V 返回选择' : '拖动片段边缘执行修剪 · V 返回选择' }} · 空格 播放 · ← → 逐帧 · S 分割 · Ctrl Z 撤销</span><span>总时长 {{ formatTime(timelineDuration) }}</span></footer>
-      </section>
+          </section>
+          <aside id="editorInspector" class="inspectorPanel" aria-label="片段属性">
+            <div class="panelHeading"><div><h2>片段属性</h2><span>{{ selectedClip?.title || '未选择片段' }}</span></div><button class="tinyAction inspectorClose" type="button" aria-label="关闭属性面板" @click="closeInspector">×</button></div>
+            <template v-if="selectedClip">
+              <p v-if="isLocked(selectedClip)" class="featureNote">此轨道已锁定，解锁后可以编辑。</p>
+              <fieldset :disabled="!canEdit || isLocked(selectedClip)">
+                <label class="fieldLabel" for="clipTrack">所在轨道</label><select id="clipTrack" :value="selectedClip.track" @change="moveSelectedTrack"><option v-for="track in tracks.filter(track => track.kind === clipTrackKind(selectedClip!) && !track.locked)" :key="track.id" :value="track.id">{{ track.label }}</option></select>
+                <label class="fieldLabel" for="clipStart">时间线起点 <span>秒</span></label><input id="clipStart" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.start)" @change="updateSelectedClip('start', $event)" />
+                <label class="fieldLabel" for="clipIn">入点 <span>源素材秒</span></label><input id="clipIn" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.inPoint)" @change="updateSelectedClip('inPoint', $event)" />
+                <label class="fieldLabel" for="clipOut">出点 <span>源素材秒</span></label><input id="clipOut" type="number" min="0" :step="1 / frameRate" :value="roundNumber(selectedClip.outPoint)" @change="updateSelectedClip('outPoint', $event)" />
+                <details class="precisionPanel" open>
+                  <summary>精确剪辑</summary>
+                  <label class="fieldLabel" for="precisionOperation">操作</label><select id="precisionOperation" v-model="precisionOperation"><option value="rippleIn">波纹入点</option><option value="rippleOut">波纹出点</option><option value="roll">滚动右切点</option><option v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'" value="slip">滑移源素材</option></select>
+                  <label class="fieldLabel" for="precisionFrames">偏移 <span>帧</span></label><input id="precisionFrames" v-model.number="precisionFrames" type="number" step="1" />
+                  <div class="buttonRow"><button class="secondaryButton" type="button" @click="applyPrecisionEdit(-1)">−1 帧</button><button class="secondaryButton" type="button" @click="applyPrecisionEdit(1)">+1 帧</button><button class="secondaryButton" type="button" :disabled="!Number.isInteger(precisionFrames) || !precisionFrames" @click="applyPrecisionEdit(precisionFrames)">应用</button></div>
+                  <p class="featureNote">{{ precisionDescription }}</p>
+                </details>
+                <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'audio'"><label class="fieldLabel" for="clipSpeed">播放速度</label><select id="clipSpeed" :value="selectedClip.speed ?? 1" @change="updateSelectedClip('speed', $event)"><option v-for="speed in [.25,.5,.75,1,1.25,1.5,2,3,4]" :key="speed" :value="speed">{{ speed }}×</option></select><label class="fieldLabel" for="clipVolume">基础音量 <span>{{ Math.round(selectedClip.volume * 100) }}%</span></label><input id="clipVolume" type="range" min="0" max="2" step=".01" :value="selectedClip.volume" @change="updateSelectedClip('volume', $event)" /><span v-if="selectedClip.keyframes?.some(frame => frame.property === 'volume')" class="featureNote">音量关键帧已接管基础音量。</span></template>
+                <details v-if="selectedClipHasAudio" class="loudnessPanel" open>
+                  <summary>响度校准</summary>
+                  <label class="fieldLabel" for="clipGain">片段增益 <span>dB</span></label><input id="clipGain" type="number" min="-60" max="24" step=".1" :value="selectedClip.gainDb ?? 0" @change="updateSelectedClip('gainDb', $event)" />
+                  <label class="fieldLabel" for="targetLoudness">目标响度</label><select id="targetLoudness" v-model.number="targetLoudness" :disabled="loudnessBusy"><option :value="-16">网络视频 · -16 LUFS</option><option :value="-14">音乐内容 · -14 LUFS</option><option :value="-23">广播参考 · -23 LUFS</option></select>
+                  <button class="wideButton" type="button" :disabled="loudnessBusy || !canEdit || isLocked(selectedClip)" @click="analyzeSelectedAudio">{{ loudnessBusy ? '正在测量…' : '测量并校准片段' }}</button><button v-if="loudnessBusy" class="secondaryButton" type="button" @click="loudnessController?.abort()">取消测量</button>
+                  <p class="featureNote">测量当前源选区，以恒定增益校准并限制真峰值至 -1 dBTP；原素材保持完整。</p>
+                  <p v-if="loudnessNotice" class="featureNote" role="status">{{ loudnessNotice }}</p><p v-if="loudnessError" class="exportError" role="alert">{{ loudnessError }}</p>
+                </details>
+                <template v-if="selectedClip.kind === 'text'"><label class="fieldLabel" for="clipText">文字内容</label><textarea id="clipText" rows="4" :value="selectedClip.text" @change="updateSelectedText"></textarea><label class="fieldLabel" for="textColor">文字颜色</label><input id="textColor" type="color" :value="selectedClip.textColor ?? '#ffffff'" @change="updateTextColor" /><label v-for="field in textFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></template>
+                <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><details open><summary>画面变换</summary><label v-for="field in transformFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details><details><summary>基础调色</summary><label v-for="field in colorFields" :key="field.key" class="fieldLabel">{{ field.label }}<input type="number" :aria-label="field.label" :min="field.min" :max="field.max" :step="field.step" :value="selectedClip[field.key] ?? field.fallback" @change="updateSelectedClip(field.key, $event)" /></label></details></template>
+                <label class="fieldLabel" for="clipOpacity">不透明度</label><input id="clipOpacity" type="range" min="0" max="1" step=".01" :value="selectedClip.opacity ?? 1" @change="updateSelectedClip('opacity', $event)" />
+                <details v-if="availableKeyframeProperties.length" class="keyframePanel" open>
+                  <summary>动画关键帧</summary>
+                  <label class="fieldLabel" for="keyframeProperty">关键帧属性</label><select id="keyframeProperty" v-model="keyframeProperty"><option v-for="item in availableKeyframeProperties" :key="item.id" :value="item.id">{{ item.label }}</option></select>
+                  <label class="fieldLabel" for="keyframeValue">{{ keyframePropertySpec.label }} <span>{{ keyframePosition === undefined ? "播放头未在片段内" : formatTime(keyframePosition) }}</span></label>
+                  <input id="keyframeValue" type="number" :min="keyframePropertySpec.min" :max="keyframePropertySpec.max" :step="keyframePropertySpec.step" :value="keyframeValueDraft" :disabled="keyframePosition === undefined" @input="updateKeyframeDraft" />
+                  <div class="buttonRow"><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe" @click="writeKeyframe">{{ currentPropertyKeyframe ? "更新关键帧" : "添加关键帧" }}</button><button class="secondaryButton" type="button" :disabled="!canPlaceKeyframe || !currentPropertyKeyframe" @click="removeCurrentKeyframe">删除当前</button></div>
+                  <div class="keyframeNavigation"><button type="button" aria-label="上一关键帧" :disabled="!keyframeFrames.length" @click="navigateKeyframe(-1)"><icon-player-track-prev :size="14" /></button><span>{{ keyframeFrames.length }} 个点</span><button type="button" aria-label="下一关键帧" :disabled="!keyframeFrames.length" @click="navigateKeyframe(1)"><icon-player-track-next :size="14" /></button></div>
+                  <div v-if="keyframeFrames.length" class="keyframeList"><div v-for="frame in keyframeFrames" :key="`${frame.property}:${frame.time}`" class="keyframeRow"><button type="button" class="keyframeJump" @click="seekTo(selectedClip.start + frame.time)">{{ formatTime(frame.time) }}<span>{{ roundNumber(frame.value) }}{{ keyframePropertySpec.unit }}</span></button><button type="button" class="keyframeRemove" :aria-label="`删除 ${formatTime(frame.time)} 关键帧`" @click="removeKeyframe(frame)">×</button></div></div>
+                </details>
+                <label class="fieldLabel" for="fadeIn">淡入 <span>秒</span></label><input id="fadeIn" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeIn ?? 0" @change="updateSelectedClip('fadeIn', $event)" /><label class="fieldLabel" for="fadeOut">淡出 <span>秒</span></label><input id="fadeOut" type="number" min="0" :max="clipDuration(selectedClip)" step=".1" :value="selectedClip.fadeOut ?? 0" @change="updateSelectedClip('fadeOut', $event)" />
+                <template v-if="selectedClip.kind === 'video' || selectedClip.kind === 'image'"><label class="fieldLabel" for="transitionIn">转场进入 <span>秒</span></label><input id="transitionIn" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionIn ?? 0" @change="updateSelectedClip('transitionIn', $event)" /><label class="fieldLabel" for="transitionOut">转场离开 <span>秒</span></label><input id="transitionOut" type="number" min="0" :max="clipDuration(selectedClip) / 2" step=".1" :value="selectedClip.transitionOut ?? 0" @change="updateSelectedClip('transitionOut', $event)" /><div class="buttonRow"><button class="secondaryButton" type="button" @click="applyCrossfade">应用交叉淡化</button><button class="secondaryButton" type="button" @click="clearCrossfade">清除转场</button></div></template>
+                <div class="inspectorFooter"><span>时间线时长</span><strong>{{ formatTime(clipDuration(selectedClip)) }}</strong></div><button class="removeButton" @click="deleteSelectedClip"><icon-trash :size="16" />删除片段</button>
+              </fieldset>
+            </template>
+            <div v-else class="inspectorEmpty"><icon-adjustments :size="27" /><span>选择片段查看属性</span></div>
+          </aside>
+        </div>
+        <div class="timelineSeparator" role="separator" tabindex="0" aria-label="调整时间线高度" aria-orientation="horizontal" aria-controls="editorTimeline" :aria-valuemin="220" :aria-valuemax="timelineMaxHeight" :aria-valuenow="Math.round(timelineHeight)" @pointerdown="startTimelineResize" @pointermove="moveTimelineResize" @pointerup="stopTimelineResize" @pointercancel="stopTimelineResize" @lostpointercapture="stopTimelineResize" @keydown="onTimelineResizeKeydown"></div>
+        <section id="editorTimeline" class="timelinePanel" :class="{ isCompact: timelineHeight < 260 }" aria-label="多轨时间线">
+          <header class="timelineHeader"><div class="timelineActions">
+            <button class="timelineButton" aria-label="撤销" :disabled="!canEdit || !undoStack.length" @click="undo"><icon-arrow-back-up :size="17" /></button><button class="timelineButton" aria-label="重做" :disabled="!canEdit || !redoStack.length" @click="redo"><icon-arrow-forward-up :size="17" /></button>
+            <button class="timelineButton" aria-label="分割片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="splitSelectedClip"><icon-scissors :size="17" /></button><button class="timelineButton" aria-label="复制片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="duplicateSelectedClip"><icon-copy :size="17" /></button><button class="timelineButton" aria-label="删除片段" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="deleteSelectedClip"><icon-trash :size="17" /></button>
+            <button class="trackAdd" type="button" title="Shift + Delete" :disabled="!canEdit || !selectedClip || isLocked(selectedClip)" @click="rippleDeleteSelected">波纹删除</button>
+            <select v-model="editMode" class="editMode" aria-label="时间线编辑模式"><option value="select">选择 V</option><option value="ripple">波纹修剪 B</option><option value="roll">滚动 N</option><option value="slip">滑移 Y</option></select>
+            <button class="timelineButton snapButton" :class="{ isActive: snapEnabled }" :aria-pressed="snapEnabled" @click="snapEnabled = !snapEnabled"><icon-magnet :size="16" />吸附</button><span class="headerDivider"></span>
+            <button v-for="kind in trackKinds" :key="kind.id" class="trackAdd" :disabled="!canEdit" @click="addTrack(kind.id)">+ {{ kind.label }}轨</button>
+          </div><div class="timelineZoom"><label>缩放 <input v-model.number="zoom" type="range" min=".2" max="100" step=".2" aria-label="时间线缩放" /></label><button class="trackAdd" @click="fitTimeline">适合全长</button></div></header>
+          <div v-if="editError" class="editNotice" role="alert"><span>{{ editError }}</span><button type="button" aria-label="关闭剪辑提示" @click="editError = ''">×</button></div>
+          <div ref="timelineViewport" class="timelineViewport" @scroll.passive="updateTimelineViewport"><div class="timelineCanvas" :style="{ width: `${timelineWidth}px` }">
+            <div class="timelineRuler" @pointerdown="seekTimeline"><div class="rulerLabel">时间</div><div class="rulerTicks"><span v-for="tick in rulerTicks" :key="tick" class="rulerTick" :style="{ left: `${tick * zoom}px` }">{{ formatTime(tick) }}</span></div></div>
+            <div v-for="(track, index) in tracks" :key="track.id" class="timelineTrack" :class="[track.kind, { isLocked: track.locked, isHidden: track.hidden }]" :data-track-id="track.id" @pointerdown="seekTimeline" @dragover.prevent @drop.prevent="dropOnTrack($event, track)">
+              <div class="trackLabel" @pointerdown.stop><div class="trackName"><input :value="track.label" :aria-label="`轨道名称 ${track.label}`" :disabled="!canEdit || track.locked" @change="renameTrack(track, $event)" /><small>{{ clips.filter(clip => clip.track === track.id).length }}</small></div><div class="trackControls">
+                <button :aria-label="`${track.locked ? '解锁' : '锁定'} ${track.label}`" :aria-pressed="track.locked" :disabled="!canEdit" @click="toggleTrack(track, 'locked')">{{ track.locked ? '锁' : '锁定' }}</button><button v-if="track.kind !== 'audio'" :aria-label="`${track.hidden ? '显示' : '隐藏'} ${track.label}`" :aria-pressed="track.hidden" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'hidden')">{{ track.hidden ? '显' : '隐藏' }}</button><button v-if="track.kind !== 'text'" :aria-label="`${track.muted ? '取消静音' : '静音'} ${track.label}`" :aria-pressed="track.muted" :disabled="!canEdit || track.locked" @click="toggleTrack(track, 'muted')">{{ track.muted ? '有声' : '静音' }}</button><button :aria-label="`上移 ${track.label}`" :disabled="!canEdit || track.locked || index === 0" @click="reorderTrack(index, -1)">↑</button><button :aria-label="`下移 ${track.label}`" :disabled="!canEdit || track.locked || index === tracks.length - 1" @click="reorderTrack(index, 1)">↓</button><button :aria-label="`删除轨道 ${track.label}`" :disabled="!canEdit || track.locked" @click="removeTrack(track)">×</button>
+              </div></div>
+              <div class="trackContent">
+                <button v-for="clip in clips.filter(item => item.track === track.id)" :key="clip.id" class="timelineClip" :class="[clip.kind, { isSelected: selectedClipId === clip.id }]" :style="clipStyle(clip)" :title="`${clip.title} · ${formatTime(clipDuration(clip))}`" :aria-label="`片段 ${clip.title}`" @pointerdown.stop="startClipDrag($event, clip)" @click.stop="selectClip(clip)">
+                  <editorFilmstrip v-if="clip.kind === 'video' || clip.kind === 'image'" :source="assetUrl(clip)" :kind="clip.kind" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :frameRate="frameRate" :thumbnailSprite="cachedMediaById.get(clip.assetId ?? '')?.thumbnailSprite" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" :generator="thumbnailGenerator" />
+                  <editorAudioWaveform v-if="(clip.kind === 'audio' || (clip.kind === 'video' && assets.find(asset => asset.id === clip.assetId)?.hasAudio)) && waveformForClip(clip)" :peaks="waveformForClip(clip)!.peaks" :duration="waveformForClip(clip)!.duration" :inPoint="clip.inPoint" :outPoint="clip.outPoint" :speed="clip.speed ?? 1" :start="clip.start" :zoom="zoom" :viewportLeft="timelineView.left" :viewportWidth="timelineView.width" />
+                  <span class="clipTitle">{{ clip.title }}</span><span class="clipDuration">{{ formatTime(clipDuration(clip)) }}</span>
+                  <span class="trimHandle leftHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'left')"></span><span class="trimHandle rightHandle" role="presentation" @pointerdown.stop.prevent="startClipDrag($event, clip, 'right')"></span>
+                </button>
+              </div>
+            </div>
+            <div class="playhead" :style="{ left: `${trackLabelWidth + currentTime * zoom}px` }" @pointerdown.stop="startPlayheadDrag"><span class="playheadCap"></span><span class="playheadLine"></span></div>
+          </div></div>
+          <footer class="timelineFooter"><span>{{ tracks.length }} 轨 · {{ clips.length }} 个片段</span><span class="timelineFooterNote">{{ editMode === 'select' ? 'V 选择 · B 波纹修剪 · N 滚动 · Y 滑移 · Shift Delete 波纹删除' : editMode === 'slip' ? '拖动片段整体滑移源范围，时间线位置保持不变 · V 返回选择' : '拖动片段边缘执行修剪 · V 返回选择' }} · 空格 播放 · ← → 逐帧 · S 分割 · Ctrl Z 撤销</span><span>总时长 {{ formatTime(timelineDuration) }}</span></footer>
+        </section>
+      </div>
     </template>
+    <dialog ref="deliveryDialog" class="deliveryDialog" aria-label="成片登记与画布回写" @close="deliveryButton?.focus()">
+      <header class="deliveryHeader"><strong>成片登记与画布回写</strong><button class="secondaryButton" type="button" @click="deliveryDialog?.close()">关闭</button></header>
+      <editorDelivery v-if="lastExport" :result="lastExport" :initialProjectId="queryString(route.query.productionProjectId)" :initialEpisodeId="queryString(route.query.episodeId)" :disabled="!canRegisterExport || exportRecordBusy"><template #extraActions><button v-if="returnCanvasPath" class="secondaryButton" type="button" :disabled="!canRegisterExport || exportRecordBusy" @click="returnExportToCanvas">回写来源画布</button></template></editorDelivery>
+      <p v-if="exportRecordError" class="exportError" role="alert">{{ exportRecordError }}<button v-if="lastExport && !exportRecordSaved" class="secondaryButton" type="button" :disabled="exportRecordBusy || !canRegisterExport" @click="persistLastExport">{{ exportRecordBusy ? '正在保存记录…' : '重试保存导出记录' }}</button></p>
+      <p v-else-if="exportRecordBusy" class="exportStale" role="status">正在核验导出记录…</p>
+      <p v-else-if="lastExport && exportRecordSaved" class="exportStale" role="status">导出记录已保存，重新打开此工程后可继续登记与回写。</p>
+      <p v-if="lastExport && !canRegisterExport" class="exportStale" role="status">工程已变更或正在保存，请重新导出后登记与回写。</p>
+    </dialog>
     <editorMediaPicker v-if="directory" v-model:open="mediaPickerOpen" :directory="directory" :disabled="!canEdit" @import="importPickedMedia" />
     <dialog v-if="directory && projectContext" ref="renderQueueDialog" class="renderQueueDialog" aria-label="后台渲染队列"><header class="renderDialogHeader"><strong>后台渲染</strong><button class="secondaryButton" type="button" @click="renderQueueDialog?.close()">关闭</button></header><editorRenderQueue :directory="directory" :projectPath="projectContext.projectPath" :revision="renderProjectRevision" :refreshKey="renderQueueRefreshKey" :disabled="!!sessionInvalidated" @completed="completeEditorRender" @useResult="useEditorRenderResult" /></dialog>
-    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="recoveryLoading || exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="recoveryLoading">正在读取备份…</span><span v-else-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || recoveryLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
-    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc="editorProjectsOpen = false">
+    <div v-if="recoveryOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="项目恢复" @keydown.esc.stop="recoveryOpen = false"><div class="recoveryDialog"><h2>项目恢复</h2><p>恢复时会先备份当前文件，素材文件不会删除。</p><label class="fieldLabel" for="backupChoice">历史备份</label><select id="backupChoice" v-model="selectedBackup" :disabled="recoveryLoading || exportRecordBusy"><option value="" disabled>选择备份时间</option><option v-for="backup in backups" :key="backup.path" :value="backup.path">{{ backup.name }}</option></select><span v-if="recoveryLoading">正在读取备份…</span><span v-else-if="!backups.length">暂无工程备份</span><div class="buttonRow"><button class="secondaryButton" :disabled="exportRecordBusy" @click="recoveryOpen = false">关闭</button><button class="exportButton" :disabled="!selectedBackup || projectLoading || recoveryLoading || exportRecordBusy" @click="restoreBackup">恢复所选备份</button></div><p v-if="recoveryError" class="exportError" role="alert">{{ recoveryError }}</p></div></div>
+    <div v-if="editorProjectsOpen" class="exportOverlay" role="dialog" aria-modal="true" aria-label="剪辑工程管理" @keydown.esc.stop="editorProjectsOpen = false">
       <div class="recoveryDialog editorProjectsDialog">
         <h2>剪辑工程</h2>
         <p>{{ canvasProjectCandidates.length ? "这张画布关联了多个旧剪辑工程，请选择要继续的工程。" : "每个剪辑工程拥有独立时间线与恢复备份，素材文件按版本保存在当前工作区。" }}</p>
@@ -199,11 +217,12 @@
       </div>
     </div>
     <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportSubmitting ? '正在提交后台渲染任务' : exportController?.signal.aborted ? '正在停止任务准备' : '正在准备渲染任务' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportSubmitting || exportController?.signal.aborted" @click="exportController?.abort()">取消准备</button></div></div>
+    <floatingAgent v-model="agentVisible" :topOffset="48" />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from "vue";
 import axios from "axios";
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from "vue-router";
 import { isSameDirectory, useWorkspaceStore } from "@/stores/workspace";
@@ -216,6 +235,7 @@ import { exportEditorProject, type EditorRenderJob } from "./editorExport";
 import { exportEdl, importEdl } from "./editorExchange";
 import { insertClipAtTime, rippleDeleteClip, rippleTrimClip, rollEditClips, slipEditClip } from "./editorTimeline";
 import { createTimelineThumbnailGenerator } from "./editorThumbnails";
+import { canvasSchemas, type CanvasContext } from "@omnistudio-next/tool-canvas/runtime";
 import type { ApiResponse } from "@/lib/authApi";
 import editorAudioWaveform from "./editorAudioWaveform.vue";
 import editorAudioMixer from "./editorAudioMixer.vue";
@@ -225,7 +245,8 @@ import editorDelivery from "./editorDelivery.vue";
 import editorSource from "./editorSource.vue";
 import editorText from "./editorText.vue";
 import editorRenderQueue from "./editorRenderQueue.vue";
-import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, IconCopy, IconDownload, IconLink, IconMagnet, IconMovie, IconMusic, IconPhoto, IconPhotoVideo, IconPlayerPause, IconPlayerPlay, IconPlayerSkipBack, IconPlayerTrackNext, IconPlayerTrackPrev, IconPlus, IconScissors, IconTextSize, IconTrash, IconUpload, IconVideo } from "@tabler/icons-vue";
+import floatingAgent from "../workspace/components/floatingAgent.vue";
+import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, IconCopy, IconDownload, IconLink, IconMagnet, IconMessageCircle, IconMovie, IconMusic, IconPhoto, IconPhotoVideo, IconPlayerPause, IconPlayerPlay, IconPlayerSkipBack, IconPlayerTrackNext, IconPlayerTrackPrev, IconPlus, IconScissors, IconTextSize, IconTrash, IconUpload, IconVideo } from "@tabler/icons-vue";
 
 type ProjectContext = { directory: string; projectPath: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };
 type PendingSave = { context: ProjectContext; project: EditorProject; sequence: number };
@@ -267,8 +288,27 @@ const keyframeProperties = [
 const colorFields = [{ key: "brightness", label: "亮度", min: 0, max: 3, step: .05, fallback: 1 }, { key: "contrast", label: "对比度", min: 0, max: 3, step: .05, fallback: 1 }, { key: "saturation", label: "饱和度", min: 0, max: 3, step: .05, fallback: 1 }] as const;
 const textFields = [{ key: "fontSize", label: "字号 / 画宽 %", min: 1, max: 20, step: .5, fallback: 4 }, { key: "textX", label: "文字水平位置 %", min: 0, max: 100, step: 1, fallback: 50 }, { key: "textY", label: "文字垂直位置 %", min: 0, max: 100, step: 1, fallback: 90 }] as const;
 const activeTab = ref<"media" | "audio" | "text" | "settings">("media");
+const agentVisible = ref(false);
+const agentUndoPoint = shallowRef<{ projectPath: string; before: string; after: string }>();
 const monitorModes = [{ id: "program", label: "成片" }, { id: "source", label: "素材源" }, { id: "dual", label: "双监视器" }] as const;
 const previewMode = ref<"program" | "source" | "dual">("program");
+const lastSingleMonitor = ref<"program" | "source">("program");
+const previewWidth = ref(0);
+const previewExpanded = ref(false);
+const inspectorOpen = ref(false);
+const editorRoot = ref<HTMLElement>();
+const editorWorkspace = ref<HTMLElement>();
+const previewArea = ref<HTMLElement>();
+const expandButton = ref<HTMLButtonElement>();
+const inspectorButton = ref<HTMLButtonElement>();
+const deliveryButton = ref<HTMLButtonElement>();
+const deliveryDialog = ref<HTMLDialogElement>();
+const timelineHeight = ref(220);
+const timelineMaxHeight = ref(420);
+let preferredTimelineHeight: number | undefined;
+let timelineResizeDrag: { y: number; height: number; pointerId: number; element: HTMLElement } | undefined;
+let workspaceResizeObserver: ResizeObserver | undefined;
+let previewResizeObserver: ResizeObserver | undefined;
 const sourceAssetId = ref<string>();
 const editMode = ref<"select" | "ripple" | "roll" | "slip">("select");
 const precisionOperation = ref<"rippleIn" | "rippleOut" | "roll" | "slip">("rippleOut");
@@ -399,6 +439,8 @@ const targetLoudness = ref(-16);
 const loudnessController = shallowRef<AbortController>();
 const audioNodes = new Map<string, { element: HTMLAudioElement; source: MediaElementAudioSourceNode; gain: GainNode }>();
 const audioSources = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
+
+provide("canvas", createEditorCanvasContext);
 
 const projectReady = computed(() => !!directory.value && loadedDirectory.value === directory.value && !projectLoading.value);
 const renderProjectRevision = computed(() => projectReady.value && !saveBusy.value && !savePending.value && !saveError.value ? projectContext?.revision ?? "" : "");
@@ -536,8 +578,28 @@ watch(selectedClipId, () => {
   loudnessError.value = "";
 });
 watch(selectedClipId, () => { if (selectedClip.value?.kind !== "video" && selectedClip.value?.kind !== "audio" && precisionOperation.value === "slip") precisionOperation.value = "rippleOut"; });
-watch(previewMode, () => stopPlayback());
+watch(previewMode, mode => {
+  stopPlayback();
+  if (mode !== "dual") lastSingleMonitor.value = mode;
+});
 watch(sourceAsset, asset => { if (!asset) previewMode.value = "program"; });
+watch(lastExport, value => { if (!value) deliveryDialog.value?.close(); });
+watch(editorWorkspace, element => {
+  workspaceResizeObserver?.disconnect();
+  if (!element) return;
+  workspaceResizeObserver = new ResizeObserver(updateTimelineHeight);
+  workspaceResizeObserver.observe(element);
+  updateTimelineHeight();
+});
+watch(previewArea, element => {
+  previewResizeObserver?.disconnect();
+  if (!element) return;
+  previewResizeObserver = new ResizeObserver(entries => {
+    previewWidth.value = entries[0]?.contentRect.width ?? 0;
+    if (previewWidth.value < 720 && previewMode.value === "dual") previewMode.value = lastSingleMonitor.value;
+  });
+  previewResizeObserver.observe(element);
+});
 watch(previewStage, stage => {
   resizeObserver?.disconnect();
   const host = stage?.parentElement;
@@ -597,6 +659,9 @@ onBeforeUnmount(() => {
   if (persistTimer) clearTimeout(persistTimer);
   resizeObserver?.disconnect();
   timelineResizeObserver?.disconnect();
+  workspaceResizeObserver?.disconnect();
+  previewResizeObserver?.disconnect();
+  stopTimelineResize();
   thumbnailGenerator.value.dispose();
   releaseDragEvents?.();
   stopPlayback();
@@ -610,6 +675,64 @@ onBeforeUnmount(() => {
   audioNodes.clear();
   void audioContext?.close();
 });
+
+function openDelivery() {
+  stopPlayback();
+  deliveryDialog.value?.showModal();
+}
+function closeInspector() {
+  inspectorOpen.value = false;
+  inspectorButton.value?.focus();
+}
+function togglePreviewExpanded() {
+  previewExpanded.value = !previewExpanded.value;
+  inspectorOpen.value = false;
+  expandButton.value?.focus();
+}
+function onPanelTabKeydown(event: KeyboardEvent, index: number) {
+  let nextIndex: number;
+  if (event.key === "ArrowDown") nextIndex = (index + 1) % panelTabs.length;
+  else if (event.key === "ArrowUp") nextIndex = (index + panelTabs.length - 1) % panelTabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = panelTabs.length - 1;
+  else return;
+  event.preventDefault();
+  event.stopPropagation();
+  activeTab.value = panelTabs[nextIndex]!.id;
+  (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>("button")[nextIndex]?.focus();
+}
+function updateTimelineHeight() {
+  if (!editorWorkspace.value) return;
+  timelineMaxHeight.value = Math.max(220, Math.min(420, Math.floor(editorWorkspace.value.clientHeight - 288)));
+  const requested = preferredTimelineHeight ?? Math.min(320, (editorRoot.value?.clientHeight ?? 760) * .29);
+  timelineHeight.value = Math.max(220, Math.min(timelineMaxHeight.value, requested));
+}
+function resizeTimeline(height: number) {
+  preferredTimelineHeight = Math.max(220, Math.min(timelineMaxHeight.value, height));
+  updateTimelineHeight();
+}
+function startTimelineResize(event: PointerEvent) {
+  if (event.button !== 0) return;
+  const element = event.currentTarget as HTMLElement;
+  timelineResizeDrag = { y: event.clientY, height: timelineHeight.value, pointerId: event.pointerId, element };
+  element.setPointerCapture(event.pointerId);
+  element.focus();
+  event.preventDefault();
+}
+function moveTimelineResize(event: PointerEvent) {
+  if (timelineResizeDrag?.pointerId === event.pointerId) resizeTimeline(timelineResizeDrag.height + timelineResizeDrag.y - event.clientY);
+}
+function stopTimelineResize() {
+  const drag = timelineResizeDrag;
+  timelineResizeDrag = undefined;
+  if (drag?.element.hasPointerCapture(drag.pointerId)) drag.element.releasePointerCapture(drag.pointerId);
+}
+function onTimelineResizeKeydown(event: KeyboardEvent) {
+  if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  resizeTimeline(event.key === "Home" ? 220 : event.key === "End" ? timelineMaxHeight.value : timelineHeight.value + (event.key === "ArrowUp" ? 20 : -20));
+}
 
 function getProject(): EditorProject {
   return JSON.parse(JSON.stringify({ version: 2, name: editorProjectName.value.trim(), assets: assets.value, clips: clips.value, tracks: tracks.value, aspectRatio: aspectRatio.value, frameRate: frameRate.value, exportHeight: exportHeight.value, exportQuality: exportQuality.value }));
@@ -887,6 +1010,7 @@ async function cancelMediaCache(asset: EditorAsset) {
 }
 function mediaFailed(clip: EditorClip) { previewError.value = `无法播放「${clip.title}」，请检查素材是否存在或使用当前浏览器支持的编码。`; }
 function selectClip(clip: EditorClip) {
+  previewMode.value = "program";
   if (draggedClipId === clip.id) { draggedClipId = undefined; return; }
   selectedClipId.value = clip.id;
   seekTo(clip.start + clipDuration(clip) / 2);
@@ -1030,7 +1154,127 @@ function addAssetToTimeline(asset: EditorAsset, startAt?: number, trackId?: stri
 function openSourceAsset(asset: EditorAsset) {
   stopPlayback();
   sourceAssetId.value = asset.id;
-  previewMode.value = "dual";
+  previewMode.value = "source";
+}
+function editorAgentState() {
+  return {
+    projectName: editorProjectName.value,
+    aspectRatio: aspectRatio.value,
+    frameRate: frameRate.value,
+    currentTime: currentTime.value,
+    duration: timelineDuration.value,
+    assets: assets.value.map(asset => ({ id: asset.id, name: asset.name, kind: asset.kind, duration: asset.duration })),
+    tracks: tracks.value.map(track => ({ id: track.id, label: track.label, kind: track.kind, locked: track.locked })),
+    clips: clips.value.map(clip => ({ id: clip.id, title: clip.title, kind: clip.kind, trackId: clip.track, start: clip.start, duration: clipDuration(clip), inPoint: clip.inPoint, outPoint: clip.outPoint })),
+  };
+}
+function createEditorCanvasContext(): CanvasContext | undefined {
+  if (!projectReady.value || !projectContext) return;
+  const contextPath = projectContext.projectPath;
+  const contextVersion = projectVersion;
+  let expectedContent = getProjectContent();
+  const assertCurrent = (signal?: AbortSignal) => {
+    signal?.throwIfAborted();
+    if (!projectReady.value || activeEditorProjectPath.value !== contextPath || projectVersion !== contextVersion) throw new Error("剪辑工程已切换，请重新发送消息");
+    if (saveBlocked.value || saveError.value || !canEdit.value) throw new Error("剪辑工程当前不可编辑，请先解决保存或导入状态");
+    if (getProjectContent() !== expectedContent) throw new Error("剪辑工程已被其他操作修改，请重新读取状态后继续");
+  };
+  return {
+    id: `editor:${contextPath}`,
+    version: `${contextVersion}:${projectContext.revision}`,
+    tools: [],
+    async call(request, signal) {
+      assertCurrent(signal);
+      const before = getProjectContent();
+      let result: unknown;
+      let changed = false;
+      switch (request.name) {
+        case "editorGetState":
+          canvasSchemas.editorGetState.parse(request.args);
+          result = editorAgentState();
+          break;
+        case "editorAddClip": {
+          const args = canvasSchemas.editorAddClip.parse(request.args);
+          const asset = assets.value.find(item => item.id === args.assetId);
+          if (!asset || missingAssetIds.value.includes(asset.id)) throw new Error("素材不存在或需要重新链接");
+          const kind = asset.kind === "image" ? "video" : asset.kind;
+          const target = args.trackId ? tracks.value.find(item => item.id === args.trackId) : tracks.value.find(item => item.kind === kind && !item.locked);
+          if (args.trackId && !target) throw new Error("目标轨道不存在");
+          if (target && (target.kind !== kind || target.locked)) throw new Error("目标轨道类型不匹配或已锁定");
+          const count = clips.value.length;
+          previewMode.value = "program";
+          addAssetToTimeline(asset, args.startAt, target?.id);
+          const clip = selectedClip.value;
+          if (clips.value.length !== count + 1 || !clip) throw new Error("添加素材到时间线失败");
+          result = { clipId: clip.id, title: clip.title, trackId: clip.track, start: clip.start, duration: clipDuration(clip) };
+          changed = true;
+          break;
+        }
+        case "editorSelectClip": {
+          const { clipId } = canvasSchemas.editorSelectClip.parse(request.args);
+          const clip = clips.value.find(item => item.id === clipId);
+          if (!clip) throw new Error("片段不存在，请重新读取工程状态");
+          selectClip(clip);
+          result = { clipId: clip.id, title: clip.title, currentTime: currentTime.value };
+          break;
+        }
+        case "editorSeekTo": {
+          const { time } = canvasSchemas.editorSeekTo.parse(request.args);
+          stopPlayback();
+          seekTo(frameTime(time));
+          result = { currentTime: currentTime.value };
+          break;
+        }
+        case "editorSplitClip": {
+          const { clipId, atTime } = canvasSchemas.editorSplitClip.parse(request.args);
+          const clip = clips.value.find(item => item.id === clipId);
+          if (!clip) throw new Error("片段不存在，请重新读取工程状态");
+          if (isLocked(clip)) throw new Error("片段所在轨道已锁定");
+          const time = frameTime(atTime);
+          const speed = clip.speed ?? 1;
+          const sourcePoint = clip.inPoint + (time - clip.start) * speed;
+          const minimum = speed / frameRate.value;
+          if (sourcePoint < clip.inPoint + minimum - .000001 || sourcePoint > clip.outPoint - minimum + .000001) throw new Error("分割点须位于片段内部，且两侧至少各保留一帧");
+          const count = clips.value.length;
+          previewMode.value = "program";
+          selectedClipId.value = clip.id;
+          seekTo(time);
+          splitSelectedClip();
+          const tail = selectedClip.value;
+          if (clips.value.length !== count + 1 || !tail) throw new Error("分割片段失败");
+          const head = clips.value.find(item => item.id === clip.id)!;
+          result = { head: { clipId: head.id, start: head.start, duration: clipDuration(head) }, tail: { clipId: tail.id, start: tail.start, duration: clipDuration(tail) } };
+          changed = true;
+          break;
+        }
+        case "editorUndo": {
+          canvasSchemas.editorUndo.parse(request.args);
+          const point = agentUndoPoint.value;
+          if (!point || point.projectPath !== contextPath || point.after !== before || undoStack.value.at(-1) !== point.before) throw new Error("没有可安全撤销的最近一次 AI 剪辑，或工程已被其他操作修改");
+          undo();
+          agentUndoPoint.value = undefined;
+          result = { undone: true, clipCount: clips.value.length };
+          changed = true;
+          break;
+        }
+        default:
+          throw new Error("此工具不属于剪辑台操作");
+      }
+      await nextTick();
+      const after = getProjectContent();
+      if (changed && after !== before) {
+        const previous = undoStack.value.at(-1);
+        if (request.name !== "editorUndo" && previous !== before) throw new Error("撤销记录与剪辑工程状态不一致，已停止 AI 操作");
+        if (request.name !== "editorUndo") agentUndoPoint.value = { projectPath: contextPath, before, after };
+        expectedContent = after;
+        if (!await saveProject()) throw new Error("剪辑已应用到当前工程，但自动保存失败；请先处理保存提示");
+        assertCurrent(signal);
+      } else if (after !== before) {
+        throw new Error("非修改型剪辑操作意外改变了工程内容");
+      }
+      return result;
+    },
+  };
 }
 function insertSourceSelection(selection: { asset: EditorAsset; inPoint: number; outPoint: number }) {
   if (!canEdit.value || missingAssetIds.value.includes(selection.asset.id)) return;
@@ -1255,6 +1499,7 @@ function changeSetting(field: "aspectRatio" | "frameRate" | "exportHeight" | "ex
   else exportQuality.value = value as EditorProject["exportQuality"];
 }
 function startClipDrag(event: PointerEvent, clip: EditorClip, edge?: "left" | "right") {
+  previewMode.value = "program";
   selectedClipId.value = clip.id;
   if (event.button !== 0 || !canEdit.value || isLocked(clip)) return;
   stopPlayback();
@@ -1351,7 +1596,6 @@ function seekFromClient(clientX: number) {
   const viewport = timelineViewport.value;
   if (viewport) seekTo((clientX - viewport.getBoundingClientRect().left + viewport.scrollLeft - trackLabelWidth) / zoom.value);
 }
-function seekFromRange(event: Event) { seekTo(Number((event.currentTarget as HTMLInputElement).value)); }
 function seekTo(value: number) { currentTime.value = Math.min(timelineDuration.value, frameTime(value)); syncPlayers(); }
 function stepFrame(delta: number) { stopPlayback(); seekTo(currentTime.value + delta / frameRate.value); }
 function fitTimeline() {
@@ -1416,8 +1660,13 @@ function updateAudioMeter() {
   audioPeakDb.value = Math.max(-60, 20 * Math.log10(Math.max(peak, .000001)));
   audioPeakHoldDb.value = Math.max(audioPeakHoldDb.value, audioPeakDb.value);
 }
-function togglePlayback() {
+async function togglePlayback() {
   if (!timelineDuration.value || !projectReady.value) return;
+  if (previewMode.value === "source") {
+    previewMode.value = "program";
+    await nextTick();
+    if (!mounted || previewMode.value !== "program" || !timelineDuration.value || !projectReady.value) return;
+  }
   if (currentTime.value >= timelineDuration.value) currentTime.value = 0;
   isPlaying.value = !isPlaying.value;
   playbackTime = performance.now();
@@ -2018,10 +2267,18 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 }
 function onEditorKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || event.isComposing) return;
+  if (editorRoot.value?.querySelector("dialog[open], [popover]:popover-open")) return;
+  if (event.key === "Escape") {
+    if (inspectorOpen.value) closeInspector();
+    else if (previewExpanded.value) togglePreviewExpanded();
+    return;
+  }
   if (recoveryOpen.value || editorProjectsOpen.value || mediaPickerOpen.value || !canEdit.value) return;
   if (dragState) { event.preventDefault(); return; }
-  if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable='true']")) return;
-  if (event.code === "Space") { event.preventDefault(); togglePlayback(); }
+  const target = event.target as HTMLElement;
+  if (target?.closest("input, textarea, select, [role='separator'], .sourceMonitor, [contenteditable='true']")) return;
+  if (event.code === "Space" && target?.closest("button:not(.timelineClip)")) return;
+  if (event.code === "Space") { event.preventDefault(); void togglePlayback(); }
   else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); event.shiftKey ? redo() : undo(); }
   else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "d") { event.preventDefault(); duplicateSelectedClip(); }
   else if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); event.shiftKey ? rippleDeleteSelected() : deleteSelectedClip(); }
@@ -2462,8 +2719,9 @@ async function exportTimeline() {
   flex-direction: column;
   width: 100%;
   height: 100dvh;
-  min-width: 900px;
-  overflow: hidden;
+  min-width: 760px;
+  min-height: 640px;
+  overflow: auto;
   color: #e8ece7;
   background: #171a18;
   font-family: var(--uiFontFamily, sans-serif);
@@ -2563,12 +2821,12 @@ async function exportTimeline() {
 
   .editorHeader {
     display: flex;
-    flex: 0 0 58px;
+    flex: 0 0 48px;
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    height: 58px;
-    padding: 0 18px;
+    height: 48px;
+    padding: 0 12px;
     border-bottom: 1px solid #303631;
     background: #1d211e;
     .headerProject {
@@ -2592,6 +2850,8 @@ async function exportTimeline() {
       align-items: center;
       gap: 14px;
       min-width: 0;
+      > button { flex-shrink: 0; min-height: 30px; padding: 0 10px; font-size: 11px; }
+      .projectPickerButton { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .saveStatus { max-width: 300px; overflow: hidden; color: #8c968e; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; &.hasError { color: #f1a083; } }
     }
   }
@@ -2612,349 +2872,365 @@ async function exportTimeline() {
     button { min-height: 26px; padding: 4px 8px; border: 1px solid #71623d; border-radius: 3px; color: #f4e5b2; background: #403922; &:hover { background: #51482b; } }
     &.errorNotice { border-color: #694536; color: #ffc7ab; background: #35251f; button { border-color: #785242; color: #ffd3bd; background: #482e25; &:hover { background: #593a2e; } } }
   }
-  .editorBody {
+  .editorWorkspace {
     display: grid;
-    grid-template-columns: 260px minmax(360px, 1fr) 245px;
-    flex: 1 1 auto;
-    min-height: 0;
-    &.isUnavailable { pointer-events: none; opacity: .38; }
-    .mediaPanel {
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(280px, 1fr) 8px var(--timelineHeight, clamp(220px, 29dvh, 320px));
+    min-width: 0;
+    min-height: 508px;
+    .editorBody {
+      position: relative;
       display: grid;
-      grid-template-columns: 60px minmax(0, 1fr);
+      grid-template-columns: 300px minmax(0, 1fr) 260px;
       min-height: 0;
-      overflow: hidden;
-      border-right: 1px solid #343a35;
-      background: #202421;
-      .sideNav {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
-        padding: 10px 5px;
-        border-right: 1px solid #343a35;
-        background: #1a1e1b;
-        .sideTab {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-          width: 100%;
-          min-height: 56px;
-          border: 0;
-          border-radius: 5px;
-          color: #929b94;
-          background: transparent;
-          font-size: 10px;
-          &:hover { color: #e5eee6; background: #292f2a; }
-          &.isActive { color: #9ed6b5; background: #2c4034; }
-        }
-      }
-      .assetPanel {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
+      &.isUnavailable { pointer-events: none; opacity: .38; }
+      .mediaPanel {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr);
         min-height: 0;
-        padding: 15px 12px 11px;
-        overflow-y: auto;
-        &.textPanel, &.settingsPanel { gap: 10px; }
-        .importActions { display: grid; flex: 0 0 auto; gap: 6px; }
-        .importButton {
-          display: inline-flex;
-          flex: 0 0 auto;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          width: 100%;
-          min-height: 33px;
-          padding: 6px 8px;
-          border: 1px solid #527a60;
-          border-radius: 4px;
-          color: #d9eddf;
-          background: #294232;
-          font-size: 11px;
-          &:hover:not(:disabled) { border-color: #75a483; background: #34523d; }
-        }
-        .assetHint {
-          display: flex;
-          flex: 0 0 auto;
-          flex-wrap: wrap;
-          align-items: center;
-          justify-content: space-between;
-          gap: 6px;
-          padding: 8px 0;
-          color: #a7b4aa;
-          font-size: 11px;
-          overflow-wrap: anywhere;
-          button { padding: 3px 7px; border: 1px solid #536759; border-radius: 3px; color: #d0e2d5; background: #2b3b30; }
-        }
-        .assetSearch { flex: 0 0 auto; margin-top: 9px; font-size: 11px; }
-        .assetFilters {
-          display: flex;
-          flex: 0 0 auto;
-          gap: 3px;
-          margin: 8px 0;
-          button { flex: 1; min-width: 0; padding: 5px 2px; border: 1px solid transparent; border-radius: 3px; color: #a0aca3; background: #191d1a; font-size: 10px; &:hover { color: #dce9e0; } &.isActive { border-color: #45624d; color: #c4dfcb; background: #2b3a2e; } }
-        }
-        .assetList {
-          display: flex;
-          flex: 1 1 auto;
-          flex-direction: column;
-          gap: 3px;
-          min-height: 0;
-          overflow-y: auto;
-          .assetRow {
-            display: grid;
-            grid-template-columns: 30px repeat(3, minmax(0, 1fr));
-            flex: 0 0 auto;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-            padding: 7px 5px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            background: #272c28;
-            cursor: grab;
-            &:hover { background: #303732; }
-            &.isMissing { border-color: #815743; background: #33271f; }
-            &.isSelected { border-color: #64846c; background: #2d3b31; box-shadow: inset 2px 0 #8ec29c; }
-            .assetIcon { display: flex; grid-row: 1 / span 2; align-items: center; justify-content: center; width: 30px; height: 34px; border-radius: 4px; color: #9dd9b6; background: #284234; &.audio { color: #e7c681; background: #4a4028; } &.image { color: #b8d2ef; background: #2d3d4d; } }
-            .assetInfo { display: flex; grid-column: 2 / -1; flex-direction: column; gap: 4px; min-width: 0; strong { overflow: hidden; color: #dce3dc; font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; } span { color: #8b958d; font-size: 10px; white-space: nowrap; } }
-            .tinyAction { grid-row: 2; width: 100%; height: 23px; &:nth-of-type(1) { grid-column: 2; } &:nth-of-type(2) { grid-column: 3; } &:nth-of-type(3) { grid-column: 4; } }
-            .cacheControls { display: flex; grid-column: 2 / -1; grid-row: 3; align-items: center; gap: 6px; min-width: 0; .cacheState { flex: 1; min-width: 0; overflow: hidden; color: #8fa496; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; &.hasError { color: #e6a38f; } } .cacheButton { flex: 0 0 auto; min-height: 21px; padding: 2px 5px; border: 1px solid #465a4b; border-radius: 3px; color: #c1d9c7; background: #26372b; font-size: 9px; &:hover:not(:disabled) { border-color: #6a9075; background: #304536; } &:disabled { opacity: .55; cursor: not-allowed; } } .cancelCacheButton { border-color: #6c5547; color: #e2b39c; background: #352921; } }
-          }
-        }
-        .dropHint { flex: 0 0 auto; margin-top: 10px; padding: 9px 5px; border: 1px dashed #485249; border-radius: 4px; color: #929b94; background: transparent; text-align: center; font-size: 10px; line-height: 1.5; &:hover:not(:disabled) { border-color: #77ae8e; color: #c7dbcc; } }
-      }
-    }
-    .previewArea {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 0;
-      min-height: 0;
-      padding: 10px 18px 12px;
-      background: #151816;
-      overflow: auto;
-      .exportStale { flex: 0 0 auto; margin: 6px 0 0; color: #d2aa7c; font-size: 10px; }
-      .exportDetails { flex: 0 0 auto; width: 100%; max-height: 230px; margin-top: 8px; overflow-y: auto;
-        summary { padding: 9px 10px; border: 1px solid #3d4d41; border-radius: 4px; color: #b8d3c0; background: #222d25; font-size: 11px; cursor: pointer;
-          span { display: inline-block; max-width: 55%; margin-left: 12px; overflow: hidden; color: #8b9d91; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
-          &:focus-visible { outline: 2px solid #90c9a2; outline-offset: -2px; }
-        }
-      }
-      .monitorModes { display: flex; flex: 0 0 29px; align-items: center; justify-content: center; gap: 3px; padding-bottom: 5px;
-        button { min-height: 24px; padding: 0 11px; border: 1px solid transparent; border-radius: 3px; color: #82968a; background: transparent; font-size: 10px; &.isActive { border-color: #415d49; color: #c7e7d0; background: #263d2e; } }
-      }
-      .monitorGrid { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; gap: 14px; width: 100%; min-width: 0; min-height: 220px; overflow: auto;
-        &.isDual { grid-template-columns: minmax(275px, 1fr) minmax(275px, 1fr); }
-        .programMonitor { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-        .sourceMonitorPanel { order: -1; min-height: 0; height: 100%; }
-      }
-      .previewTopline {
-        display: flex;
-        flex: 0 0 30px;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        width: 100%;
-        height: 30px;
-        color: #aeb7af;
-        font-size: 11px;
-        .previewTitle { display: flex; align-items: center; gap: 7px; min-width: 0; }
-        .previewDimensions { margin-left: 6px; color: #79837c; }
-        .liveDot { width: 6px; height: 6px; border-radius: 50%; background: #71c794; box-shadow: 0 0 0 3px rgb(113 199 148 / 12%); }
-        .playheadReadout { overflow: hidden; color: #aeb8b0; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-      }
-      .previewHost {
-        display: flex;
-        flex: 1 1 0;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        min-height: 0;
-        margin: 4px 0 11px;
         overflow: hidden;
-        .previewStage {
-          position: relative;
-          flex: 0 0 auto;
-          min-width: 0;
-          min-height: 0;
-          max-width: 100%;
-          max-height: 100%;
-          margin: 0;
-          overflow: hidden;
-          container-type: size;
-          border: 1px solid #303631;
-          background: #080a09;
-          box-shadow: 0 10px 35px rgb(0 0 0 / 22%);
-          .previewVideo { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
-          .previewText { position: absolute; right: auto; bottom: auto; width: max-content; max-width: 92%; color: #fff; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; font-size: 4cqw; font-weight: 600; line-height: 1.2; text-align: center; text-shadow: 0 2px 5px rgb(0 0 0 / 85%); white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); pointer-events: none; }
-          .previewEmpty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #727c74; font-size: 12px; pointer-events: none; }
-        }
-      }
-      .previewAlert { position: absolute; right: 18px; bottom: 58px; z-index: 3; display: flex; align-items: center; gap: 8px; max-width: 80%; padding: 8px 10px; border: 1px solid #824d3d; border-radius: 4px; color: #ffd0bc; background: #442920; font-size: 11px; line-height: 1.5; button { flex: 0 0 auto; border: 0; color: inherit; background: transparent; } }
-      .transportBar {
-        display: flex;
-        flex: 0 0 42px;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        height: 42px;
-        padding: 0 8px;
-        border: 1px solid #303631;
-        border-radius: 4px;
+        border-right: 1px solid #343a35;
         background: #202421;
-        .transportButton { width: 30px; height: 30px; color: #b9c5bc; }
-        .previewRange { flex: 1; accent-color: #79bd92; }
-        .transportTime { flex: 0 1 auto; min-width: 0; color: #aeb7af; font-variant-numeric: tabular-nums; text-align: right; font-size: 10px; white-space: nowrap; }
-      }
-      .exportResult { flex: 0 0 auto; max-width: 100%; margin-top: 7px; overflow: hidden; color: #b5d9c0; font-size: 10px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; &:hover { text-decoration: underline; } }
-    }
-    .inspectorPanel {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      padding: 16px 13px;
-      overflow-y: auto;
-      border-left: 1px solid #343a35;
-      background: #202421;
-      .panelHeading { margin-bottom: 16px; }
-      fieldset {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        min-width: 0;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        &:disabled { opacity: .62; .fieldLabel { color: #8b988f; } input, select, textarea, button { cursor: not-allowed; } }
-      }
-      input[type="number"] { font-variant-numeric: tabular-nums; }
-      input[type="range"] { width: 100%; margin: 7px 0; }
-      input[type="color"] { width: 100%; min-height: 32px; padding: 3px; border: 1px solid #3d453e; border-radius: 4px; background: #181c19; }
-      details { margin-top: 12px; padding: 9px 0; border-top: 1px solid #343a35; border-bottom: 1px solid #343a35; summary { color: #c0cbc2; font-size: 12px; cursor: pointer; &:focus-visible { outline: 1px solid #90c9a2; outline-offset: 3px; } } }
-      .keyframePanel {
-        .buttonRow { margin-top: 9px; gap: 5px; .secondaryButton { min-height: 29px; padding: 0 6px; font-size: 10px; } }
-        .keyframeNavigation { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; color: #9cac9f; font-size: 10px; button { display: grid; place-items: center; width: 28px; height: 25px; padding: 0; border: 1px solid #3b493f; border-radius: 3px; color: #b9d7c2; background: #29382e; } }
-        .keyframeList { display: flex; flex-direction: column; gap: 3px; max-height: 132px; margin-top: 6px; overflow-y: auto;
-          .keyframeRow { display: flex; gap: 3px;
-            .keyframeJump { display: flex; flex: 1; align-items: center; justify-content: space-between; min-height: 27px; padding: 3px 6px; border: 1px solid #39443c; border-radius: 3px; color: #b7c7bc; background: #202b23; font-size: 10px; font-variant-numeric: tabular-nums; span { color: #d0e4d5; } }
-            .keyframeRemove { width: 26px; padding: 0; border: 1px solid #51413b; border-radius: 3px; color: #c8aaa0; background: #2e2723; }
-          }
-        }
-      }
-      .precisionPanel { .buttonRow { margin-top: 8px; gap: 4px; .secondaryButton { min-height: 27px; padding: 0 5px; font-size: 10px; } } .featureNote { margin-top: 7px; } }
-      .inspectorFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 17px; padding-top: 12px; border-top: 1px solid #343a35; color: #929c94; font-size: 11px; strong { color: #dce4dc; font-variant-numeric: tabular-nums; } }
-      .removeButton { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 33px; margin-top: 12px; border: 1px solid #65473f; border-radius: 4px; color: #e5a18d; background: #30231f; &:hover:not(:disabled) { background: #422b25; } }
-      .inspectorEmpty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 120px; color: #7a857d; text-align: center; font-size: 11px; }
-    }
-  }
-  .timelinePanel {
-    display: flex;
-    flex: 0 0 330px;
-    flex-direction: column;
-    min-height: 230px;
-    border-top: 1px solid #3a413b;
-    background: #1d211e;
-    .editNotice { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; border-bottom: 1px solid #644d36; color: #edc5a7; background: #352a20; font-size: 11px; button { border: 0; color: inherit; background: transparent; } }
-    .trackAdd { min-height: 27px; padding: 0 7px; border: 1px solid #3c483e; border-radius: 3px; color: #aab8ad; background: #252b26; font-size: 10px; &:hover:not(:disabled) { border-color: #64846c; color: #deece0; } }
-    .timelineHeader {
-      display: flex;
-      flex: 0 0 auto;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 46px;
-      padding: 6px 12px;
-      border-bottom: 1px solid #323832;
-      .timelineActions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-      .editMode { width: auto; min-height: 27px; padding: 3px 5px; color: #b7cebd; font-size: 10px; }
-      .timelineButton { width: 30px; height: 30px; color: #a8b2aa; &.isActive { border-color: #506958; color: #a8ddb9; background: #2b4033; } &:hover:not(:disabled) { border-color: #424b43; } }
-      .snapButton { gap: 5px; width: auto; padding: 0 7px; font-size: 10px; }
-      .headerDivider { width: 1px; height: 20px; margin: 0 5px; background: #394039; }
-      .timelineZoom { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; color: #8e988f; font-size: 10px; label { display: inline-flex; align-items: center; gap: 5px; } input { width: 90px; accent-color: #78b78f; } }
-    }
-    .timelineViewport {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      overflow: auto;
-      .timelineCanvas {
-        position: relative;
-        min-height: 100%;
-        padding-left: 174px;
-        .rulerLabel, .trackLabel { position: absolute; top: 0; left: -174px; width: 174px; border-right: 1px solid #3b433c; color: #aab4ac; background: #222723; font-size: 10px; }
-        .timelineRuler {
-          position: sticky;
-          top: 0;
-          z-index: 3;
+        .sideNav {
           display: flex;
-          height: 28px;
-          border-bottom: 1px solid #414841;
-          background: #242925;
-          cursor: pointer;
-          .rulerLabel { z-index: 4; display: flex; align-items: center; height: 27px; padding-left: 12px; }
-          .rulerTicks { position: relative; flex: 1; height: 100%; .rulerTick { position: absolute; top: 0; height: 100%; padding: 5px 0 0 5px; border-left: 1px solid #394039; color: #7f8981; font-size: 9px; font-variant-numeric: tabular-nums; pointer-events: none; } }
-        }
-        .timelineTrack {
-          position: relative;
-          height: 76px;
-          border-bottom: 1px solid #343a35;
-          background: #1b1f1c;
-          &.audio { background: #1d211d; }
-          &.text { background: #1b1f1d; }
-          &.isLocked .trackContent { opacity: .55; }
-          &.isHidden .timelineClip { opacity: .48; }
-          .trackLabel {
-            z-index: 2;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 4px;
+          padding: 10px 5px;
+          border-right: 1px solid #343a35;
+          background: #1a1e1b;
+          .sideTab {
             display: flex;
             flex-direction: column;
-            align-items: stretch;
+            align-items: center;
             justify-content: center;
             gap: 5px;
-            height: 75px;
-            padding: 6px;
-            .trackName { display: flex; align-items: center; gap: 5px; min-width: 0; input { flex: 1; width: 0; min-height: 23px; padding: 2px 3px; border-color: transparent; border-radius: 2px; color: #bdc8bf; background: transparent; font-size: 10px; &:focus { border-color: #59695b; box-shadow: none; } &:disabled { color: #8b988f; opacity: .75; } } small { flex: 0 0 auto; min-width: 17px; color: #829087; text-align: right; font-size: 9px; } }
-            .trackControls { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; button { min-width: 22px; min-height: 22px; padding: 2px 4px; border: 1px solid #3b443d; border-radius: 2px; color: #a3afa6; background: #262b27; font-size: 9px; &:hover:not(:disabled) { color: #e6efe8; background: #354137; } &[aria-pressed="true"] { border-color: #74523d; color: #e4ae8c; background: #37291f; } } }
+            width: 100%;
+            min-height: 56px;
+            border: 0;
+            border-radius: 5px;
+            color: #929b94;
+            background: transparent;
+            font-size: 10px;
+            &:hover { color: #e5eee6; background: #292f2a; }
+            &.isActive { color: #9ed6b5; background: #2c4034; }
           }
-          .trackContent {
-            position: relative;
-            height: 100%;
-            .timelineClip {
-              position: absolute;
-              top: 16px;
-              display: flex;
+        }
+        .assetPanel {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          min-height: 0;
+          padding: 15px 12px 11px;
+          overflow-y: auto;
+          &.textPanel, &.settingsPanel { gap: 10px; }
+          .importActions { display: grid; flex: 0 0 auto; gap: 6px; }
+          .importButton {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: 100%;
+            min-height: 33px;
+            padding: 6px 8px;
+            border: 1px solid #527a60;
+            border-radius: 4px;
+            color: #d9eddf;
+            background: #294232;
+            font-size: 11px;
+            &:hover:not(:disabled) { border-color: #75a483; background: #34523d; }
+          }
+          .assetHint {
+            display: flex;
+            flex: 0 0 auto;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            padding: 8px 0;
+            color: #a7b4aa;
+            font-size: 11px;
+            overflow-wrap: anywhere;
+            button { padding: 3px 7px; border: 1px solid #536759; border-radius: 3px; color: #d0e2d5; background: #2b3b30; }
+          }
+          .assetSearch { flex: 0 0 auto; margin-top: 9px; font-size: 11px; }
+          .assetFilters {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 3px;
+            margin: 8px 0;
+            button { flex: 1; min-width: 0; padding: 5px 2px; border: 1px solid transparent; border-radius: 3px; color: #a0aca3; background: #191d1a; font-size: 10px; &:hover { color: #dce9e0; } &.isActive { border-color: #45624d; color: #c4dfcb; background: #2b3a2e; } }
+          }
+          .assetList {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            gap: 3px;
+            min-height: 0;
+            overflow-y: auto;
+            .assetRow {
+              display: grid;
+              grid-template-columns: 30px repeat(3, minmax(0, 1fr));
+              flex: 0 0 auto;
               align-items: center;
               gap: 6px;
-              height: 42px;
-              min-width: 2px;
-              padding: 0 9px;
-              overflow: hidden;
-              border: 1px solid #52745d;
+              min-width: 0;
+              padding: 7px 5px;
+              border: 1px solid transparent;
               border-radius: 4px;
-              color: #e6f1e8;
-              background: #31513b;
-              text-align: left;
+              background: #272c28;
               cursor: grab;
-              touch-action: none;
-              &:hover { filter: brightness(1.12); }
-              &.isSelected { z-index: 2; border-color: #a3d5b0; box-shadow: 0 0 0 1px #a3d5b0; }
-              &.audio { border-color: #8a7443; color: #f3e4bb; background: #554a2d; }
-              &.text { border-color: #6c618a; color: #e1d8f4; background: #423950; }
-              &.video, &.image { top: 8px; height: 59px; align-items: flex-start; padding-top: 2px; background: #263b2e; .clipTitle, .clipDuration { position: relative; z-index: 1; line-height: 15px; } }
-              .clipTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-              .clipDuration { flex: 0 0 auto; color: rgb(255 255 255 / 68%); font-size: 9px; font-variant-numeric: tabular-nums; }
-              &.audio { .clipTitle, .clipDuration { position: relative; z-index: 1; } }
-              .trimHandle { position: absolute; top: 0; z-index: 1; width: 6px; height: 100%; background: rgb(255 255 255 / 22%); cursor: ew-resize; &.leftHandle { left: 0; } &.rightHandle { right: 0; } }
+              &:hover { background: #303732; }
+              &.isMissing { border-color: #815743; background: #33271f; }
+              &.isSelected { border-color: #64846c; background: #2d3b31; box-shadow: inset 2px 0 #8ec29c; }
+              .assetIcon { display: flex; grid-row: 1 / span 2; align-items: center; justify-content: center; width: 30px; height: 34px; border-radius: 4px; color: #9dd9b6; background: #284234; &.audio { color: #e7c681; background: #4a4028; } &.image { color: #b8d2ef; background: #2d3d4d; } }
+              .assetInfo { display: flex; grid-column: 2 / -1; flex-direction: column; gap: 4px; min-width: 0; strong { overflow: hidden; color: #dce3dc; font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; } span { color: #8b958d; font-size: 10px; white-space: nowrap; } }
+              .tinyAction { grid-row: 2; width: 100%; height: 23px; &:nth-of-type(1) { grid-column: 2; } &:nth-of-type(2) { grid-column: 3; } &:nth-of-type(3) { grid-column: 4; } }
+              .cacheControls { display: flex; grid-column: 2 / -1; grid-row: 3; align-items: center; gap: 6px; min-width: 0; .cacheState { flex: 1; min-width: 0; overflow: hidden; color: #8fa496; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; &.hasError { color: #e6a38f; } } .cacheButton { flex: 0 0 auto; min-height: 21px; padding: 2px 5px; border: 1px solid #465a4b; border-radius: 3px; color: #c1d9c7; background: #26372b; font-size: 9px; &:hover:not(:disabled) { border-color: #6a9075; background: #304536; } &:disabled { opacity: .55; cursor: not-allowed; } } .cancelCacheButton { border-color: #6c5547; color: #e2b39c; background: #352921; } }
+            }
+          }
+          .dropHint { flex: 0 0 auto; margin-top: 10px; padding: 9px 5px; border: 1px dashed #485249; border-radius: 4px; color: #929b94; background: transparent; text-align: center; font-size: 10px; line-height: 1.5; &:hover:not(:disabled) { border-color: #77ae8e; color: #c7dbcc; } }
+        }
+      }
+      .previewArea {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+        min-height: 0;
+        padding: 0;
+        background: #151816;
+        overflow: hidden;
+        .monitorHeader { display: flex; flex: 0 0 36px; align-items: center; gap: 6px; width: 100%; min-width: 0; padding: 0 8px; border-bottom: 1px solid #303631;
+          .previewTitle { margin-right: auto; color: #aeb7af; font-size: 11px; white-space: nowrap; }
+          .monitorModes { display: flex; align-items: center; gap: 2px;
+            button { min-height: 24px; padding: 0 7px; border: 1px solid transparent; border-radius: 3px; color: #82968a; background: transparent; font-size: 10px; white-space: nowrap; &.isActive { border-color: #415d49; color: #c7e7d0; background: #263d2e; } }
+          }
+          .monitorAction { flex: 0 0 auto; min-height: 24px; padding: 0 7px; border: 1px solid #415247; border-radius: 3px; color: #c0d0c5; background: #242e27; font-size: 10px; &:disabled { opacity: .45; cursor: not-allowed; } }
+          .agentToggle { display: inline-flex; align-items: center; justify-content: center; width: 28px; padding: 0; }
+          .inspectorToggle { display: none; }
+        }
+        .monitorGrid { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; gap: 8px; width: 100%; min-width: 0; min-height: 0;
+          &.isDual { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .sourceMonitorPanel { order: -1; min-height: 0; height: 100%; }
+          .programMonitor { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+            .previewHost {
+              display: flex;
+              flex: 1 1 0;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              min-height: 0;
+              margin: 0;
+              padding: 8px;
+              overflow: hidden;
+              .previewStage {
+                position: relative;
+                flex: 0 0 auto;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100%;
+                max-height: 100%;
+                margin: 0;
+                overflow: hidden;
+                container-type: size;
+                border: 1px solid #303631;
+                background: #080a09;
+                box-shadow: 0 10px 35px rgb(0 0 0 / 22%);
+                .previewVideo { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+                .previewText { position: absolute; right: auto; bottom: auto; width: max-content; max-width: 92%; color: #fff; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; font-size: 4cqw; font-weight: 600; line-height: 1.2; text-align: center; text-shadow: 0 2px 5px rgb(0 0 0 / 85%); white-space: pre-wrap; overflow-wrap: anywhere; transform: translate(-50%, -50%); pointer-events: none; }
+                .previewEmpty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #727c74; font-size: 12px; pointer-events: none; }
+              }
+            }
+            .previewAlert { position: absolute; right: 18px; bottom: 58px; z-index: 3; display: flex; align-items: center; gap: 8px; max-width: 80%; padding: 8px 10px; border: 1px solid #824d3d; border-radius: 4px; color: #ffd0bc; background: #442920; font-size: 11px; line-height: 1.5; button { flex: 0 0 auto; border: 0; color: inherit; background: transparent; } }
+            .transportBar {
+              display: grid;
+              grid-template-columns: minmax(0, 1fr) auto minmax(56px, 1fr);
+              flex: 0 0 44px;
+              align-items: center;
+              gap: 8px;
+              width: 100%;
+              height: 44px;
+              padding: 0 8px;
+              border-top: 1px solid #303631;
+              background: #202421;
+              .transportButtons { display: flex; align-items: center; }
+              .transportButton { width: 27px; height: 30px; color: #b9c5bc; }
+              .transportTime { min-width: 0; color: #aeb7af; font-variant-numeric: tabular-nums; font-size: 10px; white-space: nowrap; }
+              .previewRatio { justify-self: end; width: 56px; min-height: 25px; padding: 2px; font-size: 10px; }
             }
           }
         }
-        .playhead { position: absolute; top: 0; bottom: 0; left: 174px; z-index: 5; width: 1px; background: #f08d62; pointer-events: none; .playheadCap { position: absolute; top: 0; left: -5px; width: 11px; height: 10px; border-radius: 3px 3px 1px 1px; background: #f08d62; pointer-events: auto; cursor: ew-resize; } .playheadLine { position: absolute; top: 10px; bottom: 0; left: 0; border-left: 1px solid #f08d62; } }
+      }
+      .inspectorPanel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 16px 13px;
+        overflow-y: auto;
+        border-left: 1px solid #343a35;
+        background: #202421;
+        .panelHeading { margin-bottom: 16px; }
+        .inspectorClose { display: none; }
+        fieldset {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          &:disabled { opacity: .62; .fieldLabel { color: #8b988f; } input, select, textarea, button { cursor: not-allowed; } }
+        }
+        input[type="number"] { font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; margin: 7px 0; }
+        input[type="color"] { width: 100%; min-height: 32px; padding: 3px; border: 1px solid #3d453e; border-radius: 4px; background: #181c19; }
+        details { margin-top: 12px; padding: 9px 0; border-top: 1px solid #343a35; border-bottom: 1px solid #343a35; summary { color: #c0cbc2; font-size: 12px; cursor: pointer; &:focus-visible { outline: 1px solid #90c9a2; outline-offset: 3px; } } }
+        .keyframePanel {
+          .buttonRow { margin-top: 9px; gap: 5px; .secondaryButton { min-height: 29px; padding: 0 6px; font-size: 10px; } }
+          .keyframeNavigation { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; color: #9cac9f; font-size: 10px; button { display: grid; place-items: center; width: 28px; height: 25px; padding: 0; border: 1px solid #3b493f; border-radius: 3px; color: #b9d7c2; background: #29382e; } }
+          .keyframeList { display: flex; flex-direction: column; gap: 3px; max-height: 132px; margin-top: 6px; overflow-y: auto;
+            .keyframeRow { display: flex; gap: 3px;
+              .keyframeJump { display: flex; flex: 1; align-items: center; justify-content: space-between; min-height: 27px; padding: 3px 6px; border: 1px solid #39443c; border-radius: 3px; color: #b7c7bc; background: #202b23; font-size: 10px; font-variant-numeric: tabular-nums; span { color: #d0e4d5; } }
+              .keyframeRemove { width: 26px; padding: 0; border: 1px solid #51413b; border-radius: 3px; color: #c8aaa0; background: #2e2723; }
+            }
+          }
+        }
+        .precisionPanel { .buttonRow { margin-top: 8px; gap: 4px; .secondaryButton { min-height: 27px; padding: 0 5px; font-size: 10px; } } .featureNote { margin-top: 7px; } }
+        .inspectorFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 17px; padding-top: 12px; border-top: 1px solid #343a35; color: #929c94; font-size: 11px; strong { color: #dce4dc; font-variant-numeric: tabular-nums; } }
+        .removeButton { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 33px; margin-top: 12px; border: 1px solid #65473f; border-radius: 4px; color: #e5a18d; background: #30231f; &:hover:not(:disabled) { background: #422b25; } }
+        .inspectorEmpty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 120px; color: #7a857d; text-align: center; font-size: 11px; }
       }
     }
-    .timelineFooter { display: flex; flex: 0 0 26px; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; padding: 0 12px; color: #8d978f; font-size: 9px; > span { flex: 0 0 auto; } .timelineFooterNote { flex: 1; min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; } }
+    .timelineSeparator { display: grid; place-items: center; cursor: ns-resize; touch-action: none; background: #171a18;
+      &::after { width: 36px; height: 3px; border-radius: 2px; background: #526057; content: ""; }
+      &:hover::after, &:focus-visible::after { background: #90c9a2; }
+      &:focus-visible { outline: 2px solid #90c9a2; outline-offset: -2px; }
+    }
+    .timelinePanel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-top: 1px solid #3a413b;
+      background: #1d211e;
+      &.isCompact {
+        .timelineViewport .timelineCanvas .timelineTrack { height: 52px;
+          .trackLabel { height: 51px; gap: 2px; padding: 2px 6px; }
+          .trackContent .timelineClip { top: 5px;
+            &.video, &.image { top: 3px; height: 46px; }
+          }
+        }
+      }
+      .editNotice { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 12px; border-bottom: 1px solid #644d36; color: #edc5a7; background: #352a20; font-size: 11px; button { border: 0; color: inherit; background: transparent; } }
+      .trackAdd { min-height: 27px; padding: 0 7px; border: 1px solid #3c483e; border-radius: 3px; color: #aab8ad; background: #252b26; font-size: 10px; &:hover:not(:disabled) { border-color: #64846c; color: #deece0; } }
+      .timelineHeader {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 46px;
+        padding: 6px 12px;
+        border-bottom: 1px solid #323832;
+        .timelineActions { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: thin; > * { flex-shrink: 0; } }
+        .editMode { width: auto; min-height: 27px; padding: 3px 5px; color: #b7cebd; font-size: 10px; }
+        .timelineButton { width: 30px; height: 30px; color: #a8b2aa; &.isActive { border-color: #506958; color: #a8ddb9; background: #2b4033; } &:hover:not(:disabled) { border-color: #424b43; } }
+        .snapButton { gap: 5px; width: auto; padding: 0 7px; font-size: 10px; }
+        .headerDivider { width: 1px; height: 20px; margin: 0 5px; background: #394039; }
+        .timelineZoom { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; color: #8e988f; font-size: 10px; label { display: inline-flex; align-items: center; gap: 5px; } input { width: 90px; accent-color: #78b78f; } }
+      }
+      .timelineViewport {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        .timelineCanvas {
+          position: relative;
+          min-height: 100%;
+          padding-left: 174px;
+          .rulerLabel, .trackLabel { position: absolute; top: 0; left: -174px; width: 174px; border-right: 1px solid #3b433c; color: #aab4ac; background: #222723; font-size: 10px; }
+          .timelineRuler {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            display: flex;
+            height: 28px;
+            border-bottom: 1px solid #414841;
+            background: #242925;
+            cursor: pointer;
+            .rulerLabel { z-index: 4; display: flex; align-items: center; height: 27px; padding-left: 12px; }
+            .rulerTicks { position: relative; flex: 1; height: 100%; .rulerTick { position: absolute; top: 0; height: 100%; padding: 5px 0 0 5px; border-left: 1px solid #394039; color: #7f8981; font-size: 9px; font-variant-numeric: tabular-nums; pointer-events: none; } }
+          }
+          .timelineTrack {
+            position: relative;
+            height: 76px;
+            border-bottom: 1px solid #343a35;
+            background: #1b1f1c;
+            &.audio { background: #1d211d; }
+            &.text { background: #1b1f1d; }
+            &.isLocked .trackContent { opacity: .55; }
+            &.isHidden .timelineClip { opacity: .48; }
+            .trackLabel {
+              z-index: 2;
+              display: flex;
+              flex-direction: column;
+              align-items: stretch;
+              justify-content: center;
+              gap: 5px;
+              height: 75px;
+              padding: 6px;
+              .trackName { display: flex; align-items: center; gap: 5px; min-width: 0; input { flex: 1; width: 0; min-height: 23px; padding: 2px 3px; border-color: transparent; border-radius: 2px; color: #bdc8bf; background: transparent; font-size: 10px; &:focus { border-color: #59695b; box-shadow: none; } &:disabled { color: #8b988f; opacity: .75; } } small { flex: 0 0 auto; min-width: 17px; color: #829087; text-align: right; font-size: 9px; } }
+              .trackControls { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; button { min-width: 22px; min-height: 22px; padding: 2px 4px; border: 1px solid #3b443d; border-radius: 2px; color: #a3afa6; background: #262b27; font-size: 9px; &:hover:not(:disabled) { color: #e6efe8; background: #354137; } &[aria-pressed="true"] { border-color: #74523d; color: #e4ae8c; background: #37291f; } } }
+            }
+            .trackContent {
+              position: relative;
+              height: 100%;
+              .timelineClip {
+                position: absolute;
+                top: 16px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                height: 42px;
+                min-width: 2px;
+                padding: 0 9px;
+                overflow: hidden;
+                border: 1px solid #52745d;
+                border-radius: 4px;
+                color: #e6f1e8;
+                background: #31513b;
+                text-align: left;
+                cursor: grab;
+                touch-action: none;
+                &:hover { filter: brightness(1.12); }
+                &.isSelected { z-index: 2; border-color: #a3d5b0; box-shadow: 0 0 0 1px #a3d5b0; }
+                &.audio { border-color: #8a7443; color: #f3e4bb; background: #554a2d; }
+                &.text { border-color: #6c618a; color: #e1d8f4; background: #423950; }
+                &.video, &.image { top: 8px; height: 59px; align-items: flex-start; padding-top: 2px; background: #263b2e; .clipTitle, .clipDuration { position: relative; z-index: 1; line-height: 15px; } }
+                .clipTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+                .clipDuration { flex: 0 0 auto; color: rgb(255 255 255 / 68%); font-size: 9px; font-variant-numeric: tabular-nums; }
+                &.audio { .clipTitle, .clipDuration { position: relative; z-index: 1; } }
+                .trimHandle { position: absolute; top: 0; z-index: 1; width: 6px; height: 100%; background: rgb(255 255 255 / 22%); cursor: ew-resize; &.leftHandle { left: 0; } &.rightHandle { right: 0; } }
+              }
+            }
+          }
+          .playhead { position: absolute; top: 0; bottom: 0; left: 174px; z-index: 5; width: 1px; background: #f08d62; pointer-events: none; .playheadCap { position: absolute; top: 0; left: -5px; width: 11px; height: 10px; border-radius: 3px 3px 1px 1px; background: #f08d62; pointer-events: auto; cursor: ew-resize; } .playheadLine { position: absolute; top: 10px; bottom: 0; left: 0; border-left: 1px solid #f08d62; } }
+        }
+      }
+      .timelineFooter { display: flex; flex: 0 0 26px; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; padding: 0 12px; color: #8d978f; font-size: 9px; > span { flex: 0 0 auto; } .timelineFooterNote { flex: 1; min-width: 0; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; } }
+    }
+  }
+  &.isExpanded .editorWorkspace .editorBody {
+    grid-template-columns: minmax(0, 1fr);
+    .mediaPanel, .inspectorPanel, .previewArea .monitorHeader .inspectorToggle { display: none; }
+  }
+  .deliveryDialog { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 18px; overflow-y: auto; border: 1px solid #465148; border-radius: 7px; color: #d8e0d9; background: #1c231e; box-shadow: 0 18px 70px rgb(0 0 0 / 42%);
+    &::backdrop { background: rgb(5 7 6 / 72%); }
+    .deliveryHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; strong { font-size: 15px; } }
+    .exportStale { margin: 10px 0 0; color: #d2aa7c; font-size: 11px; }
   }
   .noProject { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #a5b1a7; h1 { margin: 8px 0 0; color: #e0e6e0; font-size: 19px; } }
   .renderQueueDialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 18px; overflow-y: auto; border: 1px solid #465148; border-radius: 7px; color: #d8e0d9; background: #1c231e; box-shadow: 0 18px 70px rgb(0 0 0 / 42%);
@@ -3053,5 +3329,21 @@ async function exportTimeline() {
   }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 1150px) { .videoEditor .editorBody { grid-template-columns: 230px minmax(320px, 1fr) 215px; .mediaPanel { grid-template-columns: 54px minmax(0, 1fr); } } }
+@media (max-width: 1200px) {
+  .videoEditor {
+    .editorHeader { gap: 8px;
+      .headerProject .projectTitle span { max-width: 120px; }
+      .headerActions { gap: 6px;
+        > button { min-height: 28px; padding: 0 7px; font-size: 10px; white-space: nowrap; }
+        .projectPickerButton { max-width: 160px; }
+        .saveStatus { max-width: 100px; }
+      }
+    }
+    .editorWorkspace .editorBody { grid-template-columns: 240px minmax(0, 1fr);
+      .inspectorPanel { display: none; }
+      .previewArea .monitorHeader .inspectorToggle { display: inline-flex; align-items: center; }
+    }
+    &.inspectorOpen .editorWorkspace .editorBody .inspectorPanel { position: absolute; inset: 0 0 0 auto; z-index: 8; display: flex; width: 260px; box-shadow: -10px 0 30px rgb(0 0 0 / 25%); .inspectorClose { display: inline-flex; } }
+  }
+}
 </style>

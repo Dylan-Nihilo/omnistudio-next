@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>剪辑台 · 设计预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --appBackground: #0e0e10;
+      --panelBackground: #1b1b1e;
+      --controlBackground: #29292d;
+      --lineColor: #303034;
+      --textColor: #ebebee;
+      --mutedColor: #97979f;
+      --accentColor: #63e7da;
+      font-family: "Microsoft YaHei UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 760px; color: var(--textColor); background: var(--appBackground); }
+    button, input, select, textarea { font: inherit; }
+    button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0; border: 0; color: inherit; background: transparent; cursor: pointer; }
+    button:hover:not(:disabled) { background: #303034; }
+    button:disabled { color: #606066; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accentColor); outline-offset: 3px; }
+    button, select, input { -webkit-tap-highlight-color: transparent; }
+    input, select, textarea { min-width: 0; border: 1px solid transparent; border-radius: 4px; color: #d9d9de; background: var(--controlBackground); }
+    input[type="range"] { height: 3px; padding: 0; accent-color: #c5c5cc; cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb { width: 10px; height: 10px; }
+    select { height: 28px; padding: 0 8px; }
+    svg { display: block; width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+    .svgLibrary { position: absolute; width: 0; height: 0; overflow: hidden; }
+    [hidden] { display: none !important; }
+    .editorApp { display: grid; grid-template-rows: 48px minmax(280px, 1fr) clamp(220px, 29dvh, 320px) 25px; gap: 5px; height: 100dvh; min-height: 640px; padding: 0 6px; }
+    .editorHeader { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 12px; }
+    .headerIdentity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brandMark { width: 26px; height: 26px; color: #e9e9ec; }
+    .backButton { width: 26px; height: 28px; border-radius: 4px; color: var(--mutedColor); }
+    .headerDivider { width: 1px; height: 17px; background: #3a3a40; }
+    .headerName { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .5px; }
+    .projectButton { max-width: 300px; height: 30px; padding: 0 8px; border-radius: 4px; color: #c5c5ce; }
+    .projectButton span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .projectButton svg { width: 13px; height: 13px; color: #7e7e89; }
+    .draftBadge { padding: 3px 6px; border: 1px solid #3c3c44; border-radius: 3px; color: #aaaab5; font-size: 10px; white-space: nowrap; }
+    .headerActions { display: flex; align-items: center; gap: 16px; }
+    .saveStatus { display: flex; align-items: center; gap: 5px; color: #8e8e98; font-size: 11px; white-space: nowrap; }
+    .saveStatus svg { width: 15px; height: 15px; }
+    .headerAction { height: 29px; padding: 0 9px; border-radius: 4px; font-size: 11px; color: #bcbcc5; }
+    .exportButton { height: 29px; min-width: 86px; padding: 0 13px; border-radius: 5px; background: var(--accentColor); font-weight: 650; }
+    .exportButton:disabled { color: #102f2c; background: #4cafa7; }
+    .editorBody { position: relative; display: grid; grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 5px; min-height: 0; }
+    .editorApp.isFocused .editorBody { grid-template-columns: minmax(0, 1fr); }
+    .editorApp.isFocused .mediaPanel, .editorApp.isFocused .inspectorPanel { display: none; }
+    .editorApp.isFocused .inspectorToggle { display: none; }
+    .panel { min-width: 0; overflow: hidden; border-radius: 7px; background: var(--panelBackground); }
+    .mediaPanel { display: flex; }
+    .toolNav { display: flex; flex: 0 0 56px; flex-direction: column; align-items: stretch; gap: 5px; padding: 8px 4px; border-right: 1px solid var(--lineColor); }
+    .toolTab { position: relative; display: flex; flex: 0 0 60px; flex-direction: column; gap: 6px; border-radius: 4px; color: #a1a1ac; font-size: 11px; }
+    .toolTab svg { width: 21px; height: 21px; }
+    .toolTab:hover:not(:disabled) { background: transparent; color: #f0f0f3; }
+    .toolTab[aria-selected="true"] { color: var(--accentColor); background: #253332; }
+    .toolTab[aria-selected="true"]::after { position: absolute; top: 20%; bottom: 20%; left: -4px; width: 2px; border-radius: 2px; background: var(--accentColor); content: ""; }
+    .assetPanel { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; padding: 16px 12px; }
+    .panelHeading { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 15px; }
+    .panelHeading h2 { margin: 0; font-size: 12px; font-weight: 600; }
+    .assetCount { color: #83838f; font-size: 10px; }
+    .importActions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; }
+    .importActions button { height: 30px; padding: 0 12px; border-radius: 4px; background: #303035; font-size: 11px; }
+    .importActions button svg { width: 14px; height: 14px; }
+    .importActions button:disabled { color: #b0b0bc; }
+    .importActions .primaryImport { color: #83e1d8; background: #263c3b; }
+    .searchField { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border: 1px solid #333339; border-radius: 4px; color: #85858f; background: #17171a; }
+    .searchField svg { width: 14px; height: 14px; }
+    .searchField input { width: 100%; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; font-size: 11px; }
+    .searchField:focus-within { border-color: var(--accentColor); }
+    .searchField input:focus-visible { outline: none; }
+    .searchField input::placeholder { color: #82828e; }
+    .assetFilters { display: flex; flex: 0 0 auto; align-items: center; gap: 20px; height: 39px; margin-bottom: 5px; }
+    .filterButton { height: 27px; color: #8e8e9a; font-size: 11px; }
+    .filterButton:hover:not(:disabled) { color: #eeeef3; background: transparent; }
+    .filterButton[aria-pressed="true"] { color: #eeeef3; }
+    .assetList { display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 12px; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #46464f #1b1b1e; }
+    .assetCard { display: flex; align-items: stretch; flex-direction: column; gap: 7px; min-width: 0; padding: 0; border-radius: 4px; text-align: left; }
+    .assetCard:hover:not(:disabled) { background: transparent; }
+    .assetThumb { position: relative; display: grid; width: 100%; aspect-ratio: 16 / 9; place-items: center; overflow: hidden; border: 1px solid #383840; border-radius: 5px; color: #a4a4b2; background: #26262d; }
+    .assetThumb > svg { width: 29px; height: 29px; stroke-width: 1.2; }
+    .assetCard[aria-pressed="true"] .assetThumb { border-color: var(--accentColor); box-shadow: inset 0 0 0 1px var(--accentColor); }
+    .assetDuration { position: absolute; right: 6px; bottom: 5px; padding: 2px 4px; border-radius: 2px; color: #e6e6ed; background: #151519; font-family: "Cascadia Code", Consolas, monospace; font-size: 9px; }
+    .assetName { display: block; overflow: hidden; width: 100%; color: #c9c9d1; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .assetMetadata { color: #858591; font-size: 10px; }
+    .mediaFooter { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 16px; color: #7e7e89; font-size: 10px; }
+    .secondaryContent { flex: 1; overflow-y: auto; }
+    .fieldLabel { display: flex; flex-direction: column; gap: 9px; margin-bottom: 18px; color: #bcbcc6; font-size: 11px; }
+    .fieldLabel select { width: 100%; }
+    .previewPanel { display: flex; flex-direction: column; min-height: 0; }
+    .monitorHeader { display: flex; flex: 0 0 36px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border-bottom: 1px solid #28282d; }
+    .monitorHeader h2 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; font-weight: 600; }
+    .monitorHeader h2 svg { width: 15px; height: 15px; color: #9494a1; }
+    .monitorActions { display: flex; align-items: center; gap: 8px; }
+    .focusButton, .inspectorToggle { height: 25px; padding: 0 7px; border: 1px solid #3b3b43; border-radius: 4px; color: #b7b7c2; font-size: 10px; }
+    .focusButton svg { width: 13px; height: 13px; }
+    .focusButton[aria-pressed="true"] { color: var(--accentColor); border-color: #467e78; }
+    .inspectorToggle { display: none; }
+    .monitorModes { display: flex; align-items: center; gap: 1px; padding: 3px; border-radius: 5px; background: #111114; }
+    .monitorMode { min-width: 45px; height: 23px; padding: 0 8px; border-radius: 3px; color: #83838f; font-size: 10px; }
+    .monitorMode[aria-pressed="true"] { color: #dedee5; background: #34343a; }
+    .previewHost { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; padding: 8px; }
+    .previewStage { width: 100%; max-height: 100%; aspect-ratio: 16 / 9; background: #050506; box-shadow: 0 0 0 1px #29292f; }
+    .transportBar { display: grid; flex: 0 0 44px; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0 8px; padding: 0 12px; }
+    .timecode { display: flex; gap: 7px; font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .timecode output { color: var(--accentColor); }
+    .timecode span { color: #777784; }
+    .transportButtons { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .iconButton { width: 28px; height: 28px; border-radius: 4px; color: #bebec8; }
+    .iconButton svg { width: 16px; height: 16px; }
+    .playButton svg { width: 19px; height: 19px; fill: currentColor; stroke-width: 1; }
+    .previewOptions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
+    .previewOptions select { width: 56px; height: 24px; padding: 0 3px; border-color: #3b3b43; color: #b4b4c0; background: transparent; font-size: 10px; }
+    .inspectorPanel { display: flex; flex-direction: column; }
+    .inspectorHeading { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 17px; border-bottom: 1px solid var(--lineColor); }
+    .inspectorClose { display: none; }
+    .inspectorHeading h2 { position: relative; display: flex; align-items: center; height: 100%; margin: 0; color: #e5e5ec; font-size: 12px; font-weight: 600; }
+    .inspectorHeading h2::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: #bdbdc7; content: ""; }
+    .inspectorContent { flex: 1; }
+    .timelinePanel { position: relative; display: flex; flex-direction: column; min-height: 0; }
+    .panelGrip { position: absolute; top: 0; left: 50%; z-index: 4; width: 64px; height: 8px; border-radius: 3px; transform: translateX(-50%); cursor: ns-resize; touch-action: none; }
+    .panelGrip::after { position: absolute; top: 1px; left: 18px; width: 28px; height: 3px; border-radius: 2px; background: #60606b; content: ""; }
+    .panelGrip:hover::after, .panelGrip:focus-visible::after { background: var(--accentColor); }
+    .panelGrip:focus-visible { outline: 2px solid var(--accentColor); }
+    .timelineToolbar { display: flex; flex: 0 0 47px; align-items: center; justify-content: space-between; gap: 12px; padding: 3px 14px 0; border-bottom: 1px solid #2c2c32; }
+    .timelineActions, .timelineOptions { display: flex; align-items: center; gap: 5px; }
+    .timelineActions .iconButton { width: 31px; height: 29px; }
+    .timelineActions .iconButton svg { width: 17px; height: 17px; }
+    .toolDivider { height: 17px; width: 1px; margin: 0 8px; background: #393940; }
+    .editMode { width: 83px; margin-left: 3px; color: #b9b9c4; background: transparent; font-size: 11px; }
+    .snapButton { height: 28px; padding: 0 8px; border-radius: 4px; color: #8f8f9a; font-size: 10px; }
+    .snapButton svg { width: 16px; height: 16px; }
+    .snapButton[aria-pressed="true"] { color: var(--accentColor); background: #253735; }
+    .trackAdd { height: 27px; padding: 0 9px; border-radius: 4px; color: #a9a9b5; font-size: 10px; white-space: nowrap; }
+    .trackAdd svg { width: 13px; height: 13px; }
+    .timelineOptions { gap: 8px; }
+    .timelineOptions input { width: 84px; }
+    .timelineOptions .iconButton { width: 23px; height: 26px; }
+    .timelineOptions .iconButton svg { width: 14px; height: 14px; }
+    .fitButton { margin-right: 7px; padding: 0 7px; height: 26px; border-radius: 3px; color: #aaaab6; font-size: 10px; white-space: nowrap; }
+    .timelineViewport { display: flex; flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #46464f #17171a; }
+    .trackLabels { position: sticky; left: 0; z-index: 3; flex: 0 0 168px; border-right: 1px solid #303036; background: #1b1b1e; }
+    .rulerLabel { display: flex; align-items: center; height: 32px; padding: 0 16px; border-bottom: 1px solid #303036; color: #797985; font-size: 10px; }
+    .trackLabel { display: flex; flex-direction: column; justify-content: center; gap: 11px; height: 83px; padding: 0 15px; border-bottom: 1px solid #29292f; }
+    .trackTitle { display: flex; align-items: center; gap: 9px; color: #b8b8c4; font-size: 11px; }
+    .trackTitle svg { width: 15px; height: 15px; color: #8b8b99; }
+    .trackControls { display: flex; align-items: center; gap: 11px; padding-left: 23px; }
+    .trackControl { width: 18px; height: 20px; border-radius: 3px; color: #868693; }
+    .trackControl svg { width: 13px; height: 13px; }
+    .trackControl[aria-pressed="true"] { color: var(--accentColor); background: #263b38; }
+    .timelineCanvas { position: relative; flex: 1; min-width: 750px; background: #17171a; }
+    .timelineRuler { position: relative; height: 32px; overflow: hidden; border-bottom: 1px solid #303036; background: #1b1b1e; cursor: ew-resize; }
+    .rulerTick { position: absolute; bottom: 0; height: 9px; border-left: 1px solid #44444d; }
+    .rulerTick span { position: absolute; top: -16px; left: 7px; color: #81818f; font-family: "Cascadia Code", Consolas, monospace; font-size: 9px; white-space: nowrap; }
+    .rulerTick.isMinor { height: 4px; border-color: #383840; }
+    .timelineTrack { height: 83px; border-bottom: 1px solid #29292f; }
+    .timelinePlayhead { position: absolute; top: 0; bottom: 0; left: 0; z-index: 2; width: 1px; background: #e4e4eb; pointer-events: none; }
+    .playheadCap { position: absolute; top: 0; left: -5px; width: 11px; height: 11px; border-radius: 1px 1px 0 0; background: #e4e4eb; clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%); }
+    .editorFooter { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 12px 5px; color: #858590; font-size: 10px; }
+    .footerInfo { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+    .keyboardHints { display: flex; gap: 18px; color: #7e7e8c; }
+    .keyboardHints span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    kbd { padding: 1px 4px; border: 1px solid #393941; border-radius: 3px; color: #9a9aa7; font: 9px "Cascadia Code", Consolas, monospace; }
+    @media (max-width: 1200px) {
+      .editorBody { grid-template-columns: 240px minmax(0, 1fr); }
+      .inspectorPanel { display: none; }
+      .editorApp.showInspector .inspectorPanel { position: absolute; inset: 0 0 0 auto; z-index: 8; display: flex; width: 260px; border: 1px solid #3b3b43; }
+      .inspectorToggle { display: inline-flex; }
+      .inspectorClose { display: inline-flex; }
+      .headerActions { gap: 8px; }
+      .headerIdentity { gap: 10px; }
+      .projectButton { max-width: 170px; }
+      .saveStatus { display: none; }
+      .timelineActions, .timelineOptions { gap: 2px; }
+      .toolDivider { margin: 0 4px; }
+      .trackAdd { padding: 0 6px; }
+      .timelineOptions input { width: 60px; }
+      .monitorMode { min-width: 34px; padding: 0 6px; }
+      .monitorHeader { padding: 0 11px; }
+      .keyboardHints { gap: 10px; }
+      .keyboardHints span:nth-child(3) { display: none; }
+      .headerAction { padding: 0 5px; }
+      .timelineActions { min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+      .timelineActions > * { flex-shrink: 0; }
+      .timelineOptions { flex-shrink: 0; }
+      .monitorHeader h2 svg { display: none; }
+      .assetList { grid-template-columns: minmax(0, 1fr); }
+      .importActions { flex-wrap: wrap; }
+    }
+    @media (max-height: 740px) {
+      .toolTab { flex-basis: 54px; gap: 4px; }
+      .assetPanel { padding: 12px; }
+      .panelHeading { margin-bottom: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="svgLibrary" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="arrowLeft" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6M8 12h12" /></symbol>
+    <symbol id="chevronDown" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></symbol>
+    <symbol id="media" viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2" /><path d="m17 10 4-3v10l-4-3M8 9l5 3-5 3z" /></symbol>
+    <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></symbol>
+    <symbol id="audio" viewBox="0 0 24 24"><path d="M9 17V5l11-2v12M9 8l11-2" /><ellipse cx="6" cy="18" rx="3" ry="3" /><ellipse cx="17" cy="16" rx="3" ry="3" /></symbol>
+    <symbol id="text" viewBox="0 0 24 24"><path d="M4 5h16M12 5v15M8 20h8M4 5v4M20 5v4" /></symbol>
+    <symbol id="settings" viewBox="0 0 24 24"><path d="M5 3v6m0 4v8M12 3v11m0 4v3M19 3v2m0 4v12" /><rect x="3" y="9" width="4" height="4" rx="1" /><rect x="10" y="14" width="4" height="4" rx="1" /><rect x="17" y="5" width="4" height="4" rx="1" /></symbol>
+    <symbol id="upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5" /></symbol>
+    <symbol id="folder" viewBox="0 0 24 24"><path d="M3 7V5h7l2 3h9v12H3V7z" /></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></symbol>
+    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v13m-5-5 5 5 5-5M4 16v5h16v-5" /></symbol>
+    <symbol id="cloudCheck" viewBox="0 0 24 24"><path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-3 5.5 5.5 0 0 1 3 8M10 16l3 3 7-7" /></symbol>
+    <symbol id="play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z" /></symbol>
+    <symbol id="stepBack" viewBox="0 0 24 24"><path d="M6 5v14m12-14-9 7 9 7z" /></symbol>
+    <symbol id="stepNext" viewBox="0 0 24 24"><path d="M18 5v14M6 5l9 7-9 7z" /></symbol>
+    <symbol id="fullscreen" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></symbol>
+    <symbol id="undo" viewBox="0 0 24 24"><path d="m8 5-5 5 5 5M3 10h11a6 6 0 0 1 0 12" /></symbol>
+    <symbol id="redo" viewBox="0 0 24 24"><path d="m16 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12" /></symbol>
+    <symbol id="scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="m8 8 12 12M8 16 20 4" /></symbol>
+    <symbol id="copy" viewBox="0 0 24 24"><rect x="7" y="7" width="13" height="14" rx="2" /><path d="M16 7V3H3v13h4" /></symbol>
+    <symbol id="trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" /></symbol>
+    <symbol id="magnet" viewBox="0 0 24 24"><path d="M5 3v10a7 7 0 0 0 14 0V3h-5v10a2 2 0 0 1-4 0V3H5zM5 7h5m4 0h5" /></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+    <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+    <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v3" /></symbol>
+    <symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></symbol>
+    <symbol id="volume" viewBox="0 0 24 24"><path d="m11 5-6 4H2v6h3l6 4V5zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /></symbol>
+    <symbol id="moveUp" viewBox="0 0 24 24"><path d="M12 19V5m-5 5 5-5 5 5" /></symbol>
+    <symbol id="moveDown" viewBox="0 0 24 24"><path d="M12 5v14m-5-5 5 5 5-5" /></symbol>
+  </svg>
+
+  <main class="editorApp">
+    <header class="editorHeader">
+      <div class="headerIdentity">
+        <button class="backButton" aria-label="返回画布" disabled><svg><use href="#arrowLeft" /></svg></button>
+        <svg class="brandMark" viewBox="0 0 128 128" aria-hidden="true"><g fill="#ff6b35" stroke="none" transform="translate(4 21)"><circle cx="16" cy="20" r="12" /><path d="M23 26 Q52 20 91 9 Q98 7 100 11 Q101 14 96 19 L61 53 L74 30 Q43 37 21 33 Z" /><g transform="rotate(180 60 43)"><circle cx="16" cy="20" r="12" /><path d="M23 26 Q52 20 91 9 Q98 7 100 11 Q101 14 96 19 L61 53 L74 30 Q43 37 21 33 Z" /></g></g></svg>
+        <h1 class="headerName">剪辑台</h1>
+        <span class="headerDivider"></span>
+        <button class="projectButton" disabled><span>画布1 · 剪辑</span><svg><use href="#chevronDown" /></svg></button>
+        <span class="draftBadge">布局预览</span>
+      </div>
+      <div class="headerActions">
+        <span class="saveStatus"><svg><use href="#cloudCheck" /></svg>已保存</span>
+        <button class="headerAction" disabled>项目恢复</button>
+        <button class="headerAction" disabled>渲染队列</button>
+        <span class="headerDivider"></span>
+        <button class="exportButton" disabled><svg><use href="#download" /></svg>导出</button>
+      </div>
+    </header>
+
+    <div class="editorBody">
+      <aside class="panel mediaPanel" aria-label="素材与工具">
+        <nav class="toolNav" role="tablist" aria-label="剪辑工具" aria-orientation="vertical">
+          <button class="toolTab" id="mediaTab" role="tab" aria-selected="true" aria-controls="mediaPanel" data-panel="media"><svg><use href="#media" /></svg>媒体</button>
+          <button class="toolTab" id="audioTab" role="tab" aria-selected="false" aria-controls="audioPanel" data-panel="audio" tabindex="-1"><svg><use href="#audio" /></svg>音频</button>
+          <button class="toolTab" id="textTab" role="tab" aria-selected="false" aria-controls="textPanel" data-panel="text" tabindex="-1"><svg><use href="#text" /></svg>文字</button>
+          <button class="toolTab" id="settingsTab" role="tab" aria-selected="false" aria-controls="settingsPanel" data-panel="settings" tabindex="-1"><svg><use href="#settings" /></svg>设置</button>
+        </nav>
+        <section id="mediaPanel" class="assetPanel" role="tabpanel" aria-labelledby="mediaTab">
+          <div class="panelHeading"><h2>媒体素材</h2><span class="assetCount">1 个文件</span></div>
+          <div class="importActions"><button class="primaryImport" disabled><svg><use href="#upload" /></svg>本地导入</button><button disabled><svg><use href="#folder" /></svg>项目 / 共享素材</button></div>
+          <label class="searchField"><svg><use href="#search" /></svg><input id="assetSearch" type="search" aria-label="搜索素材" placeholder="搜索素材" /></label>
+          <div class="assetFilters" aria-label="素材类型">
+            <button class="filterButton" aria-pressed="true" data-filter="all">全部</button>
+            <button class="filterButton" aria-pressed="false" data-filter="video">视频</button>
+            <button class="filterButton" aria-pressed="false" data-filter="audio">音频</button>
+            <button class="filterButton" aria-pressed="false" data-filter="image">图片</button>
+          </div>
+          <div class="assetList">
+            <button id="sourceAsset" class="assetCard" aria-pressed="false" aria-label="选择源素材 video330129c0-694f-46fd-aa9a-6222d1a55f7c.mp4">
+              <span class="assetThumb"><svg><use href="#video" /></svg><span class="assetDuration">00:04.13</span></span>
+              <span class="assetName" title="video330129c0-694f-46fd-aa9a-6222d1a55f7c.mp4">video330129c0-694f-46fd-aa9a-6222d1a55f7c.mp4</span>
+              <span class="assetMetadata">画布1 · 0.2 MB</span>
+            </button>
+          </div>
+          <footer class="mediaFooter"><span>视频 / 音频 / 图片</span><span>单文件 ≤ 8 GiB</span></footer>
+        </section>
+        <section id="audioPanel" class="assetPanel" role="tabpanel" aria-labelledby="audioTab" hidden>
+          <div class="panelHeading"><h2>音频素材</h2></div>
+          <div class="importActions"><button disabled><svg><use href="#upload" /></svg>本地导入</button><button disabled><svg><use href="#folder" /></svg>项目 / 共享素材</button></div>
+        </section>
+        <section id="textPanel" class="assetPanel" role="tabpanel" aria-labelledby="textTab" hidden><div class="panelHeading"><h2>文字与字幕</h2></div></section>
+        <section id="settingsPanel" class="assetPanel" role="tabpanel" aria-labelledby="settingsTab" hidden>
+          <div class="panelHeading"><h2>项目与输出</h2></div>
+          <div class="secondaryContent">
+            <label class="fieldLabel">画面比例<select id="projectRatio"><option>16:9</option><option>9:16</option><option>1:1</option><option>4:3</option></select></label>
+            <label class="fieldLabel">帧率<select disabled><option>30 fps</option><option>24 fps</option><option>25 fps</option><option>60 fps</option></select></label>
+            <label class="fieldLabel">输出高度<select disabled><option>1080p</option><option>720p</option><option>2160p · 4K</option></select></label>
+            <label class="fieldLabel">输出质量<select disabled><option>标准</option><option>快速预览</option><option>高质量</option></select></label>
+          </div>
+        </section>
+      </aside>
+
+      <section class="panel previewPanel" aria-label="视频预览">
+        <header class="monitorHeader">
+          <h2><svg><use href="#video" /></svg>播放器</h2>
+          <div class="monitorActions"><nav class="monitorModes" aria-label="监视器布局">
+            <button class="monitorMode" aria-pressed="true" data-monitor="program">成片</button>
+            <button class="monitorMode" aria-pressed="false" data-monitor="source" disabled>素材源</button>
+            <button class="monitorMode" aria-pressed="false" disabled>双监视器</button>
+          </nav><button class="inspectorToggle" id="inspectorToggle" aria-expanded="false" aria-controls="inspectorPanel">属性</button><button class="focusButton" id="focusButton" aria-pressed="false"><svg><use href="#fullscreen" /></svg><span>放大预览</span></button></div>
+        </header>
+        <div class="previewHost"><div class="previewStage" aria-label="视频画面"></div></div>
+        <div class="transportBar">
+          <div class="timecode"><output id="currentTime">00:00:00:00</output><span>/ 00:00:00:00</span></div>
+          <div class="transportButtons"><button class="iconButton" aria-label="上一帧" disabled><svg><use href="#stepBack" /></svg></button><button class="iconButton playButton" aria-label="播放" disabled><svg><use href="#play" /></svg></button><button class="iconButton" aria-label="下一帧" disabled><svg><use href="#stepNext" /></svg></button></div>
+          <div class="previewOptions"><select id="previewRatio" aria-label="预览画面比例"><option>16:9</option><option>9:16</option><option>1:1</option><option>4:3</option></select></div>
+        </div>
+      </section>
+
+      <aside class="panel inspectorPanel" id="inspectorPanel" aria-label="片段属性"><header class="inspectorHeading"><h2>片段属性</h2><button class="iconButton inspectorClose" id="inspectorClose" aria-label="关闭属性面板">×</button></header><div class="inspectorContent"></div></aside>
+    </div>
+
+    <section class="panel timelinePanel" aria-label="多轨时间线">
+      <div class="panelGrip" tabindex="0" role="separator" aria-label="调整时间线高度" aria-orientation="horizontal" aria-valuemin="220" aria-valuemax="420" aria-valuenow="240"></div>
+      <header class="timelineToolbar">
+        <div class="timelineActions">
+          <button class="iconButton" aria-label="撤销" disabled><svg><use href="#undo" /></svg></button>
+          <button class="iconButton" aria-label="重做" disabled><svg><use href="#redo" /></svg></button>
+          <span class="toolDivider"></span>
+          <button class="iconButton" aria-label="分割片段" disabled><svg><use href="#scissors" /></svg></button>
+          <button class="iconButton" aria-label="复制片段" disabled><svg><use href="#copy" /></svg></button>
+          <button class="iconButton" aria-label="删除片段" disabled><svg><use href="#trash" /></svg></button>
+          <select class="editMode" aria-label="时间线编辑模式"><option>选择 V</option><option>波纹修剪 B</option><option>滚动 N</option><option>滑移 Y</option></select>
+          <span class="toolDivider"></span>
+          <button class="snapButton" id="snapButton" aria-pressed="true"><svg><use href="#magnet" /></svg>吸附</button>
+          <span class="toolDivider"></span>
+          <button class="trackAdd" disabled><svg><use href="#plus" /></svg>视频轨</button>
+          <button class="trackAdd" disabled><svg><use href="#plus" /></svg>音频轨</button>
+          <button class="trackAdd" disabled><svg><use href="#plus" /></svg>文字轨</button>
+        </div>
+        <div class="timelineOptions">
+          <button class="fitButton" disabled>适合全长</button>
+          <button class="iconButton" id="zoomOut" aria-label="缩小时间线"><svg><use href="#minus" /></svg></button>
+          <input id="timelineZoom" type="range" min="15" max="80" value="30" aria-label="时间线缩放" />
+          <button class="iconButton" id="zoomIn" aria-label="放大时间线"><svg><use href="#plus" /></svg></button>
+        </div>
+      </header>
+      <div class="timelineViewport">
+        <div class="trackLabels">
+          <div class="rulerLabel">轨道</div>
+          <div class="trackLabel"><div class="trackTitle"><svg><use href="#video" /></svg>视频</div><div class="trackControls">
+            <button class="trackControl" aria-label="锁定视频轨" aria-pressed="false"><svg><use href="#lock" /></svg></button>
+            <button class="trackControl" aria-label="隐藏视频轨" aria-pressed="false"><svg><use href="#eye" /></svg></button>
+            <button class="trackControl" aria-label="静音视频轨" aria-pressed="false"><svg><use href="#volume" /></svg></button>
+          </div></div>
+          <div class="trackLabel"><div class="trackTitle"><svg><use href="#audio" /></svg>音频</div><div class="trackControls">
+            <button class="trackControl" aria-label="锁定音频轨" aria-pressed="false"><svg><use href="#lock" /></svg></button>
+            <button class="trackControl" aria-label="静音音频轨" aria-pressed="false"><svg><use href="#volume" /></svg></button>
+          </div></div>
+        </div>
+        <div class="timelineCanvas">
+          <div class="timelineRuler" aria-label="时间尺"></div>
+          <div class="timelineTrack"></div><div class="timelineTrack"></div>
+          <div class="timelinePlayhead"><span class="playheadCap"></span></div>
+        </div>
+      </div>
+    </section>
+    <footer class="editorFooter"><div class="footerInfo"><span>2 轨道</span><span>0 个片段</span></div><div class="keyboardHints"><span><kbd>Space</kbd>播放 / 暂停</span><span><kbd>←</kbd><kbd>→</kbd>逐帧</span><span><kbd>S</kbd>分割</span><span><kbd>Ctrl Z</kbd>撤销</span></div><div class="footerInfo">总时长 <span>00:00:00:00</span></div></footer>
+  </main>
+
+  <script type="module">
+    const toolTabs = [...document.querySelectorAll(".toolTab")];
+    function selectTool(tab) {
+      toolTabs.forEach(item => {
+        const selected = item === tab;
+        item.setAttribute("aria-selected", String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        document.getElementById(`${item.dataset.panel}Panel`).hidden = !selected;
+      });
+    }
+    toolTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectTool(tab));
+      tab.addEventListener("keydown", event => {
+        let nextIndex;
+        if (event.key === "ArrowDown") nextIndex = (index + 1) % toolTabs.length;
+        if (event.key === "ArrowUp") nextIndex = (index + toolTabs.length - 1) % toolTabs.length;
+        if (event.key === "Home") nextIndex = 0;
+        if (event.key === "End") nextIndex = toolTabs.length - 1;
+        if (nextIndex === undefined) return;
+        event.preventDefault();
+        selectTool(toolTabs[nextIndex]);
+        toolTabs[nextIndex].focus();
+      });
+    });
+
+    const sourceAsset = document.getElementById("sourceAsset");
+    const assetSearch = document.getElementById("assetSearch");
+    let mediaFilter = "all";
+    function filterAssets() {
+      const matchesSearch = sourceAsset.textContent.toLowerCase().includes(assetSearch.value.trim().toLowerCase());
+      sourceAsset.hidden = !matchesSearch || !["all", "video"].includes(mediaFilter);
+    }
+    assetSearch.addEventListener("input", filterAssets);
+    document.querySelectorAll(".filterButton").forEach(button => button.addEventListener("click", () => {
+      mediaFilter = button.dataset.filter;
+      document.querySelectorAll(".filterButton").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+      filterAssets();
+    }));
+
+    function selectMonitor(mode) {
+      document.querySelectorAll(".monitorMode").forEach(item => item.setAttribute("aria-pressed", String(item.dataset.monitor === mode)));
+    }
+    sourceAsset.addEventListener("click", () => {
+      sourceAsset.setAttribute("aria-pressed", "true");
+      document.querySelector('[data-monitor="source"]').disabled = false;
+      selectMonitor("source");
+    });
+    document.querySelectorAll("[data-monitor]").forEach(button => button.addEventListener("click", () => selectMonitor(button.dataset.monitor)));
+
+    const previewRatio = document.getElementById("previewRatio");
+    const projectRatio = document.getElementById("projectRatio");
+    function updateRatio(value) {
+      previewRatio.value = value;
+      projectRatio.value = value;
+      const [width, height] = value.split(":").map(Number);
+      const previewStage = document.querySelector(".previewStage");
+      previewStage.style.aspectRatio = `${width} / ${height}`;
+      const availableHeight = document.querySelector(".previewHost").clientHeight - 16;
+      previewStage.style.width = `min(100%, ${Math.max(0, availableHeight * width / height)}px)`;
+    }
+    [previewRatio, projectRatio].forEach(select => select.addEventListener("change", () => updateRatio(select.value)));
+    new ResizeObserver(() => updateRatio(previewRatio.value)).observe(document.querySelector(".previewHost"));
+
+    const editorApp = document.querySelector(".editorApp");
+    const focusButton = document.getElementById("focusButton");
+    const inspectorToggle = document.getElementById("inspectorToggle");
+    function setFocusMode(active) {
+      editorApp.classList.toggle("isFocused", active);
+      editorApp.classList.remove("showInspector");
+      inspectorToggle.setAttribute("aria-expanded", "false");
+      focusButton.setAttribute("aria-pressed", String(active));
+      focusButton.querySelector("span").textContent = active ? "恢复布局" : "放大预览";
+    }
+    focusButton.addEventListener("click", () => setFocusMode(!editorApp.classList.contains("isFocused")));
+    inspectorToggle.addEventListener("click", () => {
+      const open = editorApp.classList.toggle("showInspector");
+      inspectorToggle.setAttribute("aria-expanded", String(open));
+    });
+    document.getElementById("inspectorClose").addEventListener("click", () => {
+      editorApp.classList.remove("showInspector");
+      inspectorToggle.setAttribute("aria-expanded", "false");
+      inspectorToggle.focus();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      if (editorApp.classList.contains("showInspector")) {
+        editorApp.classList.remove("showInspector");
+        inspectorToggle.setAttribute("aria-expanded", "false");
+        inspectorToggle.focus();
+      } else if (editorApp.classList.contains("isFocused")) {
+        setFocusMode(false);
+        focusButton.focus();
+      }
+    });
+
+    const panelGrip = document.querySelector(".panelGrip");
+    const timelinePanel = document.querySelector(".timelinePanel");
+    let timelineHeight;
+    let dragStart;
+    function resizeTimeline(height) {
+      const maxHeight = Math.max(220, Math.min(420, editorApp.clientHeight - 368));
+      timelineHeight = Math.max(220, Math.min(maxHeight, height));
+      editorApp.style.gridTemplateRows = `48px minmax(280px, 1fr) ${timelineHeight}px 25px`;
+      panelGrip.setAttribute("aria-valuemax", String(maxHeight));
+      panelGrip.setAttribute("aria-valuenow", String(Math.round(timelineHeight)));
+    }
+    panelGrip.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      dragStart = { y: event.clientY, height: timelinePanel.clientHeight };
+      panelGrip.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    panelGrip.addEventListener("pointermove", event => {
+      if (dragStart && panelGrip.hasPointerCapture(event.pointerId)) resizeTimeline(dragStart.height + dragStart.y - event.clientY);
+    });
+    panelGrip.addEventListener("lostpointercapture", () => { dragStart = undefined; });
+    panelGrip.addEventListener("keydown", event => {
+      if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const height = event.key === "Home" ? 220 : event.key === "End" ? 420 : timelinePanel.clientHeight + (event.key === "ArrowUp" ? 20 : -20);
+      resizeTimeline(height);
+    });
+    new ResizeObserver(() => {
+      if (timelineHeight !== undefined) resizeTimeline(timelineHeight);
+      else {
+        panelGrip.setAttribute("aria-valuemax", String(Math.max(220, Math.min(420, editorApp.clientHeight - 368))));
+        panelGrip.setAttribute("aria-valuenow", String(Math.round(timelinePanel.clientHeight)));
+      }
+    }).observe(editorApp);
+
+    document.querySelectorAll(".trackControl, #snapButton").forEach(button => button.addEventListener("click", () => {
+      button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
+    }));
+
+    const timelineZoom = document.getElementById("timelineZoom");
+    const timelineCanvas = document.querySelector(".timelineCanvas");
+    const timelineRuler = document.querySelector(".timelineRuler");
+    function renderRuler() {
+      const zoom = Number(timelineZoom.value);
+      timelineCanvas.style.minWidth = `${60 * zoom}px`;
+      timelineRuler.replaceChildren();
+      for (let second = 0; second <= 60; second++) {
+        const tick = document.createElement("span");
+        tick.className = second % 5 ? "rulerTick isMinor" : "rulerTick";
+        tick.style.left = `${second * zoom}px`;
+        if (second % 5 === 0) {
+          const label = document.createElement("span");
+          label.textContent = `${String(Math.floor(second / 60)).padStart(2, "0")}:${String(second % 60).padStart(2, "0")}`;
+          tick.append(label);
+        }
+        timelineRuler.append(tick);
+      }
+    }
+    timelineZoom.addEventListener("input", renderRuler);
+    document.getElementById("zoomOut").addEventListener("click", () => { timelineZoom.stepDown(5); renderRuler(); });
+    document.getElementById("zoomIn").addEventListener("click", () => { timelineZoom.stepUp(5); renderRuler(); });
+    renderRuler();
+  </script>
+</body>
+</html>
