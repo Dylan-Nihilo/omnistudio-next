@@ -1,5 +1,5 @@
 <template>
-  <main ref="editorRoot" class="videoEditor" :class="{ isExpanded: previewExpanded, inspectorOpen }">
+  <main ref="editorRoot" class="videoEditor" :class="{ isExpanded: previewExpanded, inspectorOpen }" :style="{ '--agentWidth': `${agentWidth}px` }">
     <header class="editorHeader">
       <div class="headerProject">
         <button class="iconButton backButton" type="button" :aria-label="isProductionEditor ? '返回生产项目' : '返回画布'" @click="returnFromEditor"><icon-arrow-left :size="18" /></button>
@@ -17,7 +17,7 @@
     <section v-if="!directory" class="noProject"><icon-movie :size="40" /><h1>{{ isProductionEditor ? "生产项目工作区尚未就绪" : "请先打开项目" }}</h1><button class="secondaryButton" @click="returnFromEditor">{{ isProductionEditor ? "返回生产项目" : "返回工作区" }}</button></section>
     <template v-else>
       <div v-if="draftAvailable" class="noticeBar" role="status"><span>发现尚未保存的本地草稿，恢复前会保留当前工程备份。</span><button :disabled="exportRecordBusy" @click="restoreDraft">恢复草稿</button><button :disabled="exportRecordBusy" @click="discardDraft">忽略草稿</button></div>
-      <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy || exportRecordBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button></div>
+      <div v-if="sourceImportBusy || sourceImportError || sourceImportNotice" class="noticeBar" :class="{ errorNotice: sourceImportError }" :role="sourceImportError ? 'alert' : 'status'"><span>{{ sourceImportError || sourceImportNotice || sourceImportLabel }}</span><button v-if="sourceImportError" type="button" :disabled="sourceImportBusy || exportRecordBusy" @click="retrySourceImport">重试导入</button><button v-if="sourceImportError" type="button" @click="clearSourceImportQuery">关闭</button><button v-else-if="sourceImportNotice && !sourceImportBusy" type="button" aria-label="关闭素材导入提示" @click="sourceImportNotice = ''">关闭</button></div>
       <div v-if="saveBlocked" class="noticeBar errorNotice" role="alert"><span>项目已被其他窗口修改。当前编辑保留为本地草稿，请重新读取后选择是否恢复。</span><button @click="reloadProject">重新读取项目</button></div>
       <div v-if="saveRetryable" class="noticeBar errorNotice" role="alert"><span>{{ saveError }}当前更改已保留为本地草稿。</span><button type="button" :disabled="saveBusy" @click="saveProject">重试保存</button></div>
       <div v-if="canvasProjectCandidates.length" class="noticeBar errorNotice" role="alert"><span>这张画布对应多个已有剪辑工程，请从剪辑工程列表中选择要继续的版本。</span><button type="button" @click="openEditorProjects">选择剪辑工程</button></div>
@@ -217,7 +217,7 @@
       </div>
     </div>
     <div v-if="exportBusy" class="exportOverlay" role="status" aria-live="polite"><div class="exportDialog"><div class="exportSpinner"></div><strong>{{ exportSubmitting ? '正在提交后台渲染任务' : exportController?.signal.aborted ? '正在停止任务准备' : '正在准备渲染任务' }}</strong><span>{{ exportProgress === undefined ? '正在校验与准备素材' : `${exportProgress}%` }}</span><div class="progressTrack"><i :style="{ width: `${exportProgress ?? 4}%` }"></i></div><button class="secondaryButton" :disabled="exportSubmitting || exportController?.signal.aborted" @click="exportController?.abort()">取消准备</button></div></div>
-    <floatingAgent v-model="agentVisible" :topOffset="48" />
+    <floatingAgent v-model="agentVisible" :topOffset="48" @resize="agentWidth = $event" />
   </main>
 </template>
 
@@ -289,6 +289,7 @@ const colorFields = [{ key: "brightness", label: "亮度", min: 0, max: 3, step:
 const textFields = [{ key: "fontSize", label: "字号 / 画宽 %", min: 1, max: 20, step: .5, fallback: 4 }, { key: "textX", label: "文字水平位置 %", min: 0, max: 100, step: 1, fallback: 50 }, { key: "textY", label: "文字垂直位置 %", min: 0, max: 100, step: 1, fallback: 90 }] as const;
 const activeTab = ref<"media" | "audio" | "text" | "settings">("media");
 const agentVisible = ref(false);
+const agentWidth = ref(0);
 const agentUndoPoint = shallowRef<{ projectPath: string; before: string; after: string }>();
 const monitorModes = [{ id: "program", label: "成片" }, { id: "source", label: "素材源" }, { id: "dual", label: "双监视器" }] as const;
 const previewMode = ref<"program" | "source" | "dual">("program");
@@ -2863,6 +2864,7 @@ async function exportTimeline() {
     gap: 8px 10px;
     min-height: 36px;
     padding: 6px 16px;
+    margin-right: var(--agentWidth, 0px);
     border-bottom: 1px solid #64552e;
     color: #eadcae;
     background: #302b1d;
@@ -2879,6 +2881,7 @@ async function exportTimeline() {
     grid-template-rows: minmax(280px, 1fr) 8px var(--timelineHeight, clamp(220px, 29dvh, 320px));
     min-width: 0;
     min-height: 508px;
+    margin-right: var(--agentWidth, 0px);
     .editorBody {
       position: relative;
       display: grid;
