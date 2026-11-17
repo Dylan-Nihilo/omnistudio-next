@@ -9,7 +9,7 @@ GitHub Actions 的 Server pipeline 只在手工执行并勾选 deploy 时更新�
 - `DEPLOY_LOG_SIZE_MB=20`、`DEPLOY_LOG_FILES=5`：应用与 MySQL 都使用 json-file 日志轮转；上限不包含数据库内部日志。
 - `DEPLOY_DRAIN_SECONDS=300`：暂停新写入／生成后，等待在途请求和 reserved/running 任务结束；超时取消部署并恢复原服务。
 
-应用默认将 Agent、媒体生成、FFmpeg 和大文件上传分别限制为 8、4、2、8 个进程内任务；超过上限返回 `429` 并带 `Retry-After`。可通过 `OMNISTUDIO_NEXT_AGENT_CONCURRENCY`、`OMNISTUDIO_NEXT_MEDIA_CONCURRENCY`、`OMNISTUDIO_NEXT_FFMPEG_CONCURRENCY`、`OMNISTUDIO_NEXT_UPLOAD_CONCURRENCY` 调整。该保护只覆盖单个服务进程，不能替代真实 100+ 并发压测或多实例队列。
+应用默认将 Agent、媒体生成、FFmpeg 和大文件上传分别限制为 8、20、2、8 个进程内任务。媒体生成达到上限时进入当前进程的等待队列，客户端断开后会取消排队；Agent、FFmpeg 和大文件上传超过上限返回 `429` 并带 `Retry-After`。可通过 `OMNISTUDIO_NEXT_AGENT_CONCURRENCY`、`OMNISTUDIO_NEXT_MEDIA_CONCURRENCY`、`OMNISTUDIO_NEXT_FFMPEG_CONCURRENCY`、`OMNISTUDIO_NEXT_UPLOAD_CONCURRENCY` 调整。该保护只覆盖单个服务进程，队列不跨进程持久化，也不能替代供应商并发额度或真实 100+ 并发压测。
 
 生产环境的插件下载和远端 A2A 会解析目标域名并拒绝回环、私网、链路本地、保留和云元数据地址，同时逐跳复核重定向并固定连接地址。确需访问受控内网服务时，设置 `OMNISTUDIO_NEXT_ALLOW_PRIVATE_REMOTE_URLS=1`，并在防火墙或代理层限制出站范围；不要把该开关用于开放公网服务。
 

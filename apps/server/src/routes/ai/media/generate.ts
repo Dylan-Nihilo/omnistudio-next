@@ -7,7 +7,7 @@ import u from "@/utils";
 import { requireAuth, requireCsrf } from "@/middleware/authContext";
 import { requireEnabledPlatformModel } from "@/services/modelService";
 import { formatAgentError } from "@/agent/runtime/errors";
-import { acquireConcurrency } from "@/lib/concurrency";
+import { waitForConcurrency } from "@/lib/concurrency";
 
 export default Router().post("/", requireAuth, requireCsrf, validateFields({
   directory: z.string().min(1).max(4096), mediaType: z.enum(["image", "video", "audio"]),
@@ -22,18 +22,19 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields({
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const cwd = await u.workspace.resolveWorkspace(req, directory);
-  const releaseConcurrency = acquireConcurrency("media");
+  const controller = new AbortController();
+  const close = () => controller.abort();
   res.status(200).type("application/json").set({ "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
   res.write('{"code":');
   const heartbeat = setInterval(() => {
     if (!res.destroyed) res.write(" ".repeat(1024));
   }, 10000);
-  const controller = new AbortController();
-  const close = () => controller.abort();
   res.once("close", close);
   req.once("aborted", close);
   req.socket.once("close", close);
+  let releaseConcurrency: (() => void) | undefined;
   try {
+    releaseConcurrency = await waitForConcurrency("media", controller.signal);
     const files = await u.mediaGeneration.generateMedia(cwd, mediaType, parsed.data, controller.signal, {
       userId: req.authContext!.user.id,
       idempotencyKey,
@@ -57,6 +58,6 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields({
     res.off("close", close);
     req.off("aborted", close);
     req.socket.off("close", close);
-    releaseConcurrency();
+    releaseConcurrency?.();
   }
 });

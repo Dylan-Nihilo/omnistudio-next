@@ -108,7 +108,7 @@ export async function runSqlMigrations() {
     const files = (await readdir(migrationsDirectory)).filter(file => /^[a-z][a-zA-Z0-9]*\.sql$/.test(file)).sort();
     for (const file of files) {
       const id = file.slice(0, -4);
-      const sql = await readFile(resolve(migrationsDirectory, file), "utf8");
+      const sql = (await readFile(resolve(migrationsDirectory, file), "utf8")).replace(/\r\n?/g, "\n");
       const checksum = hashSecret(sql);
       const [rows] = await connection.query("SELECT checksum FROM omnistudio_schema_migrations WHERE id = ?", [id]);
       const applied = Array.isArray(rows) && rows[0] as { checksum?: string } | undefined;
@@ -184,6 +184,8 @@ async function validateLegacyAccounts(connection: PoolConnection) {
       LEFT JOIN price_book_versions v ON v.id = p.price_book_version_id
       WHERE v.id IS NULL OR NOT EXISTS (SELECT 1 FROM platform_models m
         WHERE m.model_id = p.model_id AND m.media_type = p.media_type) LIMIT 1`],
+    ["旧价格配置包含损坏的嵌套对象，请先修复 [object Object] 数据", `SELECT p.id FROM pricing_items p
+      WHERE JSON_SEARCH(p.constraints, 'one', '[object Object]') IS NOT NULL LIMIT 1`],
     ["旧活动价格簿不唯一或已丢失", `SELECT s.id FROM pricing_settings s
       LEFT JOIN price_book_versions v ON v.id = s.active_price_book_version_id
       WHERE s.active_price_book_version_id IS NOT NULL AND (v.id IS NULL OR
