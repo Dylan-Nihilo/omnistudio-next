@@ -6,6 +6,7 @@ metadata:
   displayName: 视频制作工作流
   author: omnistudio-next
   github: https://github.com/Dylan-Nihilo/omnistudio-next
+  triggers: 漫剧制作、小说改编、短片制作、视频制作、继续制作、修改视频、Seedance 提示词
 ---
 
 # 万象点点画布制作工作流

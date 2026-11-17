@@ -6,6 +6,7 @@ metadata:
   displayName: 画布操作手册
   author: omnistudio-next
   github: https://github.com/Dylan-Nihilo/omnistudio-next
+  triggers: 画布操作、搭建节点流程、添加节点、连接节点、整理画布、调整画布
 ---
 
 # 画布操作手册

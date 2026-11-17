@@ -3,6 +3,11 @@ import { getSessionSnapshot } from "@/lib/sessionState";
 
 export type Wallet = { id: string; userId: string; balance: string; frozen: string; available: string; total: string };
 export type LedgerEntry = { id: string; jobId?: string | null; kind: string; amount: string; balanceAfter: string; frozenAfter: string; reason?: string | null; metadata?: unknown; createdAt: string };
+export type RechargePaymentMethod = "alipay" | "wechat";
+export type RechargePackage = { id: string; name: string; amountCents: number; credits: number; description: string; badge?: string };
+export type RechargeOrder = { id: string; packageId: string; packageName: string; credits: string; amountCents: number; paymentMethod: RechargePaymentMethod; status: "pending" | "paid" | "cancelled" | "expired"; expiresAt: string; paidAt?: string | null; createdAt: string };
+export type RechargeCatalog = { packages: RechargePackage[]; paymentMethods: { id: RechargePaymentMethod; label: string; enabled: boolean }[]; termsVersion: string; creditsPerYuan: number };
+export type RechargePaymentInstruction = { type: "qr" | "redirect"; value: string; expiresAt: string };
 export type TeamMember = { id: string; email: string; displayName: string; status: "active" | "disabled"; role: "owner" | "member"; available: string };
 export type TeamAsset = { id: string; teamId: string; uploadedBy: string; name: string; mimeType: string; bytes: number; createdAt: string };
 export type UserPresence = { status: "online" | "away" | "offline"; currentPath?: string; lastSeenMs: number };
@@ -40,6 +45,12 @@ async function accountRequest<T>(method: "GET" | "POST" | "PUT" | "DELETE", url:
 
 export function getWallet(userId?: string) { return accountRequest<Wallet>("GET", "/api/billing/wallet", undefined, userId ? { userId } : undefined); }
 export function getLedger(userId?: string) { return accountRequest<LedgerEntry[]>("GET", "/api/billing/ledger", undefined, userId ? { userId } : undefined); }
+export function getRechargeCatalog() { return accountRequest<RechargeCatalog>("GET", "/api/billing/recharge/catalog"); }
+export function createRechargeOrder(packageId: string, paymentMethod: RechargePaymentMethod, agreementVersion: string, key: string) { return accountRequest<RechargeOrder>("POST", "/api/billing/recharge/orders/create", { packageId, paymentMethod, agreementVersion }, undefined, key); }
+export function getRechargeOrders() { return accountRequest<RechargeOrder[]>("GET", "/api/billing/recharge/orders/list"); }
+export function getRechargeOrder(id: string) { return accountRequest<RechargeOrder>("GET", "/api/billing/recharge/orders/get", undefined, { id }); }
+export function cancelRechargeOrder(id: string) { return accountRequest<RechargeOrder>("POST", "/api/billing/recharge/orders/cancel", { id }); }
+export function startRechargePayment(id: string) { return accountRequest<RechargePaymentInstruction>("POST", "/api/billing/recharge/orders/pay", { id }); }
 export function getTeams() { return accountRequest<AuthTeam[]>("GET", "/api/account/teams/list"); }
 export function getMembers(teamId: string) { return accountRequest<TeamMember[]>("GET", "/api/account/teams/members", undefined, { teamId }); }
 export function getTeamMemberLedger(teamId: string, userId: string, limit = 100) { return accountRequest<LedgerEntry[]>("GET", "/api/account/teams/ledger", undefined, { teamId, userId, limit }); }

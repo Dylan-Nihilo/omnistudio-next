@@ -37,6 +37,7 @@ import {
   IconPlugConnected,
   IconUserCog,
   IconSubtitlesAi,
+  IconBook,
 } from "@tabler/icons-vue";
 
 // ACT: keep the legacy overlay while unported child dialogs still teleport to body.
@@ -54,6 +55,7 @@ const allPanels = [
   { id: "mediaModel", label: "媒体模型", icon: IconPhotoVideo, component: defineAsyncComponent(() => import("./panels/mediaModel/index.vue")) },
   { id: "mcp", label: "MCP", icon: IconPlugConnected, groupLabel: "其他", component: defineAsyncComponent(() => import("./panels/mcp/index.vue")) },
   { id: "personalization", label: "个性化", icon: IconUserCog, component: defineAsyncComponent(() => import("./panels/personalization.vue")) },
+  { id: "skillMarket", label: "技能市场", icon: IconBook, groupLabel: "创作", component: defineAsyncComponent(() => import("./panels/skillMarket/skillMarket.vue")) },
   { id: "privacy", label: "隐私", icon: IconShieldLock, component: defineAsyncComponent(() => import("./panels/privacy.vue")) },
   { id: "developer", label: "开发者选项", icon: IconCode, component: defineAsyncComponent(() => import("./panels/developer/index.vue")) },
   { id: "about", label: "关于", icon: IconInfoCircle, component: defineAsyncComponent(() => import("./panels/about.vue")) },

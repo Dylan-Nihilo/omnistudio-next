@@ -51,7 +51,7 @@
                     <messageMarkdown v-else-if="part.type === 'text' && part.content" :content="part.content" :streaming="!!item.streaming" :directory="directory" />
                   </template>
                   <attachmentList v-if="item.attachments?.length" :attachments="item.attachments" :directory="directory" />
-                  <div v-if="item.role === 'user'" class="messageText"><mentionContent :content="item.content" :mentions="item.mentions" :directory="directory" /></div>
+                  <div v-if="item.role === 'user'" class="messageText"><mentionContent :content="item.content" :mentions="item.mentions" :directory="directory" /><span v-if="item.skillSelection" class="skillSelectionBadge" :title="item.skillSelection.reason || item.skillSelection.name">{{ item.skillSelection.mode === 'auto' ? 'AUTO' : '固定 Skill' }} · {{ item.skillSelection.name }} · {{ item.skillSelection.scope === 'workspace' ? '工作区' : item.skillSelection.scope === 'account' ? '个人' : '全局' }}<span v-if="item.skillSelection.version"> · v{{ item.skillSelection.version }}</span></span></div>
                   <div v-if="item.error" class="messageError" role="alert">{{ item.error }}</div>
                 </div>
             </article>
@@ -103,11 +103,44 @@
           <template #mention="{ id, name }"><mentionThumbnail v-if="draftMentions.find(mention => mention.id === id)" class="draftMentionThumbnail" v-bind="mentionThumbnailProps(draftMentions.find(mention => mention.id === id)!)" :directory="directory"><icon-photo :size="14" /></mentionThumbnail><span>@{{ name }}</span></template>
         </promptInput>
       </div>
+      <div class="skillModeRow">
+        <uiPopover v-model:visible="skillModeMenuVisible" trigger="click" placement="top-start" :width="288" :offset="8">
+          <template #reference="{ triggerAttrs }">
+            <uiButton v-bind="triggerAttrs" class="skillModeTrigger" variant="ghost" :disabled="locked || !directory" aria-label="设置本条消息的 Skill 方式" :title="directory ? '设置本条消息的 Skill 方式' : '请先选择工作区后使用 Skill'">
+              <icon-book :size="15" aria-hidden="true" />
+              <span class="skillModeValue">{{ skillModeSummary }}</span>
+              <icon-chevron-down :size="13" aria-hidden="true" />
+            </uiButton>
+          </template>
+          <div class="skillModeMenu" role="group" aria-label="本条消息的 Skill 方式">
+            <button type="button" class="skillModeOption" :class="{ selected: skillMode === 'auto' }" :aria-pressed="skillMode === 'auto'" @click="setSkillMode('auto')">
+              <icon-sparkles :size="17" aria-hidden="true" />
+              <span><strong>自动匹配</strong><small>根据本条消息推荐合适技能</small></span>
+              <icon-check v-if="skillMode === 'auto'" class="skillModeCheck" :size="16" aria-hidden="true" />
+            </button>
+            <button type="button" class="skillModeOption" :class="{ selected: skillMode === 'fixed' }" :aria-pressed="skillMode === 'fixed'" @click="chooseFixedSkill">
+              <icon-book :size="17" aria-hidden="true" />
+              <span><strong>{{ fixedSkillName ? '更换固定技能' : '选择固定技能' }}</strong><small>{{ fixedSkillName ? `当前使用 ${fixedSkillName}` : '选定一个技能用于本条消息' }}</small></span>
+            </button>
+            <button type="button" class="skillModeOption" :class="{ selected: skillMode === 'none' }" :aria-pressed="skillMode === 'none'" @click="setSkillMode('none')">
+              <icon-x :size="17" aria-hidden="true" />
+              <span><strong>不使用技能</strong><small>按普通 Agent 对话处理</small></span>
+              <icon-check v-if="skillMode === 'none'" class="skillModeCheck" :size="16" aria-hidden="true" />
+            </button>
+          </div>
+        </uiPopover>
+      </div>
+      <div v-if="skillMode === 'auto'" class="skillRecommendation" aria-live="polite">
+        <icon-loader-2 v-if="skillRecommendationLoading" class="isLoading" :size="13" aria-hidden="true" />
+        <span v-else-if="skillRecommendationError">推荐暂不可用，本条将按普通对话处理</span>
+        <template v-else-if="skillRecommendation"><span>推荐 {{ skillRecommendation.displayName }}</span><small>{{ skillRecommendation.reason }}</small></template>
+        <span v-else>暂无匹配技能，本条按普通对话处理</span>
+      </div>
       <mentionContent ref="draftMentionPreview" :mentions="draftMentions" :directory="directory" removable @remove="removeDraftMention" />
       <div class="senderActions">
         <modelPopover v-model="selectedModel" v-model:reasoningEffort="reasoningEffort" :active="active" :disabled="disabled" />
         <mentionMenu ref="mentionMenuRef" :directory="directory" :active="active" :disabled="locked || !directory" :query="mentionQuery" :editor="senderElement" :currentCanvasId="createCanvasContext?.()?.id" @open="captureMentionPosition" @select="insertMentions" @dismiss="mentionQuery = undefined" />
-        <skillMenu ref="skillMenuRef" :directory="directory" :active="active" :disabled="locked || !directory" :query="skillQuery" :editor="senderElement" @select="selectSkill" @dismiss="skillQuery = undefined" />
+        <skillMenu ref="skillMenuRef" :directory="directory" :active="active" :disabled="locked || !directory" :showButton="false" :query="skillQuery" :editor="senderElement" @select="selectSkill" @dismiss="skillQuery = undefined" />
         <uiPopover
           v-model:visible="contextMenuVisible"
           trigger="click"
@@ -155,7 +188,8 @@ import axios from "axios";
 import {
   IconArrowUp, IconArrowDown, IconAtom, IconCopy,
   IconCircleDashed, IconPencil, IconPlayerStopFilled, IconX, IconLoader2,
-  IconTrash, IconLayoutGrid, IconMovie, IconPhoto, IconArrowUpRight, IconUsersGroup, IconSparkles,
+  IconTrash, IconLayoutGrid, IconMovie, IconPhoto, IconArrowUpRight, IconUsersGroup,
+  IconBook, IconChevronDown, IconSparkles, IconCheck,
 } from "@tabler/icons-vue";
 import { uiButton, uiPopover, uiProgress, useUiFeedback } from "@omnistudio-next/ui";
 import promptInput from "@omnistudio-next/nodes-scaffold/promptInput";
@@ -175,7 +209,7 @@ import anonymousData from "@/lib/anonymousData";
 import { usePlatformModelsStore } from "@/stores/platformModels";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
-import { useOnboardingStore } from "@/stores/onboardingStore";
+import { authClient } from "@/lib/authApi";
 import { getSessionSnapshot } from "@/lib/sessionState";
 import type { AgentAttachment, AgentConversation, AgentMessage } from "./types";
 import type { AgentEvent, AgentMention } from "@omnistudio-next/server/agent/types";
@@ -209,7 +243,18 @@ const locked = computed(() => props.disabled || busy.value || stopping.value || 
 const editingId = ref<string>();
 const draftMentions = ref<AgentMention[]>([]);
 const draftMentionPreview = ref<InstanceType<typeof mentionContent>>();
-let editDraft: { model: RichInputModel; mentions: AgentMention[]; attachments: AgentAttachment[] } | undefined;
+const skillMode = ref<"none" | "auto" | "fixed">("none");
+const fixedSkillName = ref("");
+const skillModeMenuVisible = ref(false);
+type SkillRecommendation = { name: string; displayName: string; description: string; scope: "workspace" | "account" | "global"; version: string; stage: string; matchedTriggers: string[]; reason: string };
+const skillRecommendation = ref<SkillRecommendation>();
+const skillRecommendationLoading = ref(false);
+const skillRecommendationError = ref(false);
+const skillRecommendationPrompt = ref("");
+const skillRecommendationDirectory = ref("");
+let skillRecommendationController: AbortController | undefined;
+const skillModeSummary = computed(() => skillMode.value === "auto" ? "自动匹配" : skillMode.value === "fixed" ? `Skill · ${fixedSkillName.value || "选择技能"}` : "不使用技能");
+let editDraft: { model: RichInputModel; mentions: AgentMention[]; attachments: AgentAttachment[]; skillMode: "none" | "auto" | "fixed"; fixedSkillName: string } | undefined;
 const messageList = ref<HTMLDivElement>();
 const atLatestMessage = ref(true);
 let messageListInitialized = false;
@@ -279,38 +324,68 @@ const selectedModelChoice = computed(() => modelChoices.value.find(item => item.
 const contextWindow = computed(() => contextUsage.value?.contextWindow ?? selectedModelChoice.value?.contextWindow ?? 262144);
 const contextPercent = computed(() => (contextUsage.value?.tokens ?? 0) / contextWindow.value * 100);
 const inputTokens = computed(() => stats.value ? stats.value.tokens.input + stats.value.tokens.cacheRead + stats.value.tokens.cacheWrite : 0);
-const onboardingStore = useOnboardingStore();
 const welcomeSuggestions = computed(() => [
-  {
-    label: "新手实战：一键搭建完整漫剧管线",
-    description: "分镜 -> 画面定妆(gpt-image-2 1K) -> 动态漫剧(doubao 4s)",
-    icon: IconSparkles,
-    prompt: onboardingStore.directorPromptText,
-  },
   { label: "搭建创作画布", description: "把创意串成清晰的节点流程", icon: IconLayoutGrid, prompt: "帮我搭建一个创作画布，先和我确认需要的节点与流程。" },
   { label: "梳理故事分镜", description: "拆解故事，安排画面与镜头", icon: IconMovie, prompt: "帮我把故事整理成分镜，先和我确认故事内容、时长和画面风格。" },
   { label: "生成图片素材", description: "为角色和场景寻找视觉方向", icon: IconPhoto, prompt: "帮我生成图片素材，先和我确认画面内容、风格和使用的模型。" },
 ]);
-watch(() => onboardingStore.shouldAutoFillAgent, async shouldFill => {
-  if (shouldFill) {
-    onboardingStore.shouldAutoFillAgent = false;
-    for (let attempt = 0; attempt < 10; attempt++) {
-      await nextTick();
-      if (senderInput.value && !locked.value) {
-        await fillPrompt(onboardingStore.directorPromptText);
-        break;
-      }
-      await new Promise(resolve => setTimeout(resolve, 60));
-    }
-  }
-});
 watch([locked, () => props.active], ([locked, active]) => {
   getSender()?.setEditable(active && !locked, false);
 });
 void platformModels.load();
 watch(() => props.active, active => {
-  if (!active) contextMenuVisible.value = false;
+  if (!active) {
+    contextMenuVisible.value = false;
+    skillModeMenuVisible.value = false;
+  }
 });
+watch([skillMode, draftText, directory], ([mode, prompt, cwd], _previous, onCleanup) => {
+  skillRecommendation.value = undefined;
+  skillRecommendationLoading.value = false;
+  skillRecommendationError.value = false;
+  skillRecommendationPrompt.value = "";
+  skillRecommendationDirectory.value = "";
+  if (mode !== "auto" || !prompt.trim() || !cwd) return;
+  let controller: AbortController | undefined;
+  const timer = setTimeout(async () => {
+    if (busy.value) return;
+    controller = new AbortController();
+    skillRecommendationController = controller;
+    await requestSkillRecommendation(prompt, cwd, controller);
+  }, 300);
+  onCleanup(() => {
+    clearTimeout(timer);
+    controller?.abort();
+    if (skillRecommendationController === controller) skillRecommendationController = undefined;
+  });
+});
+
+async function requestSkillRecommendation(prompt: string, cwd: string, controller: AbortController): Promise<SkillRecommendation | null | undefined> {
+  skillRecommendationLoading.value = true;
+  skillRecommendationError.value = false;
+  try {
+    const { data } = await authClient.post<{ code: number; data: { recommendation: SkillRecommendation | null }; message?: string }>(
+      "/api/agent/skills/recommend", { directory: cwd, prompt },
+      { signal: controller.signal, headers: { "x-omnistudio-next-workspace": "1" } },
+    );
+    if (!controller.signal.aborted && data.code === 200) {
+      const recommendation = data.data.recommendation ?? null;
+      skillRecommendation.value = recommendation ?? undefined;
+      skillRecommendationPrompt.value = prompt;
+      skillRecommendationDirectory.value = cwd;
+      return recommendation;
+    }
+    if (!controller.signal.aborted) skillRecommendationError.value = true;
+  } catch {
+    if (!controller.signal.aborted) skillRecommendationError.value = true;
+  } finally {
+    if (skillRecommendationController === controller) {
+      skillRecommendationLoading.value = false;
+      skillRecommendationController = undefined;
+    }
+  }
+  return undefined;
+}
 
 function applyEvent(event: AgentEvent) {
   switch (event.type) {
@@ -356,6 +431,12 @@ function updateDraftQuery() {
   const editor = getSender();
   if (!editor || insertingMentions || editor.view.composing) return;
   skillQuery.value = /^\/([^\s/]*)$/.exec(draftText.value)?.[1];
+  if (skillQuery.value !== undefined) skillModeMenuVisible.value = false;
+  const explicitSkill = /^\/skill:(\S+)(?:\s|$)/.exec(draftText.value)?.[1];
+  if (explicitSkill && skillMode.value !== "fixed") {
+    skillMode.value = "fixed";
+    fixedSkillName.value = explicitSkill;
+  }
   if (!editor.view.hasFocus() || !editor.state.selection.empty) return;
   const { from, $from } = editor.state.selection;
   const before = editor.state.doc.textBetween($from.start(), from, "\n", "\ufffc");
@@ -409,6 +490,9 @@ function submitMessage() {
 async function selectSkill(name: string) {
   const input = senderInput.value;
   if (!input || locked.value) return;
+  skillModeMenuVisible.value = false;
+  skillMode.value = "fixed";
+  fixedSkillName.value = name;
   const model = structuredClone(draftModel.value.map(line => line.map(tag => ({ ...tag }))));
   const first = model[0]?.[0];
   if (first?.type === "Write") first.text = `/skill:${name} ${first.text.replace(skillQuery.value !== undefined ? /^\/\S*/ : /^\s*\/skill:\S+(?:\s+|$)/, "")}`;
@@ -419,6 +503,30 @@ async function selectSkill(name: string) {
   input.setModel(model, false);
   await nextTick();
   if (senderInput.value === input) input.getEditor()?.commands.focus("end");
+}
+
+async function chooseFixedSkill() {
+  if (locked.value || !directory.value) return;
+  skillModeMenuVisible.value = false;
+  await nextTick();
+  skillMenuRef.value?.openMenu();
+}
+
+function setSkillMode(mode: "none" | "auto" | "fixed") {
+  if (mode === "fixed" && !fixedSkillName.value) return;
+  skillModeMenuVisible.value = false;
+  skillQuery.value = undefined;
+  skillMenuRef.value?.closeMenu();
+  if (mode !== "fixed") {
+    fixedSkillName.value = "";
+    const model = structuredClone(draftModel.value.map(line => line.map(tag => ({ ...tag }))));
+    const first = model[0]?.[0];
+    if (first?.type === "Write" && first.text.startsWith("/skill:")) {
+      first.text = first.text.replace(/^\/skill:\S+(?:\s+|$)/, "");
+      senderInput.value?.setModel(model, false);
+    }
+  }
+  skillMode.value = mode;
 }
 
 async function fillPrompt(prompt: string) {
@@ -443,10 +551,12 @@ async function copyMessage(content: string) {
 async function editMessage(item: AgentMessage) {
   const instance = getSender();
   if (!instance || locked.value || remoteRunning.value || item.role !== "user") return;
-  if (!editingId.value) editDraft = { model: draftModel.value.map(line => line.map(tag => ({ ...tag }))), mentions: [...draftMentions.value], attachments: [...draftAttachments.value] };
+  if (!editingId.value) editDraft = { model: draftModel.value.map(line => line.map(tag => ({ ...tag }))), mentions: [...draftMentions.value], attachments: [...draftAttachments.value], skillMode: skillMode.value, fixedSkillName: fixedSkillName.value };
   editingId.value = item.id;
   draftMentions.value = [...item.mentions ?? []];
   draftAttachments.value = [...item.attachments ?? []];
+  skillMode.value = item.skillSelection?.mode ?? "none";
+  fixedSkillName.value = item.skillSelection?.mode === "fixed" ? item.skillSelection.name : "";
   mentionMenuRef.value?.closeMenu();
   const model: RichInputModel = item.content.split("\n").map(line => mentionParts(line, item.mentions).map(part => part.mention
     ? { type: "Mention", id: part.mention.id, name: mentionName(part.mention) } : { type: "Write", text: part.text }));
@@ -461,6 +571,8 @@ async function restoreEditingDraft() {
   editingId.value = undefined;
   draftMentions.value = draft?.mentions ?? [];
   draftAttachments.value = draft?.attachments ?? [];
+  skillMode.value = draft?.skillMode ?? "none";
+  fixedSkillName.value = draft?.fixedSkillName ?? "";
   senderInput.value?.setModel(draft?.model ?? []);
 }
 
@@ -586,6 +698,14 @@ async function sendMessage(source?: AgentMessage) {
   const instance = getSender();
   const editing = source && editingId.value === source.id;
   const prompt = (source && !editing ? source.content : getDraftContent()).trim();
+  const explicitSkillName = /^\/skill:(\S+)/.exec(prompt)?.[1];
+  let skillSelection = explicitSkillName
+    ? { mode: "fixed" as const, name: explicitSkillName }
+    : source && !editing
+      ? source.skillSelection ? { mode: source.skillSelection.mode, ...(source.skillSelection.mode === "fixed" ? { name: source.skillSelection.name } : {}) } : { mode: "none" as const }
+      : skillMode.value === "fixed" && fixedSkillName.value
+        ? { mode: "fixed" as const, name: fixedSkillName.value }
+      : { mode: skillMode.value === "auto" && !skillRecommendationError.value ? "auto" as const : "none" as const };
   const attachments = reactive((source && !editing ? source.attachments ?? [] : draftAttachments.value).map(item => ({ ...item })));
   const mentionedIds = source && !editing ? (source.mentions ?? []).filter(mention => prompt.includes(`{{mention:${mention.id}}}`)).map(mention => mention.id)
     : draftModel.value.flat().flatMap(tag => tag.type === "Mention" ? [tag.id] : []);
@@ -611,6 +731,36 @@ async function sendMessage(source?: AgentMessage) {
     }
   }
 
+  if (skillSelection.mode === "auto") {
+    const preflightController = new AbortController();
+    controller = preflightController;
+    busy.value = true;
+    instance.setEditable(false, false);
+    try {
+      let recommendation: SkillRecommendation | null | undefined;
+      const hasCurrentRecommendation = skillRecommendationPrompt.value === prompt
+        && skillRecommendationDirectory.value === directory.value
+        && !skillRecommendationLoading.value;
+      if (hasCurrentRecommendation) {
+        recommendation = skillRecommendationError.value ? undefined : skillRecommendation.value ?? null;
+      } else {
+        skillRecommendationController?.abort();
+        const recommendationController = new AbortController();
+        skillRecommendationController = recommendationController;
+        const abortRecommendation = () => recommendationController.abort();
+        preflightController.signal.addEventListener("abort", abortRecommendation, { once: true });
+        recommendation = await requestSkillRecommendation(prompt, directory.value, recommendationController);
+        preflightController.signal.removeEventListener("abort", abortRecommendation);
+      }
+      if (preflightController.signal.aborted) return;
+      if (!recommendation) skillSelection = { mode: "none" };
+    } finally {
+      busy.value = false;
+      if (controller === preflightController) controller = undefined;
+      instance.setEditable(props.active && !locked.value, false);
+    }
+  }
+
   const requestController = new AbortController();
   const canvasContext = createCanvasContext?.();
   controller = requestController;
@@ -618,7 +768,7 @@ async function sendMessage(source?: AgentMessage) {
   compacting.value = false;
   instance.setEditable(false, false);
   const reply = reactive<AgentMessage>({ id: crypto.randomUUID(), role: "assistant", content: "", parts: [], streaming: true });
-  const userMessage = reactive<AgentMessage>({ id: crypto.randomUUID(), role: "user", content: prompt, attachments, mentions });
+  const userMessage = reactive<AgentMessage>({ id: crypto.randomUUID(), role: "user", content: prompt, attachments, mentions, skillSelection: source && !editing ? source.skillSelection : undefined });
   let ownsStream = !remoteRunning.value;
   let forwarded = false;
   if (!source) {
@@ -641,7 +791,7 @@ async function sendMessage(source?: AgentMessage) {
     const response = await fetch("/api/agent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-omnistudio-next-workspace": "1", "x-account-id": auth.user?.id ?? "", "x-csrf-token": auth.csrfToken, "Idempotency-Key": crypto.randomUUID() },
-      body: JSON.stringify({ prompt, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory: directory.value, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, version: canvasContext.version, tools: canvasContext.tools } : undefined }),
+      body: JSON.stringify({ prompt, skillSelection, mentions, attachments: attachments.map(({ name, path, mimeType }) => ({ name, path, mimeType })), directory: directory.value, providerId: model.providerId, modelId: model.modelId, thinkingLevel: reasoningEffort.value || undefined, sessionFile: props.sessionFile, resendFrom, canvas: canvasContext ? { id: canvasContext.id, version: canvasContext.version, tools: canvasContext.tools } : undefined }),
       signal: AbortSignal.any([requestController.signal, getSessionSnapshot().signal]),
     });
     for await (const event of readAgentEvents(response, requestController.signal)) {
@@ -677,6 +827,8 @@ async function sendMessage(source?: AgentMessage) {
             stream.begin(reply);
           }
           userMessage.entryId = event.id;
+          userMessage.skillSelection = event.skillSelection;
+          if (!source) setSkillMode("none");
           reply.replyTo = event.id;
           if (source && !accepted) {
             messages.value.splice(resendIndex, messages.value.length - resendIndex, userMessage, reply);
@@ -815,7 +967,7 @@ watch(() => !props.initialSession?.parentFile && !!workspaceStore.pendingAgentMe
       &.userMessage .messageBubble { width: fit-content; max-width: 90%; margin-left: auto; padding: 12px 16px; border: 1px solid var(--uiBorderDefault); border-radius: var(--uiRadiusControl); background: var(--uiBackgroundSubtle); }
       &.editingMessage .messageBubble { border-color: var(--uiBorderFocus); }
       .messageContent { display: flex; flex-direction: column; gap: 12px; min-width: 0; color: var(--uiTextPrimary); font-size: var(--uiFontBody); line-height: 1.7; overflow-wrap: anywhere;
-        .messageText { white-space: pre-wrap; }
+        .messageText { white-space: pre-wrap; .skillSelectionBadge { display: inline-flex; align-items: center; margin-top: 7px; padding: 2px 6px; border-radius: var(--uiRadiusControl); color: var(--uiTextMuted); background: var(--uiSurfaceHover); font-size: 11px; line-height: 1.5; white-space: normal; } }
         .messageError { color: var(--uiStatusError); }
         .reportHeader { display: flex; align-items: center; gap: 6px; color: var(--uiTextMuted); font-size: var(--uiFontControl); }
         .messageReasoning { padding: 8px 12px; border-left: 2px solid var(--uiBorderDefault); color: var(--uiTextBody);
@@ -836,6 +988,12 @@ watch(() => !props.initialSession?.parentFile && !!workspaceStore.pendingAgentMe
       :deep(.promptInput) { border: 0; background: transparent; &:focus-within { outline: none; } .richEditor { min-height: 44px; height: var(--senderHeight, auto); max-height: 50vh; padding: 4px 12px 8px; font-size: var(--uiFontBody); } .promptToken { max-width: 100%; } .promptMention span { overflow: hidden; text-overflow: ellipsis; } }
       .draftMentionThumbnail { width: 24px; height: 24px; border-radius: 3px; }
     }
+    .skillModeRow { display: flex; align-items: center; min-width: 0; padding: 0 12px 5px; }
+    .skillModeTrigger { display: inline-flex; align-items: center; gap: 6px; max-width: min(100%, 300px); min-height: 28px; padding: 3px 7px; border: 1px solid transparent; border-radius: 6px; color: var(--uiTextMuted); background: transparent; font-size: 11px; &:hover, &[aria-expanded="true"] { border-color: var(--uiBorderDefault); color: var(--uiTextBody); background: var(--uiBackgroundSubtle); } svg { flex-shrink: 0; } }
+    .skillModeValue { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .skillModeMenu { display: grid; gap: 2px; padding: 5px; }
+    .skillModeOption { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; align-items: center; gap: 9px; width: 100%; padding: 8px; border: 0; border-radius: 5px; color: var(--uiTextBody); background: transparent; text-align: left; cursor: pointer; &:hover, &.selected { background: var(--uiBackgroundSubtle); } > svg { color: var(--uiTextMuted); } span { display: grid; gap: 2px; min-width: 0; strong { font-size: 12px; font-weight: 500; } small { color: var(--uiTextMuted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; } } .skillModeCheck { color: var(--uiActionPrimary); } }
+    .skillRecommendation { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 0 12px 7px; color: var(--uiTextMuted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; small { color: var(--uiTextMuted); } }
     .senderActions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; padding: 8px;
       :deep(.modelPopover) { flex: 1; min-width: 120px; }
       .contextButton { width: 30px; padding: 0; }

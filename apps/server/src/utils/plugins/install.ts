@@ -1,10 +1,13 @@
 import { mkdir, mkdtemp, lstat, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, join, relative, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { crc32, inflateRawSync } from "node:zlib";
 import type { PluginInstallType } from "@/types/desktop";
 import conf from "@/utils/conf";
-import { requireRootAccount } from "@/utils/accountContext";
+import { requireActiveAccount, requireRootAccount } from "@/utils/accountContext";
+import { ensureDirectory as ensureAccountSkillDirectory } from "@/utils/skills/accountSkills";
+import type { AccountSkillPackageBackup } from "@/utils/skills/accountSkills";
 import { parseTool, toolsDirectory } from "@/utils/plugins/tools";
 import { isSafeSegment } from "@/utils/skills/files";
 import { getSkillVersion, loadSkillDirectory, parseSkillManifest } from "@/utils/skills/loader";
@@ -311,8 +314,7 @@ async function skillArchive(bytes: Uint8Array) {
   return result;
 }
 
-export async function installSkill(fileName: string, bytes: Uint8Array, force = false) {
-  requireRootAccount();
+async function installSkillPackage(fileName: string, bytes: Uint8Array, directory: string, force: boolean, rejectExisting: boolean, expectedSkillNames?: readonly string[], replaceSkillNames?: readonly string[], expectedExistingHashes?: Record<string, string>) {
   if (!fileName || fileName.length > 128 || /[\\/]/.test(fileName) || !/\.(md|zip|tar|tar\.gz|tgz)$/i.test(fileName)) invalid("请选择 .zip、.md、.tar、.tar.gz 或 .tgz 技能文件");
   skillPath(fileName);
   if (!bytes.byteLength) invalid("技能文件不能为空");
@@ -331,15 +333,28 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
     names.add(name.toLowerCase());
     return { name, prefix: manifest.slice(0, -8), frontmatter, existing: false };
   });
+  if (expectedSkillNames && (packages.length !== expectedSkillNames.length
+    || packages.some(item => !expectedSkillNames.includes(item.name)))) {
+    invalid("下载包内技能名称与精选目录清单不一致", 502);
+  }
   const owners = [...packages].sort((left, right) => right.prefix.length - left.prefix.length);
-  const root = dirname(conf.path);
-  const directory = join(root, "skills");
-  await mkdir(directory, { recursive: true });
-  if ((await lstat(directory)).isSymbolicLink()) invalid("技能目录不能是符号链接", 403);
+  const root = dirname(directory);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const directoryInfo = await lstat(directory);
+  if (directoryInfo.isSymbolicLink() || !directoryInfo.isDirectory()) invalid("技能目录必须是普通目录，不能是符号链接", 403);
+  if (!isWithin(root, directory)) invalid("技能目录超出账户数据范围", 403);
   const release = lockWorkspaceFiles([directory]);
   let temporary: string | undefined;
   let preserveBackup = false;
   try {
+    if (expectedExistingHashes) {
+      const names = replaceSkillNames ?? expectedSkillNames ?? [];
+      const actual = Object.entries(await accountSkillFileHashes(directory, names, true)).flatMap(([name, files]) => Object.entries(files).map(([path, digest]) => [name + "/" + path, digest] as const));
+      const expected = Object.entries(expectedExistingHashes);
+      if (actual.length !== expected.length || actual.some(([path, digest]) => expectedExistingHashes[path] !== digest)) {
+        invalid("预览后个人技能文件发生变化，请重新查看差异", 409);
+      }
+    }
     const installed = await readdir(directory);
     // Validate the whole batch before replacing any installed skill.
     for (const item of packages) {
@@ -347,6 +362,7 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
       if (existing && existing !== item.name) invalid(`技能目录“${existing}”与“${item.name}”大小写冲突，请先统一名称`, 409);
       item.existing = Boolean(existing);
       if (item.existing) {
+        if (rejectExisting) invalid(`技能“${item.name}”已存在，市场安装不会覆盖或升级现有内容`, 409);
         const target = join(directory, item.name);
         if (!(await lstat(target)).isDirectory()) invalid("现有技能必须是独立的普通目录", 403);
         const current = await lstat(join(target, "SKILL.md"));
@@ -397,6 +413,20 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
     await mkdir(backup);
     const changed: { name: string; backedUp: boolean; installed: boolean }[] = [];
     try {
+      for (const name of replaceSkillNames ?? []) {
+        if (packages.some(item => item.name.toLowerCase() === name.toLowerCase())) continue;
+        const target = join(directory, name);
+        const info = await lstat(target).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === "ENOENT") return undefined;
+          throw error;
+        });
+        if (!info) continue;
+        if (info.isSymbolicLink() || !info.isDirectory()) invalid(`现有技能目录“${name}”无效，不能安全替换`, 403);
+        const change = { name, backedUp: false, installed: false };
+        changed.push(change);
+        await rename(target, join(backup, name));
+        change.backedUp = true;
+      }
       for (const item of packages) {
         const change = { name: item.name, backedUp: false, installed: false };
         changed.push(change);
@@ -428,6 +458,192 @@ export async function installSkill(fileName: string, bytes: Uint8Array, force = 
       if (temporary && !preserveBackup && temporary !== root && isWithin(root, temporary)) {
         await rm(temporary, { recursive: true, force: true }).catch(error => console.warn("技能安装暂存目录清理失败", formatAgentError(error instanceof Error ? error.message : "清理失败")));
       }
+    } finally { release(); }
+  }
+}
+
+export async function installSkill(fileName: string, bytes: Uint8Array, force = false) {
+  requireRootAccount();
+  return installSkillPackage(fileName, bytes, join(dirname(conf.path), "skills"), force, false);
+}
+
+export async function installCatalogSkillPackage(item: {
+  packageId: string;
+  version: string;
+  sourceCommit: string;
+  packageUrl: string;
+  fileName: string;
+  sha256: string;
+  skills: readonly { name: string }[];
+}, scope: "account" | "global", options: { replaceExisting?: boolean; replaceSkillNames?: readonly string[]; expectedExistingHashes?: Record<string, string>; packageBytes?: Uint8Array; backups?: AccountSkillPackageBackup[] } = {}) {
+  const userId = scope === "account" ? requireActiveAccount().userId : requireRootAccount().userId;
+  if (!/^[\da-f]{64}$/.test(item.sha256)) invalid("精选技能包摘要配置无效", 500);
+  const bytes = options.packageBytes ?? await downloadCatalogSkillPackage(item);
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  if (digest !== item.sha256) invalid("官方技能包摘要不匹配，下载内容与固定目录不一致", 502);
+  const directory = scope === "account"
+    ? await ensureAccountSkillDirectory(userId)
+    : join(dirname(conf.path), "skills");
+  const replacing = options.replaceExisting === true;
+  const result = await installSkillPackage(item.fileName, bytes, directory, replacing, scope === "account" && !replacing, item.skills.map(skill => skill.name), options.replaceSkillNames, options.expectedExistingHashes);
+  if (scope === "account") {
+    const fileHashes = await accountSkillFileHashes(directory, item.skills.map(skill => skill.name));
+    const { getPackageRecord, setPackageRecord } = await import("@/utils/skills/accountSkills");
+    const previous = getPackageRecord(userId, item.packageId);
+    await setPackageRecord(userId, item.packageId, {
+      version: item.version, sourceCommit: item.sourceCommit, sha256: item.sha256,
+      installedAt: new Date().toISOString(), fileHashes, installed: true,
+      backups: options.backups ?? previous?.backups,
+    });
+  }
+  return result;
+}
+
+export async function downloadCatalogSkillPackage(item: { packageUrl: string; sha256: string }) {
+  if (!/^[\da-f]{64}$/.test(item.sha256)) invalid("精选技能包摘要配置无效", 500);
+  const address = remoteAddress(item.packageUrl);
+  const bytes = await download(address.href, maxBytes, "官方技能包");
+  if (createHash("sha256").update(bytes).digest("hex") !== item.sha256) invalid("官方技能包摘要不匹配，下载内容与固定目录不一致", 502);
+  return bytes;
+}
+
+async function accountSkillFileHashes(directory: string, names: readonly string[], allowMissing = false) {
+  const result: Record<string, Record<string, string>> = {};
+  for (const name of names) {
+    const root = join(directory, name);
+    const rootInfo = await lstat(root).catch((error: NodeJS.ErrnoException) => {
+      if (allowMissing && error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (!rootInfo && allowMissing) {
+      result[name] = {};
+      continue;
+    }
+    if (rootInfo?.isSymbolicLink() || !rootInfo?.isDirectory()) invalid("账户技能必须位于普通目录中，不能是符号链接", 403);
+    const files: Record<string, string> = {};
+    async function walk(current: string, prefix: string) {
+      for (const entry of await readdir(current, { withFileTypes: true })) {
+        const path = join(current, entry.name);
+        const info = await lstat(path);
+        if (info.isSymbolicLink()) invalid("账户技能不能包含符号链接", 403);
+        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (info.isDirectory()) await walk(path, relativePath);
+        else if (info.isFile()) files[relativePath] = createHash("sha256").update(await readFile(path)).digest("hex");
+        else invalid("账户技能包含不支持的文件类型", 403);
+      }
+    }
+    await walk(root, "");
+    result[name] = files;
+  }
+  return result;
+}
+
+export async function downloadCatalogSkillPackageFiles(item: {
+  packageId: string;
+  packageUrl: string;
+  fileName: string;
+  sha256: string;
+  skills: readonly { name: string }[];
+}) {
+  const bytes = await downloadCatalogSkillPackage(item);
+  if (!/\.zip$/i.test(item.fileName)) invalid("精选目录只支持 ZIP Skill 包");
+  const files = skillZip(bytes);
+  const manifests = [...files.keys()].filter(path => path === "SKILL.md" || path.endsWith("/SKILL.md"));
+  const owners = manifests.map(path => ({ name: parseSkillManifest(decodeText(files.get(path)!)).name, prefix: path.slice(0, -8) }));
+  if (owners.length !== item.skills.length || owners.some(owner => !item.skills.some(skill => skill.name === owner.name))) invalid("下载包内技能名称与精选目录清单不一致", 502);
+  const result = new Map<string, Uint8Array>();
+  for (const [path, content] of files) {
+    const owner = [...owners].sort((left, right) => right.prefix.length - left.prefix.length).find(item => path.startsWith(item.prefix));
+    if (owner) result.set(`${owner.name}/${path.slice(owner.prefix.length)}`, content);
+  }
+  for (const owner of owners) {
+    for (const label of ["LICENSE", "LICENSE.md", "LICENSE.txt", "NOTICE"]) {
+      if (result.has(`${owner.name}/${label}`)) continue;
+      const notice = [...files.keys()]
+        .filter(path => path.split("/").at(-1) === label && owner.prefix.startsWith(path.slice(0, path.lastIndexOf("/") + 1)))
+        .sort((left, right) => right.length - left.length)[0];
+      if (notice) result.set(`${owner.name}/${label}`, files.get(notice)!);
+    }
+  }
+  return result;
+}
+
+export async function restoreAccountSkillPackageArchive(item: {
+  packageId: string;
+  version: string;
+  sourceCommit: string;
+  sha256: string;
+  fileName: string;
+  skills: readonly { name: string }[];
+}, archive: Uint8Array, backups: AccountSkillPackageBackup[], replaceSkillNames?: readonly string[], expectedExistingHashes?: Record<string, string>) {
+  const userId = requireActiveAccount().userId;
+  const archiveSha256 = createHash("sha256").update(archive).digest("hex");
+  if (!/^[\da-f]{64}$/.test(archiveSha256)) invalid("技能备份摘要无效", 400);
+  const directory = await ensureAccountSkillDirectory(userId);
+  const result = await installSkillPackage(item.fileName, archive, directory, true, false, item.skills.map(skill => skill.name), replaceSkillNames, expectedExistingHashes);
+  const fileHashes = await accountSkillFileHashes(directory, item.skills.map(skill => skill.name));
+  const { setPackageRecord } = await import("@/utils/skills/accountSkills");
+  await setPackageRecord(userId, item.packageId, {
+    version: item.version, sourceCommit: item.sourceCommit, sha256: item.sha256,
+    installedAt: new Date().toISOString(), fileHashes, installed: true, backups,
+  });
+  return result;
+}
+
+export async function removeAccountSkillPackage(names: readonly string[], expectedExistingHashes?: Record<string, string>) {
+  const userId = requireActiveAccount().userId;
+  const directory = await ensureAccountSkillDirectory(userId);
+  const release = lockWorkspaceFiles([directory]);
+  let temporary: string | undefined;
+  let preserveTemporary = false;
+  try {
+    if (expectedExistingHashes) {
+      const actual = Object.entries(await accountSkillFileHashes(directory, names, true)).flatMap(([name, files]) => Object.entries(files).map(([path, digest]) => [name + "/" + path, digest] as const));
+      const expected = Object.entries(expectedExistingHashes);
+      if (actual.length !== expected.length || actual.some(([path, digest]) => expectedExistingHashes[path] !== digest)) {
+        invalid("预览后个人技能文件发生变化，请重新确认卸载", 409);
+      }
+    }
+    const installed: string[] = [];
+    for (const name of names) {
+      const target = join(directory, name);
+      const info = await lstat(target).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (!info) continue;
+      if (info.isSymbolicLink() || !info.isDirectory()) invalid(`个人技能目录“${name}”无效`, 403);
+      const entries = await readdir(target, { recursive: true, withFileTypes: true });
+      if (entries.some(entry => entry.isSymbolicLink())) invalid(`个人技能“${name}”包含符号链接，不能卸载`, 403);
+      installed.push(name);
+    }
+    if (installed.length) {
+      temporary = await mkdtemp(join(dirname(directory), ".skillUninstall"));
+      const removed = join(temporary, "removed");
+      await mkdir(removed);
+      const moved: string[] = [];
+      try {
+        for (const name of installed) {
+          await rename(join(directory, name), join(removed, name));
+          moved.push(name);
+        }
+      } catch (error) {
+        const failures: unknown[] = [];
+        for (const name of moved.reverse()) {
+          try { await rename(join(removed, name), join(directory, name)); }
+          catch (restoreError) { failures.push(restoreError); }
+        }
+        if (failures.length) {
+          preserveTemporary = true;
+          throw Object.assign(new AggregateError([error, ...failures], `技能卸载失败，旧版保留在 ${removed}，请恢复后重试`), { status: 500 });
+        }
+        throw error;
+      }
+    }
+    return { names: installed };
+  } finally {
+    try {
+      if (temporary && !preserveTemporary) await rm(temporary, { recursive: true, force: true }).catch(error => console.warn("技能卸载暂存目录清理失败", formatAgentError(error instanceof Error ? error.message : "清理失败")));
     } finally { release(); }
   }
 }

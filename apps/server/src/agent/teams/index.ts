@@ -23,8 +23,9 @@ export async function createTeamRunner(options: SubAgentModel & {
   cwd: string;
   tools: ToolDefinition[];
   canvas?: CanvasContext;
+  allowResourceWrite?: boolean;
 }) {
-  const { name, cwd, tools, canvas, ...modelOptions } = options;
+  const { name, cwd, tools, canvas, allowResourceWrite = true, ...modelOptions } = options;
   const { directory, manifest, files, enabled } = await readTeam(name);
   if (!enabled) throw new Error(`团队 ${name} 已禁用`);
   const hostTools = tools.filter(tool => !["subAgent", "report", "askUser", "delegate", "teamResources", "requestInput"].includes(tool.name));
@@ -56,7 +57,8 @@ export async function createTeamRunner(options: SubAgentModel & {
 
   return {
     manifest,
-    async run(task: string, signal?: AbortSignal, onProgress?: (text: string) => void, allowInput = false) {
+    async run(task: string, signal?: AbortSignal, onProgress?: (text: string) => void, allowInput = false, entryMember = manifest.entry) {
+      if (!manifest.members[entryMember]) throw new Error(`团队 ${name} 不存在成员 ${entryMember}`);
       let question: string | undefined;
       async function runMember(memberName: string, task: string, signal?: AbortSignal, depth = 0): ReturnType<typeof runSubAgent> {
         signal?.throwIfAborted();
@@ -72,6 +74,7 @@ export async function createTeamRunner(options: SubAgentModel & {
           async execute(_id, params, resourceSignal) {
             resourceSignal?.throwIfAborted();
             const { action, path, content } = resourceSchema.parse(params);
+            if (action === "write" && !allowResourceWrite) throw new Error("当前团队任务仅可读取团队资料");
             if (action !== "list" && (!path || !allowed(path))) throw new Error("资料不属于当前成员的授权范围");
             if (action === "write") {
               if (content === undefined) throw new Error("写入资料需要 content");
@@ -124,7 +127,7 @@ export async function createTeamRunner(options: SubAgentModel & {
           onProgress: text => onProgress?.(`${memberName}：${text}`),
         });
       }
-      return runMember(manifest.entry, task, signal);
+      return runMember(entryMember, task, signal);
     },
   };
 }

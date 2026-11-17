@@ -70,8 +70,6 @@
       <uiMediaPlayer v-if="demoVideoUrl" :src="demoVideoUrl" kind="video" :label="`${selectedDemo?.title ?? ''}第一集完整成片`" />
     </uiDialog>
     <settings v-model="settingsVisible" />
-    <homeTour />
-    <onboardingWelcome @selectTheme="handleSelectTheme" />
   </div>
 </template>
 
@@ -94,11 +92,7 @@ import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import settings from "@/components/settings/index.vue";
 import modelPopover from "@/components/modelPopover.vue";
-import homeTour from "@/components/onboarding/homeTour.vue";
-import onboardingWelcome from "@/components/onboarding/onboardingWelcome.vue";
-import { useOnboardingStore, type OnboardingTheme } from "@/stores/onboardingStore";
 
-const onboardingStore = useOnboardingStore();
 const feedback = useUiFeedback();
 const activeSection = ref("create");
 const settingsVisible = ref(false);
@@ -134,7 +128,6 @@ async function handleSignOut() {
 }
 
 onMounted(async () => {
-  onboardingStore.checkHomeTrigger();
   void workspaceStore.refreshProjectList().catch(error => showError(error instanceof Error ? error.message : "项目列表读取失败"));
   try {
     const { data } = await axios.get<{ code: number; data: Demo[]; message?: string }>("/api/demos/get");
@@ -179,8 +172,6 @@ watch(() => auth.user?.id, userId => {
   if (userId) workspaceStore.sanitizeProjectList(userId);
 }, { immediate: true });
 
-function handleSelectTheme(_theme: OnboardingTheme) { return; }
-
 async function createProject(fromPrompt = true) {
   if (creating.value || opening.value) return;
   creating.value = true;
@@ -189,7 +180,6 @@ async function createProject(fromPrompt = true) {
     if (data.code !== 200) throw new Error(data.message || "创建项目失败");
     await workspaceStore.openProject(data.data.directory);
     if (fromPrompt && prompt.value.trim()) workspaceStore.pendingAgentMessage = { directory: workspaceStore.project!.directory, prompt: prompt.value.trim(), model: selectedModel.value, reasoningEffort: reasoningEffort.value };
-    onboardingStore.completeHomeTour();
     await router.push("/workspace");
   } catch (err) {
     showError(axios.isAxiosError<{ message?: string }>(err)

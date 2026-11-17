@@ -1,6 +1,6 @@
 <template>
   <accountShell title="个人账户" eyebrow="我的空间" description="项目、资产和积分属于你的个人账户。团队协作不合并积分余额。">
-    <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton></template>
+    <template #actions><uiButton variant="primary" @click="router.push('/account/recharge')">积分充值</uiButton><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton></template>
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
     <div class="balanceSummary" aria-label="个人积分余额"><div><span>可用积分</span><strong>{{ formatCredits(wallet?.available) }}</strong></div><div><span>冻结积分</span><strong>{{ formatCredits(wallet?.frozen) }}</strong></div><div><span>总余额</span><strong>{{ formatCredits(wallet?.total) }}</strong></div></div>
     <div class="accountForms">
@@ -29,13 +29,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import axios from "axios";
 import { uiButton, uiField, uiInput, uiNumberInput, uiSelect, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@omnistudio-next/ui";
 import accountShell from "@/components/account/accountShell.vue";
 import { useAuthStore } from "@/stores/auth";
 import { getWallet, getLedger, getMembers, transferCredits, saveProfile, changePassword, type Wallet, type LedgerEntry, type TeamMember } from "@/lib/accountApi";
 import { compareCredits, creditMicros, formatCredits } from "@/lib/creditFormat";
-const auth = useAuthStore(); const feedback = useUiFeedback();
+const auth = useAuthStore(); const feedback = useUiFeedback(); const router = useRouter();
 const wallet = ref<Wallet>(); const ledger = ref<LedgerEntry[]>([]); const loading = ref(false); const busy = ref(false); const errorMessage = ref("");
 const transferTeamId = ref(""); const recipientId = ref(""); const amount = ref<number | null>(null); const note = ref(""); const transferError = ref(""); const members = ref<TeamMember[]>([]); const membersLoading = ref(false); let memberRevision = 0; let transferKey = crypto.randomUUID();
 const displayName = ref(auth.user?.displayName ?? ""); const currentPassword = ref(""); const password = ref(""); const confirmation = ref("");
@@ -46,7 +47,7 @@ const transferLimit = computed(() => {
   return Number(whole > 1_000_000_000n ? 1_000_000_000n : whole);
 });
 const ledgerColumns: UiColumn[] = [{ key: "kind", label: "变动类型", width: 130 }, { key: "reason", label: "用途" }, { key: "amount", label: "积分变动", width: 130, align: "right" }, { key: "balanceAfter", label: "变动后余额", width: 130, align: "right" }, { key: "createdAt", label: "时间", width: 180 }];
-const ledgerLabels: Record<string, string> = { grant: "管理员发放", adjustment: "管理员调整", reserve: "生成预留", capture: "生成扣除", release: "预留释放", transferIn: "成员划入", transferOut: "成员划出" };
+const ledgerLabels: Record<string, string> = { grant: "管理员发放", adjustment: "管理员调整", reserve: "生成预留", capture: "生成扣除", release: "预留释放", transferIn: "成员划入", transferOut: "成员划出", recharge: "积分充值" };
 function ledgerBillingText(row: Record<string, unknown>): string {
   const metadata = row.metadata as { billing?: Record<string, unknown> } | null;
   const billing = metadata?.billing;

@@ -171,7 +171,7 @@ export interface QuestionContext {
   ask(toolCallId: string, request: QuestionRequest, signal?: AbortSignal): Promise<QuestionAnswer>;
 }
 
-export type SkillScope = "workspace" | "global";
+export type SkillScope = "workspace" | "account" | "global";
 export type SkillLocation = { name: string; scope?: SkillScope; path?: string };
 export type SkillDocument = { name: string; scope: SkillScope; path: string; content: string };
 

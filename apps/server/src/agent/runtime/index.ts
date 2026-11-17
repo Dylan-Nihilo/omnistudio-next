@@ -6,7 +6,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { CanvasContext, QuestionContext } from "@omnistudio-next/tools-scaffold/runtime";
-import type { AgentEvent, AgentMention, AgentToolCall } from "@/agent/runtime/types";
+import type { AgentEvent, AgentMention, AgentSkillSelection, AgentToolCall } from "@/agent/runtime/types";
 import { agentMentionsSchema, mentionPrompt, snapshotMentions, validateMentionTokens } from "@/agent/runtime/mentions";
 import { readAiReferences, referenceContent } from "@/utils/ai";
 import { createAgentTools } from "@/agent/tools";
@@ -30,6 +30,8 @@ import { getVideoInputCapability } from "@/utils/ai/platformCatalog";
 
 type AgentOptions = {
   prompt: string;
+  displayPrompt?: string;
+  skillSelectionRecord?: AgentSkillSelection;
   attachments?: z.infer<typeof agentAttachmentsSchema>;
   mentions?: AgentMention[];
   cwd: string;
@@ -53,6 +55,8 @@ function assertSkillInvocation(prompt: string, skills: { name: string }[]) {
 export async function run(
   {
     prompt,
+    displayPrompt,
+    skillSelectionRecord,
     attachments = [],
     mentions = [],
     cwd,
@@ -284,19 +288,23 @@ export async function run(
           canvasVersion: canvas.version,
         });
       }
-      if (firstMessage && (attachments.length || mentions.length || prompt.trimStart().startsWith("/skill:"))) {
-        history.appendCustomEntry("toonflowUserMessage", { messageId: entry.id, content: prompt.trim(), attachments, mentions });
+      const userContent = (displayPrompt ?? prompt).trim();
+      if (firstMessage && (attachments.length || mentions.length || prompt.trimStart().startsWith("/skill:") || skillSelectionRecord)) {
+        history.appendCustomEntry("toonflowUserMessage", { messageId: entry.id, content: userContent, attachments, mentions });
         if (!history.getSessionName() && history.getBranch().filter((item) => item.type === "message" && item.message.role === "user").length === 1) {
-          history.appendSessionInfo((prompt.trim().replace(/\{\{mention:([^{}]+)\}\}/g, (text, id: string) => {
+          history.appendSessionInfo((userContent.replace(/\{\{mention:([^{}]+)\}\}/g, (text, id: string) => {
             const mention = mentions.find(item => item.id === id);
             return mention ? `@${mention.label}` : text;
           }) || attachments[0]?.name || mentions[0]?.label || "新对话").slice(0, 60));
         }
       }
+      if (firstMessage && skillSelectionRecord) {
+        history.appendCustomEntry("toonflowSkillSelection", { messageId: entry.id, ...skillSelectionRecord });
+      }
       const saved = history.getBranch().findLast(item => item.type === "custom" && item.customType === "toonflowUserMessage" && (item.data as { messageId?: string })?.messageId === entry.id);
       const original = saved?.type === "custom" ? saved.data as { content: string; attachments: z.infer<typeof agentAttachmentsSchema>; mentions?: AgentMention[] } : undefined;
       const content = entry.type === "message" && entry.message.role === "user" ? entry.message.content : "";
-      send({ type: "userMessage", id: entry.id, content: original?.content ?? (typeof content === "string" ? content : getToolResultText(content)), attachments: original?.attachments, mentions: original?.mentions });
+      send({ type: "userMessage", id: entry.id, content: original?.content ?? (typeof content === "string" ? content : getToolResultText(content)), attachments: original?.attachments, mentions: original?.mentions, skillSelection: skillSelectionRecord });
     }
     let firstTokenAt: number | undefined;
     let modelError: string | undefined;

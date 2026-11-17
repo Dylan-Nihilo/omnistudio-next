@@ -12,6 +12,14 @@ export type AgentMention = {
   value: unknown;
 };
 
+export type AgentSkillSelection = {
+  mode: "auto" | "fixed";
+  name: string;
+  scope: "workspace" | "account" | "global";
+  version: string;
+  reason: string;
+};
+
 export type AgentCanvasBinding = {
   messageId: string;
   canvasId: string;
@@ -45,7 +53,7 @@ export type AgentEvent =
   | ({ type: "question"; callId: string; toolCallId: string } & QuestionRequest)
   | { type: "error"; message: string }
   | { type: "session"; file: string }
-  | { type: "userMessage"; id: string; content?: string; attachments?: { name: string; path: string; mimeType: string }[]; mentions?: AgentMention[] }
+  | { type: "userMessage"; id: string; content?: string; attachments?: { name: string; path: string; mimeType: string }[]; mentions?: AgentMention[]; skillSelection?: AgentSkillSelection }
   | { type: "subAgent"; agent: AgentSubAgent }
   | { type: "subAgentEvent"; file: string; event: AgentEvent }
   | { type: "report"; parentFile: string; file: string; name: string; content: string; id: string }

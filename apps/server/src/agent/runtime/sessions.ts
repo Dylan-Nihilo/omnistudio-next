@@ -3,7 +3,7 @@ import { basename, dirname, resolve } from "node:path";
 import { readFile, readdir } from "node:fs/promises";
 import { calculateContextTokens, estimateTokens, getLastAssistantUsage, parseSessionEntries, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { AgentSession, FileEntry, SessionEntry } from "@earendil-works/pi-coding-agent";
-import type { AgentCanvasBinding, AgentEvent, AgentMention, AgentSubAgent, AgentToolCall } from "@/agent/runtime/types";
+import type { AgentCanvasBinding, AgentEvent, AgentMention, AgentSkillSelection, AgentSubAgent, AgentToolCall } from "@/agent/runtime/types";
 import { agentMentionsSchema } from "@/agent/runtime/mentions";
 import { formatAgentError } from "@/agent/runtime/errors";
 import { getModelLimits } from "@/utils/ai";
@@ -33,6 +33,7 @@ export type ActiveAgentSession = {
 type SessionMessage = {
   id: string; entryId: string; role: "user" | "assistant"; content: string; replyTo?: string; error?: string;
   streaming?: boolean;
+  skillSelection?: AgentSkillSelection;
   attachments?: z.infer<typeof agentAttachmentsSchema>; report?: { file: string; name: string };
   mentions?: AgentMention[];
   parts: ({ id: string; type: "text" | "thinking"; content: string; collapsed?: boolean } | { id: string; type: "tool"; tool: AgentToolCall })[];
@@ -287,6 +288,21 @@ export async function getAgentSession(cwd: string, path: string) {
     const parsed = canvasBindingSchema.safeParse(entry.data);
     return parsed.success ? [parsed.data] : [];
   });
+  const skillSelections = new Map(branch.flatMap(entry => {
+    if (entry.type !== "custom" || entry.customType !== "toonflowSkillSelection") return [];
+    const parsed = z.object({
+      messageId: z.string().min(1),
+      mode: z.enum(["auto", "fixed"]),
+      name: z.string().min(1).max(64),
+      scope: z.enum(["workspace", "account", "global"]),
+      version: z.string().max(256),
+      reason: z.string().max(1024),
+    }).safeParse(entry.data);
+    return parsed.success ? [[parsed.data.messageId, {
+      mode: parsed.data.mode, name: parsed.data.name, scope: parsed.data.scope,
+      version: parsed.data.version, reason: parsed.data.reason,
+    } as AgentSkillSelection] as const] : [];
+  }));
   const attachmentMessages = new Map(
     branch.flatMap((entry) => {
       if (entry.type !== "custom" || !["toonflowAttachments", "toonflowUserMessage"].includes(entry.customType)) return [];
@@ -362,6 +378,7 @@ export async function getAgentSession(cwd: string, path: string) {
         error,
         attachments,
         mentions: attachmentMessage?.mentions,
+        skillSelection: message.role === "user" ? skillSelections.get(entry.id) : undefined,
         report: undefined,
       },
     ];

@@ -5,7 +5,6 @@
         <div class="developerRow"><div class="toolDescription"><h3>开发者工具</h3><p>查看页面结构、控制台与网络请求。</p></div><uiButton variant="secondary" :icon="IconTerminal2" :loading="opening" :disabled="!isDesktop" @click="openDevTools">打开 DevTools</uiButton></div>
         <p v-if="!isDesktop" class="browserHint">浏览器模式请从浏览器菜单打开开发者工具。</p>
         <uiAlert v-if="requestError" :title="requestError" tone="error" />
-        <div class="developerRow"><div class="toolDescription"><h3>首次使用引导</h3><p>当前{{ hello.completed ? '已完成' : '未完成' }}。重置后打开引导页，保留已配置的模型。</p></div><uiButton variant="secondary" :icon="IconRefresh" :loading="resettingHello" :disabled="importingStorage || writingStorage" @click="resetHello">重置并打开引导页</uiButton></div>
         <div class="developerRow"><div class="toolDescription"><h3>更新说明</h3><p>打开当前版本的更新说明弹窗。</p></div><uiButton variant="secondary" :icon="IconFileText" :loading="openingUpdateBox" @click="openUpdateBox">查看更新说明</uiButton></div>
         <div class="developerRow"><div class="toolDescription"><h3>Agent 系统提示词</h3><p>编辑 Agent 的基础指令，保存后下一条消息生效。</p></div><uiButton variant="secondary" :icon="IconEdit" @click="systemPromptVisible = true">编辑提示词</uiButton></div>
       </section>
@@ -24,7 +23,7 @@
         <uiAlert v-if="installError" :title="installError" tone="error" /><uiAlert v-else-if="installedName" :title="`${installedName} 已安装`" tone="success" />
       </section>
       <section class="storageManager" aria-label="浏览器持久缓存">
-        <header class="developerRow"><div class="toolDescription"><h3>浏览器持久缓存</h3><p>管理当前站点的 localStorage。修改重新加载后生效；首次使用引导请通过上方按钮重置。导入会覆盖同名项，保留其他项。</p></div><div class="storageToolbar"><input ref="storageFileInput" type="file" accept=".json,application/json" hidden @change="importStorage" /><uiButton variant="secondary" size="small" :icon="IconFileUpload" :loading="importingStorage" :disabled="storageBusy" @click="storageFileInput?.click()">导入</uiButton><uiButton variant="secondary" size="small" :icon="IconDownload" :disabled="storageBusy" @click="exportStorage">导出</uiButton><uiButton variant="ghost" size="small" :icon="IconRefresh" :disabled="storageBusy" @click="loadStorage">刷新列表</uiButton></div></header>
+        <header class="developerRow"><div class="toolDescription"><h3>浏览器持久缓存</h3><p>管理当前站点的 localStorage。修改重新加载后生效。导入会覆盖同名项，保留其他项。</p></div><div class="storageToolbar"><input ref="storageFileInput" type="file" accept=".json,application/json" hidden @change="importStorage" /><uiButton variant="secondary" size="small" :icon="IconFileUpload" :loading="importingStorage" :disabled="storageBusy" @click="storageFileInput?.click()">导入</uiButton><uiButton variant="secondary" size="small" :icon="IconDownload" :disabled="storageBusy" @click="exportStorage">导出</uiButton><uiButton variant="ghost" size="small" :icon="IconRefresh" :disabled="storageBusy" @click="loadStorage">刷新列表</uiButton></div></header>
         <uiAlert v-if="storageError" :title="storageError" tone="error" /><uiAlert v-else-if="storageMessage" :title="storageMessage" tone="success" />
         <div v-for="entry in storageEntries" :key="entry.key" class="storageItem">
           <div class="storageHeader"><span class="storageKey">{{ entry.key || '（空键名）' }}</span><div class="storageActions"><uiButton variant="ghost" size="small" :icon="IconEdit" :disabled="storageBusy" :aria-label="`修改 ${entry.key}`" @click="editStorage(entry)">修改</uiButton><uiPopconfirm title="确定删除这条缓存？" danger confirmButtonText="删除" cancelButtonText="取消" @confirm="writeStorage(entry, null)"><template #reference><uiButton variant="danger" size="small" :icon="IconTrash" :disabled="storageBusy" :aria-label="`删除 ${entry.key}`">删除</uiButton></template></uiPopconfirm></div></div>
@@ -40,9 +39,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import { useDeveloperStore } from "@/stores/developer";
-import { useHelloStore } from "@/stores/hello";
 import { saveSettings, settings } from "@/stores/settings";
 import { desktopUpdateSnapshot } from "@/stores/desktopUpdate";
 import type { updateSnapshot } from "@omnistudio-next/server/desktop";
@@ -54,9 +51,6 @@ import { IconCode, IconTerminal2, IconFileUpload, IconFileText, IconDownload, Ic
 
 const feedback = useUiFeedback();
 const developerStore = useDeveloperStore();
-const hello = useHelloStore();
-const router = useRouter();
-const resettingHello = ref(false);
 const systemPromptDialog = defineAsyncComponent(() => import("./systemPromptDialog.vue"));
 const systemPromptVisible = ref(false);
 const updateBox = defineAsyncComponent(() => import("@/components/updateBox.vue"));
@@ -110,20 +104,6 @@ async function saveCustomUpdateUrl() {
   }
 }
 
-async function resetHello() {
-  if (storageBusy.value) return;
-  resettingHello.value = true;
-  try {
-    await hello.reset();
-    loadStorage();
-    await router.replace("/hello");
-  } catch {
-    feedback.message({ tone: "error", message: "重置引导失败，请重试" });
-  } finally {
-    resettingHello.value = false;
-  }
-}
-
 function confirmDeveloper() {
   developerStore.developerConfirmed = true;
   loadStorage();
@@ -155,7 +135,7 @@ const storageValue = ref("");
 const storageFileInput = ref<HTMLInputElement>();
 const importingStorage = ref(false);
 const writingStorage = ref(false);
-const storageBusy = computed(() => importingStorage.value || writingStorage.value || resettingHello.value);
+const storageBusy = computed(() => importingStorage.value || writingStorage.value);
 const storageMessage = ref("");
 
 function readStorage() {

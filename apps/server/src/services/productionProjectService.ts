@@ -11,7 +11,7 @@ import type { ProductionScriptDocument } from "@/utils/productionProject/scriptD
 import u from "@/utils";
 
 export type ProductionProjectStatus = "draft" | "scripted" | "storyboarded" | "generating" | "editing" | "review" | "approved" | "delivered";
-type ProductionTransaction = Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0];
+export type ProductionTransaction = Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0];
 
 const statusTransitions: Record<ProductionProjectStatus, readonly ProductionProjectStatus[]> = {
   draft: ["scripted"], scripted: ["storyboarded"], storyboarded: ["generating"], generating: ["editing"], editing: ["review"], review: ["approved"], approved: ["delivered"], delivered: [],
@@ -31,7 +31,7 @@ function assertPositiveInteger(value: number, name: string) {
 
 const videoProductionStatuses = ["generating", "editing", "review", "approved", "delivered"];
 
-function assertPreProductionEditable(status: string) {
+export function assertPreProductionEditable(status: string) {
   if (videoProductionStatuses.includes(status)) invalid("项目已进入视频生产阶段，剧集、主体资产和分镜已锁定", 409);
 }
 
@@ -511,7 +511,7 @@ async function getEpisodeInProject(projectId: string, episodeId: string) {
   return row;
 }
 
-async function validateShotAssetReferences(tx: ProductionTransaction, projectId: string, episodeId: string, characterAssetIds: string[], propAssetIds: string[]) {
+export async function validateShotAssetReferences(tx: ProductionTransaction, projectId: string, episodeId: string, characterAssetIds: string[], propAssetIds: string[]) {
   const assetIds = [...characterAssetIds, ...propAssetIds];
   if (!assetIds.length) return;
   if (new Set(assetIds).size !== assetIds.length) invalid("镜头关联资产不能重复", 422);
@@ -673,6 +673,132 @@ export async function updateProductionShot(input: { projectId: string; shotId: s
     await tx.update(productionShots).set(patch).where(eq(productionShots.id, input.shotId));
     await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionShot.update", metadata: { projectId: input.projectId, shotId: input.shotId, revision: patch.revision }, createdAt: now, updatedAt: now });
     return { ...row.shot, ...patch, characterAssetIds, propAssetIds };
+  });
+}
+
+export async function saveProductionEpisodeShots(input: {
+  projectId: string;
+  episodeId: string;
+  shots: {
+    id?: string;
+    sceneId?: string;
+    sceneNumber?: number;
+    sceneTitle?: string;
+    durationMs: number;
+    shotType: string | null;
+    camera: string | null;
+    lighting: string | null;
+    characterAssetIds: string[];
+    propAssetIds: string[];
+    soundEffects: string | null;
+    dialogue: string | null;
+    narration: string | null;
+    prompt: string | null;
+  }[];
+}) {
+  const account = requireAccount();
+  await requireProjectAccess(input.projectId, "edit");
+  if (input.shots.length > 100) invalid("单集分镜不能超过 100 个镜头", 422);
+  const database = getDatabase();
+  const now = new Date();
+  return database.transaction(async tx => {
+    const [project] = await tx.select().from(productionProjects).where(eq(productionProjects.id, input.projectId)).limit(1).for("update");
+    if (!project) invalid("生产项目不存在", 404);
+    assertPreProductionEditable(project.status);
+    const [episode] = await tx.select({ episode: productionEpisodes, season: productionSeasons }).from(productionEpisodes)
+      .innerJoin(productionSeasons, eq(productionSeasons.id, productionEpisodes.seasonId))
+      .where(and(eq(productionEpisodes.id, input.episodeId), eq(productionSeasons.projectId, input.projectId))).limit(1).for("update");
+    if (!episode) invalid("剧集不属于当前项目", 404);
+
+    const scenes = await tx.select().from(productionScenes).where(eq(productionScenes.episodeId, input.episodeId)).orderBy(asc(productionScenes.sceneNumber)).for("update");
+    const scenesById = new Map(scenes.map(scene => [scene.id, scene]));
+    const scenesByNumber = new Map(scenes.map(scene => [scene.sceneNumber, scene]));
+    const sceneIds = scenes.map(scene => scene.id);
+    const currentShots = sceneIds.length ? await tx.select().from(productionShots).where(inArray(productionShots.sceneId, sceneIds)).orderBy(asc(productionShots.shotNumber)).for("update") : [];
+    if (currentShots.some(shot => shot.status !== "draft" && shot.status !== "ready")) invalid("已有生成或审片记录的镜头不能在分镜表中修改", 409);
+    const currentShotIds = currentShots.map(shot => shot.id);
+    if (currentShotIds.length) {
+      const [variant] = await tx.select({ id: productionClipVariants.id }).from(productionClipVariants).where(inArray(productionClipVariants.shotId, currentShotIds)).limit(1);
+      if (variant) invalid("已有媒体候选的镜头不能在分镜表中重排或修改", 409);
+    }
+
+    const existingById = new Map(currentShots.map(shot => [shot.id, shot]));
+    const submittedIds = input.shots.flatMap(shot => shot.id ? [shot.id] : []);
+    if (new Set(submittedIds).size !== submittedIds.length || submittedIds.some(id => !existingById.has(id))) invalid("镜头行包含重复或不属于当前剧集的镜头", 422);
+    const removedIds = currentShots.filter(shot => !submittedIds.includes(shot.id)).map(shot => shot.id);
+    if (removedIds.length) {
+      const [variant] = await tx.select({ id: productionClipVariants.id }).from(productionClipVariants).where(inArray(productionClipVariants.shotId, removedIds)).limit(1);
+      const [review] = await tx.select({ id: productionReviews.id }).from(productionReviews).where(inArray(productionReviews.shotId, removedIds)).limit(1);
+      const [approval] = await tx.select({ id: productionApprovals.id }).from(productionApprovals).where(inArray(productionApprovals.shotId, removedIds)).limit(1);
+      if (variant || review || approval) invalid("已有生成或审片记录的镜头不能删除", 409);
+    }
+
+    const prepared = [] as {
+      input: (typeof input.shots)[number];
+      scene: (typeof productionScenes.$inferSelect);
+      shotNumber: number;
+    }[];
+    const createdScenes = new Map<number, (typeof productionScenes.$inferSelect)>();
+    const shotNumbers = new Map<string, number>();
+    for (const shot of input.shots) {
+      if (!Number.isSafeInteger(shot.durationMs) || shot.durationMs < 0) invalid("镜头时长无效", 422);
+      let scene = shot.sceneId ? scenesById.get(shot.sceneId) : undefined;
+      if (shot.sceneId && !scene) invalid("场景不属于当前剧集", 422);
+      if (!scene) {
+        if (!shot.sceneNumber || !shot.sceneTitle?.trim()) invalid("新场景需要场景编号和名称", 422);
+        scene = createdScenes.get(shot.sceneNumber) ?? scenesByNumber.get(shot.sceneNumber);
+        if (scene && scene.title !== shot.sceneTitle.trim()) invalid("同一场景编号不能对应多个名称", 422);
+        if (!scene) {
+          scene = { id: randomUUID(), episodeId: input.episodeId, sceneNumber: shot.sceneNumber, title: shot.sceneTitle.trim(), continuityNotes: null, createdAt: now, updatedAt: now };
+          await tx.insert(productionScenes).values(scene);
+          scenesById.set(scene.id, scene);
+          scenesByNumber.set(scene.sceneNumber, scene);
+          createdScenes.set(scene.sceneNumber, scene);
+        }
+      }
+      await validateShotAssetReferences(tx, input.projectId, input.episodeId, shot.characterAssetIds, shot.propAssetIds);
+      const shotNumber = (shotNumbers.get(scene.id) ?? 0) + 1;
+      shotNumbers.set(scene.id, shotNumber);
+      prepared.push({ input: shot, scene, shotNumber });
+    }
+
+    if (prepared.length) {
+      const maxShotNumber = currentShots.reduce((max, shot) => Math.max(max, shot.shotNumber), 0);
+      const parkingStart = maxShotNumber + currentShots.length + input.shots.length + 1;
+      if (currentShots.length && parkingStart + currentShots.length > 4294967295) invalid("镜头编号超出可重排范围", 422);
+      for (const [index, shot] of currentShots.entries()) {
+        await tx.update(productionShots).set({ shotNumber: parkingStart + index }).where(eq(productionShots.id, shot.id));
+      }
+    }
+
+    const submittedAt = new Set<string>();
+    for (const { input: shot, scene, shotNumber } of prepared) {
+      const fields = {
+        sceneId: scene.id,
+        shotNumber,
+        durationMs: shot.durationMs,
+        shotType: shot.shotType?.trim() || null,
+        camera: shot.camera?.trim() || null,
+        lighting: shot.lighting?.trim() || null,
+        characterAssetIds: shot.characterAssetIds,
+        propAssetIds: shot.propAssetIds,
+        soundEffects: shot.soundEffects?.trim() || null,
+        dialogue: shot.dialogue?.trim() || null,
+        narration: shot.narration?.trim() || null,
+        prompt: shot.prompt?.trim() || null,
+        updatedAt: now,
+      };
+      if (shot.id) {
+        const existing = existingById.get(shot.id)!;
+        await tx.update(productionShots).set({ ...fields, revision: existing.revision + 1 }).where(eq(productionShots.id, shot.id));
+        submittedAt.add(shot.id);
+      } else {
+        await tx.insert(productionShots).values({ id: randomUUID(), ...fields, status: "draft", revision: 1, createdAt: now });
+      }
+    }
+    if (removedIds.length) await tx.delete(productionShots).where(inArray(productionShots.id, removedIds));
+    await tx.insert(auditEvents).values({ id: randomUUID(), actorUserId: account.userId, workspaceId: project.workspaceId, action: "productionEpisode.shotsSaved", metadata: { projectId: input.projectId, episodeId: input.episodeId, created: input.shots.length - submittedAt.size, updated: submittedAt.size, deleted: removedIds.length }, createdAt: now, updatedAt: now });
+    return { created: input.shots.length - submittedAt.size, updated: submittedAt.size, deleted: removedIds.length };
   });
 }
 

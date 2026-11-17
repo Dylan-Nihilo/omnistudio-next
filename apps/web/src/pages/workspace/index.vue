@@ -15,8 +15,6 @@
     </div>
     <floatingAgent v-model="agentVisible" :topOffset="headerHeight" @resize="agentWidth = $event" />
     <settingsPanel v-if="settingsMounted" v-model="settingsVisible" />
-    <workspaceTour />
-    <celebrationModal />
   </main>
 </template>
 
@@ -31,9 +29,6 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";
 import anonymousData from "@/lib/anonymousData";
 import workspaceMenu from "./components/workspaceMenu.vue";
-import workspaceTour from "@/components/onboarding/workspaceTour.vue";
-import celebrationModal from "@/components/onboarding/celebrationModal.vue";
-import { useOnboardingStore } from "@/stores/onboardingStore";
 
 const canvasPanel = defineAsyncComponent(() => import("./panels/canvas/canvasHost.vue"));
 const floatingAgent = defineAsyncComponent(() => import("./components/floatingAgent.vue"));
@@ -53,17 +48,7 @@ watch(headerElement, (element, _previous, onCleanup) => {
 }, { flush: "post" });
 const activePanel = ref<"canvas" | "document">("canvas");
 const settingsMounted = ref(false);
-const onboardingStore = useOnboardingStore();
-onMounted(() => {
-  anonymousData.track("workspace.canvas");
-  onboardingStore.checkWorkspaceTrigger();
-});
-watch(() => onboardingStore.shouldAutoFillAgent, shouldAutoFill => {
-  if (shouldAutoFill) agentVisible.value = true;
-});
-watch(() => onboardingStore.workspaceTourActive, active => {
-  if (active) agentVisible.value = true;
-}, { immediate: true });
+onMounted(() => anonymousData.track("workspace.canvas"));
 const workspaceStore = useWorkspaceStore();
 const panelOptions = [
   { label: "画布", value: "canvas", icon: IconLayoutDashboard },

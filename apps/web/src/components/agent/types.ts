@@ -1,4 +1,4 @@
-import type { AgentCanvasBinding, AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention } from "@omnistudio-next/server/agent/types";
+import type { AgentCanvasBinding, AgentToolCall, AgentStats, AgentContext, AgentSubAgent, AgentMention, AgentSkillSelection } from "@omnistudio-next/server/agent/types";
 
 export type AgentAttachment = { name: string; path: string; mimeType: string; file?: File };
 
@@ -15,6 +15,7 @@ export type AgentMessage = {
   content: string;
   attachments?: AgentAttachment[];
   mentions?: AgentMention[];
+  skillSelection?: AgentSkillSelection;
   parts?: AgentMessagePart[];
   streaming?: boolean;
   error?: string;

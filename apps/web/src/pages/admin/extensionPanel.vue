@@ -5,6 +5,13 @@
     <details v-if="category === 'skill' && skillDiagnostics.length" class="skillDiagnostics"><summary>有 {{ skillDiagnostics.length }} 条技能加载提示</summary><ul><li v-for="(item, index) in skillDiagnostics" :key="index">{{ item.path }}：{{ item.message }}</li></ul></details>
     <uiTabs :modelValue="category" :options="categories" label="扩展类型" @update:modelValue="value => typeof value === 'string' && (category = value)">
       <ffmpeg v-if="category === 'ffmpeg'" />
+      <template v-else-if="category === 'skill'">
+        <div class="skillView">
+          <uiRadioGroup :modelValue="skillView" :options="skillViews" variant="segmented" aria-label="技能视图" @update:modelValue="value => (value === 'installed' || value === 'market') && (skillView = value)" />
+          <skillMarket v-if="skillView === 'market'" scope="global" @installed="load" />
+          <uiTable v-else class="extensionTable" :rows="visiblePlugins" :columns="columns" :loading="loading" emptyText="还没有已安装技能" label="已安装技能"><template #cell="{ row, column }"><div v-if="column.key === 'displayName'" class="extensionName"><strong>{{ row.displayName }}</strong><span>{{ row.description || row.name }}</span><span v-if="(row.warnings as string[] | undefined)?.length">{{ (row.warnings as string[]).join("；") }}</span></div><uiTag v-else-if="column.key === 'enabled'" :tone="(row.warnings as string[] | undefined)?.length ? 'warning' : 'success'">{{ (row.warnings as string[] | undefined)?.length ? '可用 · 有提示' : '可用' }}</uiTag><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton variant="danger" size="small" :disabled="busy" @click="uninstall(row as unknown as Plugin)">卸载</uiButton></div><span v-else>{{ row[column.key] ?? '—' }}</span></template></uiTable>
+        </div>
+      </template>
       <uiTable v-else class="extensionTable" :rows="visiblePlugins" :columns="columns" :loading="loading" emptyText="这个类型还没有扩展" label="已安装扩展"><template #cell="{ row, column }"><div v-if="column.key === 'displayName'" class="extensionName"><strong>{{ row.displayName }}</strong><span>{{ row.description || row.name }}</span><span v-if="(row.warnings as string[] | undefined)?.length">{{ (row.warnings as string[]).join("；") }}</span></div><uiTag v-else-if="column.key === 'enabled'" :tone="row.type === 'skill' ? ((row.warnings as string[] | undefined)?.length ? 'warning' : 'success') : row.enabled ? 'success' : 'error'">{{ row.type === 'skill' ? ((row.warnings as string[] | undefined)?.length ? '可用 · 有提示' : '可用') : row.enabled ? '已启用' : '已停用' }}</uiTag><div v-else-if="column.key === 'actions'" class="rowActions"><uiButton v-if="row.type === 'tool' || row.type === 'node'" variant="ghost" size="small" :disabled="busy || !((row.configRules as unknown[])?.length)" @click="configure(row as unknown as Plugin)">配置</uiButton><uiButton v-if="row.type !== 'skill'" variant="ghost" size="small" :disabled="busy" @click="toggle(row as unknown as Plugin)">{{ row.enabled ? '停用' : '启用' }}</uiButton><uiButton variant="danger" size="small" :disabled="busy" @click="uninstall(row as unknown as Plugin)">卸载</uiButton></div><span v-else>{{ row[column.key] ?? '—' }}</span></template></uiTable>
     </uiTabs>
     <pluginConfigDialog v-if="configPlugin" v-model="configVisible" :plugin="configPlugin" :canManage="true" />
@@ -30,11 +37,13 @@ import axios from "axios";
 import { uiButton, uiTable, uiTag, uiTabs, uiDialog, uiField, uiInput, uiRadioGroup, uiCheckbox, useUiFeedback, isUiCancelledError, type UiColumn } from "@omnistudio-next/ui";
 import { authClient, type ApiResponse } from "@/lib/authApi";
 import pluginConfigDialog from "@/components/settings/panels/pluginMarket/pluginConfigDialog.vue";
+import skillMarket from "@/components/settings/panels/skillMarket/skillMarket.vue";
 import ffmpeg from "@/components/settings/panels/pluginMarket/ffmpeg.vue";
 import type { Plugin, PluginType } from "@/components/settings/panels/pluginMarket/types";
 import { installPluginFile } from "@/components/settings/installPluginFile";
 const feedback = useUiFeedback(); const plugins = ref<Plugin[]>([]); const loading = ref(false); const busy = ref(false); const errorMessage = ref("");
 const category = ref("tool"); const categories = [{ value: "tool", label: "工具" }, { value: "node", label: "节点" }, { value: "skill", label: "技能" }, { value: "agent", label: "Agent 插件" }, { value: "ffmpeg", label: "FFmpeg" }];
+const skillView = ref<"installed" | "market">("installed"); const skillViews = [{ value: "installed", label: "已安装" }, { value: "market", label: "技能市场" }];
 const columns: UiColumn[] = [{ key: "displayName", label: "扩展" }, { key: "version", label: "版本", width: 120, align: "center" }, { key: "enabled", label: "状态", width: 110, align: "center" }, { key: "actions", label: "操作", width: 250, align: "center" }];
 const visiblePlugins = computed(() => plugins.value.filter(plugin => plugin.type === category.value).map(plugin => ({ ...plugin })));
 const configPlugin = ref<Plugin>(); const configVisible = ref(false); const installVisible = ref(false); const installUrl = ref(""); const installType = ref<PluginType>("tool"); const force = ref(false); const installError = ref("");
@@ -76,6 +85,8 @@ onMounted(load);
 
 <style lang="scss" scoped>
 .extensionsPanel {
+  .skillView { display: grid; gap: 16px; }
+
   .extensionHeader {
     display: flex;
     justify-content: space-between;

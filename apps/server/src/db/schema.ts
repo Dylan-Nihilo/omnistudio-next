@@ -112,7 +112,7 @@ export const creditLedger = mysqlTable("user_credit_ledger", {
   userId: varchar("user_id", { length: 36 }).notNull(),
   actorUserId: varchar("actor_user_id", { length: 36 }),
   jobId: varchar("job_id", { length: 36 }),
-  kind: mysqlEnum("kind", ["grant", "adjustment", "reserve", "capture", "release", "transferIn", "transferOut"]).notNull(),
+  kind: mysqlEnum("kind", ["grant", "adjustment", "reserve", "capture", "release", "transferIn", "transferOut", "recharge"]).notNull(),
   amount: decimal("amount", { precision: 26, scale: 6 }).notNull(),
   balanceAfter: decimal("balance_after", { precision: 26, scale: 6, unsigned: true }).notNull(),
   frozenAfter: decimal("frozen_after", { precision: 26, scale: 6, unsigned: true }).notNull(),
@@ -121,6 +121,28 @@ export const creditLedger = mysqlTable("user_credit_ledger", {
   metadata: json("metadata"),
   ...timestamps,
 }, table => ({ idempotencyIndex: uniqueIndex("credit_ledger_idempotency_unique").on(table.idempotencyKey), walletIndex: index("credit_ledger_wallet_index").on(table.walletId, table.createdAt), jobIndex: index("credit_ledger_job_index").on(table.jobId) }));
+
+export const rechargeOrders = mysqlTable("user_recharge_orders", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: varchar("user_id", { length: 36 }).notNull(),
+  packageId: varchar("package_id", { length: 48 }).notNull(),
+  packageName: varchar("package_name", { length: 80 }).notNull(),
+  credits: decimal("credits", { precision: 26, scale: 6, unsigned: true }).notNull(),
+  amountCents: int("amount_cents", { unsigned: true }).notNull(),
+  paymentMethod: mysqlEnum("payment_method", ["alipay", "wechat"]).notNull(),
+  status: mysqlEnum("status", ["pending", "paid", "cancelled", "expired"]).notNull().default("pending"),
+  agreementVersion: varchar("agreement_version", { length: 32 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 180 }).notNull(),
+  providerTradeNo: varchar("provider_trade_no", { length: 128 }),
+  expiresAt: datetime("expires_at", { mode: "date" }).notNull(),
+  paidAt: datetime("paid_at", { mode: "date" }),
+  ...timestamps,
+}, table => ({
+  idempotencyIndex: uniqueIndex("user_recharge_order_idempotency_unique").on(table.idempotencyKey),
+  providerTradeIndex: uniqueIndex("user_recharge_order_provider_trade_unique").on(table.providerTradeNo),
+  userIndex: index("user_recharge_order_user_index").on(table.userId, table.createdAt),
+  statusIndex: index("user_recharge_order_status_index").on(table.status, table.expiresAt),
+}));
 
 export const generationJobs = mysqlTable("user_generation_jobs", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -360,6 +382,27 @@ export const productionScriptRecords = mysqlTable("production_script_records", {
   creatorIndex: index("production_script_record_creator_index").on(table.createdBy, table.createdAt),
 }));
 
+export const productionStoryboardDrafts = mysqlTable("production_storyboard_drafts", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  projectId: varchar("project_id", { length: 36 }).notNull(),
+  episodeId: varchar("episode_id", { length: 36 }).notNull(),
+  sourceScriptRevision: int("source_script_revision", { unsigned: true }).notNull(),
+  revision: int("revision", { unsigned: true }).notNull().default(1),
+  status: mysqlEnum("status", ["pending", "confirmed"]).notNull().default("pending"),
+  providerId: varchar("provider_id", { length: 100 }).notNull(),
+  modelId: varchar("model_id", { length: 200 }).notNull(),
+  teamVersion: varchar("team_version", { length: 64 }).notNull(),
+  skillVersion: varchar("skill_version", { length: 72 }).notNull(),
+  draft: json("draft").$type<Record<string, unknown>>().notNull(),
+  createdBy: varchar("created_by", { length: 36 }).notNull(),
+  updatedBy: varchar("updated_by", { length: 36 }).notNull(),
+  confirmedAt: datetime("confirmed_at", { mode: "date" }),
+  ...timestamps,
+}, table => ({
+  projectEpisodeIndex: uniqueIndex("production_storyboard_draft_project_episode_unique").on(table.projectId, table.episodeId),
+  creatorIndex: index("production_storyboard_draft_creator_index").on(table.createdBy, table.createdAt),
+}));
+
 export const productionProjectAssets = mysqlTable("production_project_assets", {
   id: varchar("id", { length: 36 }).primaryKey(),
   projectId: varchar("project_id", { length: 36 }).notNull(),
@@ -569,6 +612,7 @@ export const schema = {
   productionProjects,
   productionScriptDrafts,
   productionScriptRecords,
+  productionStoryboardDrafts,
   productionProjectAssets,
   productionSeasons,
   productionEpisodes,

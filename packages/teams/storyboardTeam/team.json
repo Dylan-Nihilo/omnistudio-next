@@ -2,7 +2,7 @@
   "name": "storyboardTeam",
   "displayName": "分镜创作团队",
   "description": "由导演统筹编写与审阅成员，根据已有故事和约束整理可审阅的文字分镜方案。",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "omnistudio-next",
   "github": "https://github.com/Dylan-Nihilo/omnistudio-next",
   "entry": "director",
@@ -10,7 +10,7 @@
     "director": {
       "description": "明确创作边界、分配编写与审阅任务，交付统一方案。",
       "instructions": "members/director.md",
-      "delegates": ["writer", "reviewer"],
+      "delegates": ["writer", "reviewer", "shotAnalyzer"],
       "tools": ["read", "ls"],
       "skills": ["storyboard"],
       "knowledge": ["continuity.md"]
@@ -26,6 +26,14 @@
       "description": "核查剧情覆盖、镜头可执行性和角色场景连续性。",
       "instructions": "members/reviewer.md",
       "tools": ["read", "ls"],
+      "skills": ["storyboard"],
+      "knowledge": ["continuity.md"]
+    },
+    "shotAnalyzer": {
+      "description": "结合剧本与前后镜头分析并补全单个镜头字段。",
+      "instructions": "members/shotAnalyzer.md",
+      "tools": ["read", "ls"],
+      "skills": ["storyboard"],
       "knowledge": ["continuity.md"]
     }
   }

@@ -1,8 +1,8 @@
 <template>
   <accountShell :immersive="true" :title="project?.title ?? '生产项目'" eyebrow="漫剧生产工作台" description="按顺序完成剧集、主体资产、分镜脚本和视频交付。">
     <template #actions>
-      <uiButton variant="ghost" @click="router.push('/productionProjects')">返回项目列表</uiButton>
-      <uiButton variant="secondary" :loading="loading" @click="loadProject">刷新详情</uiButton>
+      <uiButton variant="ghost" :disabled="isEditingStoryboardDraft" @click="router.push('/productionProjects')">返回项目列表</uiButton>
+      <uiButton variant="secondary" :loading="loading" :disabled="isEditingStoryboardDraft" @click="loadProject">刷新详情</uiButton>
       <uiButton v-if="project && (currentRole === 'owner' || currentRole === 'producer')" variant="secondary" @click="memberVisible = true">项目成员</uiButton>
     </template>
 
@@ -15,13 +15,13 @@
       </section>
 
       <nav class="workflowRail" aria-label="漫剧生产步骤">
-        <button v-for="(step, index) in primaryWorkflowSteps" :key="step.stage" type="button" class="workflowStep" :class="{ reached: isStepReached(step.stage), current: activeStep === step.stage }" :aria-current="activeStep === step.stage ? 'step' : undefined" :disabled="!isStepReached(step.stage) || loading" :title="stepReason(step.stage)" @click="goStep(step.stage)">
+        <button v-for="(step, index) in primaryWorkflowSteps" :key="step.stage" type="button" class="workflowStep" :class="{ reached: isStepReached(step.stage), current: activeStep === step.stage }" :aria-current="activeStep === step.stage ? 'step' : undefined" :disabled="!isStepReached(step.stage) || loading || isEditingStoryboardDraft" :title="isEditingStoryboardDraft ? '请先保存或取消当前分镜修改' : stepReason(step.stage)" @click="goStep(step.stage)">
           <span class="workflowStepNumber">{{ String(index + 1).padStart(2, '0') }}</span>
           <span class="workflowStepCopy"><strong>{{ step.label }}</strong><small>{{ activeStep === step.stage ? '正在制作' : isStepReached(step.stage) ? '已开放' : '等待前置步骤' }}</small></span>
         </button>
       </nav>
 
-      <section class="stageFocus" aria-live="polite">
+      <section v-if="activeStage !== 'storyboarded'" class="stageFocus" aria-live="polite">
         <div class="stageFocusHeader"><div><span class="stageEyebrow">STEP {{ activeStepIndex }} / 04</span><div class="stageTitleRow"><h3>{{ stageMeta[activeStage].label }}</h3><uiTag :tone="activeStepReady ? 'success' : 'warning'">{{ activeStepReady ? '本步骤已具备条件' : '仍有前置事项' }}</uiTag></div><p>{{ stageMeta[activeStage].description }}</p></div></div>
         <div class="stageStats"><div v-for="item in stageMetricItems" :key="item.label"><strong>{{ item.value }}</strong><span>{{ item.label }}</span></div></div>
         <div v-if="!activeStepReady" class="stageHint">{{ activeStepReason }}</div>
@@ -100,22 +100,38 @@
         <aside v-if="activeStage === 'storyboarded'" class="workbenchSidebar">
           <div class="workbenchSidebarHeader"><div><span class="panelEyebrow">分镜目录</span><strong>剧集</strong></div><div class="sidebarHeaderActions"><uiTag>{{ project.episodes.length }} 集</uiTag></div></div>
           <div class="episodeNavList">
-            <button v-for="episode in project.episodes" :key="episode.id" type="button" class="episodeNavItem" :class="{ selected: episode.id === activeEpisodeId }" @click="activeEpisodeId = episode.id">
-              <span class="episodeNavIndex">EP {{ String(episode.episodeNumber).padStart(2, '0') }}</span><span class="episodeNavCopy"><strong>{{ episode.title }}</strong><small>{{ episodeShotCount(episode.id) }} 镜头 · {{ episodeSceneCount(episode.id) }} 场景</small></span><uiTag :tone="episodeShotCount(episode.id) ? 'success' : 'neutral'">{{ episodeShotCount(episode.id) ? '已拆镜' : '待拆镜' }}</uiTag>
+            <button v-for="episode in project.episodes" :key="episode.id" type="button" class="episodeNavItem" :class="{ selected: episode.id === activeEpisodeId }" :disabled="isEditingStoryboardDraft || busy" @click="activeEpisodeId = episode.id">
+              <span class="episodeNavIndex">EP {{ String(episode.episodeNumber).padStart(2, '0') }}</span><span class="episodeNavCopy"><strong>{{ episode.title }}</strong><small>{{ episodeShotCount(episode.id) }} 镜头 · {{ episodeSceneCount(episode.id) }} 场景</small></span><uiTag :tone="storyboardEpisodeTone(episode.id)">{{ storyboardEpisodeStatusLabel(episode.id) }}</uiTag>
             </button>
             <div v-if="!project.episodes.length" class="workbenchEmpty">尚未创建剧集</div>
           </div>
-          <div class="assetNav"><div class="assetNavTitle">项目主体资产</div><div v-for="item in assetTypeOptions" :key="item.value" class="assetNavItem"><span>{{ item.label }}</span><strong>{{ project.assets.filter(asset => asset.assetType === item.value).length }}</strong></div></div>
+          <div v-if="isVideoStage" class="assetNav"><div class="assetNavTitle">项目主体资产</div><div v-for="item in assetTypeOptions" :key="item.value" class="assetNavItem"><span>{{ item.label }}</span><strong>{{ project.assets.filter(asset => asset.assetType === item.value).length }}</strong></div></div>
         </aside>
 
         <div class="stageWorkspace">
           <header class="workspaceHeader"><div><span class="panelEyebrow">{{ stageMeta[activeStage].eyebrow }}</span><h3>{{ activeEpisode?.title || (isVideoStage ? '全剧生成队列' : '未选择剧集') }}</h3></div><div v-if="isVideoStage" class="workspaceHeaderMeta"><uiSelect v-model="activeEpisodeId" :options="episodeOptions" /><span>{{ activeEpisodeShots.length }} 个镜头</span></div><div v-else class="workspaceHeaderMeta"><span>{{ activeEpisodeShots.length }} 个镜头</span><span>{{ activeEpisodeSceneCount }} 个场景</span></div></header>
 
           <div v-if="activeStage === 'storyboarded'" class="storyboardWorkspace">
-            <div class="storyboardToolbar"><div><strong>分镜脚本</strong><span>核对每集完整性、镜头景别、时长和生成画面描述</span></div><div class="storyboardToolbarActions"><uiButton v-if="canAdd" size="small" variant="secondary" :disabled="busy || !activeEpisodeId || videoProductionStarted" @click="openShotForm(activeEpisodeId)">添加镜头</uiButton><uiButton v-if="canEdit" size="small" :disabled="busy || !assetsReady || !storyboardReady || videoProductionStarted" :title="stepReason('generating')" @click="advanceToVideo">{{ videoProductionStarted ? '分镜已确认' : '确认分镜并进入视频生成' }}</uiButton></div></div>
+            <productionStoryboardDraft v-if="activeEpisode && activeEpisodeSceneCount === 0" :key="project.id" ref="storyboardDraftRef" v-model:modelValue="storyboardModelValue" :projectId="project.id" :episodeId="activeEpisode.id" :episodeNumber="activeEpisode.episodeNumber" :episodeTitle="activeEpisode.title" :canEdit="canAdd && !videoProductionStarted && !scriptDocumentDirty" :canAdvance="assetsReady && !busy" :locked="videoProductionStarted" :characterOptions="storyboardCharacterOptions" :propOptions="storyboardPropOptions" @draftChange="hasPendingStoryboardDraft = $event" @editingChange="isEditingStoryboardDraft = $event" @restoreEpisode="activeEpisodeId = $event" @confirmedAndAdvance="confirmDraftAndAdvance" />
+            <productionStoryboardTable v-if="activeEpisode" ref="storyboardTableRef" :projectId="project.id" :episodeId="activeEpisode.id" :directory="auth.personalDirectory" :scriptRevision="storyboardScriptRevision" :modelValue="storyboardModelValue" :modelOptions="storyboardModelOptions" :shots="activeEpisodeShots" :scenes="activeEpisodeScenes" :assets="activeEpisodeAssets" :canEdit="canEditStoryboard" :canAdd="canAddStoryboardShot" :busy="busy" @update:modelValue="storyboardModelValue = $event" @editingChange="isEditingStoryboardDraft = $event" @save="saveStoryboardShots" />
             <div v-if="!storyboardReady" class="readinessCallout"><strong>分镜检查未通过</strong><span>{{ storyboardMissingItems.join('；') }}。</span></div>
-            <div v-if="!activeEpisodeShots.length" class="workbenchEmpty large">当前剧集还没有镜头，请先添加剧集和镜头。</div>
-            <productionStoryboardTable v-else :shots="activeEpisodeShots" :scenes="project.scenes" :assets="project.assets" :canEdit="canEditStoryboard" :busy="busy" @edit="editStoryboardShot" />
+            <div v-if="canEdit && activeEpisode && activeEpisodeSceneCount > 0" class="storyboardFooter"><span>{{ videoProductionStarted ? '分镜已确认' : storyboardReady ? '全部分镜脚本已完成' : '分镜检查未通过' }}</span><uiButton :disabled="busy || !assetsReady || !storyboardReady || videoProductionStarted" :title="stepReason('generating')" @click="advanceToVideo">下一步</uiButton></div>
+            <p v-if="storyboardStatusError" class="storyboardBatchError" role="alert">分镜状态读取失败：{{ storyboardStatusError }}</p>
+            <p v-if="project.status === 'scripted' && storyboardStatuses.length && storyboardScriptRevision === 0" class="storyboardBatchError" role="status">请先保存确认的剧本版本，再生成或分析分镜。</p>
+            <p v-if="storyboardBatchMessage" class="storyboardBatchMessage" role="status">{{ storyboardBatchMessage }}</p>
+            <p v-if="storyboardBatchError" class="storyboardBatchError" role="alert">{{ storyboardBatchError }}</p>
+            <footer v-if="storyboardBatchDockVisible" class="storyboardGenerationDock" aria-label="待生成分镜脚本">
+              <div class="storyboardBatchTitle"><strong>{{ storyboardPendingEpisodes.length }} 集分镜脚本待生成</strong><span>按消耗计费</span></div>
+              <label class="storyboardBatchModel"><span>文本模型</span><uiSelect v-model="storyboardModelValue" :options="storyboardModelOptions" :disabled="busy || isEditingStoryboardDraft || !canAdd || !storyboardModelOptions.length" aria-label="批量分镜生成文本模型" /></label>
+              <div class="storyboardBatchQuote" role="status" aria-live="polite">
+                <span v-if="storyboardBatchQuoting">正在预估积分…</span>
+                <span v-else-if="storyboardBatchQuoteError">积分预估失败</span>
+                <span v-else-if="storyboardBatchQuoteCurrent">预计 {{ formatCredits(storyboardBatchQuote?.credits) }} 积分</span>
+                <span v-else>待预估</span>
+                <button v-if="storyboardBatchQuoteError" type="button" :disabled="busy" @click="quoteAllStoryboards">重试</button>
+              </div>
+              <uiButton variant="secondary" :loading="busy && storyboardBatchRunning" :disabled="busy || isEditingStoryboardDraft || !canAdd || !selectedStoryboardModel || !storyboardBatchQuoteCurrent" @click="generateAllStoryboards">全部生成</uiButton>
+            </footer>
           </div>
 
           <div v-if="activeStage === 'review'" class="reviewWorkspace"><div class="workspaceCallout"><div><span class="panelEyebrow">候选审片</span><strong>{{ reviewShot ? `镜头 ${String(reviewShot.shotNumber).padStart(2, '0')} 等待决策` : '当前没有待审片镜头' }}</strong><p>选择候选片段后可记录意见、退回重拍或批准版本。</p></div><uiButton v-if="reviewShot && canReview" variant="secondary" :disabled="busy" @click="selectShotForReview(reviewShot)">打开审片</uiButton></div><div class="candidateStrip"><button v-for="variant in project?.variants.filter(item => activeEpisodeShots.some(shot => shot.id === item.shotId)).slice(0, 6) ?? []" :key="variant.id" type="button" class="candidateCard" @click="selectVariantPreview(variant)"><div class="candidateThumb"><productionMediaThumbnail :directory="auth.personalDirectory" :filePath="variant.filePath" :mimeType="variant.mimeType" :label="`候选片段 ${variant.attemptNumber}`" /><span>候选 {{ variant.attemptNumber }}</span></div><strong>{{ variant.filePath.split('/').pop() }}</strong><small>{{ variant.status }}</small></button><div v-if="!activeEpisodeShots.some(shot => project?.variants.some(item => item.shotId === shot.id))" class="workbenchEmpty">当前剧集生成候选后会出现在这里</div></div></div>
@@ -135,12 +151,8 @@
     </template>
 
     <productionMemberPanel v-if="project" v-model="memberVisible" :projectId="project.id" :currentUserId="currentUserId" :currentRole="currentRole" :refreshKey="projectRefreshKey" @changed="loadProject" />
-
     <uiDialog v-model="episodeVisible" title="添加剧集" :width="500">
       <form class="dialogForm" @submit.prevent="submitEpisode"><uiField label="季编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="episodeForm.seasonNumber" :min="1" :precision="0" /></template></uiField><uiField label="季名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="episodeForm.seasonTitle" /></template></uiField><uiField label="集编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="episodeForm.episodeNumber" :min="1" :precision="0" /></template></uiField><uiField label="集名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="episodeForm.title" /></template></uiField><p v-if="dialogError" class="pageError">{{ dialogError }}</p><div class="dialogActions"><uiButton variant="secondary" type="button" @click="episodeVisible = false">取消</uiButton><uiButton htmlType="submit" :loading="busy" :disabled="busy || !episodeForm.title">创建剧集</uiButton></div></form>
-    </uiDialog>
-    <uiDialog v-model="shotVisible" :title="editingShot ? '编辑分镜' : '添加镜头'" :width="620">
-      <form class="dialogForm" @submit.prevent="submitShot"><uiField v-if="!editingShot" label="场景编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="shotForm.sceneNumber" :min="1" :precision="0" /></template></uiField><uiField label="场景名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="shotForm.sceneTitle" :disabled="Boolean(editingShot)" /></template></uiField><uiField label="镜头编号" required><template #default="{ id }"><uiNumberInput :id="id" v-model="shotForm.shotNumber" :min="1" :precision="0" :disabled="Boolean(editingShot)" /></template></uiField><uiField label="时长（毫秒）"><template #default="{ id }"><uiNumberInput :id="id" v-model="shotForm.durationMs" :min="0" :precision="0" /></template></uiField><uiField label="景别"><template #default="{ id }"><uiInput :id="id" v-model.trim="shotForm.shotType" placeholder="远景 / 中景 / 特写" /></template></uiField><uiField label="角色"><template #default="{ id }"><uiSelect :id="id" :modelValue="shotForm.characterAssetIds" :options="shotCharacterOptions" multiple filterable placeholder="选择本集角色" @update:modelValue="value => updateShotAssetIds(shotForm.characterAssetIds, value)" /></template></uiField><uiField label="道具"><template #default="{ id }"><uiSelect :id="id" :modelValue="shotForm.propAssetIds" :options="shotPropOptions" multiple filterable placeholder="选择本集道具" @update:modelValue="value => updateShotAssetIds(shotForm.propAssetIds, value)" /></template></uiField><uiField label="光影"><template #default="{ id }"><uiInput :id="id" v-model.trim="shotForm.lighting" /></template></uiField><uiField label="音效"><template #default="{ id }"><uiTextarea :id="id" v-model.trim="shotForm.soundEffects" :rows="2" resize="vertical" placeholder="环境声、动作声或配乐提示" /></template></uiField><uiField label="对白"><template #default="{ id }"><uiTextarea :id="id" v-model.trim="shotForm.dialogue" :rows="2" resize="vertical" /></template></uiField><uiField label="旁白"><template #default="{ id }"><uiTextarea :id="id" v-model.trim="shotForm.narration" :rows="2" resize="vertical" /></template></uiField><uiField label="镜头控制"><template #default="{ id }"><uiInput :id="id" v-model.trim="shotForm.camera" placeholder="运镜、方向、速度和机位" /></template></uiField><uiField label="画面描述 / 生成提示词" required><template #default="{ id }"><uiTextarea :id="id" v-model.trim="shotForm.prompt" :rows="4" resize="vertical" placeholder="描述角色、场景、动作和画面变化" /></template></uiField><p v-if="dialogError" class="pageError">{{ dialogError }}</p><div class="dialogActions"><uiButton variant="secondary" type="button" @click="shotVisible = false">取消</uiButton><uiButton htmlType="submit" :loading="busy" :disabled="busy || !shotForm.sceneTitle || !shotForm.prompt">{{ editingShot ? '保存分镜' : '创建镜头' }}</uiButton></div></form>
     </uiDialog>
     <uiDialog v-model="assetVisible" :title="editingAsset ? '编辑主体资产' : `新增${assetTypeLabel(assetForm.assetType)}`" :width="560">
       <form class="dialogForm" @submit.prevent="submitAsset"><uiField label="资产类别" required><template #default="{ id }"><uiSelect :id="id" v-model="assetForm.assetType" :options="assetTypeOptions" /></template></uiField><uiField label="名称" required><template #default="{ id }"><uiInput :id="id" v-model.trim="assetForm.name" maxlength="200" /></template></uiField><uiField label="设定说明"><template #default="{ id }"><uiTextarea :id="id" v-model.trim="assetForm.description" :rows="3" resize="vertical" maxlength="4000" placeholder="角色身份、场景功能或道具剧情用途" /></template></uiField><uiField label="视觉设定" required><template #default="{ id }"><uiTextarea :id="id" v-model.trim="assetForm.visualDescription" :rows="4" resize="vertical" maxlength="4000" placeholder="外观、服饰、色彩、材质与需要保持一致的特征" /></template></uiField><p v-if="dialogError" class="pageError">{{ dialogError }}</p><div class="dialogActions"><uiButton variant="secondary" type="button" @click="assetVisible = false">取消</uiButton><uiButton htmlType="submit" :loading="busy" :disabled="busy || !assetForm.name.trim() || !assetForm.visualDescription.trim()">{{ editingAsset ? '保存修改' : '保存资产' }}</uiButton></div></form>
@@ -200,11 +212,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { IconArrowUp, IconCheck, IconChevronDown, IconCoins, IconFileText, IconLoader2, IconPhoto, IconPhotoOff, IconPlus, IconX } from "@tabler/icons-vue";
-import { uiButton, uiDialog, uiField, uiIconButton, uiInput, uiNumberInput, uiPopover, uiSelect, uiTag, uiTextarea } from "@omnistudio-next/ui";
+import { uiButton, uiDialog, uiField, uiIconButton, uiInput, uiNumberInput, uiPopover, uiSelect, uiTag, uiTextarea, useUiFeedback, isUiCancelledError } from "@omnistudio-next/ui";
 import { getMediaModelCapabilities, getModelSelectionLabel, modelIcon } from "@omnistudio-next/model-icons";
 import accountShell from "@/components/account/accountShell.vue";
 import productionVisualPicker from "@/components/account/productionVisualPicker.vue";
@@ -217,6 +229,7 @@ import { formatCredits } from "@/lib/creditFormat";
 import productionCutPanel from "./productionCutPanel.vue";
 import productionMemberPanel from "./productionMemberPanel.vue";
 import productionStoryboardTable from "./productionStoryboardTable.vue";
+import productionStoryboardDraft from "./productionStoryboardDraft.vue";
 import productionVideoWorkspace from "./productionVideoWorkspace.vue";
 import productionMediaThumbnail from "./productionMediaThumbnail.vue";
 import productionScriptReader from "./productionScriptReader.vue";
@@ -237,6 +250,10 @@ type Delivery = { id: string; status: string; mp4Path: string; srtPath: string; 
 type Project = { id: string; workspaceId: string; title: string; status: ProjectStatus; budgetCents: string; creativeSettings: { genre: string; fusionGenres: string[]; style: string; aspectRatio: string; stylePrompt?: string; styleNegativePrompt?: string } | null; members: Member[]; seasons: unknown[]; episodes: Episode[]; scenes: Scene[]; shots: Shot[]; assets: ProductionAsset[]; variants: Variant[]; reviews: unknown[]; approvals: unknown[]; deliveries: Delivery[] };
 type ProjectPayload = { project: Omit<Project, "members" | "seasons" | "episodes" | "scenes" | "shots" | "assets" | "variants" | "reviews" | "approvals" | "deliveries">; members: Member[]; seasons: unknown[]; episodes: Episode[]; scenes: Scene[]; shots: Shot[]; assets: ProductionAsset[]; variants: Variant[]; reviews: unknown[]; approvals: unknown[]; deliveries: Delivery[] };
 type ApiResponse<T> = { code: number; data: T; message: string };
+type StoryboardTableHandle = { beginAddShot: () => void; finishEdit: () => void };
+type StoryboardDraftHandle = { reload: () => Promise<void> };
+type StoryboardEpisodeStatus = { episodeId: string; episodeNumber: number; title: string; status: "confirmed" | "draft" | "stale" | "pending"; sceneCount: number; shotCount: number };
+type StoryboardBatchQuote = { credits: string; episodeIds: string[]; episodes: { episodeId: string; episodeNumber: number; title: string }[]; sourceScriptRevision: number };
 type StageKey = "draft" | "scripted" | "assets" | "storyboarded" | "generating" | "review" | "approved" | "delivered";
 type ProductionStep = "scripted" | "assets" | "storyboarded" | "generating";
 type StageMetric = { label: string; value: string | number };
@@ -246,9 +263,26 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const platformModels = usePlatformModelsStore();
+const feedback = useUiFeedback();
 const project = ref<Project>();
 const projectRefreshKey = ref(0);
+const storyboardStatuses = ref<StoryboardEpisodeStatus[]>([]);
+const storyboardScriptRevision = ref(0);
+const storyboardStatusError = ref("");
+const storyboardModelValue = ref("");
+const storyboardBatchQuote = ref<StoryboardBatchQuote>();
+const storyboardBatchQuoteSnapshot = ref("");
+const storyboardBatchQuoting = ref(false);
+const storyboardBatchRunning = ref(false);
+const storyboardBatchQuoteError = ref("");
+const storyboardBatchError = ref("");
+const storyboardBatchMessage = ref("");
+let storyboardStatusSequence = 0;
+let storyboardQuoteSequence = 0;
+const storyboardDraftRef = ref<StoryboardDraftHandle>();
 const memberVisible = ref(false);
+const hasPendingStoryboardDraft = ref(false);
+const isEditingStoryboardDraft = ref(false);
 const cutVisible = ref(false);
 const loading = ref(false);
 const busy = ref(false);
@@ -257,13 +291,11 @@ const downloadingPath = ref("");
 const errorMessage = ref("");
 const dialogError = ref("");
 const episodeVisible = ref(false);
-const shotVisible = ref(false);
 const assetVisible = ref(false);
 const assetDetailVisible = ref(false);
 const reviewVisible = ref(false);
-const selectedEpisodeId = ref("");
 const activeEpisodeId = ref("");
-const editingShot = ref<Shot>();
+const storyboardTableRef = ref<StoryboardTableHandle>();
 const activeAssetType = ref<AssetType>("character");
 const editingAsset = ref<ProductionAsset>();
 const selectedAsset = ref<ProductionAsset>();
@@ -335,9 +367,6 @@ let scriptViewClosed = false;
 const scriptReferenceText = ref("");
 let variantRelease: (() => void) | undefined;
 const episodeForm = reactive({ seasonNumber: 1, seasonTitle: "第一季", episodeNumber: 1, title: "第一集" });
-const shotForm = reactive({ sceneNumber: 1, sceneTitle: "场景 01", shotNumber: 1, durationMs: 6000, shotType: "", camera: "", lighting: "", characterAssetIds: [] as string[], propAssetIds: [] as string[], soundEffects: "", dialogue: "", narration: "", prompt: "" });
-const shotCharacterOptions = computed(() => shotAssetOptions("character"));
-const shotPropOptions = computed(() => shotAssetOptions("prop"));
 const assetForm = reactive<{ assetType: AssetType; name: string; description: string; visualDescription: string }>({ assetType: "character", name: "", description: "", visualDescription: "" });
 const scriptDraft = reactive({ idea: "", body: "", style: defaultProductionStyle, aspectRatio: "16:9", episodeCount: 5, durationSeconds: 60 });
 const dramaModeLabel = computed(() => ({ create: "剧本创作", adapt: "剧本改编", produce: "剧本制作", redraw: "原片转绘" })[dramaDraftMode.value]);
@@ -359,6 +388,7 @@ const canPreviewScript = computed(() => {
   return false;
 });
 const scriptModelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: getModelSelectionLabel(model), icon: modelIcon, iconProps: { model: model.modelId, provider: model.providerId, size: 18 } })));
+const storyboardModelOptions = computed(() => platformModels.textModels.map(model => ({ value: JSON.stringify([model.providerId, model.modelId]), label: getModelSelectionLabel(model) })));
 const adaptTypeOptions = [{ value: "rewrite", label: "剧本改写" }, { value: "continue", label: "剧本续写" }, { value: "localize", label: "出海改编" }];
 const selectedScriptModel = computed(() => {
   try {
@@ -366,6 +396,18 @@ const selectedScriptModel = computed(() => {
     return Array.isArray(value) && typeof value[0] === "string" && typeof value[1] === "string" ? { providerId: value[0], modelId: value[1] } : null;
   } catch { return null; }
 });
+const selectedStoryboardModel = computed(() => {
+  try {
+    const value = JSON.parse(storyboardModelValue.value) as unknown;
+    return Array.isArray(value) && typeof value[0] === "string" && typeof value[1] === "string" ? { providerId: value[0], modelId: value[1] } : null;
+  } catch { return null; }
+});
+const storyboardPendingEpisodes = computed(() => storyboardStatuses.value.filter(episode => episode.status === "pending" || episode.status === "stale"));
+const storyboardBatchQuoteKey = computed(() => project.value?.status === "scripted" && storyboardPendingEpisodes.value.length && selectedStoryboardModel.value
+  ? JSON.stringify([project.value.id, storyboardScriptRevision.value, storyboardPendingEpisodes.value.map(episode => [episode.episodeId, episode.status]), selectedStoryboardModel.value.providerId, selectedStoryboardModel.value.modelId])
+  : "");
+const storyboardBatchQuoteCurrent = computed(() => Boolean(storyboardBatchQuote.value && storyboardBatchQuoteSnapshot.value === storyboardBatchQuoteKey.value));
+const storyboardBatchDockVisible = computed(() => project.value?.status === "scripted" && storyboardScriptRevision.value > 0 && storyboardPendingEpisodes.value.length > 0);
 const scriptQuoteKey = computed(() => {
   if (!scriptEntryMode.value || !supportsModelScript.value || !canPreviewScript.value || !selectedScriptModel.value) return "";
   try {
@@ -411,6 +453,10 @@ const isVideoStage = computed(() => activeStep.value === "generating");
 const activeEpisode = computed(() => project.value?.episodes.find(episode => episode.id === activeEpisodeId.value));
 const episodeOptions = computed(() => (project.value?.episodes ?? []).map(episode => ({ value: episode.id, label: `第 ${episode.episodeNumber} 集 · ${episode.title}` })));
 const activeEpisodeShots = computed(() => activeEpisode.value ? shotsForEpisode(activeEpisode.value.id) : []);
+const activeEpisodeScenes = computed(() => (project.value?.scenes ?? []).filter(scene => scene.episodeId === activeEpisode.value?.id).sort((left, right) => left.sceneNumber - right.sceneNumber));
+const activeEpisodeAssets = computed(() => (project.value?.assets ?? []).filter(asset => asset.assetType !== "scene" && (!asset.episodeIds.length || asset.episodeIds.includes(activeEpisode.value?.id ?? ""))));
+const storyboardCharacterOptions = computed(() => activeEpisodeAssets.value.filter(asset => asset.assetType === "character").map(asset => ({ value: asset.name, label: asset.name })));
+const storyboardPropOptions = computed(() => activeEpisodeAssets.value.filter(asset => asset.assetType === "prop").map(asset => ({ value: asset.name, label: asset.name })));
 const activeEpisodeSceneCount = computed(() => activeEpisode.value ? episodeSceneCount(activeEpisode.value.id) : 0);
 const previewVariant = computed(() => selectedVariant.value ?? project.value?.variants[0]);
 const scriptEntryMode = computed(() => activeStage.value === "scripted" && !project.value?.episodes.length);
@@ -463,7 +509,11 @@ const canReview = computed(() => ["owner", "producer", "director", "editor", "re
 const canApprove = computed(() => ["owner", "producer", "reviewer"].includes(currentRole.value));
 const canDeliverCut = computed(() => ["owner", "producer", "editor"].includes(currentRole.value));
 const canEditEpisodes = computed(() => canAdd.value && !videoProductionStarted.value);
-const canEditStoryboard = computed(() => canEdit.value && !videoProductionStarted.value);
+const activeEpisodeShotsEditable = computed(() => activeEpisodeShots.value.every(shot =>
+  (shot.status === "draft" || shot.status === "ready") && !project.value?.variants.some(variant => variant.shotId === shot.id),
+));
+const canEditStoryboard = computed(() => canEdit.value && !videoProductionStarted.value && activeEpisodeShotsEditable.value);
+const canAddStoryboardShot = computed(() => canAdd.value && !videoProductionStarted.value && !scriptDocumentDirty.value && activeEpisodeShotsEditable.value);
 const canExport = computed(() => Boolean(project.value && ["owner", "producer", "editor"].includes(currentRole.value) && project.value.status === "approved" && !project.value.deliveries.length && !exporting.value));
 const reviewShot = computed(() => activeEpisodeShots.value.find(shot => shot.status === "review"));
 const activeEpisodeVariants = computed(() => {
@@ -498,6 +548,113 @@ const statusLabels: Record<ProjectStatus, string> = { draft: "草稿", scripted:
 const shotLabels: Record<ShotStatus, string> = { draft: "草稿", ready: "待生成", generating: "生成中", review: "待审片", changesRequested: "需重拍", approved: "已批准" };
 
 function errorText(error: unknown) { return axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || "连接中断，请刷新后重试" : error instanceof Error ? error.message : "操作失败，请重试"; }
+function storyboardEpisodeStatus(episodeId: string): StoryboardEpisodeStatus["status"] {
+  return storyboardStatuses.value.find(episode => episode.episodeId === episodeId)?.status ?? (episodeSceneCount(episodeId) ? "confirmed" : "pending");
+}
+function storyboardEpisodeStatusLabel(episodeId: string) {
+  return ({ confirmed: "已生成", draft: "待审阅", stale: "剧本已更新", pending: "待生成" } as const)[storyboardEpisodeStatus(episodeId)];
+}
+function storyboardEpisodeTone(episodeId: string) {
+  const status = storyboardEpisodeStatus(episodeId);
+  return status === "confirmed" ? "success" : status === "pending" ? "neutral" : "warning";
+}
+function storyboardResponseData<T>(response: ApiResponse<T>) {
+  if (response.code !== 200) throw new Error(response.message || "请求失败");
+  return response.data;
+}
+async function loadStoryboardStatuses(projectId: string) {
+  const sequence = ++storyboardStatusSequence;
+  storyboardStatusError.value = "";
+  try {
+    const [statusResponse, scriptResponse] = await Promise.all([
+      axios.get<ApiResponse<{ episodes: StoryboardEpisodeStatus[] }>>("/api/productionProjects/storyboard/getStatuses", { params: { projectId } }),
+      axios.get<ApiResponse<{ revision: number }>>("/api/productionProjects/script/document", { params: { projectId } }),
+    ]);
+    if (sequence !== storyboardStatusSequence || project.value?.id !== projectId) return;
+    storyboardStatuses.value = storyboardResponseData(statusResponse.data).episodes;
+    storyboardScriptRevision.value = storyboardResponseData(scriptResponse.data).revision;
+  } catch (error) {
+    if (sequence === storyboardStatusSequence) {
+      storyboardStatuses.value = [];
+      storyboardStatusError.value = errorText(error);
+    }
+  }
+}
+async function quoteAllStoryboards() {
+  const key = storyboardBatchQuoteKey.value;
+  const model = selectedStoryboardModel.value;
+  if (!key || !project.value || !canAdd.value || !model) {
+    storyboardBatchQuote.value = undefined;
+    storyboardBatchQuoteSnapshot.value = "";
+    return;
+  }
+  const sequence = ++storyboardQuoteSequence;
+  storyboardBatchQuoting.value = true;
+  storyboardBatchQuoteError.value = "";
+  storyboardBatchQuote.value = undefined;
+  storyboardBatchQuoteSnapshot.value = "";
+  try {
+    const { data } = await axios.post<ApiResponse<StoryboardBatchQuote>>("/api/productionProjects/storyboard/quoteAll", {
+      projectId: project.value.id,
+      providerId: model.providerId,
+      modelId: model.modelId,
+    });
+    if (sequence !== storyboardQuoteSequence || key !== storyboardBatchQuoteKey.value) return;
+    storyboardBatchQuote.value = storyboardResponseData(data);
+    storyboardBatchQuoteSnapshot.value = key;
+  } catch (error) {
+    if (sequence === storyboardQuoteSequence) storyboardBatchQuoteError.value = errorText(error);
+  } finally {
+    if (sequence === storyboardQuoteSequence) storyboardBatchQuoting.value = false;
+  }
+}
+async function generateAllStoryboards() {
+  const quote = storyboardBatchQuote.value;
+  const model = selectedStoryboardModel.value;
+  if (!project.value || !quote || !model || !canAdd.value || busy.value || isEditingStoryboardDraft.value || !storyboardBatchQuoteCurrent.value) return;
+  const staleDraftCount = storyboardStatuses.value.filter(episode => episode.status === "stale" && quote.episodeIds.includes(episode.episodeId)).length;
+  const replacementNote = staleDraftCount ? `其中 ${staleDraftCount} 份旧剧本分镜草稿将被替换。` : "";
+  try {
+    await feedback.confirm(
+      `将按顺序为 ${quote.episodes.length} 集生成待审分镜草稿，预计消耗 ${formatCredits(quote.credits)} 积分。${replacementNote}每集完成后可单独编辑和确认。`,
+      "全部生成分镜脚本",
+      { confirmButtonText: "确认生成", cancelButtonText: "取消" },
+    );
+  } catch (error) {
+    if (!isUiCancelledError(error)) storyboardBatchError.value = errorText(error);
+    return;
+  }
+  const projectId = project.value.id;
+  busy.value = true;
+  storyboardBatchRunning.value = true;
+  storyboardBatchError.value = "";
+  storyboardBatchMessage.value = "";
+  try {
+    const { data } = await axios.post<ApiResponse<{ results: { episodeId: string; status: "generated" | "skipped" | "failed"; message?: string }[]; generatedCount: number; skippedCount: number; failedCount: number }>>("/api/productionProjects/storyboard/generateAll", {
+      projectId,
+      directory: auth.personalDirectory,
+      providerId: model.providerId,
+      modelId: model.modelId,
+      episodeIds: quote.episodeIds,
+      sourceScriptRevision: quote.sourceScriptRevision,
+    });
+    const result = storyboardResponseData(data);
+    storyboardBatchMessage.value = `已生成 ${result.generatedCount} 集待审草稿${result.skippedCount ? `，跳过 ${result.skippedCount} 集` : ""}。`;
+    if (result.failedCount) {
+      const titles = new Map(quote.episodes.map(episode => [episode.episodeId, `第 ${episode.episodeNumber} 集` ]));
+      const failures = result.results.filter(item => item.status === "failed").map(item => `${titles.get(item.episodeId) ?? "剧集"}：${item.message ?? "生成失败"}`);
+      storyboardBatchError.value = `${result.failedCount} 集生成失败：${failures.join("；")}`;
+    }
+  } catch (error) {
+    storyboardBatchError.value = errorText(error);
+  } finally {
+    await loadStoryboardStatuses(projectId);
+    await nextTick();
+    await storyboardDraftRef.value?.reload();
+    storyboardBatchRunning.value = false;
+    busy.value = false;
+  }
+}
 function statusLabel(status: ProjectStatus) { return statusLabels[status] ?? status; }
 function statusTone(status: string) { return status === "approved" || status === "delivered" ? "success" : status === "review" || status === "generating" ? "warning" : "neutral"; }
 function shotTone(status: ShotStatus) { return status === "approved" ? "success" : status === "review" || status === "changesRequested" ? "warning" : status === "generating" ? "warning" : "neutral"; }
@@ -532,7 +689,7 @@ function stepReason(step: ProductionStep) {
   if (current.status === "draft" || current.status === "scripted") return "先在分镜脚本步骤确认并锁定分镜";
   return "视频生成阶段已开放";
 }
-function goStep(step: ProductionStep) { if (isStepReached(step)) void router.replace({ query: { ...route.query, stage: step } }); }
+function goStep(step: ProductionStep) { if (!isEditingStoryboardDraft.value && isStepReached(step)) void router.replace({ query: { ...route.query, stage: step } }); }
 function goVideoTask(step: Extract<StageKey, "generating" | "review" | "approved" | "delivered">) { if (isVideoTaskReached(step)) void router.replace({ query: { ...route.query, stage: step } }); }
 function assetTypeLabel(type: AssetType) { return assetTypeOptions.find(item => item.value === type)?.label ?? type; }
 function assetEpisodeLabel(episodeIds: string[]) { return project.value?.episodes.filter(episode => episodeIds.includes(episode.id)).map(episode => `第${episode.episodeNumber}集`).join("、") || "所选剧集"; }
@@ -957,6 +1114,7 @@ async function createScriptStructure() {
   finally { scriptCreating.value = false; }
 }
 async function advanceToVideo() { if (!project.value || !assetsReady.value || !storyboardReady.value) return; busy.value = true; errorMessage.value = ""; try { if (project.value.status === "scripted") await axios.put("/api/productionProjects/save", { projectId: project.value.id, status: "storyboarded" }); await loadProject(); goVideoTask("generating"); } catch (error) { errorMessage.value = errorText(error); } finally { busy.value = false; } }
+async function confirmDraftAndAdvance() { await loadProject(); await nextTick(); await advanceToVideo(); }
 async function submitAsset() {
   if (!project.value || !canManageAssets.value || !assetForm.name.trim() || !assetForm.visualDescription.trim()) return;
   busy.value = true;
@@ -971,33 +1129,26 @@ async function submitAsset() {
   } catch (error) { dialogError.value = errorText(error); }
   finally { busy.value = false; }
 }
-async function loadProject() { loading.value = true; errorMessage.value = ""; try { const { data } = await axios.get<ApiResponse<ProjectPayload>>("/api/productionProjects/get", { params: { projectId: String(route.params.projectId) } }); const payload = data.data; project.value = { ...payload.project, members: payload.members, seasons: payload.seasons, episodes: payload.episodes, scenes: payload.scenes, shots: payload.shots, assets: payload.assets ?? [], variants: payload.variants, reviews: payload.reviews, approvals: payload.approvals, deliveries: payload.deliveries }; projectRefreshKey.value++; await loadAssetPreviewUrls(project.value.assets); if (!activeEpisodeId.value && project.value.episodes[0]) activeEpisodeId.value = project.value.episodes[0].id; const currentVariant = selectedVariant.value && project.value.variants.find(variant => variant.id === selectedVariant.value?.id); selectedVariant.value = currentVariant; if (!selectedVariant.value && project.value.variants[0]) await selectVariantPreview(project.value.variants[0]); } catch (error) { errorMessage.value = errorText(error); } finally { loading.value = false; } }
+async function loadProject() {
+  loading.value = true;
+  errorMessage.value = "";
+  try {
+    const { data } = await axios.get<ApiResponse<ProjectPayload>>("/api/productionProjects/get", { params: { projectId: String(route.params.projectId) } });
+    const payload = data.data;
+    project.value = { ...payload.project, members: payload.members, seasons: payload.seasons, episodes: payload.episodes, scenes: payload.scenes, shots: payload.shots, assets: payload.assets ?? [], variants: payload.variants, reviews: payload.reviews, approvals: payload.approvals, deliveries: payload.deliveries };
+    const loadedProject = project.value;
+    projectRefreshKey.value++;
+    await Promise.all([loadAssetPreviewUrls(loadedProject.assets), loadStoryboardStatuses(loadedProject.id)]);
+    if (!activeEpisodeId.value && loadedProject.episodes[0]) activeEpisodeId.value = loadedProject.episodes[0].id;
+    const currentVariant = selectedVariant.value && loadedProject.variants.find(variant => variant.id === selectedVariant.value?.id);
+    selectedVariant.value = currentVariant;
+    if (!selectedVariant.value && loadedProject.variants[0]) await selectVariantPreview(loadedProject.variants[0]);
+  } catch (error) { errorMessage.value = errorText(error); }
+  finally { loading.value = false; }
+}
 function resetDialog() { dialogError.value = ""; }
-function shotAssetOptions(assetType: "character" | "prop") {
-  return (project.value?.assets ?? []).filter(asset => asset.assetType === assetType && (!asset.episodeIds.length || asset.episodeIds.includes(selectedEpisodeId.value))).map(asset => ({ value: asset.id, label: asset.name }));
-}
-function updateShotAssetIds(target: string[], value: unknown) {
-  target.splice(0, target.length, ...(Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : []));
-}
 function scriptAssetOptions(assetType: "character" | "prop") {
   return scriptAssets.value.filter(asset => asset.assetType === assetType).map(asset => ({ label: asset.name, value: asset.name }));
-}
-function editStoryboardShot(shotId: string) {
-  const shot = activeEpisodeShots.value.find(item => item.id === shotId);
-  if (shot) openShotForm(activeEpisodeId.value, shot);
-}
-function openShotForm(episodeId: string, shot?: Shot) {
-  selectedEpisodeId.value = episodeId;
-  editingShot.value = shot;
-  const scenes = (project.value?.scenes ?? []) as { id: string; episodeId: string; sceneNumber: number; title: string }[];
-  const scene = shot ? scenes.find(item => item.id === shot.sceneId) : undefined;
-  const episodeShots = shotsForEpisode(episodeId);
-  const lastShot = episodeShots.at(-1);
-  const lastScene = lastShot ? scenes.find(item => item.id === lastShot.sceneId) : undefined;
-  const lastSceneShots = lastScene ? episodeShots.filter(item => item.sceneId === lastScene.id) : [];
-  Object.assign(shotForm, shot ? { sceneNumber: scene?.sceneNumber ?? 1, sceneTitle: scene?.title ?? "场景 01", shotNumber: shot.shotNumber, durationMs: shot.durationMs, shotType: shot.shotType ?? "", camera: shot.camera ?? "", lighting: shot.lighting ?? "", characterAssetIds: [...(shot.characterAssetIds ?? [])], propAssetIds: [...(shot.propAssetIds ?? [])], soundEffects: shot.soundEffects ?? "", dialogue: shot.dialogue ?? "", narration: shot.narration ?? "", prompt: shot.prompt ?? "" } : { sceneNumber: lastScene?.sceneNumber ?? 1, sceneTitle: lastScene?.title ?? "场景 01", shotNumber: (lastSceneShots.at(-1)?.shotNumber ?? 0) + 1, durationMs: 6000, shotType: "", camera: "", lighting: "", characterAssetIds: [], propAssetIds: [], soundEffects: "", dialogue: "", narration: "", prompt: "" });
-  resetDialog();
-  shotVisible.value = true;
 }
 async function selectVariantPreview(variant: Variant) { selectedVariant.value = variant; variantRelease?.(); variantRelease = undefined; variantUrl.value = ""; try { const preview = useWorkspaceFiles(auth.personalDirectory).acquireUrl(variant.filePath, variant.mimeType); variantRelease = preview.release; variantUrl.value = await preview.url; } catch (error) { errorMessage.value = errorText(error); } }
 function approvalVariant(shot: Shot) {
@@ -1020,18 +1171,48 @@ function closeReview() { variantRelease?.(); variantRelease = undefined; variant
 function deliveryFiles(delivery: Delivery) { return [{ label: "下载 MP4", path: delivery.mp4Path }, { label: "下载 SRT", path: delivery.srtPath }, { label: "下载 manifest", path: delivery.manifestPath }, { label: "下载审计包", path: delivery.auditPackagePath }]; }
 async function downloadDeliveryFile(path: string) { downloadingPath.value = path; try { const preview = useWorkspaceFiles(auth.personalDirectory).acquireUrl(path); const url = await preview.url; const anchor = document.createElement("a"); anchor.href = url; anchor.download = path.split("/").pop() || "delivery-file"; anchor.click(); setTimeout(() => preview.release(), 1000); } catch (error) { errorMessage.value = errorText(error); } finally { downloadingPath.value = ""; } }
 async function submitEpisode() { if (!project.value || !canEditEpisodes.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/episodes/create", { projectId: project.value.id, ...episodeForm }); episodeVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
-async function submitShot() {
-  if (!project.value || !canEditStoryboard.value) return;
+async function saveStoryboardShots(shots: {
+  id?: string;
+  sceneId?: string | null;
+  sceneNumber?: number;
+  sceneTitle?: string;
+  durationMs: number;
+  shotType: string | null;
+  camera: string | null;
+  lighting: string | null;
+  characterAssetIds: string[];
+  propAssetIds: string[];
+  soundEffects: string | null;
+  dialogue: string | null;
+  narration: string | null;
+  prompt: string | null;
+}[]) {
+  if (!project.value || !activeEpisode.value || !canEditStoryboard.value || busy.value) return;
   busy.value = true;
-  resetDialog();
-  const fields = { durationMs: shotForm.durationMs, shotType: shotForm.shotType || null, camera: shotForm.camera || null, lighting: shotForm.lighting || null, characterAssetIds: shotForm.characterAssetIds, propAssetIds: shotForm.propAssetIds, soundEffects: shotForm.soundEffects || null, dialogue: shotForm.dialogue || null, narration: shotForm.narration || null, prompt: shotForm.prompt };
+  errorMessage.value = "";
   try {
-    if (editingShot.value) await axios.put("/api/productionProjects/shots/save", { projectId: project.value.id, shotId: editingShot.value.id, ...fields });
-    else await axios.post("/api/productionProjects/shots/create", { projectId: project.value.id, episodeId: selectedEpisodeId.value, ...shotForm });
-    shotVisible.value = false;
-    editingShot.value = undefined;
+    await axios.put("/api/productionProjects/shots/saveEpisode", {
+      projectId: project.value.id,
+      episodeId: activeEpisode.value.id,
+      shots: shots.map(shot => ({
+        ...(shot.id ? { id: shot.id } : {}),
+        ...(shot.sceneId ? { sceneId: shot.sceneId } : { sceneNumber: shot.sceneNumber, sceneTitle: shot.sceneTitle }),
+        durationMs: shot.durationMs,
+        shotType: shot.shotType || null,
+        camera: shot.camera || null,
+        lighting: shot.lighting || null,
+        characterAssetIds: shot.characterAssetIds,
+        propAssetIds: shot.propAssetIds,
+        soundEffects: shot.soundEffects || null,
+        dialogue: shot.dialogue || null,
+        narration: shot.narration || null,
+        prompt: shot.prompt || null,
+      })),
+    });
     await loadProject();
-  } catch (error) { dialogError.value = errorText(error); }
+    await nextTick();
+    storyboardTableRef.value?.finishEdit();
+  } catch (error) { errorMessage.value = errorText(error); }
   finally { busy.value = false; }
 }
 async function submitDecision(decision: "approved" | "changesRequested") { if (!project.value || !selectedVariant.value) return; busy.value = true; resetDialog(); try { await axios.post("/api/productionProjects/reviews/decision", { projectId: project.value.id, variantId: selectedVariant.value.id, decision, comment: reviewComment.value.trim() || undefined }); reviewVisible.value = false; await loadProject(); } catch (error) { dialogError.value = errorText(error); } finally { busy.value = false; } }
@@ -1074,6 +1255,17 @@ watch(scriptQuoteKey, key => {
   scriptQuoteError.value = "";
   scriptQuoting.value = false;
   if (!restoringDraft && key) scriptQuoteTimer = setTimeout(() => { scriptQuoteTimer = undefined; void quoteScriptGeneration(); }, 300);
+});
+watch(storyboardBatchQuoteKey, key => {
+  storyboardQuoteSequence++;
+  storyboardBatchQuote.value = undefined;
+  storyboardBatchQuoteSnapshot.value = "";
+  storyboardBatchQuoteError.value = "";
+  storyboardBatchQuoting.value = false;
+  if (key) void quoteAllStoryboards();
+});
+watch(activeStage, stage => {
+  if (stage === "storyboarded" && project.value) void loadStoryboardStatuses(project.value.id);
 });
 watch([dramaDraftMode, () => currentInstruction.value, () => scriptDraft.body, () => scriptDraft.style, () => dramaDraftGenre.value, fusionGenres, () => scriptDraft.aspectRatio, () => scriptDraft.episodeCount, adaptType, outputLanguage, scriptReferenceFiles], scheduleProductionDraftSave, { deep: true });
 watch([scriptLogline, scriptOutline, scriptAssets], () => {
@@ -1212,6 +1404,8 @@ onMounted(async () => {
     ? defaultTextModel
     : platformModels.textModels[0];
   if (selectedModel && !selectedScriptModel.value) scriptModelValue.value = JSON.stringify([selectedModel.providerId, selectedModel.modelId]);
+  const storyboardModel = platformModels.textModels.find(model => JSON.stringify([model.providerId, model.modelId]) === scriptModelValue.value) ?? selectedModel;
+  if (storyboardModel && !storyboardModelValue.value) storyboardModelValue.value = JSON.stringify([storyboardModel.providerId, storyboardModel.modelId]);
   const imageModel = defaultAssetImageModel();
   if (imageModel) assetImageModelValue.value = JSON.stringify([imageModel.providerId, imageModel.modelId]);
 });
@@ -1278,14 +1472,13 @@ onBeforeUnmount(() => { scriptViewClosed = true; scriptJobSequence++; if (draftS
 @keyframes scriptShimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .scriptCreationArea .scriptGeneratingState { .scriptCreationMotion > span, .scriptGeneratingLines > span { animation: none; } } }
 @media (max-width: 620px) { .scriptCreationArea { .scriptComposer { padding: 12px; .scriptPromptShell { grid-template-columns: 38px minmax(0, 1fr); gap: 9px; padding: 11px; .uploadTile { width: 38px; height: 38px; } } .scriptComposerFooter .scriptComposerActions { width: 100%; justify-content: space-between; } } .scriptGeneratingState { padding: 22px; } } }
-.storyboardToolbarActions { display: flex; gap: 8px; }
 .stageWorkbench { display: grid; grid-template-columns: 214px minmax(0, 1fr) 248px; min-height: 400px; margin-bottom: 22px; overflow: hidden; border: 1px solid var(--uiBorderDefault); border-radius: 16px; background: var(--uiSurfaceRaised); }
 .workbenchSidebar { min-width: 0; padding: 18px 12px; border-right: 1px solid var(--uiBorderDefault); background: color-mix(in srgb, var(--uiBackgroundSubtle) 55%, var(--uiSurfaceRaised)); }
 .workbenchSidebarHeader, .workspaceHeader, .previewPanelHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }.workbenchSidebarHeader { padding: 0 6px 14px; border-bottom: 1px solid var(--uiBorderDefault); strong, .previewPanelHeader strong { display: block; margin-top: 5px; font-size: 14px; } }.sidebarHeaderActions { display: flex; align-items: center; gap: 6px; }
 .episodeNavList { display: grid; gap: 5px; padding-top: 12px; }.episodeNavItem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; padding: 10px 8px; border: 0; border-radius: 9px; color: var(--uiTextBody); background: transparent; text-align: left; cursor: pointer; &:hover, &.selected { background: color-mix(in srgb, var(--uiActionPrimary) 10%, transparent); } &.selected { box-shadow: inset 2px 0 var(--uiActionPrimary); } }.episodeNavIndex { align-self: start; color: var(--uiActionPrimary); font: 10px ui-monospace, monospace; }.episodeNavCopy { min-width: 0; display: grid; gap: 4px; strong, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } strong { font-size: 12px; } small { color: var(--uiTextMuted); font-size: 10px; } }
 .assetNav { display: grid; gap: 5px; margin-top: 22px; padding: 16px 6px 0; border-top: 1px solid var(--uiBorderDefault); }.assetNavTitle { margin-bottom: 5px; color: var(--uiTextMuted); font-size: 11px; }.assetNavItem { display: flex; justify-content: space-between; padding: 7px 8px; color: var(--uiTextMuted); font-size: 11px; strong { color: var(--uiTextPrimary); font-variant-numeric: tabular-nums; } }
 .stageWorkspace { min-width: 0; padding: 18px 20px; }.workspaceHeader { align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--uiBorderDefault); h3 { margin: 5px 0 0; font-size: 17px; } }.workspaceHeaderMeta { display: flex; gap: 12px; color: var(--uiTextMuted); font-size: 11px; }
-.storyboardWorkspace, .generationWorkspace, .reviewWorkspace, .approvalWorkspace, .deliveryWorkspace, .projectPrepWorkspace { padding-top: 15px; }.storyboardToolbar, .workspaceCallout { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--uiBorderDefault); strong, span, p { display: block; } strong { font-size: 13px; } span, p { margin: 4px 0 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.6; } }
+.storyboardWorkspace, .generationWorkspace, .reviewWorkspace, .approvalWorkspace, .deliveryWorkspace, .projectPrepWorkspace { padding-top: 15px; }.workspaceCallout { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--uiBorderDefault); strong, span, p { display: block; } strong { font-size: 13px; } span, p { margin: 4px 0 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.6; } }
 .generationActions, .candidateDockActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .storyboardTable { overflow: auto; border: 1px solid var(--uiBorderDefault); border-radius: 10px; }.storyboardTableHeader, .storyboardTableRow { display: grid; grid-template-columns: 54px minmax(110px, 1fr) minmax(180px, 1.6fr) minmax(120px, 1fr) 76px 76px; align-items: center; gap: 12px; min-width: 820px; padding: 11px 12px; }.storyboardTableHeader { color: var(--uiTextMuted); background: var(--uiBackgroundSubtle); font-size: 10px; }.storyboardTableRow { min-height: 67px; border-top: 1px solid var(--uiBorderDefault); font-size: 11px; &:hover { background: color-mix(in srgb, var(--uiActionPrimary) 5%, transparent); } strong, small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { margin-top: 5px; color: var(--uiTextMuted); font-size: 10px; } }.storyboardShotNo { strong { color: var(--uiActionPrimary); font: 700 14px ui-monospace, monospace; } }.storyboardPrompt, .storyboardDirection { min-width: 0; }.storyboardActions { display: flex; justify-content: flex-end; }
 .queueList { display: grid; gap: 8px; }.queueRow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--uiBorderDefault); border-radius: 10px; }.queueIndex { color: var(--uiActionPrimary); font: 700 12px ui-monospace, monospace; }.queueRow strong, .queueRow small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.queueRow small { margin-top: 5px; color: var(--uiTextMuted); font-size: 10px; }
@@ -1462,10 +1655,18 @@ onBeforeUnmount(() => { scriptViewClosed = true; scriptJobSequence++; if (draftS
 .workspaceHeader { flex-wrap: wrap; align-items: center; }
 .workspaceHeader > div:first-child { min-width: 0; }
 .workspaceHeaderMeta { align-items: center; flex-wrap: wrap; }
+.storyboardFooter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--uiBorderDefault); color: var(--uiTextMuted); font-size: 11px; }
+.storyboardFooter > .uiButton { justify-self: end; }
+.storyboardBatchMessage, .storyboardBatchError { margin: 8px 0 0; font-size: 11px; line-height: 1.5; }
+.storyboardBatchMessage { color: var(--uiTextMuted); }
+.storyboardBatchError { color: var(--uiStatusError); }
+.storyboardGenerationDock { position: sticky; z-index: 3; bottom: 0; display: grid; grid-template-columns: minmax(145px, 1fr) minmax(190px, 1.25fr) minmax(120px, auto) auto; align-items: center; gap: 12px; margin: 14px -20px -18px; padding: 11px 20px; border-top: 1px solid var(--uiBorderDefault); background: var(--uiSurfaceRaised); box-shadow: 0 -6px 16px color-mix(in srgb, #000 14%, transparent); }
+.storyboardBatchTitle { display: grid; gap: 2px; min-width: 0; strong { color: var(--uiTextPrimary); font-size: 12px; } span { color: var(--uiTextMuted); font-size: 10px; } }
+.storyboardBatchModel { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; color: var(--uiTextMuted); font-size: 11px; }
+.storyboardBatchQuote { display: grid; gap: 2px; min-width: 0; color: var(--uiTextMuted); font-size: 11px; button { justify-self: start; padding: 0; border: 0; color: var(--uiActionPrimary); background: transparent; cursor: pointer; font: inherit; } }
 .videoTaskTabs { max-width: 100%; overflow-x: auto; }
 .videoTaskTabs button { flex: 0 0 auto; }
-.storyboardToolbar, .deliveryActions { flex-wrap: wrap; }
-.storyboardToolbarActions { flex-wrap: wrap; justify-content: flex-end; }
+.deliveryActions { flex-wrap: wrap; }
 .queueRow { grid-template-columns: 34px minmax(0, 1fr) auto auto; }
 .previewPanel { display: flex; flex-direction: column; }
 .previewMedia video, .previewMedia img { max-height: 360px; }
@@ -1480,7 +1681,7 @@ onBeforeUnmount(() => { scriptViewClosed = true; scriptJobSequence++; if (draftS
 @media (max-width: 860px) {
   .accountShell.immersive :deep(.accountMain) { padding-top: 16px; }
   .accountShell.immersive :deep(.accountMain .accountPageHeader) { flex-direction: row; align-items: center; gap: 12px; }
-  .workflowRail { justify-content: flex-start; width: 100%; }
+  .workflowRail { grid-template-columns: repeat(4, minmax(150px, 1fr)); justify-content: flex-start; width: 100%; }
   .stageFocus { grid-template-columns: minmax(0, 1fr); }
   .stageStats { justify-content: flex-start; overflow-x: auto; }
   .stageWorkbench, .scriptWorkbench, .storyboardWorkbench, .videoWorkbench { grid-template-columns: minmax(0, 1fr); }
@@ -1489,9 +1690,10 @@ onBeforeUnmount(() => { scriptViewClosed = true; scriptJobSequence++; if (draftS
 }
 
 @media (max-width: 620px) {
-  .accountShell.immersive :deep(.accountMain .accountPageHeader) { align-items: flex-start; }
+  .accountShell.immersive :deep(.accountMain .accountPageHeader) { align-items: stretch; flex-direction: column; gap: 10px; }
+  .accountShell.immersive :deep(.accountMain .accountPageHeader > div:first-child) { width: 100%; min-width: 0; }
   .accountShell.immersive :deep(.accountMain .accountPageHeader h1) { font-size: 20px; }
-  .accountShell.immersive :deep(.accountMain .accountPageHeader .headerActions) { gap: 4px; }
+  .accountShell.immersive :deep(.accountMain .accountPageHeader .headerActions) { width: 100%; gap: 4px; }
   .stageFocusHeader { flex-wrap: wrap; }
   .stageFocusHeader > div { min-width: 0; }
   .stageSheet { min-height: 0; padding: 14px; }
@@ -1503,7 +1705,10 @@ onBeforeUnmount(() => { scriptViewClosed = true; scriptJobSequence++; if (draftS
   .assetRecord { min-height: 0; }
   .workspaceHeader { align-items: flex-start; }
   .workspaceHeaderMeta { width: 100%; }
-  .storyboardToolbarActions { justify-content: flex-start; }
+  .storyboardGenerationDock { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-right: -14px; margin-left: -14px; padding-right: 14px; padding-left: 14px; }
+  .storyboardBatchTitle, .storyboardBatchModel, .storyboardBatchQuote { grid-column: 1 / -1; }
+  .storyboardBatchModel { grid-template-columns: minmax(0, 1fr); }
+  .storyboardGenerationDock > .uiButton { grid-column: 2; justify-self: end; }
   .queueRow { grid-template-columns: 28px minmax(0, 1fr); }
   .queueRow > .uiTag, .queueRow > .uiButton { grid-column: 2; justify-self: start; }
   .deliveryFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }

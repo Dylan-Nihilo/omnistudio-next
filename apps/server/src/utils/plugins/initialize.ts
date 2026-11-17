@@ -1,8 +1,14 @@
-import { copyFile, cp, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
-export default async function initializePlugins(targetDirectory: string, sourceDirectory: string, fileFilter?: RegExp | readonly string[], revision?: string) {
+export default async function initializePlugins(
+  targetDirectory: string,
+  sourceDirectory: string,
+  fileFilter?: RegExp | readonly string[],
+  revision?: string,
+  options: { preserveExistingDirectories?: boolean } = {},
+) {
   let effectiveRevision = revision;
   if (!effectiveRevision) {
     const entries = await readdir(sourceDirectory, { withFileTypes: true }).catch(() => null);
@@ -43,6 +49,16 @@ export default async function initializePlugins(targetDirectory: string, sourceD
     const source = resolve(sourceDirectory, file.name);
     const target = resolve(targetDirectory, file.name);
     if (file.isDirectory()) {
+      if (options.preserveExistingDirectories) {
+        const existing = await lstat(target).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === "ENOENT") return null;
+          throw error;
+        });
+        if (existing) {
+          if (existing.isSymbolicLink() || !existing.isDirectory()) throw new Error(`插件目录无效：${target}`);
+          continue;
+        }
+      }
       await cp(source, target, { recursive: true, force: true });
       continue;
     }

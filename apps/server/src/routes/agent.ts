@@ -11,6 +11,11 @@ import { acquireConcurrency } from "@/lib/concurrency";
 
 const inputSchema = z.object({
   prompt: z.string().trim(), directory: z.string().min(1),
+  skillSelection: z.discriminatedUnion("mode", [
+    z.strictObject({ mode: z.literal("none") }),
+    z.strictObject({ mode: z.literal("auto") }),
+    z.strictObject({ mode: z.literal("fixed"), name: z.string().min(1).max(64) }),
+  ]).optional(),
   attachments: u.agent.agentAttachmentsSchema.optional(),
   mentions: u.agent.agentMentionsSchema.optional(),
   providerId: z.string().min(1), modelId: z.string().min(1),
@@ -31,10 +36,13 @@ const inputSchema = z.object({
 });
 
 export default Router().post("/", requireAuth, requireCsrf, validateFields(inputSchema.shape), async (req, res) => {
-  const { directory, canvas, ...options } = req.body as z.infer<typeof inputSchema>;
+  const { directory, canvas, skillSelection, ...options } = req.body as z.infer<typeof inputSchema>;
   const idempotencyKey = req.header("idempotency-key")?.trim();
   if (!idempotencyKey) throw Object.assign(new Error("缺少 Idempotency-Key"), { status: 422 });
   const cwd = await u.workspace.resolveWorkspace(req, directory);
+  const originalPrompt = options.prompt;
+  const resolvedSkill = u.agent.resolveSkillSelection(cwd, originalPrompt, skillSelection);
+  options.prompt = resolvedSkill.prompt;
   const releaseConcurrency = acquireConcurrency("agent");
   res.set({ "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" });
   res.flushHeaders();
@@ -68,7 +76,7 @@ export default Router().post("/", requireAuth, requireCsrf, validateFields(input
   res.once("close", close);
   const releaseActivity = retainDeploymentActivity();
   try {
-    await u.agent.run({ ...options, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { userId: req.authContext!.user.id } }, send);
+    await u.agent.run({ ...options, displayPrompt: originalPrompt, skillSelectionRecord: resolvedSkill.record, cwd, canvas: bridge?.context, question: questions.context, signal: controller.signal, onCancel: close, billing: { userId: req.authContext!.user.id } }, send);
     send({ type: "done" });
   } catch (error) {
     send({ type: "error", message: formatAgentError(error instanceof Error ? error.message : "Agent 运行失败", options.providerId) });

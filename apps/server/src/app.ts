@@ -1,6 +1,7 @@
 import logger from "morgan";
 import express from "express";
 import cors from "cors";
+import { Buffer } from "node:buffer";
 import { resolve } from "node:path";
 import { mkdir, realpath } from "node:fs/promises";
 import { isIP } from "node:net";
@@ -14,6 +15,12 @@ import initializePlugins from "@/utils/plugins/initialize";
 import { acquireServerLease, checkDatabase, hasServerLease, runSqlMigrations } from "@/db/database";
 import { formatAgentError } from "@/agent/runtime/errors";
 import { concurrencyMiddleware } from "@/lib/concurrency";
+
+declare global {
+  namespace Express {
+    interface Request { rawBody?: Buffer }
+  }
+}
 
 export async function createApp({
   webRoot,
@@ -50,7 +57,7 @@ export async function createApp({
   if (dataDirectory && nodesRoot) await initializePlugins(resolve(dataDirectory, "nodes"), nodesRoot, /^[a-z][a-zA-Z0-9]*\.umd\.js$/, pluginRevision);
   // 平台供应商属于服务端可信代码，运行时不读取数据目录中的用户可编辑副本。
   if (providersRoot) process.env.OMNISTUDIO_NEXT_PROVIDERS_DIR = resolve(providersRoot, "media");
-  if (dataDirectory && skillsRoot) await initializePlugins(resolve(dataDirectory, "skills"), skillsRoot);
+  if (dataDirectory && skillsRoot) await initializePlugins(resolve(dataDirectory, "skills"), skillsRoot, undefined, undefined, { preserveExistingDirectories: true });
   if (dataDirectory && agentsRoot) await initializePlugins(resolve(dataDirectory, "agents"), agentsRoot);
   const app = express();
   if (trustedProxies.length) app.set("trust proxy", trustedProxies);
@@ -87,6 +94,7 @@ export async function createApp({
     const origin = request.get("origin");
     if (writing && origin && origin !== `${request.protocol}://${request.get("host")}`) return response.status(403).json(error("不允许跨来源操作", null, 403));
     const publicPath = /^\/auth\/(setupStatus|setup|login|register|invitation)$/.test(request.path) || request.path === "/desktop/ready"
+      || (request.method === "POST" && /^\/billing\/recharge\/notify(Alipay|Wechat)$/.test(request.path))
       || (["GET", "HEAD"].includes(request.method) && request.path.toLowerCase().replace(/\/+$/, "") === "/deployment/status")
       || (["GET", "HEAD"].includes(request.method) && ["/assets/source", "/assets/workspaceSource"].includes(request.path));
     if (publicPath) return next();
@@ -113,8 +121,11 @@ export async function createApp({
   app.use(["/api/workspaces/files/write", "/api/account/teamAssets/upload"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
   // JSON 接口目前最大的声明输入是技能包的 20 MB 文件（Base64 后约 28 MB）；
   // 收紧解析器上限，避免普通请求在高并发下被放大到 100 MB 内存占用。
-  app.use(express.json({ limit: "32mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "2mb", parameterLimit: 1000 }));
+  const capturePaymentNotificationBody = (request: Request, _response: Response, body: Buffer) => {
+    if (/^\/api\/billing\/recharge\/notify(Alipay|Wechat)$/.test(request.originalUrl.split("?")[0] ?? "")) request.rawBody = body;
+  };
+  app.use(express.json({ limit: "32mb", verify: capturePaymentNotificationBody }));
+  app.use(express.urlencoded({ extended: true, limit: "2mb", parameterLimit: 1000, verify: capturePaymentNotificationBody }));
   app.use(deploymentMiddleware);
   app.use("/api/desktop", desktopRequest);
 

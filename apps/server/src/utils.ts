@@ -16,6 +16,10 @@ import * as workspace from "@/utils/workspace";
 import * as workspaceFile from "@/utils/workspace/files";
 import * as skillFile from "@/utils/skills/files";
 import * as skillLoader from "@/utils/skills/loader";
+import * as accountSkills from "@/utils/skills/accountSkills";
+import * as accountSkillPackageDiff from "@/utils/skills/accountPackageDiff";
+import * as accountSkillLifecycle from "@/utils/skills/accountSkillLifecycle";
+import * as skillCatalog from "@/utils/skills/catalog";
 import * as mcpControl from "@/utils/mcp/control";
 import * as mcpRuntime from "@/utils/mcp/runtime";
 import * as teams from "@/utils/teams";
@@ -49,6 +53,10 @@ export default {
   workspaceFile,
   skillFile,
   skillLoader,
+  accountSkills,
+  accountSkillPackageDiff,
+  accountSkillLifecycle,
+  skillCatalog,
   mcpControl,
   mcpRuntime,
   teams,

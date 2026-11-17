@@ -101,6 +101,13 @@ export async function readFiles(name: string) {
       names.add(path.toLowerCase());
       const target = resolve(dir, entry.name);
       const info = await lstat(target);
+      // ACT: 开发环境可能把团队源码目录放进安装目录；只忽略根级构建脚手架，不读取或执行这些内容。
+      const sourceScaffoldEntry = process.env.NODE_ENV === "dev" && !prefix && ["build.ts", "package.json", "tsconfig.json", "node_modules"].includes(entry.name);
+      if (sourceScaffoldEntry) {
+        if (info.isSymbolicLink() || !isWithin(actualRoot, await realpath(target))) throw Object.assign(new Error("团队文件不能包含链接或越界路径"), { status: 403 });
+        if (entry.name === "node_modules" ? !info.isDirectory() : !info.isFile()) throw Object.assign(new Error("团队构建脚手架文件类型无效"), { status: 403 });
+        continue;
+      }
       if (info.isSymbolicLink() || !isWithin(actualRoot, await realpath(target))) throw Object.assign(new Error("团队文件不能包含链接或越界路径"), { status: 403 });
       if (info.isDirectory()) await collect(target, path);
       else {
