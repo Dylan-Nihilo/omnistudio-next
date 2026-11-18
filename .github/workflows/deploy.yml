@@ -11,6 +11,10 @@ on:
         description: 构建成功后部署到服务器
         type: boolean
         default: false
+      deployTest:
+        description: 构建成功后部署到测试服务器 123.56.79.96
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -143,5 +147,84 @@ jobs:
             deploy "$serverPath" "$GITHUB_SHA" "$attempt" "$archiveBytes" "$imageBytes" \
             "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds"
       - name: Remove runner credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deployKey" "$RUNNER_TEMP/sshKnownHosts"
+
+  deploy_test:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.deployTest && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    concurrency:
+      group: serverTest
+      cancel-in-progress: false
+    env:
+      serverHost: 123.56.79.96
+      serverUser: ${{ secrets.DEPLOY_TEST_USER }}
+      serverPath: ${{ secrets.DEPLOY_TEST_PATH }}
+      deploySshKey: ${{ secrets.DEPLOY_TEST_SSH_KEY }}
+      deployKnownHosts: ${{ secrets.DEPLOY_TEST_KNOWN_HOSTS }}
+      keepReleases: ${{ vars.DEPLOY_TEST_KEEP_RELEASES || '3' }}
+      keepBackups: ${{ vars.DEPLOY_TEST_BACKUP_KEEP_COUNT || '7' }}
+      backupDays: ${{ vars.DEPLOY_TEST_BACKUP_KEEP_DAYS || '30' }}
+      minFreeGiB: ${{ vars.DEPLOY_TEST_MIN_FREE_GIB || '5' }}
+      logSizeMb: ${{ vars.DEPLOY_TEST_LOG_SIZE_MB || '20' }}
+      logFiles: ${{ vars.DEPLOY_TEST_LOG_FILES || '5' }}
+      drainSeconds: ${{ vars.DEPLOY_TEST_DRAIN_SECONDS || '300' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Configure test SSH
+        run: |
+          : "${serverUser:?Configure DEPLOY_TEST_USER}"
+          : "${serverPath:?Configure DEPLOY_TEST_PATH}"
+          : "${deploySshKey:?Configure DEPLOY_TEST_SSH_KEY}"
+          : "${deployKnownHosts:?Configure DEPLOY_TEST_KNOWN_HOSTS}"
+          [[ "$serverUser" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$serverPath" =~ ^/[a-zA-Z0-9/_-]+$ && "$serverPath" != / ]]
+          for value in "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds"; do
+            [[ "$value" =~ ^[1-9][0-9]{0,11}$ ]]
+          done
+          umask 077
+          printf '%s\n' "$deploySshKey" > "$RUNNER_TEMP/deployKey"
+          printf '%s\n' "$deployKnownHosts" > "$RUNNER_TEMP/sshKnownHosts"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: serverImage
+          path: serverImage
+      - name: Check test disk before upload
+        run: |
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          archiveBytes=$(stat -c %s serverImage/appImage.tar.gz)
+          imageBytes=$(cat serverImage/imageSize)
+          [[ "$imageBytes" =~ ^[1-9][0-9]{0,11}$ ]]
+          attempt="attempt${GITHUB_RUN_ID}x${GITHUB_RUN_ATTEMPT}"
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash -s -- check "$serverPath" "$GITHUB_SHA" "$attempt" \
+            "$archiveBytes" "$imageBytes" "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds" \
+            < scripts/deployServer.sh
+      - name: Upload test image and deployment scripts
+        run: |
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          scp "${sshOptions[@]}" serverImage/appImage.tar.gz "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/appImagePending.tar.gz"
+          scp "${sshOptions[@]}" serverImage/imageChecksum scripts/deployServer.sh scripts/deploymentRetention.sh \
+            "$serverUser@$serverHost:$serverPath/releases/$GITHUB_SHA/"
+      - name: Drain, back up and deploy test server
+        run: |
+          sshOptions=(-i "$RUNNER_TEMP/deployKey" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/sshKnownHosts" \
+            -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=6)
+          archiveBytes=$(stat -c %s serverImage/appImage.tar.gz)
+          imageBytes=$(cat serverImage/imageSize)
+          [[ "$imageBytes" =~ ^[1-9][0-9]{0,11}$ ]]
+          attempt="attempt${GITHUB_RUN_ID}x${GITHUB_RUN_ATTEMPT}"
+          ssh "${sshOptions[@]}" "$serverUser@$serverHost" bash "$serverPath/releases/$GITHUB_SHA/deployServer.sh" \
+            deploy "$serverPath" "$GITHUB_SHA" "$attempt" "$archiveBytes" "$imageBytes" \
+            "$keepReleases" "$keepBackups" "$backupDays" "$minFreeGiB" "$logSizeMb" "$logFiles" "$drainSeconds"
+      - name: Remove test runner credentials
         if: always()
         run: rm -f "$RUNNER_TEMP/deployKey" "$RUNNER_TEMP/sshKnownHosts"
