@@ -6,6 +6,7 @@
         <div class="projectTitle"><strong>剪辑台</strong><span>{{ isProductionEditor ? productionEditorTitle || "生产项目" : workspaceStore.project?.name || "未命名项目" }}</span></div>
       </div>
       <div class="headerActions">
+        <rechargeEntry compact />
         <button class="secondaryButton projectPickerButton" type="button" :disabled="!directory || isProductionEditor && !boundProductionProjectPath || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openEditorProjects">剪辑工程 · {{ editorProjectName }}</button>
         <span class="saveStatus" :class="{ hasError: saveError }" role="status">{{ saveError || (projectLoading ? "正在读取" : saveBusy || savePending ? "正在保存" : "已保存") }}</span>
         <button class="secondaryButton" type="button" :disabled="isProductionEditor && !boundProductionProjectPath || projectLoading || importBusy || sourceImportBusy || exportBusy || exportRecordBusy" @click="openRecovery">项目恢复</button>
@@ -246,6 +247,7 @@ import editorSource from "./editorSource.vue";
 import editorText from "./editorText.vue";
 import editorRenderQueue from "./editorRenderQueue.vue";
 import floatingAgent from "../workspace/components/floatingAgent.vue";
+import rechargeEntry from "@/components/account/rechargeEntry.vue";
 import { IconAdjustments, IconArrowBackUp, IconArrowForwardUp, IconArrowLeft, IconCopy, IconDownload, IconLink, IconMagnet, IconMessageCircle, IconMovie, IconMusic, IconPhoto, IconPhotoVideo, IconPlayerPause, IconPlayerPlay, IconPlayerSkipBack, IconPlayerTrackNext, IconPlayerTrackPrev, IconPlus, IconScissors, IconTextSize, IconTrash, IconUpload, IconVideo } from "@tabler/icons-vue";
 
 type ProjectContext = { directory: string; projectPath: string; revision: string; content: string; draftKey: string; sequence: number; blocked: boolean };

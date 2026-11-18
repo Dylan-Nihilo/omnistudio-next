@@ -1,8 +1,20 @@
 <template>
-  <accountShell title="个人账户" eyebrow="我的空间" description="项目、资产和积分属于你的个人账户。团队协作不合并积分余额。">
-    <template #actions><uiButton variant="primary" @click="router.push('/account/recharge')">积分充值</uiButton><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton></template>
+  <accountShell title="个人账户" eyebrow="账户中心" description="管理账户资料，查看个人积分与流水。">
+    <template #actions><uiButton variant="secondary" :loading="loading" @click="loadAccount">刷新余额</uiButton></template>
     <p v-if="errorMessage" class="pageError" role="alert">{{ errorMessage }}</p>
-    <div class="balanceSummary" aria-label="个人积分余额"><div><span>可用积分</span><strong>{{ formatCredits(wallet?.available) }}</strong></div><div><span>冻结积分</span><strong>{{ formatCredits(wallet?.frozen) }}</strong></div><div><span>总余额</span><strong>{{ formatCredits(wallet?.total) }}</strong></div></div>
+    <section class="accountOverview" aria-label="个人账户概览">
+      <div class="overviewIdentity">
+        <span class="identityAvatar"><icon-user-circle :size="27" aria-hidden="true" /></span>
+        <div class="identityDetails"><span class="identityEyebrow">个人空间</span><strong>{{ auth.user?.displayName || "当前账户" }}</strong><span>{{ auth.user?.email }}</span></div>
+      </div>
+      <div class="overviewBalance">
+        <div class="availableBalance"><span><icon-coins :size="16" aria-hidden="true" />可用积分</span><strong>{{ formatCredits(wallet?.available) }}</strong></div>
+      </div>
+      <div class="balanceSummary" aria-label="其他积分余额">
+        <div><span>冻结积分</span><strong>{{ formatCredits(wallet?.frozen) }}<small>积分</small></strong></div>
+        <div><span>总余额</span><strong>{{ formatCredits(wallet?.total) }}<small>积分</small></strong></div>
+      </div>
+    </section>
     <div class="accountForms">
       <section class="accountSection" aria-labelledby="transferTitle">
         <header><h2 id="transferTitle">划转积分</h2><p>向同一团队的成员划转自己的可用积分。</p></header>
@@ -29,14 +41,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import axios from "axios";
 import { uiButton, uiField, uiInput, uiNumberInput, uiSelect, uiTable, useUiFeedback, isUiCancelledError, type UiColumn } from "@omnistudio-next/ui";
 import accountShell from "@/components/account/accountShell.vue";
 import { useAuthStore } from "@/stores/auth";
 import { getWallet, getLedger, getMembers, transferCredits, saveProfile, changePassword, type Wallet, type LedgerEntry, type TeamMember } from "@/lib/accountApi";
 import { compareCredits, creditMicros, formatCredits } from "@/lib/creditFormat";
-const auth = useAuthStore(); const feedback = useUiFeedback(); const router = useRouter();
+const auth = useAuthStore(); const feedback = useUiFeedback();
 const wallet = ref<Wallet>(); const ledger = ref<LedgerEntry[]>([]); const loading = ref(false); const busy = ref(false); const errorMessage = ref("");
 const transferTeamId = ref(""); const recipientId = ref(""); const amount = ref<number | null>(null); const note = ref(""); const transferError = ref(""); const members = ref<TeamMember[]>([]); const membersLoading = ref(false); let memberRevision = 0; let transferKey = crypto.randomUUID();
 const displayName = ref(auth.user?.displayName ?? ""); const currentPassword = ref(""); const password = ref(""); const confirmation = ref("");
@@ -117,8 +128,18 @@ onMounted(async () => { await auth.restoreSession(); transferTeamId.value = tran
 
 <style lang="scss" scoped>
 .pageError { color: var(--uiStatusError); font-size: var(--uiFontControl); line-height: 1.6; margin: 0 0 20px; overflow-wrap: anywhere; }
-.balanceSummary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-bottom: 36px; padding-bottom: 32px; border-bottom: 1px solid var(--uiBorderDefault); > div { display: grid; gap: 12px; min-width: 0; span { color: var(--uiTextMuted); font-size: var(--uiFontControl); } strong { font-size: clamp(26px, 3vw, 38px); line-height: 1.2; overflow-wrap: anywhere; } &:first-child strong { color: var(--uiActionPrimary); } } }
-.accountForms { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; .accountSection { min-width: 0; header { margin-bottom: 24px; h2 { margin: 0 0 8px; font-size: 18px; } p { margin: 0; color: var(--uiTextMuted); font-size: var(--uiFontControl); line-height: 1.7; overflow-wrap: anywhere; } } .sectionForm { display: grid; gap: 18px; max-width: 460px; } .sectionHint { margin: 0; color: var(--uiTextMuted); font-size: 12px; line-height: 1.7; a { color: var(--uiActionPrimary); } } .passwordSection { border-top: 1px solid var(--uiBorderDefault); margin-top: 28px; padding-top: 24px; h3 { margin: 0 0 8px; font-size: 16px; } .sectionHint { margin-bottom: 20px; } } } }
-.ledgerSection { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--uiBorderDefault); header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; h2 { margin: 0; font-size: 18px; } span { color: var(--uiTextMuted); font-size: 12px; } } .negative { color: var(--uiStatusError); } .billingDetails { margin-top: 6px; font-size: 12px; color: var(--uiTextMuted); summary { cursor: pointer; } p { margin: 8px 0 0; line-height: 1.8; overflow-wrap: anywhere; } } }
-@media (max-width: 800px) { .accountForms { grid-template-columns: 1fr; gap: 32px; } .balanceSummary { gap: 16px; } }
+.accountOverview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, .8fr); gap: 22px 32px; align-items: center; margin-bottom: 24px; padding: 24px; border: 1px solid var(--uiBorderDefault); border-radius: 8px; background: var(--uiSurfaceRaised);
+  .overviewIdentity { display: flex; align-items: center; gap: 14px; min-width: 0;
+    .identityAvatar { display: grid; place-items: center; flex: 0 0 52px; width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--uiActionPrimary) 25%, var(--uiBorderDefault)); border-radius: 8px; color: var(--uiActionPrimary); background: color-mix(in srgb, var(--uiActionPrimary) 9%, var(--uiSurfaceRaised)); }
+    .identityDetails { display: grid; gap: 4px; min-width: 0; .identityEyebrow { color: var(--uiTextMuted); font-size: 11px; } strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 650; } > span:last-child { overflow: hidden; color: var(--uiTextMuted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; } }
+  }
+  .overviewBalance { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding-left: 24px; border-left: 1px solid var(--uiBorderDefault);
+    .availableBalance { display: grid; gap: 5px; min-width: 0; > span { display: flex; align-items: center; gap: 6px; color: var(--uiTextMuted); font-size: 11px; svg { color: var(--uiActionPrimary); } } strong { overflow-wrap: anywhere; color: var(--uiActionPrimary); font-size: clamp(28px, 3vw, 36px); font-variant-numeric: tabular-nums; line-height: 1.1; } }
+  }
+  .balanceSummary { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-top: 17px; border-top: 1px solid var(--uiBorderDefault); > div { display: grid; gap: 5px; min-width: 0; span { color: var(--uiTextMuted); font-size: 11px; } strong { overflow-wrap: anywhere; font-size: 17px; font-variant-numeric: tabular-nums; small { margin-left: 5px; color: var(--uiTextMuted); font-size: 10px; font-weight: 450; } } } }
+}
+.accountForms { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; .accountSection { min-width: 0; padding: 22px; border: 1px solid var(--uiBorderDefault); border-radius: 8px; background: var(--uiSurfaceRaised); header { margin-bottom: 20px; h2 { margin: 0 0 7px; font-size: 16px; } p { margin: 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; } } .sectionForm { display: grid; gap: 16px; max-width: 460px; } .sectionHint { margin: 0; color: var(--uiTextMuted); font-size: 11px; line-height: 1.7; a { color: var(--uiActionPrimary); } } .passwordSection { border-top: 1px solid var(--uiBorderDefault); margin-top: 24px; padding-top: 21px; h3 { margin: 0 0 7px; font-size: 14px; } .sectionHint { margin-bottom: 18px; } } } }
+.ledgerSection { margin-top: 24px; padding: 22px; border: 1px solid var(--uiBorderDefault); border-radius: 8px; background: var(--uiSurfaceRaised); header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; h2 { margin: 0; font-size: 16px; } span { color: var(--uiTextMuted); font-size: 11px; } } .negative { color: var(--uiStatusError); } .billingDetails { margin-top: 6px; font-size: 11px; color: var(--uiTextMuted); summary { cursor: pointer; } p { margin: 8px 0 0; line-height: 1.8; overflow-wrap: anywhere; } } }
+@media (max-width: 900px) { .accountOverview { grid-template-columns: minmax(0, 1fr); gap: 18px; .overviewBalance { padding: 17px 0 0; border-top: 1px solid var(--uiBorderDefault); border-left: 0; } .balanceSummary { grid-column: auto; } } .accountForms { grid-template-columns: 1fr; gap: 14px; } }
+@media (max-width: 600px) { .accountOverview, .accountForms .accountSection, .ledgerSection { padding: 17px; } .accountOverview { gap: 16px; .overviewBalance { flex-wrap: wrap; } .availableBalance strong { font-size: 29px; } .balanceSummary { gap: 12px; > div strong { font-size: 15px; } } } }
 </style>

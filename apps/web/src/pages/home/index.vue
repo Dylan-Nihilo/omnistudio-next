@@ -7,6 +7,7 @@
         <uiButton class="navigationItem" variant="ghost" :class="{ isSelected: activeSection === 'projects' }" :icon="IconMovie" title="跳转到生产项目" @click="focusProjects">生产项目</uiButton>
       </nav>
       <nav class="secondaryNavigation">
+        <rechargeEntry />
         <uiButton class="navigationItem" variant="ghost" :icon="IconUserCircle" aria-label="账户与积分" title="账户与积分" @click="router.push('/account')">账户与积分</uiButton>
         <uiButton class="navigationItem" variant="ghost" :icon="IconUsersGroup" aria-label="团队空间" title="团队空间" @click="router.push('/teams')">团队空间</uiButton>
         <uiButton v-if="auth.isRoot" class="navigationItem" variant="ghost" :icon="IconShieldLock" aria-label="平台管理" title="平台管理" @click="router.push('/admin')">平台管理</uiButton>
@@ -92,6 +93,7 @@ import { useAuthStore } from "@/stores/auth";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import settings from "@/components/settings/index.vue";
 import modelPopover from "@/components/modelPopover.vue";
+import rechargeEntry from "@/components/account/rechargeEntry.vue";
 
 const feedback = useUiFeedback();
 const activeSection = ref("create");
@@ -211,6 +213,7 @@ function focusProjects() { activeSection.value = "projects"; void router.push("/
 .home {
   min-height: 100dvh; color: var(--uiTextPrimary); background: var(--uiBackgroundBase);
   .homeNavigation {
+    position: sticky; top: 0; z-index: var(--uiLayerSticky); border-bottom: 1px solid var(--uiBorderDefault); background: var(--uiBackgroundBase);
     display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; min-height: 88px;
     max-width: 1536px; margin-inline: auto; padding: 12px 64px;
     .homeBrand { display: block; flex-shrink: 0; width: 164px; img { display: block; width: 100%; height: auto; } }
@@ -299,7 +302,7 @@ function focusProjects() { activeSection.value = "projects"; void router.push("/
       flex-wrap: wrap; gap: 8px 16px; min-height: 0; padding: 12px 20px;
       .homeBrand { width: 132px; }
       .mainNavigation { order: 3; width: 100%; .navigationItem { min-height: 36px; font-size: 12px; } }
-      .secondaryNavigation { gap: 2px; .navigationItem { width: 30px; min-height: 32px; } }
+      .secondaryNavigation { gap: 2px; .navigationItem { width: 30px; min-height: 32px; } :deep(.rechargeEntry) { width: 30px; min-height: 30px; padding: 0; span { display: none; } } }
     }
     .homeContent {
       gap: 28px; padding: 24px 20px 40px;

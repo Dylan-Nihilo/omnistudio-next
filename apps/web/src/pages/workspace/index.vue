@@ -3,7 +3,7 @@
     <header ref="headerElement" class="workspaceHeader">
       <div class="projectBrand"><img class="brandLogo" :src="logoUrl" alt="万象点点" /><div class="projectInfo"><strong :title="workspaceStore.project?.name">{{ workspaceStore.project?.name }}</strong></div></div>
       <uiRadioGroup :modelValue="activePanel" class="panelSwitcher" :options="panelOptions" variant="segmented" aria-label="切换面板" @change="switchPanel" />
-      <div class="headerActions"><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="万象点点 Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
+      <div class="headerActions"><rechargeEntry compact /><uiButton variant="ghost" :icon="IconMessageCircle" :class="{ isActive: agentVisible }" :aria-expanded="agentVisible" aria-label="万象点点 Agent" aria-controls="agentPanel" @click="agentVisible = !agentVisible">AI 对话</uiButton><workspaceMenu @openSettings="settingsVisible = true" /></div>
     </header>
     <div v-if="editorResultError" class="editorResultRecovery" role="alert">
       <span>{{ editorResultError }}</span>
@@ -29,6 +29,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";
 import anonymousData from "@/lib/anonymousData";
 import workspaceMenu from "./components/workspaceMenu.vue";
+import rechargeEntry from "@/components/account/rechargeEntry.vue";
 
 const canvasPanel = defineAsyncComponent(() => import("./panels/canvas/canvasHost.vue"));
 const floatingAgent = defineAsyncComponent(() => import("./components/floatingAgent.vue"));
